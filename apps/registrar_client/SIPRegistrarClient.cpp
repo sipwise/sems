@@ -99,11 +99,11 @@ void SIPRegistrarClient::checkTimeouts() {
   reg_mut.lock();
   vector<string> remove_regs;
 
-  for (map<string, SIPRegistration*>::iterator it = registrations.begin();
+  for (map<string, AmSIPRegistration*>::iterator it = registrations.begin();
        it != registrations.end(); it++) {
     if (it->second->active) {
       if (it->second->registerExpired(now.tv_sec)) {
-	SIPRegistration* reg = it->second;
+	AmSIPRegistration* reg = it->second;
 	reg->onRegisterExpired();
       } else if (!it->second->waiting_result && 
 		 it->second->timeToReregister(now.tv_sec)) {
@@ -113,14 +113,14 @@ void SIPRegistrarClient::checkTimeouts() {
       remove_regs.push_back(it->first);
     } else if (it->second->waiting_result && 
 	       it->second->registerSendTimeout(now.tv_sec)) {
-      SIPRegistration* reg = it->second;
+      AmSIPRegistration* reg = it->second;
       reg->onRegisterSendTimeout();
     }
   }
   for (vector<string>::iterator it = remove_regs.begin(); 
        it != remove_regs.end(); it++) {
     DBG("removing registration\n");
-    SIPRegistration* reg = registrations[*it];
+    AmSIPRegistration* reg = registrations[*it];
     registrations.erase(*it);
     if (reg)
       delete reg;
@@ -137,7 +137,7 @@ int SIPRegistrarClient::onLoad() {
 void SIPRegistrarClient::onServerShutdown() {
   // TODO: properly wait until unregistered, with timeout
   DBG("shutdown SIP registrar client: deregistering\n");
-  for (std::map<std::string, SIPRegistration*>::iterator it=
+  for (std::map<std::string, AmSIPRegistration*>::iterator it=
 	 registrations.begin(); it != registrations.end(); it++) {
     it->second->doUnregister();
     AmEventDispatcher::instance()->delEventQueue(it->first);
@@ -184,7 +184,7 @@ void SIPRegistrarClient::process(AmEvent* ev)
 }
 
 void SIPRegistrarClient::onSipReplyEvent(AmSipReplyEvent* ev) {
-  SIPRegistration* reg = get_reg(ev->reply.local_tag);
+  AmSIPRegistration* reg = get_reg(ev->reply.local_tag);
   if (reg != NULL) {
       reg->getDlg()->updateStatus(ev->reply);//onSipReply(ev->reply);
   }
@@ -192,8 +192,8 @@ void SIPRegistrarClient::onSipReplyEvent(AmSipReplyEvent* ev) {
 
 void SIPRegistrarClient::onNewRegistration(SIPNewRegistrationEvent* new_reg) {
 
-  SIPRegistration* reg = new SIPRegistration(new_reg->handle, new_reg->info, 
-					     new_reg->sess_link);
+  AmSIPRegistration* reg = new AmSIPRegistration(new_reg->handle, new_reg->info, 
+						 new_reg->sess_link);
   
   if (uac_auth_i != NULL) {
     DBG("enabling UAC Auth for new registration.\n");
@@ -224,7 +224,7 @@ void SIPRegistrarClient::onNewRegistration(SIPNewRegistrationEvent* new_reg) {
 }
 
 void SIPRegistrarClient::onRemoveRegistration(SIPRemoveRegistrationEvent* new_reg) {
-  SIPRegistration* reg = get_reg(new_reg->handle);
+  AmSIPRegistration* reg = get_reg(new_reg->handle);
   if (reg)
     reg->doUnregister();
 }
@@ -247,13 +247,13 @@ bool SIPRegistrarClient::hasRegistration(const string& handle) {
   return get_reg(handle) != NULL;
 }
 
-SIPRegistration* SIPRegistrarClient::
+AmSIPRegistration* SIPRegistrarClient::
 get_reg(const string& reg_id) 
 {
   DBG("get registration '%s'\n", reg_id.c_str());
-  SIPRegistration* res = NULL;
+  AmSIPRegistration* res = NULL;
   reg_mut.lock();
-  map<string, SIPRegistration*>::iterator it = 
+  map<string, AmSIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end())
     res = it->second;
@@ -262,12 +262,12 @@ get_reg(const string& reg_id)
   return res;
 }
 
-SIPRegistration* SIPRegistrarClient::
+AmSIPRegistration* SIPRegistrarClient::
 get_reg_unsafe(const string& reg_id) 
 {
   //	DBG("get registration_unsafe '%s'\n", reg_id.c_str());
-  SIPRegistration* res = NULL;
-  map<string, SIPRegistration*>::iterator it = 
+  AmSIPRegistration* res = NULL;
+  map<string, AmSIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end())
     res = it->second;
@@ -275,19 +275,19 @@ get_reg_unsafe(const string& reg_id)
   return res;
 }
 
-SIPRegistration* SIPRegistrarClient::
+AmSIPRegistration* SIPRegistrarClient::
 remove_reg(const string& reg_id) {
   reg_mut.lock();
-  SIPRegistration* reg = remove_reg_unsafe(reg_id);
+  AmSIPRegistration* reg = remove_reg_unsafe(reg_id);
   reg_mut.unlock();
   return reg;
 }
 
-SIPRegistration* SIPRegistrarClient::
+AmSIPRegistration* SIPRegistrarClient::
 remove_reg_unsafe(const string& reg_id) {
   DBG("removing registration '%s'\n", reg_id.c_str());
-  SIPRegistration* reg = NULL;
-  map<string, SIPRegistration*>::iterator it = 
+  AmSIPRegistration* reg = NULL;
+  map<string, AmSIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end()) {
     reg = it->second;
@@ -300,12 +300,12 @@ remove_reg_unsafe(const string& reg_id) {
 }
 
 void SIPRegistrarClient::
-add_reg(const string& reg_id, SIPRegistration* new_reg) 
+add_reg(const string& reg_id, AmSIPRegistration* new_reg) 
 {
   DBG("adding registration '%s'  (this = %ld)\n", reg_id.c_str(), (long)this);
-  SIPRegistration* reg = NULL;
+  AmSIPRegistration* reg = NULL;
   reg_mut.lock();
-  map<string, SIPRegistration*>::iterator it = 
+  map<string, AmSIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end()) {
     reg = it->second;
@@ -353,7 +353,7 @@ bool SIPRegistrarClient::getRegistrationState(const string& handle,
   bool res = false;
   reg_mut.lock();
 
-  SIPRegistration* reg = get_reg_unsafe(handle);
+  AmSIPRegistration* reg = get_reg_unsafe(handle);
   if (reg) {
     res = true;
     state = reg->getState();
@@ -367,7 +367,7 @@ bool SIPRegistrarClient::getRegistrationState(const string& handle,
 void SIPRegistrarClient::listRegistrations(AmArg& res) {
   reg_mut.lock();
 
-  for (map<string, SIPRegistration*>::iterator it = 
+  for (map<string, AmSIPRegistration*>::iterator it = 
 	 registrations.begin(); it != registrations.end(); it++) {
     AmArg r;
     r["handle"] = it->first;
