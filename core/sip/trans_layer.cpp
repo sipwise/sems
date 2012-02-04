@@ -1262,8 +1262,12 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 	    // fall through trap
 
 	case TS_PROCEEDING:
-	    if(t->msg->u.request->method != sip_request::CANCEL)
+	    if(t->msg->u.request->method != sip_request::CANCEL) {
+		if(t->msg->u.request->method == sip_request::INVITE) {
+		    t->reset_timer(STIMER_C, C_TIMER, bucket->get_id());
+		}
 		goto pass_reply;
+	    }
 	    else
 		goto end;
 
@@ -1297,7 +1301,9 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		t->clear_timer(STIMER_B);
 
 	    case TS_PROCEEDING:
-		
+	
+		t->clear_timer(STIMER_C);
+
 		t->state = TS_COMPLETED;
 		send_non_200_ack(msg,t);
 		t->reset_timer(STIMER_D, D_TIMER, bucket->get_id());
@@ -1336,6 +1342,11 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		t->clear_timer(STIMER_A);
 		t->clear_timer(STIMER_M);
 		t->clear_timer(STIMER_B);
+
+		// Timer B & C share the same slot,
+		// so it would pretty useless to clear
+		// the same timer slote another time ;-)
+		//t->clear_timer(STIMER_C);
 
 		t->reset_timer(STIMER_L, L_TIMER, bucket->get_id());
 
@@ -1649,6 +1660,31 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	}
 	else {
 	    DBG("Transaction timeout timer hit while state=0x%x",tr->state);
+	}
+	break;
+
+    case STIMER_C: // Proceeding -> Terminated
+	
+	// Note: remember well, we first set timer C
+	//       after the first provisional reply.
+	tr->clear_timer(STIMER_C);
+	if(tr->state != TS_PROCEEDING)
+	    break; // shouldn't happen
+
+	bucket->unlock();
+
+	{
+	    // send CANCEL
+	    trans_ticket tt(tr,bucket);
+	    cancel(&tt);
+	    
+	    // Now remove the transaction
+	    bucket->lock();
+	    if(bucket->exist(tr)) {
+		// unlocks the bucket
+		timeout(bucket,tr);
+		return;
+	    }
 	}
 	break;
 
