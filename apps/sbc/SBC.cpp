@@ -33,6 +33,7 @@ SBC - feature-wishlist
 - fallback profile
  */
 #include "SBC.h"
+#include "ampi/SBCCallControlAPI.h"
 
 #include "log.h"
 #include "AmUtils.h"
@@ -287,6 +288,9 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
   } else if (method == "setRegexMap"){
     args.assertArrayFmt("u");
     setRegexMap(args,ret);
+  } else if (method == "postControlCmd"){
+    args.assertArrayFmt("ss"); // at least call-ltag, cmd
+    postControlCmd(args,ret);
   } else if(method == "_list"){ 
     ret.push(AmArg("listProfiles"));
     ret.push(AmArg("reloadProfiles"));
@@ -296,6 +300,7 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
     ret.push(AmArg("setActiveProfile"));
     ret.push(AmArg("getRegexMapNames"));
     ret.push(AmArg("setRegexMap"));
+    ret.push(AmArg("postControlCmd"));
   }  else
     throw AmDynInvoke::NotImplemented(method);
 }
@@ -477,6 +482,22 @@ void SBCFactory::setRegexMap(const AmArg& args, AmArg& ret) {
   regex_mappings.setRegexMap(m_name, v);
   ret.push(200);
   ret.push("OK");
+}
+
+void SBCFactory::postControlCmd(const AmArg& args, AmArg& ret) {
+  SBCControlEvent* evt;
+  if (args.size()<3) {
+    evt = new SBCControlEvent(args[1].asCStr());
+  } else {
+    evt = new SBCControlEvent(args[1].asCStr(), args[2]);
+  }
+  if (!AmSessionContainer::instance()->postEvent(args[0].asCStr(), evt)) {
+    ret.push(404);
+    ret.push("Not found");
+  } else {
+    ret.push(202);
+    ret.push("Accepted");
+  }
 }
 
 SBCDialog::SBCDialog(const SBCCallProfile& call_profile)
@@ -745,7 +766,23 @@ void SBCDialog::process(AmEvent* ev)
     }
   }
 
+  SBCControlEvent* ctl_event;
+  if (ev->event_id == SBCControlEvent_ID &&
+      (ctl_event = dynamic_cast<SBCControlEvent*>(ev)) != NULL) {
+    onControlCmd(ctl_event->cmd, ctl_event->params);
+    return;
+  }
+
   AmB2BCallerSession::process(ev);
+}
+
+void SBCDialog::onControlCmd(string& cmd, AmArg& params) {
+  if (cmd == "teardown") {
+    DBG("teardown requested from control cmd\n");
+    stopCall();
+    return;
+  }
+  DBG("ignoring unknown control cmd : '%s'\n", cmd.c_str());
 }
 
 int SBCDialog::relayEvent(AmEvent* ev) {
@@ -1150,6 +1187,17 @@ int SBCCalleeSession::relayEvent(AmEvent* ev) {
   return AmB2BCalleeSession::relayEvent(ev);
 }
 
+void SBCCalleeSession::process(AmEvent* ev) {
+  SBCControlEvent* ctl_event;
+  if (ev->event_id == SBCControlEvent_ID &&
+      (ctl_event = dynamic_cast<SBCControlEvent*>(ev)) != NULL) {
+    onControlCmd(ctl_event->cmd, ctl_event->params);
+    return;
+  }
+
+  AmB2BCalleeSession::process(ev);
+}
+
 void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
   // AmB2BSession does not call AmSession::onSipRequest for 
   // forwarded requests - so lets call event handlers here
@@ -1221,6 +1269,15 @@ void SBCCalleeSession::onSendRequest(const string& method, const string& content
   
   AmB2BCalleeSession::onSendRequest(method, content_type,
 				     body, hdrs, flags, cseq);
+}
+
+void SBCCalleeSession::onControlCmd(string& cmd, AmArg& params) {
+  if (cmd == "teardown") {
+    DBG("relaying teardown control cmd to A leg\n");
+    relayEvent(new SBCControlEvent(cmd, params));
+    return;
+  }
+  DBG("ignoring unknown control cmd : '%s'\n", cmd.c_str());
 }
 
 int SBCCalleeSession::filterBody(AmSdp& sdp, bool is_a2b) {

@@ -24,7 +24,12 @@ Features
  o SIP Session Timers
  o call timer
  o prepaid accounting
+<<<<<<< HEAD
 
+=======
+ o CDR generation
+ o call teardown from external control through RPC
+>>>>>>> 3af5aa5... sbc: tear down calls through RPC (DI, e.g. XMLRPC)
 
 SBC Profiles
 ------------
@@ -85,7 +90,14 @@ is provided and installed to trigger the reload (through XMLRPC):
   sems-sbc-get-activeprofile                    get active_profile
   sems-sbc-set-activeprofile <active_profile>   set active_profile
 
+<<<<<<< HEAD
 The xmlrpc2di module must be loaded and XMLRPC control server bound to port 8090 for
+=======
+  sems-sbc-teardown-call <call_ltag>            tear down call (use e.g. monitoring's
+                                                sems-list-active-calls to get the ltag)
+
+The xmlrpc2di module must be loaded and the XMLRPC control server bound to port 8090 for
+>>>>>>> 3af5aa5... sbc: tear down calls through RPC (DI, e.g. XMLRPC)
 the scripts to work.
 
 For tracking file revisions and changes, the MD5 hash sum is printed on profile load and
