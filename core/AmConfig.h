@@ -134,6 +134,8 @@ struct AmConfig
   static bool NextHopForReplies;
   /** update ruri-host to previously resolved IP:port on SIP auth */
   static bool ProxyStickyAuth;
+  /** Ignore Low CSeq on NOTIFY  - for RFC 3265 instead of 5057 */
+  static bool IgnoreNotifyLowerCSeq;
   /** skip DNS SRV lookup for resolving destination address*/
   static bool DisableDNSSRV;
   /** Server/User-Agent header (optional) */
