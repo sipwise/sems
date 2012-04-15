@@ -93,7 +93,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
   bool run_session_invite = engine.onInvite(req, this);
 
   if (run_invite_event) {
-    avar[DSM_AVAR_REQUEST] = AmArg(sip_req);
+    avar[DSM_AVAR_REQUEST] = AmArg(&req);
     if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
       run_session_invite =false;
 
