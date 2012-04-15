@@ -93,6 +93,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
   bool run_session_invite = engine.onInvite(req, this);
 
   if (run_invite_event) {
+    avar[DSM_AVAR_REQUEST] = AmArg(sip_req);
     if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
       run_session_invite =false;
 
@@ -100,7 +101,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
       DBG("session choose to not connect media\n");
       run_session_invite = false;     // don't accept audio 
     }    
-
+    avar.erase(DSM_AVAR_REQUEST);
   }
 
   if (run_session_invite) 
