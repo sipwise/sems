@@ -9,6 +9,7 @@
 #define SIP_METH_UPDATE         "UPDATE"
 #define SIP_METH_BYE            "BYE"
 #define SIP_METH_ACK            "ACK"
+#define SIP_METH_SUBSCRIBE      "SUBSCRIBE"
 #define SIP_METH_NOTIFY         "NOTIFY"
 
 #define SIP_HDR_FROM            "From"
@@ -36,6 +37,9 @@
 #define SIP_HDR_WWW_AUTHENTICATE "WWW-Authenticate"
 #define SIP_HDR_ALLOW            "Allow"
 #define SIP_HDR_RETRY_AFTER      "Retry-After"
+#define SIP_HDR_ACCEPT           "Accept"
+#define SIP_HDR_EVENT            "Event"
+#define SIP_HDR_SUBSCRIPTION_STATE "Subscription-State"
 
 #define SIP_HDR_COL(_hdr)       _hdr ":"
 #define SIP_HDR_COLSP(_hdr)     SIP_HDR_COL(_hdr) " "

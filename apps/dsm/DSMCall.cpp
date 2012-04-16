@@ -29,6 +29,7 @@
 #include "AmUtils.h"
 #include "AmMediaProcessor.h"
 #include "DSM.h"
+#include "AmSipSubscription.h"
 
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
 
@@ -438,6 +439,24 @@ void DSMCall::process(AmEvent* event)
       return;
     }
 
+  }
+
+  if (event->event_id == E_SIP_SUBSCRIPTION) {
+    SIPSubscriptionEvent* sub_ev = dynamic_cast<SIPSubscriptionEvent*>(event);
+    if (sub_ev) {
+      DBG("DSM Call received SIP Subscription Event\n");
+      map<string, string> params;
+      params["status"] = sub_ev->getStatusText();
+      params["code"] = int2str(sub_ev->code);
+      params["reason"] = sub_ev->reason;
+      params["expires"] = int2str(sub_ev->expires);
+      params["has_body"] = (!sub_ev->notify_body.empty())?"true":"false";
+      if (!sub_ev->notify_body.empty()) {
+	avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] = AmArg(sub_ev->notify_body);
+      }
+      engine.runEvent(this, this, DSMCondition::SIPSubscription, &params);
+      avar.erase(DSM_AVAR_SIPSUBSCRIPTION_BODY);
+    }
   }
 
   AmB2BCallerSession::process(event);

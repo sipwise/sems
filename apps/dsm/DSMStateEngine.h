@@ -90,7 +90,9 @@ class DSMCondition
 
     Startup,
     Reload,
-    System
+    System,
+
+    SIPSubscription
   };
 
   bool invert; 
