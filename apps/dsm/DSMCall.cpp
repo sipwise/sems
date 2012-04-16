@@ -29,6 +29,8 @@
 #include "AmUtils.h"
 #include "AmMediaProcessor.h"
 #include "DSM.h"
+#include "AmConferenceStatus.h"
+#include "AmAdvancedAudio.h"
 #include "AmSipSubscription.h"
 
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
@@ -385,6 +387,14 @@ void DSMCall::process(AmEvent* event)
     engine.runEvent(this, this, DSMCondition::PlaylistSeparator, &params);
   }
 
+  ConferenceEvent * conf_ev = dynamic_cast<ConferenceEvent*>(event);
+  if (conf_ev) {
+    map<string, string> params;
+    params["type"] = "conference_event";
+    params["id"] = int2str(conf_ev->event_id);
+    engine.runEvent(this, this, DSMCondition::DSMEvent, &params);
+  }
+
   // todo: give modules the possibility to define/process events
   JsonRpcEvent* jsonrpc_ev = dynamic_cast<JsonRpcEvent*>(event);
   if (jsonrpc_ev) { 
@@ -459,6 +469,15 @@ void DSMCall::process(AmEvent* event)
     }
   }
 
+  AmRtpTimeoutEvent* timeout_ev = dynamic_cast<AmRtpTimeoutEvent*>(event);
+  if (timeout_ev) {
+    map<string, string> params;
+    params["type"] = "rtp_timeout";
+    params["timeout_value"] = int2str(AmConfig::DeadRtpTime);
+    engine.runEvent(this, this, DSMCondition::RTPTimeout, &params);
+    return;
+  }
+
   AmB2BCallerSession::process(event);
 }
 
@@ -466,13 +485,13 @@ inline UACAuthCred* DSMCall::getCredentials() {
   return cred.get();
 }
 
-void DSMCall::playPrompt(const string& name, bool loop) {
+void DSMCall::playPrompt(const string& name, bool loop, bool front) {
   DBG("playing prompt '%s'\n", name.c_str());
   if (prompts->addToPlaylist(name,  (long)this, playlist, 
-			    /*front =*/ false, loop))  {
+			    front, loop))  {
     if ((var["prompts.default_fallback"] != "yes") ||
       default_prompts->addToPlaylist(name,  (long)this, playlist, 
-				    /*front =*/ false, loop)) {
+				    front, loop)) {
       DBG("checked [%p]\n", default_prompts);
       throw DSMException("prompt", "name", name);
     } else {
@@ -489,9 +508,17 @@ void DSMCall::closePlaylist(bool notify) {
   playlist.close(notify);  
 }
 
-void DSMCall::addToPlaylist(AmPlaylistItem* item) {
+void DSMCall::flushPlaylist() {
+  DBG("flush playlist\n");
+  playlist.close(false);  
+}
+
+void DSMCall::addToPlaylist(AmPlaylistItem* item, bool front) {
   DBG("add item to playlist\n");
-  playlist.addToPlaylist(item);
+  if (front)
+    playlist.addToPlayListFront(item);
+  else
+    playlist.addToPlaylist(item);
 }
 
 void DSMCall::playFile(const string& name, bool loop, bool front) {
@@ -508,6 +535,18 @@ void DSMCall::playFile(const string& name, bool loop, bool front) {
   if (loop) 
     af->loop.set(true);
 
+  if (front)
+    playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
+  else
+    playlist.addToPlaylist(new AmPlaylistItem(af, NULL));
+
+  audiofiles.push_back(af);
+  CLR_ERRNO;
+}
+
+void DSMCall::playSilence(unsigned int length, bool front) {
+  AmNullAudio* af = new AmNullAudio();
+  af->setReadLength(length);
   if (front)
     playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
   else
