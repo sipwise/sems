@@ -117,6 +117,12 @@ string AmSipSubscription::getSubscribeHdrs() {
   return hdrs;
 }
 
+#ifdef HAVE_SEMS_OA
+# define DLG_SENDREQ_EMPTY_BODY NULL
+#else
+# define DLG_SENDREQ_EMPTY_BODY "", ""
+#endif
+
 bool AmSipSubscription::doSubscribe() 
 {
   bool res = true;
@@ -132,13 +138,7 @@ bool AmSipSubscription::doSubscribe()
     dlg.outbound_proxy = AmConfig::OutboundProxy;
   }
 
-  if (dlg.sendRequest(req.method,
-#ifdef HAVE_SEMS_OA
-		      NULL,
-#else
-		      "", "",
-#endif
-		      getSubscribeHdrs()) < 0) {
+  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
     WARN("failed to send subscription to '%s' (proxy '%s').\n",
 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
     return false;
@@ -158,7 +158,7 @@ bool AmSipSubscription::doSubscribe()
 
 bool AmSipSubscription::reSubscribe() 
 {
-  if (dlg.sendRequest(req.method, NULL, getSubscribeHdrs()) < 0) {
+  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
     WARN("failed to send subscription to '%s' (proxy '%s').\n",
 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
     return false;
@@ -196,7 +196,7 @@ bool AmSipSubscription::doUnsubscribe()
   }
   hdrs += SIP_HDR_COLSP(SIP_HDR_EXPIRES) "0" CRLF;
 
-  if (dlg.sendRequest(req.method, NULL, hdrs) < 0) {
+  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, hdrs) < 0) {
     WARN("failed to send unsubscription to '%s' (proxy '%s').\n",
 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
     return false;
