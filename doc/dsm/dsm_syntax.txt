@@ -148,6 +148,12 @@ Playing prompts and file I/O
    set playlist as input and output of session, and connect to mediaprocessor 
  disconnectMedia() 
    disconnect from mediaprocessor
+ pauseReceiving()
+   stop RTP receiving (drop all received packets, also no RTP timeout check)
+ resumeReceiving()
+   restart RTP receiving
+ monitorRTPTimeout(enabled=false)
+   set call to monitor RTP timeout (enabled="true" or "false")
 
  mute() 
    set RTP stream to muted (don't send and receive RTP packets)

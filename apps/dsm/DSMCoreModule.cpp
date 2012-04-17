@@ -70,6 +70,9 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("addSeparator", SCAddSeparatorAction);
   DEF_CMD("connectMedia", SCConnectMediaAction);
   DEF_CMD("disconnectMedia", SCDisconnectMediaAction);
+  DEF_CMD("pauseReceiving", SCPauseReceivingAction);
+  DEF_CMD("resumeReceiving", SCResumeReceivingAction);
+  DEF_CMD("monitorRTPTimeout", SCMonitorRTPTimeoutAction);
   DEF_CMD("mute", SCMuteAction);
   DEF_CMD("unmute", SCUnmuteAction);
   DEF_CMD("enableDTMFDetection", SCEnableDTMFDetection);
@@ -358,6 +361,22 @@ EXEC_ACTION_START(SCConnectMediaAction) {
 
 EXEC_ACTION_START(SCDisconnectMediaAction) {
   sc_sess->disconnectMedia();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCPauseReceivingAction) {
+  DBG("stopping RTP receiving\n");
+  sess->RTPStream()->pause();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCResumeReceivingAction) {
+  DBG("resuming RTP receiving\n");
+  sess->RTPStream()->resume();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCMonitorRTPTimeoutAction) {
+  string e = resolveVars(arg, sess, sc_sess, event_params);
+  DBG("setting RTP stream to %smonitor RTP timeout\n", e=="true"?"":"not");
+  sess->RTPStream()->setMonitorRTPTimeout(e=="true");
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMuteAction) {
