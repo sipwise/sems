@@ -188,6 +188,9 @@ public:
   /** should we receive packets? if not -> drop */
   bool receiving;
 
+  /** should we receive RFC-2833-style DTMF even when receiving is disabled? */
+  bool force_receive_dtmf;
+
   int send( unsigned int ts,
 	    unsigned char* buffer,
 	    unsigned int   size );
