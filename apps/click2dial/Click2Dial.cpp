@@ -182,7 +182,7 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, AmArg& session_p
 
 AmSession* Click2DialFactory::onInvite(const AmSipRequest& req)
 {
-  return new C2DCallerDialog(req, getAnnounceFile(req), NULL, NULL);
+  return new C2DCallerDialog(req, getAnnounceFile(req), "", NULL);
 }
 
 
@@ -200,6 +200,8 @@ void C2DCallerDialog::onSessionStart(const AmSipReply& rep)
 {
   setReceiving(false);
   invite_req.body = rep.body;
+  invite_req.content_type = rep.content_type;
+  invite_req.cseq = rep.cseq;
 
   if(wav_file.open(filename,AmAudioFile::Read))
     throw string("AnnouncementDialog::onSessionStart: Cannot open file\n");
@@ -231,8 +233,13 @@ void C2DCallerDialog::process(AmEvent* event)
 
 void C2DCallerDialog::createCalleeSession()
 {
-  UACAuthCred* c = new UACAuthCred(cred.get()->realm,
-    cred.get()->user, cred.get()->pwd);
+
+  UACAuthCred* c;
+  if (cred.get()){
+    c = new UACAuthCred(cred->realm, cred->user, cred->pwd);
+  } else {
+    c = new UACAuthCred();
+  }
 
   AmB2BCalleeSession* callee_session = new C2DCalleeDialog(this, c);
   AmSipDialog& callee_dlg = callee_session->dlg;

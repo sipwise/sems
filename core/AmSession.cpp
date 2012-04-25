@@ -1111,7 +1111,8 @@ void AmSession::onSendReply(const AmSipRequest& req, unsigned int  code,
 
 void AmSession::onRtpTimeout()
 {
-  DBG("stopping Session.\n");
+  DBG("RTP timeout, stopping Session\n");
+  dlg.bye();
   setStopped();
 }
 
