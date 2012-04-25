@@ -39,6 +39,7 @@
 #include "AmConfigReader.h"
 #include "AmUtils.h"
 #include "AmSession.h"
+#include "sip/sip_timers.h"
 
 #include <cctype>
 #include <algorithm>
@@ -312,6 +313,19 @@ int AmConfig::readConfiguration()
     DisableDNSSRV = (cfg.getParameter("disable_dns_srv") == "yes");
   }
   
+
+  for (char c = 'a'; c <= 'm'; c++) {
+    if(cfg.hasParameter(string("sip_timer_")+c)) {
+      sip_timers[c-'a']=cfg.getParameterInt(string("sip_timer_")+c, sip_timers[c-'a']);
+      DBG("Set SIP Timer '%c' to %u ms\n", 'A'+c-'a', sip_timers[c-'a']);
+    }
+  }
+
+  if (cfg.hasParameter("sip_timer_t2")) {
+    sip_timer_t2 = cfg.getParameterInt("sip_timer_t2", DEFAULT_T2_TIMER);
+    DBG("Set SIP Timer T2 to %u ms\n", sip_timer_t2);
+  }
+
   // plugin_path
   if (cfg.hasParameter("plugin_path"))
     PlugInPath = cfg.getParameter("plugin_path");
