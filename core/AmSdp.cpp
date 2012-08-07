@@ -207,18 +207,17 @@ void AmSdp::print(string& body) const
 
   for(std::vector<SdpMedia>::const_iterator media_it = media.begin();
       media_it != media.end(); media_it++) {
-      
+
       out_buf += "m=" + media_t_2_str(media_it->type) + " " + int2str(media_it->port) + " " + transport_p_2_str(media_it->transport);
 
+      string options;
+
       if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPSAVP) {
-	string options;
+
 	for(std::vector<SdpPayload>::const_iterator pl_it = media_it->payloads.begin();
 	    pl_it != media_it->payloads.end(); pl_it++) {
 
 	  out_buf += " " + int2str(pl_it->payload_type);
-
-	  if (!media_it->conn.address.empty())
-	    options += "c=IN IP4 "+media_it->conn.address+"\r\n";
 
 	  if (pl_it->encoding_name.empty()) // don't add rtpmap if no encoding name given
 	    continue;
@@ -241,12 +240,16 @@ void AmSdp::print(string& body) const
 	  
 	}
 
-	out_buf += "\r\n" + options;
 
       } else {
 	// for other transports (UDP/UDPTL) just print out fmt
-	out_buf += " " + media_it->fmt + "\r\n";
+	out_buf += " " + media_it->fmt;
+	// ... and continue with c=, attributes, ...
       }
+      if (!media_it->conn.address.empty())
+	out_buf += "\r\nc=IN IP4 "+media_it->conn.address;
+
+      out_buf += "\r\n" + options;
 
       // add attributes (media level)
       for (std::vector<SdpAttribute>::const_iterator a_it=
