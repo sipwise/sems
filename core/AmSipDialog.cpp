@@ -1009,12 +1009,6 @@ int AmSipDialog::sendRequest(const string& method,
 			     int flags)
 {
   string msg,ser_cmd;
-  string m_hdrs = hdrs;
-
-  if(hdl)
-    hdl->onSendRequest(method,content_type,body,m_hdrs,flags,cseq);
-
-  rel100OnRequestOut(method, m_hdrs);
 
   AmSipRequest req;
 
@@ -1034,10 +1028,9 @@ int AmSipDialog::sendRequest(const string& method,
     
   if((method!="BYE")&&(method!="CANCEL"))
     req.contact = getContactHdr();
+
+  req.hdrs = hdrs;
     
-  if(!m_hdrs.empty())
-    req.hdrs = m_hdrs;
-  
   if (!(flags&SIP_FLAGS_VERBATIM)) {
     // add Signature
     if (AmConfig::Signature.length())
@@ -1053,6 +1046,11 @@ int AmSipDialog::sendRequest(const string& method,
     req.content_type = content_type;
     req.body = body;
   }
+
+  if(hdl)
+    hdl->onSendRequest(method,content_type,body,req.hdrs,flags,cseq);
+
+  rel100OnRequestOut(method, req.hdrs);
 
   if (SipCtrlInterface::send(req, next_hop_ip, next_hop_port,outbound_interface))
     return -1;
