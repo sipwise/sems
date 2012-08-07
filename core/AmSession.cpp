@@ -911,14 +911,14 @@ void AmSession::onSipReply(const AmSipReply& reply,
 	AmSipDialog::status2str[old_dlg_status], 
 	sess_stopped.get() ? "true" : "false");
 
-
+  DBG("negotiate_onreply = %s\n", negotiate_onreply?"true":"false");
   if (negotiate_onreply) {    
     if(old_dlg_status < AmSipDialog::Connected){
-      
+      DBG("old is < conn\n");
       switch(dlg.getStatus()){
 	
       case AmSipDialog::Connected:
-	
+	      DBG("case conn\n");
 	try {
 	  RTPStream()->setMonitorRTPTimeout(true);
 
@@ -947,7 +947,7 @@ void AmSession::onSipReply(const AmSipReply& reply,
 	break;
 	
       case AmSipDialog::Pending:
-
+	DBG("case pending\n");
 	switch(reply.code){
 	  // todo: 180 with body (remote rbt)
 	case 180: { 
@@ -984,7 +984,13 @@ void AmSession::onSipReply(const AmSipReply& reply,
 	  }
 	} break;
 	default:  break;// continue waiting.
-	}
+	} break;
+
+      case AmSipDialog::Disconnected: {
+	// status change: <Connected -> Disconnected => outbound call failed
+	onOutboundCallFailed(reply);
+      }; break;
+
       } // switch dlg status
     } // status < Connected
   } //if negotiate_onreply
@@ -1041,6 +1047,11 @@ void AmSession::onInvite(const AmSipRequest& req)
 
 void AmSession::onBye(const AmSipRequest& req)
 {
+  setStopped();
+}
+
+void AmSession::onOutboundCallFailed(const AmSipReply& reply) {
+  DBG("Outbound call failed. Stopping session.\n");
   setStopped();
 }
 

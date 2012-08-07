@@ -810,6 +810,7 @@ string get_header_keyvalue_single(const string& param_hdr, const string& name) {
       switch (curr) {
       case ' ': // spaces before the key
       case '\t':
+      case ';': // semicolons before the key
 	break;
       default:
 	if (curr==name[0]) {
@@ -819,6 +820,8 @@ string get_header_keyvalue_single(const string& param_hdr, const string& name) {
 	    st = ST_CMPKEY;
 	  k_begin = p;
 	  corr = 1;
+	} else {
+	  st = ST_FINDBGN;
 	}
       }
     } break;
