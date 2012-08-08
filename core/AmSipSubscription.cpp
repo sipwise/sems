@@ -31,7 +31,11 @@ AmSipSubscription::AmSipSubscription(const string& handle,
 				     const AmSipSubscriptionInfo& info,
 				     const string& sess_link) 
   : info(info),
-    dlg(sess_checkpoint, this),
+    dlg(
+#ifdef WITH_REPLICATION
+	sess_checkpoint,
+#endif
+	this),
     cred(info.domain, info.from_user, info.pwd),
     sub_begin(0),
     sub_expires(0),

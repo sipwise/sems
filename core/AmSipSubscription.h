@@ -127,7 +127,9 @@ class AmSipSubscription
  protected:
 
   AmSipDialog dlg;
+#ifdef WITH_REPLICATION
   AmSessionCheckpoint sess_checkpoint;
+#endif
   UACAuthCred cred;
 
   AmSipSubscriptionInfo info;
