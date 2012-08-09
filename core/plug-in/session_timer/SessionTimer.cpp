@@ -103,7 +103,7 @@ bool SessionTimer::onSipReply(const AmSipReply& reply, int old_dlg_status,
 	    unsigned int new_cseq = s->dlg.cseq;
 	    // resend request with interval i_minse
 	    if (s->dlg.sendRequest(orig_req.method,orig_req.content_type,
-				    orig_req.body, orig_req.hdrs) == 0) {
+				   orig_req.body, orig_req.hdrs, SIP_FLAGS_VERBATIM) == 0) {
               DBG("request with new Session Interval %u successfully sent.\n", i_minse);
 	      // undo SIP dialog status change
 	      if (s->dlg.getStatus() != old_dlg_status)
