@@ -24,12 +24,8 @@ Features
  o SIP Session Timers
  o call timer
  o prepaid accounting
-<<<<<<< HEAD
-
-=======
  o CDR generation
  o call teardown from external control through RPC
->>>>>>> 3af5aa5... sbc: tear down calls through RPC (DI, e.g. XMLRPC)
 
 SBC Profiles
 ------------
