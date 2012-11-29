@@ -47,6 +47,8 @@ unsigned int XMLRPC2DI::ServerRetryAfter = 10;
 bool XMLRPC2DI::DebugServerParams = false;
 bool XMLRPC2DI::DebugServerResult = false;
 
+unsigned int XMLRPC2DI::debug_log_level = 3;
+
 double XMLRPC2DI::ServerTimeout = -1;
 
 XMLRPC2DI* XMLRPC2DI::instance()
@@ -81,6 +83,8 @@ int XMLRPC2DI::load() {
   DebugServerResult = cfg.getParameter("debug_server_result", "no") == "yes";
   DebugServerParams = cfg.getParameter("debug_server_params", "no") == "yes";
 
+  debug_log_level = cfg.getParameterInt("debug_log_level", 3);
+  
   XmlRpcServer* s;
   bool multi_threaded = false;
   unsigned int threads = 0;
@@ -538,7 +542,7 @@ void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) 
     string fact_name = params[0];
     string fct_name = params[1];
 
-    DBG("XMLRPC2DI: factory '%s' function '%s'\n", 
+    _LOG(XMLRPC2DI::debug_log_level, "XMLRPC2DI: factory '%s' function '%s'\n", 
 	fact_name.c_str(), fct_name.c_str());
 
     // get args
@@ -546,7 +550,7 @@ void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) 
     XMLRPC2DIServer::xmlrpcval2amargarray(params, args, 2);
   
     if (XMLRPC2DI::DebugServerParams) {
-      DBG(" params: <%s>\n", AmArg::print(args).c_str()); 
+      _LOG(XMLRPC2DI::debug_log_level, " params: <%s>\n", AmArg::print(args).c_str()); 
     }
 
     AmDynInvokeFactory* di_f = AmPlugIn::instance()->getFactory4Di(fact_name);
@@ -562,7 +566,7 @@ void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) 
 
 
     if (XMLRPC2DI::DebugServerResult) {
-      DBG(" result: <%s>\n", AmArg::print(ret).c_str()); 
+      _LOG(XMLRPC2DI::debug_log_level, " result: <%s>\n", AmArg::print(ret).c_str()); 
     }
   
     XMLRPC2DIServer::amarg2xmlrpcval(ret, result);
@@ -705,19 +709,19 @@ void DIMethodProxy::execute(XmlRpcValue& params,
     AmArg args, ret;
 
     
-    DBG("XMLRPC2DI '%s': function '%s'\n", 
-	server_method_name.c_str(),
-	di_method_name.c_str());
+    _LOG(XMLRPC2DI::debug_log_level, "XMLRPC2DI '%s': function '%s'\n", 
+	 server_method_name.c_str(),
+	 di_method_name.c_str());
 
     XMLRPC2DIServer::xmlrpcval2amarg(params, args);
     if (XMLRPC2DI::DebugServerParams) {
-      DBG(" params: <%s>\n", AmArg::print(args).c_str()); 
+      _LOG(XMLRPC2DI::debug_log_level, " params: <%s>\n", AmArg::print(args).c_str()); 
     }
 
     di->invoke(di_method_name, args, ret);
 
     if (XMLRPC2DI::DebugServerResult) {
-      DBG(" result: <%s>\n", AmArg::print(ret).c_str()); 
+      _LOG(XMLRPC2DI::debug_log_level, " result: <%s>\n", AmArg::print(ret).c_str()); 
     }
     
     XMLRPC2DIServer::amarg2xmlrpcval(ret, result);
