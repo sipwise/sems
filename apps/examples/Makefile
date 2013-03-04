@@ -33,7 +33,7 @@ modules:
 	done 
 
 .PHONY: install
-install: install-bin install-cfg
+install: install-bin
 
 .PHONY: install-bin
 install-bin:
