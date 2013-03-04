@@ -27,12 +27,12 @@ depends  = $(srcs:.cpp=.d)
 
 .PHONY: all
 all: $(extra_target)
-	-@$(MAKE) deps    && \
+	@$(MAKE) deps    && \
 	  $(MAKE) $(lib_full_name)
 
 .PHONY: module_package
 module_package: $(extra_target)
-	-@$(MAKE) deps    && \
+	@$(MAKE) deps    && \
 	  $(MAKE) $(lib_name)
 
 

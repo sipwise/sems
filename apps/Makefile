@@ -58,11 +58,11 @@ clean:
 
 .PHONY: modules
 modules:
-	-@for r in $(app_modules) "" ; do \
-		if [ -n "$$r" ]; then \
+	@for r in $(app_modules) "" ; do \
+		if [ -n "$$r" -a -f "$$r"/Makefile ]; then \
 			echo  "" ; \
 			echo  "" ; \
-			COREPATH=../$(COREPATH) $(MAKE) -C $$r all; \
+			COREPATH=../$(COREPATH) $(MAKE) -C $$r all || exit 1; \
 		fi ; \
 	done 
 
