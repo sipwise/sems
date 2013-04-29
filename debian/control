@@ -14,8 +14,7 @@ Build-Depends: debhelper (>= 7),
                libxml2-dev,
                openssl,
                python-dev,
-               python-sip-dev,
-               sip4
+               python-sip-dev
 Standards-Version: 3.9.3
 
 Package: ngcp-sems
