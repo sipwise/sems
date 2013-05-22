@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
 Build-Depends: debhelper (>= 7),
                flite-dev,
-               libcurl-dev,
+               libcurl4-openssl-dev,
                libev-dev,
                libmysql++-dev,
                libpcre3-dev,
