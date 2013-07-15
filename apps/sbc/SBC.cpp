@@ -858,6 +858,11 @@ void SBCDialog::onSipRequest(const AmSipRequest& req) {
     }
   }
 
+  if (fwd) {
+      DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
+      dlg.reply(req, 100, SIP_REPLY_TRYING);
+  }
+
   AmB2BCallerSession::onSipRequest(req);
 }
 
@@ -1219,6 +1224,11 @@ void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
       dlg.reply(req, 405, "Method Not Allowed", "", "", "", SIP_FLAGS_VERBATIM);
       return;
     }
+  }
+
+  if (fwd) {
+      DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
+      dlg.reply(req, 100, SIP_REPLY_TRYING);
   }
 
   AmB2BCalleeSession::onSipRequest(req);
