@@ -62,5 +62,6 @@
 #define SIP_REPLY_EXTENSION_REQUIRED    "Extension Required"
 #define SIP_REPLY_LOOP_DETECTED         "Loop Detected"
 #define SIP_REPLY_NOT_EXIST             "Call Leg/Transaction Does Not Exist"
+#define SIP_REPLY_TRYING                "Trying"
 
 #endif /* __AMSIPHEADERS_H__ */
