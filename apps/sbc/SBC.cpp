@@ -858,8 +858,8 @@ void SBCDialog::onSipRequest(const AmSipRequest& req) {
     }
   }
 
-  if (fwd) {
-      DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
+  if (fwd && req.method == SIP_METH_INVITE) {
+      DBG("replying 100 Trying of INVITE msg to be fwd'ed\n");
       dlg.reply(req, 100, SIP_REPLY_TRYING);
   }
 
