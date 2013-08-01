@@ -118,6 +118,11 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   call_timer_enabled = cfg.getParameter("enable_call_timer", "no") == "yes";
   call_timer = cfg.getParameter("call_timer");
 
+  uas_auth_bleg_enabled = cfg.getParameter("enable_bleg_uas_auth", "no") == "yes";
+  uas_auth_bleg_credentials.realm = cfg.getParameter("uas_auth_bleg_realm");
+  uas_auth_bleg_credentials.user = cfg.getParameter("uas_auth_bleg_user");
+  uas_auth_bleg_credentials.pwd = cfg.getParameter("uas_auth_bleg_pwd");
+
   prepaid_enabled = cfg.getParameter("enable_prepaid", "no") == "yes";
   prepaid_accmodule = cfg.getParameter("prepaid_accmodule");
   prepaid_uuid = cfg.getParameter("prepaid_uuid");
@@ -228,6 +233,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 
     INFO("SBC:      SST %sabled\n", sst_enabled?"en":"dis");
     INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
+    INFO("SBC:      SIP UAS auth for B leg %sabled\n", uas_auth_bleg_enabled?"en":"dis");
     INFO("SBC:      call timer %sabled\n", call_timer_enabled?"en":"dis");
     if (call_timer_enabled) {
       INFO("SBC:                  %s seconds\n", call_timer.c_str());
