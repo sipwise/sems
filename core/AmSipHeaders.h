@@ -11,6 +11,7 @@
 #define SIP_METH_ACK            "ACK"
 #define SIP_METH_SUBSCRIBE      "SUBSCRIBE"
 #define SIP_METH_NOTIFY         "NOTIFY"
+#define SIP_METH_CANCEL         "CANCEL"
 
 #define SIP_HDR_FROM            "From"
 #define SIP_HDR_TO              "To"
