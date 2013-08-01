@@ -5,9 +5,11 @@
 using std::string;
 
 #include "sip/trans_layer.h"
+#include "AmArg.h"
 
 /* enforce common naming in Req&Rpl */
 class _AmSipMsgInDlg
+  : public ArgObject
 {
  public:
   string       method;
