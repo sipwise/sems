@@ -639,6 +639,15 @@ void SBCDialog::onInvite(const AmSipRequest& req)
       replaceParameters(call_profile.auth_credentials.pwd, "auth_pwd", REPLACE_VALS);
   }
 
+  if (call_profile.uas_auth_bleg_enabled) {
+    call_profile.uas_auth_bleg_credentials.realm =
+      replaceParameters(call_profile.uas_auth_bleg_credentials.realm, "uas_auth_bleg_realm", REPLACE_VALS);
+    call_profile.uas_auth_bleg_credentials.user =
+      replaceParameters(call_profile.uas_auth_bleg_credentials.user, "uas_auth_bleg_user", REPLACE_VALS);
+    call_profile.uas_auth_bleg_credentials.pwd =
+      replaceParameters(call_profile.uas_auth_bleg_credentials.pwd, "uas_auth_bleg_pwd", REPLACE_VALS);
+  }
+
   if (!call_profile.outbound_interface.empty()) {
     call_profile.outbound_interface = 
       replaceParameters(call_profile.outbound_interface, "outbound_interface",
@@ -1049,6 +1058,18 @@ void SBCDialog::createCalleeSession()
     }
   }
 
+  if (call_profile.uas_auth_bleg_enabled) {
+    AmDynInvokeFactory* fact = AmPlugIn::instance()->getFactory4Di("uac_auth");
+    if (NULL != fact) {
+      AmDynInvoke* di_inst = fact->getInstance();
+      if(NULL != di_inst) {
+	callee_session->setAuthDI(di_inst);
+      }
+    } else {
+      ERROR("B-leg UAS auth enabled (uas_auth_bleg_enabled), but uac_auth module not loaded!\n");
+    }
+  }
+
   if (call_profile.sst_enabled) {
     AmSessionEventHandler* h = SBCFactory::session_timer_fact->getHandler(callee_session);
     if(!h) {
@@ -1133,7 +1154,7 @@ void SBCDialog::createCalleeSession()
 
 SBCCalleeSession::SBCCalleeSession(const AmB2BCallerSession* caller,
 				   const SBCCallProfile& call_profile) 
-  : auth(NULL),
+  : auth(NULL),auth_di(NULL),
     call_profile(call_profile),
     AmB2BCalleeSession(caller)
 {
@@ -1223,6 +1244,40 @@ void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
       DBG("replying 405 to filtered message '%s'\n", req.method.c_str());
       dlg.reply(req, 405, "Method Not Allowed", "", "", "", SIP_FLAGS_VERBATIM);
       return;
+    }
+  }
+
+  if (call_profile.uas_auth_bleg_enabled && NULL != auth_di) {
+    AmArg di_args, di_ret;
+    try {
+      DBG("Auth: checking authentication\n");
+      di_args.push((ArgObject*)&req);
+      di_args.push(call_profile.uas_auth_bleg_credentials.realm);
+      di_args.push(call_profile.uas_auth_bleg_credentials.user);
+      di_args.push(call_profile.uas_auth_bleg_credentials.pwd);
+      auth_di->invoke("checkAuth", di_args, di_ret);
+
+      if (di_ret.size() >= 3) {
+	if (di_ret[0].asInt() != 200) {
+	  DBG("Auth: replying %u %s - hdrs: '%s'\n",
+	      di_ret[0].asInt(), di_ret[1].asCStr(), di_ret[2].asCStr());
+	  dlg.reply(req, di_ret[0].asInt(), di_ret[1].asCStr(), "", "", di_ret[2].asCStr());
+	  return;
+	} else {
+	  DBG("Successfully authenticated request.\n");
+	}
+      } else {
+	ERROR("internal: no proper result from checkAuth: '%s'\n", AmArg::print(di_ret).c_str());
+      }
+
+    } catch (const AmDynInvoke::NotImplemented& ni) {
+      ERROR("not implemented DI function 'checkAuth'\n");
+    } catch (const AmArg::OutOfBoundsException& oob) {
+      ERROR("out of bounds in  DI call 'checkAuth'\n");
+    } catch (const AmArg::TypeMismatchException& oob) {
+      ERROR("type mismatch  in  DI call checkAuth\n");
+    } catch (...) {
+      ERROR("unexpected Exception  in  DI call checkAuth\n");
     }
   }
 

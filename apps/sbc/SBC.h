@@ -156,6 +156,7 @@ class SBCCalleeSession
 : public AmB2BCalleeSession, public CredentialHolder
 {
   AmSessionEventHandler* auth;
+  AmDynInvoke* auth_di;
   SBCCallProfile call_profile;
 
  protected:
@@ -183,6 +184,7 @@ class SBCCalleeSession
   inline UACAuthCred* getCredentials();
   
   void setAuthHandler(AmSessionEventHandler* h) { auth = h; }
+  void setAuthDI(AmDynInvoke* di_inst) { auth_di = di_inst; }
 };
 
 extern void assertEndCRLF(string& s);
