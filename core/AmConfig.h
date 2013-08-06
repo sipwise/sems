@@ -116,6 +116,8 @@ struct AmConfig
 
   static void dump_Ifs();
 
+  static void dump_Timers();
+
   /** number of session (signaling/application) processor threads */
   static int SessionProcessorThreads;
   /** number of media processor threads */

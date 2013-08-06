@@ -847,3 +847,11 @@ void AmConfig::dump_Ifs()
     }
   }
 }
+
+void AmConfig::dump_Timers()
+{
+  for (char c = 'a'; c <= 'm'; c++) {
+    INFO("SIP Timer '%c' is %u ms\n", 'A'+c-'a', sip_timers[c-'a']);
+  }
+  INFO("SIP Timer T2 is %u ms\n", sip_timer_t2);
+}
