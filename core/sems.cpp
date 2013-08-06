@@ -363,7 +363,10 @@ int main(int argc, char* argv[])
 	 AmConfig::Application.empty() ? "<not set>" : AmConfig::Application.c_str());
 
   AmConfig::dump_Ifs();
+
+#ifdef _DEBUG
   AmConfig::dump_Timers();
+#endif
 
 #ifndef DISABLE_DAEMON_MODE
   if(AmConfig::DaemonMode){
