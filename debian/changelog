@@ -1,5 +1,12 @@
 ngcp-sems (1.4.3+spce3.0.0) unstable; urgency=low
 
+  [ Stefan Sayer ]
+  * sbc: b/f: reply 100 Trying to in-dlg msgs which are to be relayed
+  * sbc: fix 3930ca2 - only reply 100 Trying to in-dlg INVITE to be relayed
+  * uac_auth: added UAS authentication of requests (internal API)
+  * core: AmSipMsg gets ArgObject as base (for passing in DI calls)
+  * sbc: SIP UAS authentication for B leg (uas_auth_bleg_enabled)
+
   [ Michael Prokop ]
   * Build-Depends: replace squeeze specific python-sip4-dev with generic python-sip-dev
   * Drop deprecated sip4 from Build-Depends
