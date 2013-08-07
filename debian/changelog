@@ -1,3 +1,16 @@
+ngcp-sems (1.4.3+spce3.0.0) unstable; urgency=low
+
+  [ Michael Prokop ]
+  * Build-Depends: replace squeeze specific python-sip4-dev with generic python-sip-dev
+  * Drop deprecated sip4 from Build-Depends
+
+  [ Victor Seva ]
+  * Use libcurl4-openssl-dev package for libcurl-dev
+  * fix: sems process returns always 0 when daemonized.
+  * core: fix return status pipe machinery in non-daemon mode
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Wed, 07 Aug 2013 15:38:05 +0200
+
 ngcp-sems (1.4.3+spce2.8.0) unstable; urgency=low
 
   * Branched and tagged for 2.8 release.
