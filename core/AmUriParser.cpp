@@ -263,8 +263,6 @@ bool AmUriParser::parse_uri() {
 
     case uSHDR: {
       switch (c) {
-      case ';': { uri_headers = uri.substr(p1+1, pos-p1-1);
-	  st = uSPARAM; p1 = pos; }; break; 
       case '>': { uri_headers = uri.substr(p1+1, pos-p1-1);
       st = uS6; p1 = pos; } break;
       case '\t':
@@ -368,6 +366,10 @@ bool AmUriParser::parse_params(const string& line, int& pos) {
   return true;
 }
 
+bool AmUriParser::parse_nameaddr(const string& line) {
+  size_t pos=0; size_t end=0;
+  return parse_contact(line, pos, end);
+}
 
 bool AmUriParser::parse_contact(const string& line, size_t pos, size_t& end) {
   int p0 = skip_name(line, pos);
@@ -491,12 +493,16 @@ string AmUriParser::uri_str() const
     res += ";" + uri_param;
   }
 
+  if (!uri_headers.empty()) {
+    res+="?" + uri_headers;
+  }
+
   return res;
 }
 
 string AmUriParser::canon_uri_str() const
 {
-  string res = "sip:";
+  string res = "sip:"; // fixme: always SIP...
   if(!uri_user.empty()) {
     res += uri_user + "@";
   }

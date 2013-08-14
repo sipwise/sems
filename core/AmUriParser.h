@@ -46,8 +46,12 @@ struct AmUriParser {
   map<string, string> params; 	// <sip:user;@host>;params
 
   bool isEqual(const AmUriParser& c) const;
-  /** @return true on success */
+
+  /** parse a name-addr @return true on success */
   bool parse_contact(const string& line, size_t pos, size_t& end);
+  /** parse a name-addr @return true on success */
+  bool parse_nameaddr(const string& line);
+
   /** @return true on success */
   bool parse_uri();
   bool parse_params(const string& line, int& pos);
