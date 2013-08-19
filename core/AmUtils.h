@@ -144,6 +144,9 @@ bool str2long(const string& str, long& result);
  */
 bool str2long(char*& str, long& result, char sep = ' ');
 
+std::string URL_decode(const std::string& s);
+std::string URL_encode(const std::string& s);
+
 /**
  * Parse code/reason line.
  * Syntax: "code reason"
