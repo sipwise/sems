@@ -1274,7 +1274,7 @@ void SBCCalleeSession::onSipReply(const AmSipReply& reply, int old_dlg_status,
 
   // update call registry (unfortunately has to be done always -
   // not possible to determine if learned in this reply)
-  if (!dlg.remote_tag.empty()) {
+  if (!dlg.remote_tag.empty() && reply.code >= 200 && trans_method == SIP_METH_INVITE) {
     SBCCallRegistry::updateCall(other_id, dlg.remote_tag);
   }
 
