@@ -47,6 +47,8 @@ SBC - feature-wishlist
 #include "HeaderFilter.h"
 #include "ParamReplacer.h"
 #include "SDPFilter.h"
+#include "SBCCallRegistry.h"
+#include "ReplacesMapper.h"
 
 using std::map;
 
@@ -513,6 +515,7 @@ SBCDialog::SBCDialog(const SBCCallProfile& call_profile)
 
 SBCDialog::~SBCDialog()
 {
+  SBCCallRegistry::removeCall(dlg.local_tag);
 }
 
 void SBCDialog::onInvite(const AmSipRequest& req)
@@ -727,6 +730,15 @@ void SBCDialog::onInvite(const AmSipRequest& req)
     }
   }
 
+  call_profile.fix_replaces_inv =
+      replaceParameters(call_profile.fix_replaces_inv, "fix_replaces_inv", REPLACE_VALS);
+  call_profile.fix_replaces_ref =
+      replaceParameters(call_profile.fix_replaces_ref, "fix_replaces_ref", REPLACE_VALS);
+
+  if (call_profile.fix_replaces_inv == "yes") {
+    fixReplaces(invite_req, true);
+  }
+
 #undef REPLACE_VALS
 
   DBG("SBC: connecting to '%s'\n",ruri.c_str());
@@ -795,13 +807,21 @@ void SBCDialog::onControlCmd(string& cmd, AmArg& params) {
 }
 
 int SBCDialog::relayEvent(AmEvent* ev) {
-  if ((call_profile.headerfilter != Transparent) &&
-      (ev->event_id == B2BSipRequest)) {
-    // header filter
+  if (ev->event_id == B2BSipRequest) {
+
     B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
-    assert(req_ev);
-    inplaceHeaderFilter(req_ev->req.hdrs,
-			call_profile.headerfilter_list, call_profile.headerfilter);
+      assert(req_ev);
+
+    if (call_profile.headerfilter != Transparent) {
+      inplaceHeaderFilter(req_ev->req.hdrs,
+			  call_profile.headerfilter_list, call_profile.headerfilter);
+    }
+
+    if (req_ev->req.method == SIP_METH_REFER &&
+	call_profile.fix_replaces_ref == "yes") {
+      fixReplaces(req_ev->req, false);
+    }
+
   } else {
     if (ev->event_id == B2BSipReply) {
       if ((call_profile.headerfilter != Transparent) ||
@@ -1146,6 +1166,11 @@ void SBCDialog::createCalleeSession()
     throw;
   }
 
+  // A->B
+  SBCCallRegistry::addCall(dlg.local_tag, SBCCallRegistryEntry(callee_dlg.callid, callee_dlg.local_tag, ""));
+  // B->A
+  SBCCallRegistry::addCall(callee_dlg.local_tag, SBCCallRegistryEntry(dlg.callid, dlg.local_tag, dlg.remote_tag));
+
   callee_session->start();
   
   AmSessionContainer* sess_cont = AmSessionContainer::instance();
@@ -1169,6 +1194,8 @@ SBCCalleeSession::SBCCalleeSession(const AmB2BCallerSession* caller,
 SBCCalleeSession::~SBCCalleeSession() {
   if (auth) 
     delete auth;
+
+  SBCCallRegistry::removeCall(dlg.local_tag);
 }
 
 inline UACAuthCred* SBCCalleeSession::getCredentials() {
@@ -1176,13 +1203,21 @@ inline UACAuthCred* SBCCalleeSession::getCredentials() {
 }
 
 int SBCCalleeSession::relayEvent(AmEvent* ev) {
-  if ((call_profile.headerfilter != Transparent) &&
-      (ev->event_id == B2BSipRequest)) {
-    // header filter
+  if (ev->event_id == B2BSipRequest) {
+
     B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
-    assert(req_ev);
-    inplaceHeaderFilter(req_ev->req.hdrs,
-			call_profile.headerfilter_list, call_profile.headerfilter);
+      assert(req_ev);
+
+    if (call_profile.headerfilter != Transparent) {
+      inplaceHeaderFilter(req_ev->req.hdrs,
+			  call_profile.headerfilter_list, call_profile.headerfilter);
+    }
+
+    if (req_ev->req.method == SIP_METH_REFER &&
+	call_profile.fix_replaces_ref == "yes") {
+      fixReplaces(req_ev->req, false);
+    }
+
   } else {
     if (ev->event_id == B2BSipReply) {
       if ((call_profile.headerfilter != Transparent) ||
@@ -1297,18 +1332,25 @@ void SBCCalleeSession::onSipReply(const AmSipReply& reply, int old_dlg_status,
   bool fwd = t != relayed_req.end();
   DBG("onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
   DBG("onSipReply: content-type = %s\n",reply.content_type.c_str());
+
   if(fwd) {
     CALL_EVENT_H(onSipReply,reply, old_dlg_status, trans_method);
   }
 
-  if (NULL == auth) {    
+  // update call registry (unfortunately has to be done always -
+  // not possible to determine if learned in this reply)
+  if (!dlg.remote_tag.empty()) {
+    SBCCallRegistry::updateCall(other_id, dlg.remote_tag);
+  }
+
+  if (NULL == auth) {
     AmB2BCalleeSession::onSipReply(reply,old_dlg_status, trans_method);
     return;
   }
   
   unsigned int cseq_before = dlg.cseq;
   if (!auth->onSipReply(reply, old_dlg_status, trans_method)) {
-      AmB2BCalleeSession::onSipReply(reply, old_dlg_status, trans_method);
+    AmB2BCalleeSession::onSipReply(reply, old_dlg_status, trans_method);
   } else {
     if (cseq_before != dlg.cseq) {
       DBG("uac_auth consumed reply with cseq %d and resent with cseq %d; "
