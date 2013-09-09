@@ -1,0 +1,35 @@
+From cf0e0486dc7a0e2ba085fdf324ae20748f7d6822 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 16:43:52 +0200
+Subject: [PATCH] mobile_push: ignore incoming RTP
+
+---
+ apps/mobile_push/mobile_push.dsm |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/apps/mobile_push/mobile_push.dsm b/apps/mobile_push/mobile_push.dsm
+index c5a99b3..938971f 100644
+--- a/apps/mobile_push/mobile_push.dsm
++++ b/apps/mobile_push/mobile_push.dsm
+@@ -69,6 +69,9 @@ transition "invite" START - invite / {
+   -- start RTP processing 
+   connectMedia();
+ 
++  -- no need to process incoming RTP (also no RTP timeout needed)
++  pauseReceiving();
++
+   -- create subscription to reg event
+   set($r.domain=@domain);
+   set($r.user=@user);
+@@ -111,6 +114,8 @@ transition "invite" START - invite / {
+ 
+ state WAITING;
+ 
++transition "RTP timeout - ignore" WAITING - rtpTimeout / set(#processed=true) -> WAITING;
++
+ transition "subscription failed" WAITING - subscription(#status=="failed") / {
+   log(1, "Subscription failed:");
+   logParams(1);
+-- 
+1.7.10.4
+

@@ -1,0 +1,255 @@
+From 44bb815602e96a91d848a6469a7d04566c25c165 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 18 Apr 2012 11:07:32 +0200
+Subject: [PATCH] support for receiving RTP DTMF while not processing RTP
+
+based on a patch by Robert Szokovacs
+
+Conflicts:
+
+	apps/dsm/DSMCoreModule.cpp
+	apps/dsm/DSMCoreModule.h
+	core/AmRtpStream.h
+	core/AmSession.h
+	doc/dsm/dsm_syntax.txt
+---
+ apps/dsm/DSMCoreModule.cpp |   28 +++++++++++++++++-------
+ apps/dsm/DSMCoreModule.h   |    7 ++++--
+ apps/ivr/IvrDialogBase.cpp |   52 ++++++++++++++++++++++++++++++++++++++++++++
+ core/AmRtpStream.cpp       |    9 ++++++++
+ core/AmRtpStream.h         |    3 +++
+ core/AmSession.h           |    4 ++++
+ doc/dsm/dsm_syntax.txt     |   18 +++++++++++++++
+ 7 files changed, 111 insertions(+), 10 deletions(-)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index 3f93ae2..6768f89 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -70,8 +70,10 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
+   DEF_CMD("addSeparator", SCAddSeparatorAction);
+   DEF_CMD("connectMedia", SCConnectMediaAction);
+   DEF_CMD("disconnectMedia", SCDisconnectMediaAction);
+-  DEF_CMD("pauseReceiving", SCPauseReceivingAction);
+-  DEF_CMD("resumeReceiving", SCResumeReceivingAction);
++  DEF_CMD("enableReceiving", SCEnableReceivingAction);
++  DEF_CMD("disableReceiving", SCDisableReceivingAction);
++  DEF_CMD("enableForceDTMFReceiving", SCEnableForceDTMFReceiving);
++  DEF_CMD("disableForceDTMFReceiving", SCDisableForceDTMFReceiving);
+   DEF_CMD("monitorRTPTimeout", SCMonitorRTPTimeoutAction);
+   DEF_CMD("mute", SCMuteAction);
+   DEF_CMD("unmute", SCUnmuteAction);
+@@ -363,14 +365,24 @@ EXEC_ACTION_START(SCDisconnectMediaAction) {
+   sc_sess->disconnectMedia();
+ } EXEC_ACTION_END;
+ 
+-EXEC_ACTION_START(SCPauseReceivingAction) {
+-  DBG("stopping RTP receiving\n");
+-  sess->RTPStream()->pause();
++EXEC_ACTION_START(SCEnableReceivingAction) {
++  DBG("enabling RTP receving in session\nb");
++  sess->setReceiving(true);
+ } EXEC_ACTION_END;
+ 
+-EXEC_ACTION_START(SCResumeReceivingAction) {
+-  DBG("resuming RTP receiving\n");
+-  sess->RTPStream()->resume();
++EXEC_ACTION_START(SCDisableReceivingAction) {
++  DBG("disabling RTP receving in session\nb");
++  sess->setReceiving(false);
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCEnableForceDTMFReceiving) {
++  DBG("enabling forced DTMF RTP receving in session\nb");
++  sess->setForceDtmfReceiving(true);
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCDisableForceDTMFReceiving) {
++  DBG("disabling forced DTMF RTP receving in session\nb");
++  sess->setForceDtmfReceiving(false);
+ } EXEC_ACTION_END;
+ 
+ EXEC_ACTION_START(SCMonitorRTPTimeoutAction) {
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index e63cefc..cbb0ffb 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -59,8 +59,10 @@ DEF_ACTION_1P(SCSetInOutPlaylistAction);
+ DEF_ACTION_1P(SCStopAction);
+ DEF_ACTION_1P(SCConnectMediaAction);
+ DEF_ACTION_1P(SCDisconnectMediaAction);
+-DEF_ACTION_1P(SCPauseReceivingAction);
+-DEF_ACTION_1P(SCResumeReceivingAction);
++DEF_ACTION_1P(SCEnableReceivingAction);
++DEF_ACTION_1P(SCDisableReceivingAction);
++DEF_ACTION_1P(SCEnableForceDTMFReceiving);
++DEF_ACTION_1P(SCDisableForceDTMFReceiving);
+ DEF_ACTION_1P(SCMonitorRTPTimeoutAction);
+ DEF_ACTION_1P(SCMuteAction);
+ DEF_ACTION_1P(SCUnmuteAction);
+@@ -69,6 +71,7 @@ DEF_ACTION_1P(SCDisableDTMFDetection);
+ DEF_ACTION_2P(SCSendDTMFAction);
+ DEF_ACTION_2P(SCSendDTMFSequenceAction);
+ 
++
+ DEF_ACTION_1P(SCSetPromptsAction);
+ DEF_ACTION_2P(SCAddSeparatorAction);
+ 
+diff --git a/apps/ivr/IvrDialogBase.cpp b/apps/ivr/IvrDialogBase.cpp
+index 63f6bd1..edb1411 100644
+--- a/apps/ivr/IvrDialogBase.cpp
++++ b/apps/ivr/IvrDialogBase.cpp
+@@ -281,6 +281,46 @@ static PyObject* IvrDialogBase_unmute(IvrDialogBase* self, PyObject* args)
+   return Py_None;
+ }
+ 
++static PyObject* IvrDialogBase_enableReceiving(IvrDialogBase* self, PyObject* args)
++{
++  assert(self->p_dlg);
++
++  self->p_dlg->setReceiving(true);
++
++  Py_INCREF(Py_None);
++  return Py_None;
++}
++
++static PyObject* IvrDialogBase_disableReceiving(IvrDialogBase* self, PyObject* args)
++{
++  assert(self->p_dlg);
++
++  self->p_dlg->setReceiving(false);
++
++  Py_INCREF(Py_None);
++  return Py_None;
++}
++
++static PyObject* IvrDialogBase_enableDTMFReceiving(IvrDialogBase* self, PyObject* args)
++{
++  assert(self->p_dlg);
++
++  self->p_dlg->setForceDtmfReceiving(true);
++
++  Py_INCREF(Py_None);
++  return Py_None;
++}
++
++static PyObject* IvrDialogBase_disableDTMFReceiving(IvrDialogBase* self, PyObject* args)
++{
++  assert(self->p_dlg);
++
++  self->p_dlg->setForceDtmfReceiving(false);
++
++  Py_INCREF(Py_None);
++  return Py_None;
++}
++
+ static PyObject* IvrDialogBase_remove_mediaprocessor(IvrDialogBase* self, 
+ 						     PyObject* args)
+ {
+@@ -557,6 +597,18 @@ static PyMethodDef IvrDialogBase_methods[] = {
+   {"unmute", (PyCFunction)IvrDialogBase_unmute, METH_NOARGS,
+    "unmute the RTP stream (send packets)"
+   },
++  {"enableReceiving", (PyCFunction)IvrDialogBase_enableReceiving, METH_NOARGS,
++   "enable receiving of RTP packets"
++  },
++  {"disableReceiving", (PyCFunction)IvrDialogBase_disableReceiving, METH_NOARGS,
++   "disable receiving of RTP packets"
++  },
++  {"enableDTMFReceiving", (PyCFunction)IvrDialogBase_enableDTMFReceiving, METH_NOARGS,
++   "enable receiving of RFC-2833 DTMF packets even if RTP receiving is disabled"
++  },
++  {"disableDTMFReceiving", (PyCFunction)IvrDialogBase_disableDTMFReceiving, METH_NOARGS,
++   "disable receiving of RFC-2833 DTMF packets when RTP receiving is disabled"
++  },
+   {"connectMedia", (PyCFunction)IvrDialogBase_add_mediaprocessor, METH_NOARGS,
+    "enable the processing of audio and RTP"
+   },
+diff --git a/core/AmRtpStream.cpp b/core/AmRtpStream.cpp
+index bb2b0a4..1a38559 100644
+--- a/core/AmRtpStream.cpp
++++ b/core/AmRtpStream.cpp
+@@ -592,6 +592,15 @@ void AmRtpStream::bufferPacket(AmRtpPacket* p)
+   memcpy(&last_recv_time, &p->recv_time, sizeof(struct timeval));
+ 
+   if (!receiving && !passive) {
++    if (force_receive_dtmf &&
++	telephone_event_pt.get() && p->payload == telephone_event_pt->payload_type)
++    {
++      dtmf_payload_t* dpl = (dtmf_payload_t*)p->getData();
++
++      DBG("DTMF: event=%i; e=%i; r=%i; volume=%i; duration=%i; ts=%u\n",
++          dpl->event,dpl->e,dpl->r,dpl->volume,ntohs(dpl->duration),p->timestamp);
++      session->postDtmfEvent(new AmRtpDtmfEvent(dpl, getTelephoneEventRate(), p->timestamp));
++    }
+     mem.freePacket(p);
+     return;
+   }
+diff --git a/core/AmRtpStream.h b/core/AmRtpStream.h
+index 7e839e5..6c90d03 100644
+--- a/core/AmRtpStream.h
++++ b/core/AmRtpStream.h
+@@ -188,6 +188,9 @@ public:
+   /** should we receive packets? if not -> drop */
+   bool receiving;
+ 
++  /** should we receive RFC-2833-style DTMF even when receiving is disabled? */
++  bool force_receive_dtmf;
++
+   int send( unsigned int ts,
+ 	    unsigned char* buffer,
+ 	    unsigned int   size );
+diff --git a/core/AmSession.h b/core/AmSession.h
+index 27405b8..ddb72d5 100644
+--- a/core/AmSession.h
++++ b/core/AmSession.h
+@@ -328,6 +328,10 @@ public:
+   /** setter for rtp_str->receiving */
+   void setReceiving(bool receive) { RTPStream()->receiving = receive; }
+ 
++  /** setter for rtp_str->force_receive_dtmf*/
++  void setForceDtmfReceiving(bool receive) { RTPStream()->force_receive_dtmf = receive; }
++
++  /* ----         SIP dialog attributes                  ---- */
+   /** Gets the Session's call ID */
+   const string& getCallID() const;
+ 
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index 0b64242..37441c6 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -144,6 +144,7 @@ Playing prompts and file I/O
+    set playlist as input and output
+  addSeparator(id [, bool front])
+    fires event when playlist hits it ; front=[true|false]
++<<<<<<< HEAD
+  connectMedia() 
+    set playlist as input and output of session, and connect to mediaprocessor 
+  disconnectMedia() 
+@@ -159,6 +160,23 @@ Playing prompts and file I/O
+    set RTP stream to muted (don't send and receive RTP packets)
+  unmute() 
+    set RTP stream to unmuted (send and receive RTP packets)
++=======
++ connectMedia()     - set playlist as input and output of session,
++                      and start processing of RTP and audio 
++                     (connect to mediaprocessor)
++ disconnectMedia()  - stop processing of RTP and audio (disconnect from mediaprocessor)
++
++ enableReceiving()  - enable processing of received RTP
++ disableReceiving() - disable processing of received RTP
++
++ enableForceDTMFReceiving()  - enable/disable RTP DTMF packets processing even 
++ disableForceDTMFReceiving()   if received RTP is not processed, e.g. after
++                               disableReceiving() or in passive mode
++                               (only for RFC2833/4733 DTMF, *no* in-band)
++
++ mute()             - set RTP stream to muted (don't send RTP packets)
++ unmute()           - set RTP stream to unmuted (do send RTP packets)
++>>>>>>> 959f880... support for receiving RTP DTMF while not processing RTP
+ 
+ DTMF
+ ----
+-- 
+1.7.10.4
+

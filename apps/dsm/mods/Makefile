@@ -4,7 +4,7 @@ COREPATH = $(DSMPATH)/../../core
 
 include $(COREPATH)/../Makefile.defs
 
-exclude_dsm_modules ?= mod_mysql mod_aws mod_curl mod_xml
+exclude_dsm_modules ?= mod_mysql mod_aws
 
 ifneq ($(USE_MONITORING), yes)
 exclude_dsm_modules += mod_monitoring
@@ -41,7 +41,7 @@ modules:
 	done 
 
 .PHONY: install
-install: install-bin
+install: install-bin install-cfg
 
 .PHONY: install-bin
 install-bin:

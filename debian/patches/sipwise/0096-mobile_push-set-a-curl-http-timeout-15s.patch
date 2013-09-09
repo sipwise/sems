@@ -1,0 +1,26 @@
+From efb520db4059ff6eff46ae7e30ea308435de9331 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 18 Apr 2012 15:49:05 +0200
+Subject: [PATCH] mobile_push: set a curl http timeout (15s)
+
+this will also set CURLOPT_NOSIGNAL, which may prevent weird and rare
+libcurl related crashes ("longjmp causes uninitialized stack frame")
+---
+ apps/mobile_push/mobile_push.dsm |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/apps/mobile_push/mobile_push.dsm b/apps/mobile_push/mobile_push.dsm
+index c156059..0333513 100644
+--- a/apps/mobile_push/mobile_push.dsm
++++ b/apps/mobile_push/mobile_push.dsm
+@@ -101,6 +101,7 @@ transition "invite" START - invite / {
+   }
+ 
+   -- send HTTP request
++  set($curl.timeout=15);
+   if test($config.use_post=="yes") {
+     curl.postDiscardResult($config.push_server_url, $caller;$callee;$domain)
+   } else {
+-- 
+1.7.10.4
+

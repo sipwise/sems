@@ -1,0 +1,184 @@
+From 7ef93f050d9f564dabb1c8f613ce71c6c16c9bc4 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 27 May 2011 18:45:05 +0200
+Subject: [PATCH] db_reg_agent: save_contacts option
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp        |   53 +++++++++++++++++++------------
+ apps/db_reg_agent/DBRegAgent.h          |    4 ++-
+ apps/db_reg_agent/etc/db_reg_agent.conf |    6 ++++
+ doc/Readme.db_reg_agent.txt             |    5 ++-
+ 4 files changed, 45 insertions(+), 23 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index 45553ac..51007e0 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -47,6 +47,8 @@ unsigned int DBRegAgent::ratelimit_rate = 0;
+ unsigned int DBRegAgent::ratelimit_per = 0;
+ 
+ bool DBRegAgent::delete_removed_registrations = true;
++bool DBRegAgent::save_contacts = true;
++
+ unsigned int DBRegAgent::error_retry_interval = 300;
+ 
+ static void _timer_cb(RegTimer* timer, long subscriber_id, int data2) {
+@@ -127,6 +129,9 @@ int DBRegAgent::onLoad()
+   delete_removed_registrations =
+     cfg.getParameter("delete_removed_registrations", "yes") == "yes";
+ 
++  save_contacts =
++    cfg.getParameter("save_contacts", "yes") == "yes";
++
+   error_retry_interval = cfg.getParameterInt("error_retry_interval", 300);
+   if (!error_retry_interval) {
+     WARN("disabled retry on errors!\n");
+@@ -582,44 +587,49 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
+ 				      long subscriber_id, int last_code,
+ 				      const string& last_reason,
+ 				      bool update_status, int status,
+-				      bool update_ts, unsigned int expiry) {
++				      bool update_ts, unsigned int expiry,
++				      bool update_contacts, const string& contacts) {
++  try {
+ 
+-  string update_query = "update "+registrations_table+" set "
+-    "last_code="+ int2str(last_code) +", "
+-    "last_reason=\""+last_reason+"\"";
++    mysqlpp::Query query = db_connection.query();
+ 
+-  if (update_status) {
+-    update_query += ", registration_status="+int2str(status);
+-  }
++    query << "update "+registrations_table+" set last_code="+ int2str(last_code) +", ";
++    query << "last_reason=";
++    query << mysqlpp::quote << last_reason;
+ 
+-  if (update_ts) {
+-    update_query += ", last_registration=NOW(), "
+-      "expiry=TIMESTAMPADD(SECOND,"+int2str(expiry)+", NOW())";
+-  }
++    if (update_status) {
++      query <<  ", registration_status="+int2str(status);
++    }
+ 
+-  update_query += " where " COLNAME_SUBSCRIBER_ID "="+long2str(subscriber_id) + ";";
+-  try {
+-    DBG("updating registration in DB with query '%s'\n",
+-	update_query.c_str());
++    if (update_ts) {
++      query << ", last_registration=NOW(), "
++	"expiry=TIMESTAMPADD(SECOND,"+int2str(expiry)+", NOW())";
++    }
+ 
+-    mysqlpp::Query query = db_connection.query();
+-    query << update_query;
++    if (update_contacts) {
++      query << ", contacts=" << mysqlpp::quote << contacts;
++    }
++
++    query << " where " COLNAME_SUBSCRIBER_ID "="+long2str(subscriber_id) + ";";
++    string query_str = query.str();
++    DBG("updating registration in DB with query '%s'\n", query_str.c_str());
+ 
+     mysqlpp::SimpleResult res = query.execute();
+     if (!res) {
+       WARN("updating registration in DB with query '%s' failed: '%s'\n",
+-	   update_query.c_str(), res.info());
++	   query_str.c_str(), res.info());
+     } else {
+       if (!res.rows()) {
+ 	// should not happen - DB entry is created on load or on createRegistration
+ 	DBG("creating registration DB entry for subscriber %ld\n", subscriber_id);
+ 	createDBRegistration(subscriber_id, db_connection);
++	query.reset();
++	query << query_str;
+ 
+-	query << update_query;
+ 	mysqlpp::SimpleResult res = query.execute();
+ 	if (!res || !res.rows()) {
+ 	  WARN("updating registration in DB with query '%s' failed: '%s'\n",
+-	       update_query.c_str(), res.info());
++	       query_str.c_str(), res.info());
+ 	}
+       }
+     }
+@@ -722,7 +732,8 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
+ 	DBG("update DB with reply %u %s\n", ev->reply.code, ev->reply.reason.c_str());
+ 	updateDBRegistration(MainDBConnection,
+ 			     subscriber_id, ev->reply.code, ev->reply.reason,
+-			     update_status, status, update_ts, expiry);
++			     update_status, status, update_ts, expiry,
++			     save_contacts, ev->reply.contact);
+       } else {
+ 	DBG("delete DB registration of subscriber %ld\n", subscriber_id);
+ 	deleteDBRegistration(subscriber_id, MainDBConnection);
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index 8f66cd2..8ea7a00 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -125,6 +125,7 @@ class DBRegAgent
+   static unsigned int ratelimit_per;
+ 
+   static bool delete_removed_registrations;
++  static bool save_contacts;
+ 
+   static unsigned int error_retry_interval;
+ 
+@@ -152,7 +153,8 @@ class DBRegAgent
+ 			    long subscriber_id, int last_code,
+ 			    const string& last_reason,
+ 			    bool update_status = false, int status = 0,
+-			    bool update_ts=false, unsigned int expiry = 0);
++			    bool update_ts=false, unsigned int expiry = 0,
++			    bool update_contacts=false, const string& contacts = "");
+ 
+   /** create registration in our list */
+   void createRegistration(long subscriber_id,
+diff --git a/apps/db_reg_agent/etc/db_reg_agent.conf b/apps/db_reg_agent/etc/db_reg_agent.conf
+index 15bfcd9..fcd6f26 100644
+--- a/apps/db_reg_agent/etc/db_reg_agent.conf
++++ b/apps/db_reg_agent/etc/db_reg_agent.conf
+@@ -16,6 +16,12 @@ mysql_passwd=mypass123
+ # (without trailing ';' such that where clause can appended)
+ joined_query="select subscribers.subscriber_id as subscriber_id, subscribers.user as user, subscribers.pass as pass, subscribers.realm as realm, registrations.registration_status as registration_status, registrations.expiry as expiry, registrations.last_registration as last_registration from subscribers left join registrations on subscribers.subscriber_id=registrations.subscriber_id"
+ 
++#save_contacts=[yes, no] : save contacts?
++# for troubleshooting, all contacts returned with a positive reply may be saved
++# to DB in the registrations.contacts colums
++# default: yes
++#save_contacts=yes
++
+ # expires: desired expires, i.e. expires value that is requested
+ # default: 7200
+ #   expires=300
+diff --git a/doc/Readme.db_reg_agent.txt b/doc/Readme.db_reg_agent.txt
+index 2212ad1..0eebe81 100644
+--- a/doc/Readme.db_reg_agent.txt
++++ b/doc/Readme.db_reg_agent.txt
+@@ -48,7 +48,8 @@ as the name of the registration status table (registrations_table).
+ Clocks of SEMS host and DB host must be synchronized in order for restart without
+ massive re-registration to work.
+ 
+-Example tables structure:
++Example tables structure (note that registrations.contacts is not necessary if
++save_contacts=no):
+ 
+ CREATE TABLE IF NOT EXISTS `registrations` (
+   `subscriber_id` int(11) NOT NULL,
+@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS `registrations` (
+   `expiry` datetime,
+   `last_code` smallint(2),
+   `last_reason` varchar(256),
++  `contacts` varchar(512),
+   PRIMARY KEY (`subscriber_id`)
+ ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+ 
+@@ -67,3 +69,4 @@ CREATE TABLE IF NOT EXISTS `subscribers` (
+   `realm` varchar(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+   PRIMARY KEY (`subscriber_id`)
+ ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
++
+-- 
+1.7.10.4
+

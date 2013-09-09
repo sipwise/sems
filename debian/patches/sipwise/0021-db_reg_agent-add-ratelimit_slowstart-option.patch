@@ -1,0 +1,76 @@
+From 27551354bfea217420970c087a649a8ff0ba5aae Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 10 Jun 2011 17:53:06 +0200
+Subject: [PATCH] db_reg_agent: add ratelimit_slowstart option
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp        |   10 ++++++++--
+ apps/db_reg_agent/DBRegAgent.h          |    1 +
+ apps/db_reg_agent/etc/db_reg_agent.conf |    4 ++++
+ 3 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index c18df61..167b5d0 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -45,6 +45,7 @@ double DBRegAgent::minimum_reregister_interval = -1;
+ bool DBRegAgent::enable_ratelimiting = false;
+ unsigned int DBRegAgent::ratelimit_rate = 0;
+ unsigned int DBRegAgent::ratelimit_per = 0;
++bool DBRegAgent::ratelimit_slowstart = false;
+ 
+ bool DBRegAgent::delete_removed_registrations = true;
+ bool DBRegAgent::save_contacts = true;
+@@ -127,7 +128,9 @@ int DBRegAgent::onLoad()
+     if (!ratelimit_rate || !ratelimit_per) {
+       ERROR("ratelimit_rate and ratelimit_per must be > 0\n");
+       return -1;
+-    }    
++    }
++    ratelimit_slowstart = cfg.getParameter("ratelimit_slowstart") == "yes";
++
+   }
+ 
+   delete_removed_registrations =
+@@ -1108,7 +1111,10 @@ void DBRegAgentProcessorThread::run() {
+ 
+   // initialize ratelimit
+   gettimeofday(&last_check, NULL);
+-  allowance = DBRegAgent::ratelimit_rate;
++  if (DBRegAgent::ratelimit_slowstart)
++    allowance = 0.0;
++  else
++    allowance = DBRegAgent::ratelimit_rate;
+ 
+   reg_agent = DBRegAgent::instance();
+   while (!stopped) {
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index cc40602..47c1046 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -126,6 +126,7 @@ class DBRegAgent
+   static bool enable_ratelimiting;
+   static unsigned int ratelimit_rate;
+   static unsigned int ratelimit_per;
++  static bool ratelimit_slowstart;
+ 
+   static bool delete_removed_registrations;
+   static bool save_contacts;
+diff --git a/apps/db_reg_agent/etc/db_reg_agent.conf b/apps/db_reg_agent/etc/db_reg_agent.conf
+index 76bda8b..6b9fedb 100644
+--- a/apps/db_reg_agent/etc/db_reg_agent.conf
++++ b/apps/db_reg_agent/etc/db_reg_agent.conf
+@@ -81,6 +81,10 @@ joined_query="select subscribers.subscriber_id as subscriber_id, subscribers.use
+ # ratelimit_per=1 : per time unit (in seconds, e.g. 300 REGISTER in 1 second)
+ #ratelimit_per=1
+ 
++#ratelimit_slowstart=[yes|no] : on startup send initially ratelimit_rate or 0 requests
++#default: no
++#ratelimit_slowstart=yes
++
+ # delete_removed_registrations=yes : delete removed registrations from registrations
+ #  table in DB? (otherwise they will stay with STATUS_REMOVED)
+ # default: yes
+-- 
+1.7.10.4
+

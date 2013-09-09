@@ -1,0 +1,25 @@
+From e6d156f741aec62143341a10a9d90cb3fce290ba Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 9 Aug 2012 18:36:04 +0200
+Subject: [PATCH] b/f: when resending request from SST to 422, send VERBATIM
+
+---
+ core/plug-in/session_timer/SessionTimer.cpp |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/plug-in/session_timer/SessionTimer.cpp b/core/plug-in/session_timer/SessionTimer.cpp
+index eafd9fa..054ccc3 100644
+--- a/core/plug-in/session_timer/SessionTimer.cpp
++++ b/core/plug-in/session_timer/SessionTimer.cpp
+@@ -103,7 +103,7 @@ bool SessionTimer::onSipReply(const AmSipReply& reply, int old_dlg_status,
+ 	    unsigned int new_cseq = s->dlg.cseq;
+ 	    // resend request with interval i_minse
+ 	    if (s->dlg.sendRequest(orig_req.method,orig_req.content_type,
+-				    orig_req.body, orig_req.hdrs) == 0) {
++				   orig_req.body, orig_req.hdrs, SIP_FLAGS_VERBATIM) == 0) {
+               DBG("request with new Session Interval %u successfully sent.\n", i_minse);
+ 	      // undo SIP dialog status change
+ 	      if (s->dlg.getStatus() != old_dlg_status)
+-- 
+1.7.10.4
+

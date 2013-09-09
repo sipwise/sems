@@ -1,0 +1,89 @@
+From c92689453d42a7a55441c08d696562fa364bc3cb Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 16:42:45 +0200
+Subject: [PATCH] DSM: pauseReceiving, resumeReceiving, monitorRTPTimeout
+ actions
+
+ pauseReceiving()
+   stop RTP receiving (drop all received packets, also no RTP timeout check)
+ resumeReceiving()
+   restart RTP receiving
+ monitorRTPTimeout(enabled=false)
+   set call to monitor RTP timeout (enabled="true" or "false")
+---
+ apps/dsm/DSMCoreModule.cpp |   19 +++++++++++++++++++
+ apps/dsm/DSMCoreModule.h   |    3 +++
+ doc/dsm/dsm_syntax.txt     |    6 ++++++
+ 3 files changed, 28 insertions(+)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index a4c87ce..3f93ae2 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -70,6 +70,9 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
+   DEF_CMD("addSeparator", SCAddSeparatorAction);
+   DEF_CMD("connectMedia", SCConnectMediaAction);
+   DEF_CMD("disconnectMedia", SCDisconnectMediaAction);
++  DEF_CMD("pauseReceiving", SCPauseReceivingAction);
++  DEF_CMD("resumeReceiving", SCResumeReceivingAction);
++  DEF_CMD("monitorRTPTimeout", SCMonitorRTPTimeoutAction);
+   DEF_CMD("mute", SCMuteAction);
+   DEF_CMD("unmute", SCUnmuteAction);
+   DEF_CMD("enableDTMFDetection", SCEnableDTMFDetection);
+@@ -360,6 +363,22 @@ EXEC_ACTION_START(SCDisconnectMediaAction) {
+   sc_sess->disconnectMedia();
+ } EXEC_ACTION_END;
+ 
++EXEC_ACTION_START(SCPauseReceivingAction) {
++  DBG("stopping RTP receiving\n");
++  sess->RTPStream()->pause();
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCResumeReceivingAction) {
++  DBG("resuming RTP receiving\n");
++  sess->RTPStream()->resume();
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCMonitorRTPTimeoutAction) {
++  string e = resolveVars(arg, sess, sc_sess, event_params);
++  DBG("setting RTP stream to %smonitor RTP timeout\n", e=="true"?"":"not");
++  sess->RTPStream()->setMonitorRTPTimeout(e=="true");
++} EXEC_ACTION_END;
++
+ EXEC_ACTION_START(SCMuteAction) {
+   sc_sess->mute();
+ } EXEC_ACTION_END;
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index 7156563..e63cefc 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -59,6 +59,9 @@ DEF_ACTION_1P(SCSetInOutPlaylistAction);
+ DEF_ACTION_1P(SCStopAction);
+ DEF_ACTION_1P(SCConnectMediaAction);
+ DEF_ACTION_1P(SCDisconnectMediaAction);
++DEF_ACTION_1P(SCPauseReceivingAction);
++DEF_ACTION_1P(SCResumeReceivingAction);
++DEF_ACTION_1P(SCMonitorRTPTimeoutAction);
+ DEF_ACTION_1P(SCMuteAction);
+ DEF_ACTION_1P(SCUnmuteAction);
+ DEF_ACTION_1P(SCEnableDTMFDetection);
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index 329fd27..0b64242 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -148,6 +148,12 @@ Playing prompts and file I/O
+    set playlist as input and output of session, and connect to mediaprocessor 
+  disconnectMedia() 
+    disconnect from mediaprocessor
++ pauseReceiving()
++   stop RTP receiving (drop all received packets, also no RTP timeout check)
++ resumeReceiving()
++   restart RTP receiving
++ monitorRTPTimeout(enabled=false)
++   set call to monitor RTP timeout (enabled="true" or "false")
+ 
+  mute() 
+    set RTP stream to muted (don't send and receive RTP packets)
+-- 
+1.7.10.4
+

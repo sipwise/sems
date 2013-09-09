@@ -1,0 +1,40 @@
+From 06c3534e27767e88a21174b73f91a1d3cefbe9ab Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 20 Apr 2012 12:46:13 +0200
+Subject: [PATCH] b/f: have subscriptions protected until SUBSCRIBE sent
+
+this prevents corruption in the (extremely rare) case that a reply
+to SUBSCRIBE or a NOTIFY is already processed while the method to
+send the SUBSCRIBE is still being processed (with the little overhead
+of a bit more lock contention)
+---
+ core/AmSipSubscriptionContainer.cpp |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/core/AmSipSubscriptionContainer.cpp b/core/AmSipSubscriptionContainer.cpp
+index 9cdc616..4f0617a 100644
+--- a/core/AmSipSubscriptionContainer.cpp
++++ b/core/AmSipSubscriptionContainer.cpp
+@@ -60,18 +60,16 @@ string _AmSipSubscriptionContainer::createSubscription(const AmSipSubscriptionIn
+ 
+   subscriptions_mut.lock();
+   subscriptions[handle] = new_sub;
+-  subscriptions_mut.unlock();
+-
+   AmEventDispatcher::instance()->addEventQueue(handle, this);
+   if (!new_sub->doSubscribe()) {
+     DBG("subscribe failed - removing subscription\b");
+     AmEventDispatcher::instance()->delEventQueue(handle);
+-    subscriptions_mut.lock();
+     subscriptions.erase(handle);
+     subscriptions_mut.unlock();
+     delete new_sub;
+     return "";
+   }
++  subscriptions_mut.unlock();
+ 
+   return handle;
+ }
+-- 
+1.7.10.4
+

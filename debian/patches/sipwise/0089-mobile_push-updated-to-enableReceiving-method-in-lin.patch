@@ -1,0 +1,26 @@
+From 8f54dd924682dc1f8d49147be913c442b203e826 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 18 Apr 2012 11:11:53 +0200
+Subject: [PATCH] mobile_push: updated to enableReceiving method (in-line with
+ master)
+
+---
+ apps/mobile_push/mobile_push.dsm |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/apps/mobile_push/mobile_push.dsm b/apps/mobile_push/mobile_push.dsm
+index 601a500..77dfe80 100644
+--- a/apps/mobile_push/mobile_push.dsm
++++ b/apps/mobile_push/mobile_push.dsm
+@@ -70,7 +70,7 @@ transition "invite" START - invite / {
+   connectMedia();
+ 
+   -- no need to process incoming RTP (also no RTP timeout needed)
+-  pauseReceiving();
++  disableReceiving();
+ 
+   -- create subscription to reg event
+   set($r.domain=@domain);
+-- 
+1.7.10.4
+

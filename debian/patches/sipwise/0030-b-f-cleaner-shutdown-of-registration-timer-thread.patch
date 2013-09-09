@@ -1,0 +1,53 @@
+From 04039d909d622df545efabc46f174ab257b04a48 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Wed, 12 Oct 2011 22:38:39 +0200
+Subject: [PATCH] b/f: cleaner shutdown of registration timer thread
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp        |    1 +
+ apps/db_reg_agent/RegistrationTimer.cpp |    4 +++-
+ apps/db_reg_agent/RegistrationTimer.h   |    1 +
+ 3 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index 8d91710..aa87825 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -550,6 +550,7 @@ void DBRegAgent::process(AmEvent* ev) {
+       DBG("Session received system Event\n");
+       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
+ 	running = false;
++	registration_scheduler._timer_thread_running = false;
+       }
+       return;
+     }
+diff --git a/apps/db_reg_agent/RegistrationTimer.cpp b/apps/db_reg_agent/RegistrationTimer.cpp
+index ff74031..dcd3e54 100644
+--- a/apps/db_reg_agent/RegistrationTimer.cpp
++++ b/apps/db_reg_agent/RegistrationTimer.cpp
+@@ -203,7 +203,9 @@ void RegistrationTimer::run()
+   gettimeofday(&now, NULL);
+   timeradd(&tick,&now,&next_tick);
+ 
+-  while(true){
++  _timer_thread_running = true;
++
++  while(_timer_thread_running){
+ 
+     gettimeofday(&now,NULL);
+ 
+diff --git a/apps/db_reg_agent/RegistrationTimer.h b/apps/db_reg_agent/RegistrationTimer.h
+index 14e2b9a..27eb072 100644
+--- a/apps/db_reg_agent/RegistrationTimer.h
++++ b/apps/db_reg_agent/RegistrationTimer.h
+@@ -108,6 +108,7 @@ class RegistrationTimer
+ 				time_t to_time);
+ 
+   RegistrationTimer(); 
++  bool _timer_thread_running;
+ };
+ 
+ #endif
+-- 
+1.7.10.4
+

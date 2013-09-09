@@ -1,0 +1,136 @@
+From e9873524a72e17b74715ac06f019906ba7678152 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Mon, 16 Apr 2012 01:04:53 +0200
+Subject: [PATCH] option to ignore low CSeq for NOTIFY for old event sub
+ implementations
+
+new sems.conf option:
+
+  Ignore too low CSeq for NOTIFYs? [yes | no]
+
+ May be necessary to interwork with simplistic/old (following 3265
+ instead of 5057) SIP event notification implementations.
+
+ ignore_notify_lower_cseq=yes
+
+Conflicts:
+
+	core/AmSipDialog.cpp
+---
+ core/AmConfig.cpp         |    5 +++++
+ core/AmConfig.h           |    2 ++
+ core/AmSipDialog.cpp      |   28 +++++++++++++++++-----------
+ core/AmSipHeaders.h       |    1 +
+ core/etc/sems.conf.sample |    7 +++++++
+ 5 files changed, 32 insertions(+), 11 deletions(-)
+
+diff --git a/core/AmConfig.cpp b/core/AmConfig.cpp
+index dcbb2d0..4b167db 100644
+--- a/core/AmConfig.cpp
++++ b/core/AmConfig.cpp
+@@ -77,6 +77,7 @@ string       AmConfig::NextHopIP               = "";
+ unsigned int AmConfig::NextHopPort             = 0;
+ bool         AmConfig::NextHopForReplies       = false;
+ bool         AmConfig::ProxyStickyAuth         = false;
++bool         AmConfig::IgnoreNotifyLowerCSeq   = false;
+ bool         AmConfig::DisableDNSSRV           = false;
+ string       AmConfig::Signature               = "";
+ unsigned int AmConfig::MaxForwards             = MAX_FORWARDS;
+@@ -309,6 +310,10 @@ int AmConfig::readConfiguration()
+     ProxyStickyAuth = (cfg.getParameter("proxy_sticky_auth") == "yes");
+   }
+ 
++  if(cfg.hasParameter("ignore_notify_lower_cseq")) {
++    IgnoreNotifyLowerCSeq = (cfg.getParameter("ignore_notify_lower_cseq") == "yes");
++  }
++
+   if(cfg.hasParameter("disable_dns_srv")) {
+     DisableDNSSRV = (cfg.getParameter("disable_dns_srv") == "yes");
+   }
+diff --git a/core/AmConfig.h b/core/AmConfig.h
+index 3fa412a..6dfed7e 100644
+--- a/core/AmConfig.h
++++ b/core/AmConfig.h
+@@ -134,6 +134,8 @@ struct AmConfig
+   static bool NextHopForReplies;
+   /** update ruri-host to previously resolved IP:port on SIP auth */
+   static bool ProxyStickyAuth;
++  /** Ignore Low CSeq on NOTIFY  - for RFC 3265 instead of 5057 */
++  static bool IgnoreNotifyLowerCSeq;
+   /** skip DNS SRV lookup for resolving destination address*/
+   static bool DisableDNSSRV;
+   /** Server/User-Agent header (optional) */
+diff --git a/core/AmSipDialog.cpp b/core/AmSipDialog.cpp
+index a67c93f..d5d39f6 100644
+--- a/core/AmSipDialog.cpp
++++ b/core/AmSipDialog.cpp
+@@ -110,19 +110,25 @@ void AmSipDialog::updateStatus(const AmSipRequest& req)
+ 
+   // Sanity checks
+   if (r_cseq_i && req.cseq <= r_cseq){
+-    INFO("remote cseq lower than previous ones - refusing request\n");
+-    // see 12.2.2
+-    string hdrs;
+-    if (req.method == "NOTIFY") {
+-      // clever trick to not break subscription dialog usage
+-      // for implementations which follow 3265 instead of 5057
+-      hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
++    string hdrs; bool i = false;
++    if (req.method == SIP_METH_NOTIFY) {
++      if (AmConfig::IgnoreNotifyLowerCSeq)
++	i = true;
++      else
++	// clever trick to not break subscription dialog usage
++	// for implementations which follow 3265 instead of 5057
++	hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
+     }
+ 
+-    reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs,
+-		next_hop_for_replies ? next_hop_ip : "",
+-		next_hop_for_replies ? next_hop_port : 0);
+-    return;
++    if (!i) {
++      INFO("remote cseq lower than previous ones - refusing request\n");
++      // see 12.2.2
++      reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs,
++		  next_hop_for_replies ? next_hop_ip : "",
++		  next_hop_for_replies ? next_hop_port : 0);
++
++      return;
++    }
+   }
+ 
+   if (req.method == "INVITE") {
+diff --git a/core/AmSipHeaders.h b/core/AmSipHeaders.h
+index 39e5974..a773eab 100644
+--- a/core/AmSipHeaders.h
++++ b/core/AmSipHeaders.h
+@@ -9,6 +9,7 @@
+ #define SIP_METH_UPDATE         "UPDATE"
+ #define SIP_METH_BYE            "BYE"
+ #define SIP_METH_ACK            "ACK"
++#define SIP_METH_NOTIFY         "NOTIFY"
+ 
+ #define SIP_HDR_FROM            "From"
+ #define SIP_HDR_TO              "To"
+diff --git a/core/etc/sems.conf.sample b/core/etc/sems.conf.sample
+index 597fbc6..cedf6c5 100644
+--- a/core/etc/sems.conf.sample
++++ b/core/etc/sems.conf.sample
+@@ -525,6 +525,13 @@ use_default_signature=yes
+ #
+ # proxy_sticky_auth=yes
+ 
++# Ignore too low CSeq for NOTIFYs? [yes | no]
++#
++# May be necessary to interwork with simplistic/old SIP event notification 
++# implementations.
++#
++#ignore_notify_lower_cseq=yes
++
+ #
+ # Accept final replies without To-tag? [yes|no]
+ #
+-- 
+1.7.10.4
+

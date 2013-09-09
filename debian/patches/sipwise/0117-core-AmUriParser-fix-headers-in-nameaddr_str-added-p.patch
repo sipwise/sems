@@ -1,0 +1,98 @@
+From 2e5eb443790dc674e7ed6dcc97aab7acbec1d562 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 14 Aug 2013 18:46:27 +0200
+Subject: [PATCH] core: AmUriParser: fix headers in nameaddr_str, added
+ parse_nameaddr function alias
+
+---
+ core/AmUriParser.cpp          |   12 +++++++++---
+ core/AmUriParser.h            |    6 +++++-
+ core/tests/test_uriparser.cpp |   13 +++++++++++++
+ 3 files changed, 27 insertions(+), 4 deletions(-)
+
+diff --git a/core/AmUriParser.cpp b/core/AmUriParser.cpp
+index 7f156bb..6b3a831 100644
+--- a/core/AmUriParser.cpp
++++ b/core/AmUriParser.cpp
+@@ -263,8 +263,6 @@ bool AmUriParser::parse_uri() {
+ 
+     case uSHDR: {
+       switch (c) {
+-      case ';': { uri_headers = uri.substr(p1+1, pos-p1-1);
+-	  st = uSPARAM; p1 = pos; }; break; 
+       case '>': { uri_headers = uri.substr(p1+1, pos-p1-1);
+       st = uS6; p1 = pos; } break;
+       case '\t':
+@@ -368,6 +366,10 @@ bool AmUriParser::parse_params(const string& line, int& pos) {
+   return true;
+ }
+ 
++bool AmUriParser::parse_nameaddr(const string& line) {
++  size_t pos=0; size_t end=0;
++  return parse_contact(line, pos, end);
++}
+ 
+ bool AmUriParser::parse_contact(const string& line, size_t pos, size_t& end) {
+   int p0 = skip_name(line, pos);
+@@ -491,12 +493,16 @@ string AmUriParser::uri_str() const
+     res += ";" + uri_param;
+   }
+ 
++  if (!uri_headers.empty()) {
++    res+="?" + uri_headers;
++  }
++
+   return res;
+ }
+ 
+ string AmUriParser::canon_uri_str() const
+ {
+-  string res = "sip:";
++  string res = "sip:"; // fixme: always SIP...
+   if(!uri_user.empty()) {
+     res += uri_user + "@";
+   }
+diff --git a/core/AmUriParser.h b/core/AmUriParser.h
+index 8bca2e8..840cd0f 100644
+--- a/core/AmUriParser.h
++++ b/core/AmUriParser.h
+@@ -46,8 +46,12 @@ struct AmUriParser {
+   map<string, string> params; 	// <sip:user;@host>;params
+ 
+   bool isEqual(const AmUriParser& c) const;
+-  /** @return true on success */
++
++  /** parse a name-addr @return true on success */
+   bool parse_contact(const string& line, size_t pos, size_t& end);
++  /** parse a name-addr @return true on success */
++  bool parse_nameaddr(const string& line);
++
+   /** @return true on success */
+   bool parse_uri();
+   bool parse_params(const string& line, int& pos);
+diff --git a/core/tests/test_uriparser.cpp b/core/tests/test_uriparser.cpp
+index 8235665..de6902f 100644
+--- a/core/tests/test_uriparser.cpp
++++ b/core/tests/test_uriparser.cpp
+@@ -110,5 +110,18 @@ FCTMF_SUITE_BGN(test_uriparser) {
+       fct_chk( p.uri_headers=="Replaces:\%20lkancskjd%3Bto-tag=3123141ab%3Bfrom-tag=kjhkjcsd");
+     } FCT_TEST_END();
+ 
++    FCT_TEST_BGN(uriparser_headers_str) {
++      AmUriParser p;
++      string orig_str = "\"Mr. Watson\" <sip:watson@bell-telephone.com?Replaces:%20lkancskjd%3Bto-tag=3123141ab%3Bfrom-tag=kjhkjcsd>;q=0.1";
++      fct_chk(p.parse_nameaddr(orig_str));
++      fct_chk( p.display_name=="Mr. Watson");
++      fct_chk( p.uri_user=="watson");
++      fct_chk( p.uri_host=="bell-telephone.com");
++      fct_chk( p.uri_headers=="Replaces:\%20lkancskjd%3Bto-tag=3123141ab%3Bfrom-tag=kjhkjcsd");
++      string a_str = p.nameaddr_str();
++      // DBG(" >>%s<< => >>%s<<\n", orig_str.c_str(), a_str.c_str());
++      fct_chk(orig_str == a_str);
++    } FCT_TEST_END();
++
+ 
+ } FCTMF_SUITE_END();
+-- 
+1.7.10.4
+

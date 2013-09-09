@@ -40,36 +40,18 @@ struct AmUriParser {
   string uri_host; 
   string uri_port; 
   string uri_headers;
-  string uri_param;		// <sip:user@host;uri_param>
-                                // <sip:user;user_param@host>
+  string uri_param;
 
-  map<string, string> params; 	// <sip:user;@host>;params
+  map<string, string> params;
 
   bool isEqual(const AmUriParser& c) const;
-
-  /** parse a name-addr @return true on success */
+  /** @return true on success */
   bool parse_contact(const string& line, size_t pos, size_t& end);
-  /** parse a name-addr @return true on success */
-  bool parse_nameaddr(const string& line);
-
   /** @return true on success */
   bool parse_uri();
   bool parse_params(const string& line, int& pos);
-
-  /** param_string is semicolon separated list of parameters with or without value.
-   * method can be used to add/replace param for uri and user parameters */
-  static string add_param_to_param_list(const string& param_name,
-	    const string& param_value, const string& param_list);
-  void add_user_param(const string& param_name, const string& param_value);
-
-  void dump() const;
-  string uri_str() const;
-  string canon_uri_str() const;
-  string nameaddr_str() const;
-  
+  void dump();
   AmUriParser() { }
-
-  string print();
 };
 
 #endif

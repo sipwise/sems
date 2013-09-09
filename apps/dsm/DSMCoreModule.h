@@ -48,7 +48,6 @@ class DSMCoreModule
 };
 
 DEF_ACTION_1P(SCPlayPromptAction);
-DEF_ACTION_1P(SCPlayPromptFrontAction);
 DEF_ACTION_1P(SCPlayPromptLoopedAction);
 DEF_ACTION_1P(SCRecordFileAction);
 DEF_ACTION_1P(SCStopRecordAction);
@@ -59,18 +58,12 @@ DEF_ACTION_1P(SCSetInOutPlaylistAction);
 DEF_ACTION_1P(SCStopAction);
 DEF_ACTION_1P(SCConnectMediaAction);
 DEF_ACTION_1P(SCDisconnectMediaAction);
-DEF_ACTION_1P(SCEnableReceivingAction);
-DEF_ACTION_1P(SCDisableReceivingAction);
-DEF_ACTION_1P(SCEnableForceDTMFReceiving);
-DEF_ACTION_1P(SCDisableForceDTMFReceiving);
-DEF_ACTION_1P(SCMonitorRTPTimeoutAction);
 DEF_ACTION_1P(SCMuteAction);
 DEF_ACTION_1P(SCUnmuteAction);
 DEF_ACTION_1P(SCEnableDTMFDetection);
 DEF_ACTION_1P(SCDisableDTMFDetection);
 DEF_ACTION_2P(SCSendDTMFAction);
 DEF_ACTION_2P(SCSendDTMFSequenceAction);
-
 
 DEF_ACTION_1P(SCSetPromptsAction);
 DEF_ACTION_2P(SCAddSeparatorAction);
@@ -105,8 +98,6 @@ DEF_ACTION_2P(SCGetParamAction);
 DEF_ACTION_2P(SCSetVarAction);
 DEF_ACTION_2P(SCPlayFileAction);
 DEF_ACTION_2P(SCPlayFileFrontAction);
-DEF_ACTION_1P(SCPlaySilenceAction);
-DEF_ACTION_1P(SCPlaySilenceFrontAction);
 DEF_ACTION_2P(SCPostEventAction);
 
 DEF_ACTION_2P(SCB2BConnectCalleeAction);
@@ -121,10 +112,6 @@ DEF_ACTION_1P(SCRegisterEventQueueAction);
 DEF_ACTION_1P(SCUnregisterEventQueueAction);
 
 DEF_ACTION_2P(SCCreateSystemDSMAction);
-
-DEF_ACTION_1P(SCTrackObjectAction);
-DEF_ACTION_1P(SCReleaseObjectAction);
-DEF_ACTION_1P(SCFreeObjectAction);
 
 class SCDIAction					
 : public DSMAction {

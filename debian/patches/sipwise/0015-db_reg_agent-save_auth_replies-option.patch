@@ -1,0 +1,100 @@
+From 4886a14038cae4082f5950ff506c3488730f79d2 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Mon, 30 May 2011 18:31:51 +0200
+Subject: [PATCH] db_reg_agent: save_auth_replies option
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp        |   21 ++++++++++++++++-----
+ apps/db_reg_agent/DBRegAgent.h          |    2 ++
+ apps/db_reg_agent/etc/db_reg_agent.conf |    5 +++++
+ 3 files changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index 4402ff6..e9483e9 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -50,6 +50,7 @@ bool DBRegAgent::delete_removed_registrations = true;
+ bool DBRegAgent::save_contacts = true;
+ bool DBRegAgent::db_read_contact = false;
+ string DBRegAgent::contact_hostport;
++bool DBRegAgent::save_auth_replies = false;
+ 
+ unsigned int DBRegAgent::error_retry_interval = 300;
+ 
+@@ -137,6 +138,9 @@ int DBRegAgent::onLoad()
+   db_read_contact =
+     cfg.getParameter("db_read_contact", "no") == "yes";
+ 
++  save_auth_replies =
++    cfg.getParameter("save_auth_replies", "no") == "yes";
++
+   contact_hostport = cfg.getParameter("contact_hostport");
+ 
+   error_retry_interval = cfg.getParameterInt("error_retry_interval", 300);
+@@ -709,10 +713,12 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
+       bool update_ts = false;
+       unsigned int expiry = 0;
+       bool delete_status = false;
++      bool auth_pending = false;
+ 
+       if (ev->reply.code >= 300) {
+ 	if (current_state == AmSIPRegistration::RegisterPending) {
+ 	  DBG("received negative reply, but still in pending state (auth).\n");
++	  auth_pending = true;
+ 	} else {
+ 	  // registration failed - mark in DB
+ 	  DBG("registration failed - mark in DB\n");
+@@ -751,11 +757,16 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
+       }
+ 
+       if (!delete_status) {
+-	DBG("update DB with reply %u %s\n", ev->reply.code, ev->reply.reason.c_str());
+-	updateDBRegistration(MainDBConnection,
+-			     subscriber_id, ev->reply.code, ev->reply.reason,
+-			     update_status, status, update_ts, expiry,
+-			     save_contacts, ev->reply.contact);
++	if (auth_pending && !save_auth_replies) {
++	  DBG("not updating DB with auth reply %u %s\n",
++	      ev->reply.code, ev->reply.reason.c_str());
++	} else {
++	  DBG("update DB with reply %u %s\n", ev->reply.code, ev->reply.reason.c_str());
++	  updateDBRegistration(MainDBConnection,
++			       subscriber_id, ev->reply.code, ev->reply.reason,
++			       update_status, status, update_ts, expiry,
++			       save_contacts, ev->reply.contact);
++	}
+       } else {
+ 	DBG("delete DB registration of subscriber %ld\n", subscriber_id);
+ 	deleteDBRegistration(subscriber_id, MainDBConnection);
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index 2494c4d..92fde16 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -132,6 +132,8 @@ class DBRegAgent
+ 
+   static string contact_hostport;
+ 
++  static bool save_auth_replies;
++
+   static unsigned int error_retry_interval;
+ 
+   map<long, AmSIPRegistration*> registrations;
+diff --git a/apps/db_reg_agent/etc/db_reg_agent.conf b/apps/db_reg_agent/etc/db_reg_agent.conf
+index 2e1f5ca..f330efe 100644
+--- a/apps/db_reg_agent/etc/db_reg_agent.conf
++++ b/apps/db_reg_agent/etc/db_reg_agent.conf
+@@ -35,6 +35,11 @@ joined_query="select subscribers.subscriber_id as subscriber_id, subscribers.use
+ # default: yes
+ #save_contacts=yes
+ 
++#save_auth_replies=[yes, no] : update status on 401 replies (auth)?
++# usually, 401 replies which are resent with auth are not saved. if save_auth_replies=yes,
++# last_code and last_reason in DB is updated with the 401
++#save_auth_replies=yes
++
+ # expires: desired expires, i.e. expires value that is requested
+ # default: 7200
+ #   expires=300
+-- 
+1.7.10.4
+

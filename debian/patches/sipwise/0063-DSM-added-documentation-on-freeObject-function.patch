@@ -1,0 +1,31 @@
+From 8e85b087f106b62d6ae0e633fe21b4d774c2b5f0 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Sun, 15 Apr 2012 21:32:38 +0200
+Subject: [PATCH] DSM: added documentation on freeObject function
+
+---
+ doc/dsm/dsm_syntax.txt |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index 5f9506b..8ddf9d2 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -267,11 +267,12 @@ B2B call control
+   unregisterEventQueue(queue_name)
+     unregister events queue queue_name
+ 
+- Garbage collector:
++ Object memory management/Garbage collector:
++  freeObject(varname)     - free object referenced with varname immediately
+   trackObject(varname)    - track object referenced with varname, i.e. enable garbage
+                             collection with the current call/systemDSM
+   releaseObject(varname)  - release object referenced with varname from garbage collector
+-
++  
+ Conditions
+ ==========
+  
+-- 
+1.7.10.4
+

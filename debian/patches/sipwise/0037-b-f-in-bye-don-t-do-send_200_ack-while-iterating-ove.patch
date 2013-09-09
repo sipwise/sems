@@ -1,0 +1,58 @@
+From bcd4ab854724b1c23f261c8deb000c2baad175e3 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Fri, 4 Nov 2011 17:14:54 +0100
+Subject: [PATCH] b/f: in bye() don't do send_200_ack while iterating over
+ uac_trans
+
+send_200_ack erases the transaction, which may lead to fault when
+iterating is continued
+---
+ core/AmSipDialog.cpp |   31 +++++++++++++++++++------------
+ 1 file changed, 19 insertions(+), 12 deletions(-)
+
+diff --git a/core/AmSipDialog.cpp b/core/AmSipDialog.cpp
+index 9d79ccc..0829e87 100644
+--- a/core/AmSipDialog.cpp
++++ b/core/AmSipDialog.cpp
+@@ -793,19 +793,26 @@ int AmSipDialog::bye(const string& hdrs, int flags)
+     switch(status){
+ 
+     case Disconnecting:
+-    case Connected:
+-        for (TransMap::iterator it=uac_trans.begin();
+-	     it != uac_trans.end(); it++) {
+-	  if (it->second.method == "INVITE"){
+-	    // finish any UAC transaction before sending BYE
+-	    send_200_ack(it->second);
+-	  }
++    case Connected: {
++      // collect INVITE UAC transactions
++      vector<AmSipTransaction> ack_trans;
++      for (TransMap::iterator it=uac_trans.begin(); it != uac_trans.end(); it++) {
++	if (it->second.method == "INVITE"){
++	  ack_trans.push_back(it->second);
+ 	}
+-	if (AmConfig::WaitForByeTransaction)
+-	  status = Disconnecting;
+-	else
+-	  status = Disconnected;
+-	return sendRequest("BYE", "", "", hdrs, flags);
++      }
++      // finish any UAC transaction before sending BYE
++      for (vector<AmSipTransaction>::iterator it=
++	     ack_trans.begin(); it != ack_trans.end(); it++) {
++	send_200_ack(*it);
++      }
++
++      if (AmConfig::WaitForByeTransaction)
++	status = Disconnecting;
++      else
++	status = Disconnected;
++      return sendRequest("BYE", "", "", hdrs, flags);
++    }
+ 
+     case Pending:
+ 	status = Disconnecting;
+-- 
+1.7.10.4
+

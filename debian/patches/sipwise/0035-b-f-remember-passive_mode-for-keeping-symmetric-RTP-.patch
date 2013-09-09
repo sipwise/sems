@@ -1,0 +1,52 @@
+From 2927a7be8f232954b64cfa3d4ecdbcaa766ff003 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Mon, 31 Oct 2011 18:39:57 +0100
+Subject: [PATCH] b/f: remember passive_mode for keeping symmetric RTP in a
+ session
+
+If NAT flag (P-MsgFlags: 2) is passed only in the initial INVITE,
+re-INVITE will set up the RTP stream to the private address, but not
+enable symmetric RTP (comedia style send-to-where-i-get-rtp-from)
+again. this fix remembers passive_mode for the call.
+---
+ core/AmSession.cpp |    2 +-
+ core/AmSession.h   |    3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/core/AmSession.cpp b/core/AmSession.cpp
+index c4bfdfb..bc8999e 100644
+--- a/core/AmSession.cpp
++++ b/core/AmSession.cpp
+@@ -79,6 +79,7 @@ AmSession::AmSession()
+     m_dtmfDetector(this), m_dtmfEventQueue(&m_dtmfDetector),
+     m_dtmfDetectionEnabled(true),
+     accept_early_session(false),
++    passive_mode(false),
+     rtp_interface(-1),
+     refresh_method(REFRESH_UPDATE_FB_REINV),
+     processing_status(SESSION_PROCESSING_EVENTS),
+@@ -292,7 +293,6 @@ void AmSession::negotiate(const string& sdp_body,
+     DBG("remote party doesn't support telephone events\n");
+   }
+ 
+-  bool passive_mode = false;
+   if( sdp.remote_active || force_symmetric_rtp) {
+     DBG("The other UA is NATed: switched to passive mode.\n");
+     DBG("remote_active = %i; force_symmetric_rtp = %i\n",
+diff --git a/core/AmSession.h b/core/AmSession.h
+index 81a239e..e74e37c 100644
+--- a/core/AmSession.h
++++ b/core/AmSession.h
+@@ -157,6 +157,9 @@ private:
+ 
+   auto_ptr<AmRtpAudio> _rtp_str;
+ 
++  /** set up RTP stream as passive? (comedia style NAT aware) */
++  bool passive_mode;
++
+   AmDynInvoke* user_timer_ref;
+   
+   void getUserTimerInstance();
+-- 
+1.7.10.4
+

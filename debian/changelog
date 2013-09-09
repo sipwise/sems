@@ -1,3 +1,9 @@
+ngcp-sems (1:1.4.3-1) unstable; urgency=low
+
+  * Use quilt to manage patches
+
+ -- Victor Seva <vseva@sipwise.com>  Mon, 09 Sep 2013 14:19:25 +0200
+
 ngcp-sems (1.4.3+spce3.0.0) unstable; urgency=low
 
   [ Stefan Sayer ]

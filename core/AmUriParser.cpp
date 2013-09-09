@@ -163,14 +163,14 @@ static inline int skip_uri(const string& s, unsigned int pos)
 enum {
   uS0=       0, // start
   uSPROT,       // protocol
-  uSUSER,       // user 
+  uSUHOST,      // user / host
   uSHOST,       // host
   uSHOSTWSP,    // wsp after host
   uSPORT,       // port
   uSPORTWSP,    // wsp after port
   uSHDR,        // header
   uSHDRWSP,     // wsp after header
-  uSPARAM,      // params
+  uSPARAM,      // params 
   uSPARAMWSP,   // wsp after params
   uS6           // end
 };
@@ -183,7 +183,7 @@ bool AmUriParser::parse_uri() {
   size_t pos = 0; int st = uS0;
   size_t p1 = 0; 
   int eq = 0; const char* sip_prot = "SIP:";
-  uri_user = ""; uri_host = ""; uri_port = ""; uri_param = "";
+  uri_user = ""; 	uri_host = ""; uri_port = ""; uri_param = ""; 
 
   if (uri.empty())
     return false;
@@ -199,18 +199,24 @@ bool AmUriParser::parse_uri() {
 	if ((eq<=4)&&(toupper(c) ==sip_prot[eq])) 
 	  eq++; 
 	if (eq==4) { // found sip:
-	  uri.find('@', pos+1) == string::npos? st = uSHOST : st = uSUSER; p1 = pos;
+	  st = uSUHOST; p1 = pos;
 	};
       } break;
       }; 
     } break;
     case uSPROT: { 
-      if (c ==  ':')  { uri.find('@', pos+1) == string::npos? st = uSHOST : st = uSUSER; p1 = pos;} 
+      if (c ==  ':')  { st = uSUHOST; p1 = pos;} 
     } break;
-    case uSUSER: {
+    case uSUHOST: {
       switch(c) {
       case '@':  { uri_user = uri.substr(p1+1, pos-p1-1);
 	  st = uSHOST; p1 = pos; }; break;
+      case ':': { uri_host = uri.substr(p1+1, pos-p1-1);
+	  st = uSPORT; p1 = pos;  }; break;
+      case '?': { uri_host = uri.substr(p1+1, pos-p1-1);
+	  st = uSHDR;  p1 = pos; }; break;
+      case ';': { uri_host = uri.substr(p1+1, pos-p1-1);
+	  st = uSPARAM;p1 = pos; }; break;
       case '>': { uri_host = uri.substr(p1+1, pos-p1-1);
 	  st = uS6;    p1 = pos; }; break;
       };
@@ -263,6 +269,8 @@ bool AmUriParser::parse_uri() {
 
     case uSHDR: {
       switch (c) {
+      case ';': { uri_headers = uri.substr(p1+1, pos-p1-1);
+	  st = uSPARAM; p1 = pos; }; break; 
       case '>': { uri_headers = uri.substr(p1+1, pos-p1-1);
       st = uS6; p1 = pos; } break;
       case '\t':
@@ -290,14 +298,13 @@ bool AmUriParser::parse_uri() {
       switch (c) {
       case '>': { st = uS6; p1 = pos; } break;
       };
-    } break;
-
+    } break; 
     };
     //    DBG("(2) c = %c, st = %d\n", c, st);
     pos++;
   }
   switch(st) {
-  case uSUSER:
+  case uSUHOST:
   case uSHOST:  uri_host = uri.substr(p1+1, pos-p1-1); break;
   case uSPORT:  uri_port = uri.substr(p1+1, pos-p1-1); break;
   case uSHDR:   uri_headers = uri.substr(p1+1, pos-p1-1); break;
@@ -366,26 +373,10 @@ bool AmUriParser::parse_params(const string& line, int& pos) {
   return true;
 }
 
-bool AmUriParser::parse_nameaddr(const string& line) {
-  size_t pos=0; size_t end=0;
-  return parse_contact(line, pos, end);
-}
 
 bool AmUriParser::parse_contact(const string& line, size_t pos, size_t& end) {
   int p0 = skip_name(line, pos);
   if (p0 < 0) { return false; }
-  if ((size_t)p0 > pos) {
-    // save display name
-    size_t dn_b = pos; size_t dn_e = p0;
-    while (dn_b < line.size() && line[dn_b] == ' ') { dn_b++; } // skip leading WS
-    while (dn_e > 0 && line[dn_e-1] == ' ') dn_e--; // skip trailing WS
-    if (dn_e > dn_b) {
-      if (line[dn_e-1] == '"' && line[dn_b] == '"') {
-	dn_b++; dn_e--; // skip quotes
-      }
-      display_name = line.substr(dn_b, dn_e - dn_b);
-    }
-  }
   int p1 = skip_uri(line, p0);
   if (p1 < 0) { return false; }
   //  if (p1 < 0) return false;
@@ -396,143 +387,20 @@ bool AmUriParser::parse_contact(const string& line, size_t pos, size_t& end) {
   return true;
 }
 
-string AmUriParser::add_param_to_param_list(const string& param_name,
-	    const string& param_value, const string& param_list)
-{
-  string list_of_params(param_list);
-
-  string param = param_name;
-  if (!param_value.empty())
-    param += "=" + param_value;
-
-  // if param_string empty - set it
-  if (list_of_params.empty()) {
-    list_of_params = param;
-  }
-  else {
-    // check if parameter already exists; if yes - replace it
-
-    size_t start = 0, end = 0, eq = 0, length = 0;
-    bool replaced = false;
-
-    do {
-      // get next param
-      end = list_of_params.find_first_of(';', start);
-
-      length = (end == string::npos) ? list_of_params.size() - start : end - start;
-
-      // it the param empty?
-      eq = list_of_params.substr(start, length).find('=');
-
-      if (eq != string::npos) { // non-empty param found
-        if (list_of_params.substr(start, eq) == param_name) {
-          list_of_params.replace(start, length, param);
-          replaced = true;
-          break;
-        }
-      }
-      else { // empty param found
-        if (list_of_params.substr(start, length) == param_name) {
-          list_of_params.replace(start, length, param);
-          replaced = true;
-          break;
-        }
-      }
-
-      start = end + 1;
-    }
-    while (end != string::npos && start != string::npos);
-
-    // if parameter doesn't exist - append it
-    if (!replaced)
-      list_of_params.append(";" + param);
-  }
-  return list_of_params;
-}
-
-void AmUriParser::add_user_param(const string& param_name, const string& param_value)
-{
-  size_t begin = uri_user.find_first_of(';');
-
-  if (begin == string::npos) {
-    uri_user += ";" + param_name;
-    if (!param_value.empty()) uri_user += "=" + param_value;
-  }
-  else {
-    uri_user = uri_user.substr(0, begin) + ";" +
-        add_param_to_param_list(param_name, param_value, uri_user.substr(begin + 1));
-  }
-}
-
-
-void AmUriParser::dump() const {
+void AmUriParser::dump() {
   DBG("--- Uri Info --- \n");
-  DBG(" uri           '%s'\n", uri.c_str());
-  DBG(" display_name  '%s'\n", display_name.c_str());
-  DBG(" uri_user      '%s'\n", uri_user.c_str());
-  DBG(" uri_host      '%s'\n", uri_host.c_str());
-  DBG(" uri_port      '%s'\n", uri_port.c_str());
-  DBG(" uri_hdr       '%s'\n", uri_headers.c_str());
-  DBG(" uri_param     '%s'\n", uri_param.c_str());
-  for (map<string, string>::const_iterator it = params.begin(); 
+  DBG(" uri       '%s'\n", uri.c_str());
+  DBG(" uri_user  '%s'\n", uri_user.c_str());
+  DBG(" uri_host  '%s'\n", uri_host.c_str());
+  DBG(" uri_port  '%s'\n", uri_port.c_str());
+  DBG(" uri_hdr   '%s'\n", uri_headers.c_str());
+  DBG(" uri_param '%s'\n", uri_param.c_str());
+  for (map<string, string>::iterator it = params.begin(); 
        it != params.end(); it++) {
-
     if (it->second.empty())
       DBG(" param     '%s'\n", it->first.c_str());
     else
       DBG(" param     '%s'='%s'\n", it->first.c_str(), it->second.c_str());
   }
   DBG("-------------------- \n");
-}
-
-string AmUriParser::uri_str() const
-{
-  string res = canon_uri_str();
-
-  if(!uri_param.empty()) {
-    res += ";" + uri_param;
-  }
-
-  if (!uri_headers.empty()) {
-    res+="?" + uri_headers;
-  }
-
-  return res;
-}
-
-string AmUriParser::canon_uri_str() const
-{
-  string res = "sip:"; // fixme: always SIP...
-  if(!uri_user.empty()) {
-    res += uri_user + "@";
-  }
-  res += uri_host;
-
-  if(!uri_port.empty()) {
-    res += ":" + uri_port;
-  }
-
-  return res;
-}
-
-string AmUriParser::nameaddr_str() const
-{
-  string res = "<" + uri_str() + ">";
-
-  if(!display_name.empty())
-    res = "\"" + display_name + "\" " + res;
-
-  for (map<string, string>::const_iterator it = params.begin(); 
-       it != params.end(); it++) {
-
-    res += ";"+it->first;
-    if (!it->second.empty())
-      res += "="+it->second;
-  }
-
-  return res;
-}
-
-string AmUriParser::print() {
-  return nameaddr_str();
 }

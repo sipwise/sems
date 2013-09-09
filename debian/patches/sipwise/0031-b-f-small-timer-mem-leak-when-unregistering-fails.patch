@@ -1,0 +1,37 @@
+From 9e7e7cfd6a2c92e7edda37ce7397c997c1e17c6a Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Wed, 12 Oct 2011 22:39:59 +0200
+Subject: [PATCH] b/f: small timer mem leak when unregistering fails
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index aa87825..c2ee4ca 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -388,6 +388,7 @@ void DBRegAgent::createRegistration(long subscriber_id,
+       registrations_mut.unlock();
+       WARN("registration with ID %ld already exists, removing\n", subscriber_id);
+       removeRegistration(subscriber_id);
++      clearRegistrationTimer(subscriber_id);
+       registrations_mut.lock();
+     }
+ 
+@@ -822,6 +823,12 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
+ 	}
+       }
+ 
++      if (registration->getUnregistering()) {
++	registrations_mut.unlock();
++	removeRegistration(subscriber_id);
++	registrations_mut.lock();
++      }
++
+       if (!delete_status) {
+ 	if (auth_pending && !save_auth_replies) {
+ 	  DBG("not updating DB with auth reply %u %s\n",
+-- 
+1.7.10.4
+

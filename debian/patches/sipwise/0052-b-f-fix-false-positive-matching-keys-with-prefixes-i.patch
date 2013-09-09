@@ -1,0 +1,61 @@
+From a10771c60341daa2bd8008c25de012ed51b45c7d Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Mon, 14 May 2012 15:55:49 +0200
+Subject: [PATCH] b/f: fix false positive matching keys with prefixes in
+ get_header_keyvalue
+
+e.g. P-App-Param: prefixmykey=myprefixval;mykey=myval would not work with
+mykey.
+
+int bug #59
+---
+ core/AmUtils.cpp            |    2 ++
+ core/tests/test_headers.cpp |   12 +++++++++---
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/core/AmUtils.cpp b/core/AmUtils.cpp
+index f9b59e7..90a2070 100644
+--- a/core/AmUtils.cpp
++++ b/core/AmUtils.cpp
+@@ -819,6 +819,8 @@ string get_header_keyvalue_single(const string& param_hdr, const string& name) {
+ 	    st = ST_CMPKEY;
+ 	  k_begin = p;
+ 	  corr = 1;
++	} else {
++	  st = ST_FINDBGN;
+ 	}
+       }
+     } break;
+diff --git a/core/tests/test_headers.cpp b/core/tests/test_headers.cpp
+index e1790ee..6ee83d7 100644
+--- a/core/tests/test_headers.cpp
++++ b/core/tests/test_headers.cpp
+@@ -34,8 +34,8 @@ FCTMF_SUITE_BGN(test_headers) {
+     } FCT_TEST_END();
+ 
+     FCT_TEST_BGN(getHeader_keyvalue) {
+-      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myval", "mykey") == "myval");
+-      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myval", "myotherkey") == "myval");
++      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myotherval", "mykey") == "myval");
++      fct_chk(get_header_keyvalue("mykey=myval1;myotherkey=myval", "myotherkey") == "myval");
+       fct_chk(get_header_keyvalue("mykey=myval;myotherkey=", "myotherkey") == "");
+       fct_chk(get_header_keyvalue(getHeader("P-My-Test: mykey=myval;myotherfunkykey=myval" CRLF, "P-My-Test", true), "mykey") == "myval" );
+ 
+@@ -57,7 +57,13 @@ FCTMF_SUITE_BGN(test_headers) {
+       fct_chk(get_header_keyvalue(getHeader("P-My-Test: mykey=myval; myotherfunkykey= 'test \\' escaped';andsomemore", "P-My-Test", true), "test \\' escaped") == "");
+       fct_chk(get_header_keyvalue("u=sayer;d=iptel.org;p=abcdef", "u") == "sayer");
+       fct_chk(get_header_keyvalue("u=sayer;d=iptel.org;p=abcdef", "d") == "iptel.org");
+-    } FCT_TEST_END();
++
++      fct_chk(get_header_keyvalue("prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
++      fct_chk(get_header_keyvalue("some=other;prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
++      fct_chk(get_header_keyvalue("some=\"mykey\";prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
++      fct_chk(get_header_keyvalue("some=\"mykey=valx\";prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
++
++   } FCT_TEST_END();
+ 
+ 
+     FCT_TEST_BGN(getHeader_allow) {
+-- 
+1.7.10.4
+

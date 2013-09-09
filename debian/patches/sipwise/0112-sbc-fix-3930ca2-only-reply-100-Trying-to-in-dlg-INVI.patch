@@ -1,0 +1,28 @@
+From c82430ca8c76656e2026376bb779457c6e92cc98 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 17 Jul 2013 15:22:30 +0200
+Subject: [PATCH] sbc: fix 3930ca2 - only reply 100 Trying to in-dlg INVITE to
+ be relayed
+
+---
+ apps/sbc/SBC.cpp |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/apps/sbc/SBC.cpp b/apps/sbc/SBC.cpp
+index 4b2bc5d..7709814 100644
+--- a/apps/sbc/SBC.cpp
++++ b/apps/sbc/SBC.cpp
+@@ -858,8 +858,8 @@ void SBCDialog::onSipRequest(const AmSipRequest& req) {
+     }
+   }
+ 
+-  if (fwd) {
+-      DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
++  if (fwd && req.method == SIP_METH_INVITE) {
++      DBG("replying 100 Trying of INVITE msg to be fwd'ed\n");
+       dlg.reply(req, 100, SIP_REPLY_TRYING);
+   }
+ 
+-- 
+1.7.10.4
+

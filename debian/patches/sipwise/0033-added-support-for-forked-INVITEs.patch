@@ -1,0 +1,526 @@
+From d79f9edf1611ad99fba1c278228fecc47d1745dc Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Tue, 29 Nov 2011 16:39:59 +0100
+Subject: [PATCH] added support for forked INVITEs
+
+If an INVITE has been forked and more than one branch is aimed at SEMS,
+then the branch parameter of the top-via is necessary to distinguish the
+different sessions.
+
+By default, SEMS will now accept forked INVITEs.
+This behavior can be switched off by setting "accept_forked_dialogs" to "no" (default=yes).
+
+Conflicts:
+
+	core/AmSipDispatcher.cpp
+---
+ core/AmConfig.cpp           |    5 ++
+ core/AmConfig.h             |    2 +
+ core/AmEventDispatcher.cpp  |  119 +++++++++++++++++++++++++++++++++----------
+ core/AmEventDispatcher.h    |   27 ++++++----
+ core/AmSession.cpp          |    5 ++
+ core/AmSession.h            |    3 ++
+ core/AmSessionContainer.cpp |   18 ++++---
+ core/AmSessionContainer.h   |    5 +-
+ core/AmSipDialog.cpp        |    1 +
+ core/AmSipDialog.h          |    2 +
+ core/AmSipDispatcher.cpp    |    2 +-
+ core/AmSipMsg.h             |    1 +
+ core/SipCtrlInterface.cpp   |    1 +
+ core/etc/sems.conf.sample   |   11 ++++
+ 14 files changed, 158 insertions(+), 44 deletions(-)
+
+diff --git a/core/AmConfig.cpp b/core/AmConfig.cpp
+index 1e060a0..701d3f2 100644
+--- a/core/AmConfig.cpp
++++ b/core/AmConfig.cpp
+@@ -97,6 +97,8 @@ unsigned int AmConfig::OptionsSessionLimit            = 0;
+ unsigned int AmConfig::OptionsSessionLimitErrCode     = 503;
+ string       AmConfig::OptionsSessionLimitErrReason   = "Server overload";
+ 
++bool         AmConfig::AcceptForkedDialogs     = true;
++
+ bool         AmConfig::ShutdownMode            = false;
+ unsigned int AmConfig::ShutdownModeErrCode     = 503;
+ string       AmConfig::ShutdownModeErrReason   = "Server shutting down";
+@@ -512,6 +514,9 @@ int AmConfig::readConfiguration()
+     }
+   }
+ 
++  if(cfg.hasParameter("accept_forked_dialogs"))
++    AcceptForkedDialogs = !(cfg.getParameter("accept_forked_dialogs") == "no");
++
+   if(cfg.hasParameter("shutdown_mode_reply")){
+     string c_reply = cfg.getParameter("shutdown_mode_reply");    
+     size_t spos = c_reply.find(" ");
+diff --git a/core/AmConfig.h b/core/AmConfig.h
+index a8bf0f1..3fa412a 100644
+--- a/core/AmConfig.h
++++ b/core/AmConfig.h
+@@ -170,6 +170,8 @@ struct AmConfig
+   static unsigned int OptionsSessionLimitErrCode;
+   static string OptionsSessionLimitErrReason;
+ 
++  static bool AcceptForkedDialogs;
++
+   static bool ShutdownMode;
+   static unsigned int ShutdownModeErrCode;
+   static string ShutdownModeErrReason;
+diff --git a/core/AmEventDispatcher.cpp b/core/AmEventDispatcher.cpp
+index 905d039..b64155c 100644
+--- a/core/AmEventDispatcher.cpp
++++ b/core/AmEventDispatcher.cpp
+@@ -27,6 +27,7 @@
+ 
+ #include "AmEventDispatcher.h"
+ #include "AmSipEvent.h"
++#include "AmConfig.h"
+ #include "sip/hash.h"
+ 
+ unsigned int AmEventDispatcher::hash(const string& s1)
+@@ -52,12 +53,38 @@ AmEventDispatcher* AmEventDispatcher::instance()
+   return _instance ? _instance : ((_instance = new AmEventDispatcher()));
+ }
+ 
++
++bool AmEventDispatcher::addEventQueue(const string& local_tag,
++				      AmEventQueueInterface* q)
++{
++    unsigned int queue_bucket = hash(local_tag);
++
++    queues_mut[queue_bucket].lock();
++
++    if (queues[queue_bucket].find(local_tag) != queues[queue_bucket].end()) {
++      queues_mut[queue_bucket].unlock();
++      return false;
++    }
++
++    queues[queue_bucket][local_tag] = q;
++    queues_mut[queue_bucket].unlock();
++    
++    return true;
++}
++
++
+ /** @return false on error */
+ bool AmEventDispatcher::addEventQueue(const string& local_tag, 
+ 				      AmEventQueueInterface* q,
+ 				      const string& callid, 
+-				      const string& remote_tag)
++				      const string& remote_tag,
++				      const string& via_branch)
+ {
++    if(local_tag.empty () ||callid.empty() || remote_tag.empty() | via_branch.empty()) {
++      ERROR("local_tag, callid, remote_tag or via_branch is empty");
++      return false;
++    }
++
+     unsigned int queue_bucket = hash(local_tag);
+ 
+     queues_mut[queue_bucket].lock();
+@@ -67,36 +94,54 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
+       return false;
+     }
+ 
+-    unsigned int id_bucket = 0;
+-
+-    if(!callid.empty() && !remote_tag.empty()) {
+-      // try to find via id_lookup
+-      id_bucket = hash(callid, remote_tag);
+-      id_lookup_mut[id_bucket].lock();
+-
+-      if (id_lookup[id_bucket].find(callid+remote_tag) != 
+-	  id_lookup[id_bucket].end()) {
+-	id_lookup_mut[id_bucket].unlock();
+-	queues_mut[queue_bucket].unlock();
+-	return false;
+-      }
++    // try to find via id_lookup
++    unsigned int id_bucket = hash(callid, remote_tag);
++    string id = callid+remote_tag;
++    if(AmConfig::AcceptForkedDialogs){
++      id += via_branch;
+     }
+ 
+-    queues[queue_bucket][local_tag] = q;
++    id_lookup_mut[id_bucket].lock();
+     
+-    if(!callid.empty() && !remote_tag.empty()) {
+-      id_lookup[id_bucket][callid+remote_tag] = local_tag;
++    if (id_lookup[id_bucket].find(id) != 
++	id_lookup[id_bucket].end()) {
+       id_lookup_mut[id_bucket].unlock();
++      queues_mut[queue_bucket].unlock();
++      return false;
+     }
+-   
++
++    queues[queue_bucket][local_tag] = q;
++    id_lookup[id_bucket][id] = local_tag;
++
++    id_lookup_mut[id_bucket].unlock();
+     queues_mut[queue_bucket].unlock();
+     
+     return true;
+ }
+ 
++AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
++{
++    AmEventQueueInterface* q = NULL;
++    
++    unsigned int queue_bucket = hash(local_tag);
++
++    queues_mut[queue_bucket].lock();
++    
++    EvQueueMapIter qi = queues[queue_bucket].find(local_tag);
++    if(qi != queues[queue_bucket].end()) {
++
++	q = qi->second;
++	queues[queue_bucket].erase(qi);
++    }
++    queues_mut[queue_bucket].unlock();
++    
++    return q;
++}
++
+ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag,
+ 							const string& callid, 
+-							const string& remote_tag)
++							const string& remote_tag,
++							const string& via_branch)
+ {
+     AmEventQueueInterface* q = NULL;
+     
+@@ -110,11 +155,16 @@ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag,
+ 	q = qi->second;
+ 	queues[queue_bucket].erase(qi);
+ 
+-	if(!callid.empty() && !remote_tag.empty()) {
++	if(!callid.empty() && !remote_tag.empty() && !via_branch.empty()) {
+ 	  unsigned int id_bucket = hash(callid, remote_tag);
++	  string id = callid+remote_tag;
++	  if(AmConfig::AcceptForkedDialogs){
++	    id += via_branch;
++	  }
++
+ 	  id_lookup_mut[id_bucket].lock();
+ 
+-	  DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
++	  DictIter di = id_lookup[id_bucket].find(id);
+ 	  if(di != id_lookup[id_bucket].end()) {	    
+ 	    id_lookup[id_bucket].erase(di);
+ 	  }
+@@ -147,11 +197,20 @@ bool AmEventDispatcher::post(const string& local_tag, AmEvent* ev)
+ }
+ 
+ 
+-bool AmEventDispatcher::post(const string& callid, const string& remote_tag, AmEvent* ev)
++bool AmEventDispatcher::post(const string& callid, 
++			     const string& remote_tag, 
++			     const string& via_branch,
++			     AmEvent* ev)
+ {
+     unsigned int id_bucket = hash(callid, remote_tag);
++    string id = callid+remote_tag;
++    if(AmConfig::AcceptForkedDialogs){
++      id += via_branch;
++    }
++
+     id_lookup_mut[id_bucket].lock();
+-    DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
++
++    DictIter di = id_lookup[id_bucket].find(id);
+     if (di == id_lookup[id_bucket].end()) {
+       id_lookup_mut[id_bucket].unlock();
+       return false;
+@@ -208,16 +267,24 @@ void AmEventDispatcher::dispose()
+     _instance = NULL;
+   }
+ }
++
+ /** this function optimizes posting of SIP Requests 
+     - if the session does not exist, no event need to be created (req copied) */
+-bool AmEventDispatcher::postSipRequest(const string& callid, const string& remote_tag, 
+-				       const AmSipRequest& req)
++bool AmEventDispatcher::postSipRequest(const AmSipRequest& req)
+ {
+     // get local tag
+     bool posted = false;
++    string callid = req.callid;
++    string remote_tag = req.from_tag;
+     unsigned int id_bucket = hash(callid, remote_tag);
++    string id = callid+remote_tag;
++    if(AmConfig::AcceptForkedDialogs){
++      id += req.via_branch;
++    }
++
+     id_lookup_mut[id_bucket].lock();
+-    DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
++
++    DictIter di = id_lookup[id_bucket].find(id);
+     if (di == id_lookup[id_bucket].end()) {
+       id_lookup_mut[id_bucket].unlock();
+       return false;
+diff --git a/core/AmEventDispatcher.h b/core/AmEventDispatcher.h
+index f545790..8fb53ce 100644
+--- a/core/AmEventDispatcher.h
++++ b/core/AmEventDispatcher.h
+@@ -59,8 +59,8 @@ private:
+     AmMutex queues_mut[EVENT_DISPATCHER_BUCKETS];
+ 
+     /** 
+-     * Call ID + remote tag -> local tag 
+-     *  (needed for CANCELs and some provisionnal answers)
++     * Call ID + remote tag + via_branch -> local tag 
++     *  (needed for CANCELs)
+      *  (UAS sessions only)
+      */
+     Dictionnary id_lookup[EVENT_DISPATCHER_BUCKETS];
+@@ -74,23 +74,32 @@ public:
+     static AmEventDispatcher* instance();
+     static void dispose();
+ 
+-    bool postSipRequest(const string& callid, const string& remote_tag, 
+-			const AmSipRequest& req);
++    bool postSipRequest(const AmSipRequest& req);
+ 
+     bool post(const string& local_tag, AmEvent* ev);
+-    bool post(const string& callid, const string& remote_tag, AmEvent* ev);
++    bool post(const string& callid, 
++	      const string& remote_tag, 
++	      const string& via_branch,
++	      AmEvent* ev);
+ 
+     /* send event to all event queues. Note: event instances will be cloned */
+     bool broadcast(AmEvent* ev);
+ 
++    bool addEventQueue(const string& local_tag,
++		       AmEventQueueInterface* q);
++
+     bool addEventQueue(const string& local_tag, 
+ 		       AmEventQueueInterface* q,
+-		       const string& callid="", 
+-		       const string& remote_tag="");
++		       const string& callid, 
++		       const string& remote_tag,
++		       const string& via_branch);
++
++    AmEventQueueInterface* delEventQueue(const string& local_tag);
+ 
+     AmEventQueueInterface* delEventQueue(const string& local_tag,
+-					 const string& callid="", 
+-					 const string& remote_tag="");
++					 const string& callid, 
++					 const string& remote_tag,
++					 const string& via_branch);
+ 
+     bool empty();
+ };
+diff --git a/core/AmSession.cpp b/core/AmSession.cpp
+index 2b3718a..f542946 100644
+--- a/core/AmSession.cpp
++++ b/core/AmSession.cpp
+@@ -210,6 +210,11 @@ const string& AmSession::getLocalTag() const
+   return dlg.local_tag;
+ }
+ 
++const string& AmSession::getFirstBranch() const
++{
++  return dlg.first_branch;
++}
++
+ void AmSession::setUri(const string& uri)
+ {
+   DBG("AmSession::setUri(%s)\n",uri.c_str());
+diff --git a/core/AmSession.h b/core/AmSession.h
+index ca60b2a..81a239e 100644
+--- a/core/AmSession.h
++++ b/core/AmSession.h
+@@ -334,6 +334,9 @@ public:
+   /** Gets the Session's local tag */
+   const string& getLocalTag() const;
+ 
++  /** Gets the branch param of the first via in the original INVITE*/
++  const string& getFirstBranch() const;
++
+   /** Sets the Session's local tag if not set already */
+   void setLocalTag();
+ 
+diff --git a/core/AmSessionContainer.cpp b/core/AmSessionContainer.cpp
+index bff01ed..aa69882 100644
+--- a/core/AmSessionContainer.cpp
++++ b/core/AmSessionContainer.cpp
+@@ -195,9 +195,10 @@ void AmSessionContainer::destroySession(AmSession* s)
+     AmEventQueueInterface* q = AmEventDispatcher::instance()->
+ 	delEventQueue(s->getLocalTag(),
+ 		      s->getCallID(),
+-		      s->getRemoteTag());
++		      s->getRemoteTag(),
++		      s->getFirstBranch());
+     
+-    if(q) {	
++    if(q) {
+ 	stopAndQueue(s);
+     }
+     else {
+@@ -300,7 +301,7 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
+ 	}
+ 
+ 	switch(addSession(req.callid,req.from_tag,local_tag,
+-			  session.get())) {
++			  req.via_branch,session.get())) {
+ 
+ 	case AmSessionContainer::Inserted:
+ 	  // successful case
+@@ -330,7 +331,8 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
+ 	  session->start();
+ 	} catch (...) {
+ 	  AmEventDispatcher::instance()->
+-	    delEventQueue(req.callid,req.from_tag,local_tag);
++	    delEventQueue(req.callid,req.from_tag,local_tag,
++			  req.via_branch);
+ 	  throw;
+ 	}
+ 
+@@ -355,11 +357,12 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
+ 
+ bool AmSessionContainer::postEvent(const string& callid, 
+ 				   const string& remote_tag,
++				   const string& via_branch,
+ 				   AmEvent* event)
+ {
+     bool posted =
+-	AmEventDispatcher::instance()->
+-	post(callid,remote_tag,event);
++      AmEventDispatcher::instance()->
++        post(callid,remote_tag,via_branch,event);
+ 
+     if(!posted)
+ 	delete event;
+@@ -446,6 +449,7 @@ AmSessionContainer::AddSessionStatus
+ AmSessionContainer::addSession(const string& callid,
+ 			       const string& remote_tag,
+ 			       const string& local_tag,
++			       const string& via_branch,
+ 			       AmSession* session)
+ {
+   if(_container_closed.get())
+@@ -453,7 +457,7 @@ AmSessionContainer::addSession(const string& callid,
+   
+   if(AmEventDispatcher::instance()->
+      addEventQueue(local_tag,(AmEventQueue*)session,
+-		   callid,remote_tag)) {
++		   callid,remote_tag,via_branch)) {
+     return Inserted;
+   }
+ 
+diff --git a/core/AmSessionContainer.h b/core/AmSessionContainer.h
+index 6f95f9c..d482660 100644
+--- a/core/AmSessionContainer.h
++++ b/core/AmSessionContainer.h
+@@ -108,6 +108,7 @@ class AmSessionContainer : public AmThread
+   AddSessionStatus addSession(const string& callid,
+ 			      const string& remote_tag,
+ 			      const string& local_tag,
++			      const string& via_branch,
+ 			      AmSession* session);
+ 
+   /**
+@@ -139,7 +140,9 @@ class AmSessionContainer : public AmThread
+    * post an event into the event queue of the identified dialog.
+    * @return false if session doesn't exist 
+    */
+-  bool postEvent(const string& callid, const string& remote_tag,
++  bool postEvent(const string& callid, 
++		 const string& remote_tag,
++		 const string& via_branch,
+ 		 AmEvent* event);
+ 
+   /**
+diff --git a/core/AmSipDialog.cpp b/core/AmSipDialog.cpp
+index 5a37e87..32aa05c 100644
+--- a/core/AmSipDialog.cpp
++++ b/core/AmSipDialog.cpp
+@@ -155,6 +155,7 @@ void AmSipDialog::updateStatus(const AmSipRequest& req)
+     remote_party = req.from;
+     local_party  = req.to;
+     route        = req.route;
++    first_branch = req.via_branch;
+   }
+ 
+   int cont = rel100OnRequestIn(req);
+diff --git a/core/AmSipDialog.h b/core/AmSipDialog.h
+index b94623a..78704f8 100644
+--- a/core/AmSipDialog.h
++++ b/core/AmSipDialog.h
+@@ -173,6 +173,8 @@ class AmSipDialog
+   string remote_tag;
+   string local_tag;
+ 
++  string first_branch;
++
+   string remote_party; // To/From
+   string local_party;  // To/From
+ 
+diff --git a/core/AmSipDispatcher.cpp b/core/AmSipDispatcher.cpp
+index 12f5435..6bb122a 100644
+--- a/core/AmSipDispatcher.cpp
++++ b/core/AmSipDispatcher.cpp
+@@ -92,7 +92,7 @@ void AmSipDispatcher::handleSipMsg(AmSipRequest &req)
+   }
+   else if(req.method == "CANCEL"){
+       
+-    if(ev_disp->postSipRequest(callid, remote_tag, req)){
++    if(ev_disp->postSipRequest(req)){
+       return;
+     }
+   
+diff --git a/core/AmSipMsg.h b/core/AmSipMsg.h
+index 48de296..a57e0f6 100644
+--- a/core/AmSipMsg.h
++++ b/core/AmSipMsg.h
+@@ -73,6 +73,7 @@ class AmSipRequest : public _AmSipMsgInDlg
+ 
+   string rack_method;
+   unsigned int rack_cseq;
++  string via_branch;
+ 
+  AmSipRequest() : _AmSipMsgInDlg() { }
+   ~AmSipRequest() { }
+diff --git a/core/SipCtrlInterface.cpp b/core/SipCtrlInterface.cpp
+index ee5c305..f11ed45 100644
+--- a/core/SipCtrlInterface.cpp
++++ b/core/SipCtrlInterface.cpp
+@@ -471,6 +471,7 @@ inline void SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
+     req.from_tag = c2stlstr(((sip_from_to*)msg->from->p)->tag);
+     req.to_tag   = c2stlstr(((sip_from_to*)msg->to->p)->tag);
+     req.cseq     = get_cseq(msg)->num;
++    req.via_branch = c2stlstr(msg->via_p1->branch);
+     req.body     = c2stlstr(msg->body);
+ 
+     if (msg->rack) {
+diff --git a/core/etc/sems.conf.sample b/core/etc/sems.conf.sample
+index 47673e1..3a845dc 100644
+--- a/core/etc/sems.conf.sample
++++ b/core/etc/sems.conf.sample
+@@ -476,6 +476,17 @@ use_default_signature=yes
+ #
+ #100rel=require
+ 
++#
++# accept forked dialogs on UAS side? [yes|no]
++#
++#  no - INVITE with existing callid+remote_tag is replied with 482.
++# yes - INVITE with existing callid+remote_tag+via_branch is replied with 482.
++#       Forked INVITEs (!= via-branch) are accepted. 
++#
++# Default: yes
++#
++#accept_forked_dialogs=no
++
+ # Make SIP authenticated requests sticky to the proxy? [yes | no]
+ #
+ # If enabled, host of request-URI of out-of-dialog requests that are 
+-- 
+1.7.10.4
+

@@ -1,0 +1,43 @@
+From 492f3df1dbdb2c9cbfa5752d2b7df8c82fa0f437 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 19 Apr 2012 18:01:20 +0200
+Subject: [PATCH] core: subscription: sendReqeust using 'SUBSCRIBE' directly
+
+---
+ core/AmSipSubscription.cpp |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/core/AmSipSubscription.cpp b/core/AmSipSubscription.cpp
+index f2dcf0a..97df422 100644
+--- a/core/AmSipSubscription.cpp
++++ b/core/AmSipSubscription.cpp
+@@ -142,7 +142,7 @@ bool AmSipSubscription::doSubscribe()
+     dlg.outbound_proxy = AmConfig::OutboundProxy;
+   }
+ 
+-  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
++  if (dlg.sendRequest(SIP_METH_SUBSCRIBE, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
+     WARN("failed to send subscription to '%s' (proxy '%s').\n",
+ 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
+     return false;
+@@ -162,7 +162,7 @@ bool AmSipSubscription::doSubscribe()
+ 
+ bool AmSipSubscription::reSubscribe() 
+ {
+-  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
++  if (dlg.sendRequest(SIP_METH_SUBSCRIBE, DLG_SENDREQ_EMPTY_BODY, getSubscribeHdrs()) < 0) {
+     WARN("failed to send subscription to '%s' (proxy '%s').\n",
+ 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
+     return false;
+@@ -190,7 +190,7 @@ bool AmSipSubscription::doUnsubscribe()
+   }
+   hdrs += SIP_HDR_COLSP(SIP_HDR_EXPIRES) "0" CRLF;
+ 
+-  if (dlg.sendRequest(req.method, DLG_SENDREQ_EMPTY_BODY, hdrs) < 0) {
++  if (dlg.sendRequest(SIP_METH_SUBSCRIBE, DLG_SENDREQ_EMPTY_BODY, hdrs) < 0) {
+     WARN("failed to send unsubscription to '%s' (proxy '%s').\n",
+ 	 dlg.remote_uri.c_str(), dlg.outbound_proxy.c_str());
+     return false;
+-- 
+1.7.10.4
+

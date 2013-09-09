@@ -1,0 +1,56 @@
+From 430f78aead88067094791a1613fa8c5373c4bbc7 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 7 Aug 2012 14:26:33 +0200
+Subject: [PATCH] b/f: User-Agent and Max-Forwards headers in authenticated
+ requests
+
+thanks to Jon Bonilla for reporting
+---
+ core/AmSipDialog.cpp |   16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/core/AmSipDialog.cpp b/core/AmSipDialog.cpp
+index 896868b..b093f37 100644
+--- a/core/AmSipDialog.cpp
++++ b/core/AmSipDialog.cpp
+@@ -1008,12 +1008,6 @@ int AmSipDialog::sendRequest(const string& method,
+ 			     int flags)
+ {
+   string msg,ser_cmd;
+-  string m_hdrs = hdrs;
+-
+-  if(hdl)
+-    hdl->onSendRequest(method,content_type,body,m_hdrs,flags,cseq);
+-
+-  rel100OnRequestOut(method, m_hdrs);
+ 
+   AmSipRequest req;
+ 
+@@ -1033,10 +1027,9 @@ int AmSipDialog::sendRequest(const string& method,
+     
+   if((method!="BYE")&&(method!="CANCEL"))
+     req.contact = getContactHdr();
++
++  req.hdrs = hdrs;
+     
+-  if(!m_hdrs.empty())
+-    req.hdrs = m_hdrs;
+-  
+   if (!(flags&SIP_FLAGS_VERBATIM)) {
+     // add Signature
+     if (AmConfig::Signature.length())
+@@ -1053,6 +1046,11 @@ int AmSipDialog::sendRequest(const string& method,
+     req.body = body;
+   }
+ 
++  if(hdl)
++    hdl->onSendRequest(method,content_type,body,req.hdrs,flags,cseq);
++
++  rel100OnRequestOut(method, req.hdrs);
++
+   if (SipCtrlInterface::send(req, next_hop_ip, next_hop_port,outbound_interface))
+     return -1;
+  
+-- 
+1.7.10.4
+

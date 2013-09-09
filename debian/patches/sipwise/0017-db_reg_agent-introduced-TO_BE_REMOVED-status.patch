@@ -1,0 +1,106 @@
+From fa0614f40be3216219679866f0cfba98d3453670 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 31 May 2011 13:41:59 +0200
+Subject: [PATCH] db_reg_agent: introduced TO_BE_REMOVED status
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp |   18 +++++++++++++++---
+ apps/db_reg_agent/DBRegAgent.h   |    2 ++
+ doc/Readme.db_reg_agent.txt      |   12 +++++++++++-
+ 3 files changed, 28 insertions(+), 4 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index 2993711..47c4e96 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -322,10 +322,22 @@ bool DBRegAgent::loadRegistrations() {
+ 	}; break;
+       case REG_STATUS_REMOVED:
+ 	{
+-	  DBG("ignoring removed registration %ld %s@%s",
+-	      subscriber_id,
++	  DBG("ignoring removed registration %ld %s@%s", subscriber_id,
+ 	      ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str());
+ 	} break;
++
++      case REG_STATUS_TO_BE_REMOVED:
++	{
++	  DBG("Scheduling Deregister of registration %ld %s@%s", subscriber_id,
++	      ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str());
++	  createRegistration(subscriber_id,
++			     (string)row[COLNAME_USER],
++			     (string)row[COLNAME_PASS],
++			     (string)row[COLNAME_REALM],
++			     contact_uri
++			     );
++	  scheduleDeregistration(subscriber_id);
++	};
+       }
+     }
+ 
+@@ -565,7 +577,7 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
+ 	  updateDBRegistration(ProcessorDBConnection,
+ 			       reg_action_ev->subscriber_id,
+ 			       480, "unable to send request",
+-			       true, REG_STATUS_FAILED);
++			       true, REG_STATUS_TO_BE_REMOVED);
+ 	  if (error_retry_interval) {
+ 	    // schedule register-refresh after error_retry_interval
+ 	    setRegistrationTimer(reg_action_ev->subscriber_id, error_retry_interval,
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index 92fde16..8fec10f 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -45,12 +45,14 @@ using std::queue;
+ #define REG_STATUS_ACTIVE        2
+ #define REG_STATUS_FAILED        3
+ #define REG_STATUS_REMOVED       4
++#define REG_STATUS_TO_BE_REMOVED 5
+ 
+ #define REG_STATUS_INACTIVE_S      "0"
+ #define REG_STATUS_PENDING_S       "1"
+ #define REG_STATUS_ACTIVE_S        "2"
+ #define REG_STATUS_FAILED_S        "3"
+ #define REG_STATUS_REMOVED_S       "4"
++#define REG_STATUS_TO_BE_REMOVED_S "5"
+ 
+ #define COLNAME_SUBSCRIBER_ID    "subscriber_id"
+ #define COLNAME_USER             "user"
+diff --git a/doc/Readme.db_reg_agent.txt b/doc/Readme.db_reg_agent.txt
+index b4a7b54..882996b 100644
+--- a/doc/Readme.db_reg_agent.txt
++++ b/doc/Readme.db_reg_agent.txt
+@@ -30,8 +30,12 @@ DI control functions
+  updateRegistration(int subscriber_id, string user, string pass, string realm [, string contact])
+  removeRegistration(int subscriber_id)
+ 
++In order to be restart-safe also when sending requests is delayed through ratelimiting,
++it is recommended to set the registration_status in the DB to 5
++(REG_STATUS_TO_BE_REMOVED) before calling removeRegistration.
++
+ After removing a registration by issuing removeRegistration, the subcriber entry will
+-be present with the status REMOVED. 
++be present with the status REMOVED, if delete_removed_registrations=no.
+ 
+ Registration status (registration_status column)
+ ------------------------------------------------
+@@ -40,6 +44,7 @@ Registration status (registration_status column)
+  REG_STATUS_ACTIVE        2
+  REG_STATUS_FAILED        3
+  REG_STATUS_REMOVED       4
++ REG_STATUS_TO_BE_REMOVED 5
+ 
+ Configuring contact
+ -------------------
+@@ -90,3 +95,8 @@ CREATE TABLE IF NOT EXISTS `subscribers` (
+   PRIMARY KEY (`subscriber_id`)
+ ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+ 
++
++Todo
++----
++o (optionally) create DB entries on DI functions
++o print WARN message when ratelimit is hit
+-- 
+1.7.10.4
+

@@ -1,0 +1,140 @@
+From aef6223c8608f99c6b8eba5e538bd0e265caab9b Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 24 Feb 2012 21:07:59 +0100
+Subject: [PATCH] dsm:mod_mysql: mysql.playDBAudioFront and
+ mysql.playDBAudioLooped actions
+
+---
+ apps/dsm/mods/mod_mysql/ModMysql.cpp |   43 +++++++++++++++++++++++++++-------
+ apps/dsm/mods/mod_mysql/ModMysql.h   |    2 ++
+ doc/dsm/mods/Readme.mod_mysql.txt    |   10 ++++++++
+ 3 files changed, 46 insertions(+), 9 deletions(-)
+
+diff --git a/apps/dsm/mods/mod_mysql/ModMysql.cpp b/apps/dsm/mods/mod_mysql/ModMysql.cpp
+index 6bec11d..2108a73 100644
+--- a/apps/dsm/mods/mod_mysql/ModMysql.cpp
++++ b/apps/dsm/mods/mod_mysql/ModMysql.cpp
+@@ -61,6 +61,8 @@ DSMAction* SCMysqlModule::getAction(const string& from_str) {
+   DEF_CMD("mysql.saveResult",         SCMySaveResultAction);
+   DEF_CMD("mysql.useResult",          SCMyUseResultAction);
+   DEF_CMD("mysql.playDBAudio",        SCMyPlayDBAudioAction);
++  DEF_CMD("mysql.playDBAudioFront",   SCMyPlayDBAudioFrontAction);
++  DEF_CMD("mysql.playDBAudioLooped",  SCMyPlayDBAudioLoopedAction);
+   DEF_CMD("mysql.getFileFromDB",      SCMyGetFileFromDBAction);
+   DEF_CMD("mysql.putFileToDB",        SCMyPutFileToDBAction);
+ 
+@@ -450,12 +452,14 @@ EXEC_ACTION_START(SCMyUseResultAction) {
+ } EXEC_ACTION_END;
+ 
+ 
+-CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
+-EXEC_ACTION_START(SCMyPlayDBAudioAction) {
++bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
++		 map<string,string>* event_params, const string& par1, const string& par2,
++		 bool looped, bool front) {
+   mysqlpp::Connection* conn = 
+     getMyDSMSessionConnection(sc_sess);
+-  if (NULL == conn) 
+-    return false;
++  if (NULL == conn)
++    EXEC_ACTION_STOP;
++
+   string qstr = replaceQueryParams(par1, sc_sess, event_params);
+ 
+   try {
+@@ -466,14 +470,14 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
+       mysqlpp::Row row = res.fetch_row();
+       if (!row) {
+ 	sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
+-	sc_sess->SET_STRERROR("result does not have row"); 
+-	return false;
++	sc_sess->SET_STRERROR("result does not have row");
++	EXEC_ACTION_STOP;
+       }
+       FILE *t_file = tmpfile();
+       if (NULL == t_file) {
+ 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+ 	sc_sess->SET_STRERROR("tmpfile() failed: "+string(strerror(errno)));
+-	return false;
++	EXEC_ACTION_STOP;
+       }
+ 
+       fwrite(row.at(0).data(), 1, row.at(0).size(), t_file);
+@@ -483,10 +487,12 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
+       if (a_file->fpopen(par2, AmAudioFile::Read, t_file)) {
+ 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+ 	sc_sess->SET_STRERROR("fpopen failed!");
+-	return false;
++	EXEC_ACTION_STOP;
+       }
+ 
+-      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL));
++      a_file->loop.set(looped);
++
++      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL), front);
+       sc_sess->transferOwnership(a_file);
+ 
+       sc_sess->CLR_ERRNO;    
+@@ -501,6 +507,25 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
+     sc_sess->SET_STRERROR(e.what());
+     sc_sess->var["db.ereason"] = e.what();
+   }
++  return false;
++}
++
++CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
++EXEC_ACTION_START(SCMyPlayDBAudioAction) {
++  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
++	      /*looped = */ false, /*front = */ false);
++} EXEC_ACTION_END;
++
++CONST_ACTION_2P(SCMyPlayDBAudioFrontAction, ',', true);
++EXEC_ACTION_START(SCMyPlayDBAudioFrontAction) {
++  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
++	      /*looped = */ false, /*front = */ true);
++} EXEC_ACTION_END;
++
++CONST_ACTION_2P(SCMyPlayDBAudioLoopedAction, ',', true);
++EXEC_ACTION_START(SCMyPlayDBAudioLoopedAction) {
++  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
++	      /*looped = */ true, /*front = */ false);
+ } EXEC_ACTION_END;
+ 
+ CONST_ACTION_2P(SCMyGetFileFromDBAction, ',', true);
+diff --git a/apps/dsm/mods/mod_mysql/ModMysql.h b/apps/dsm/mods/mod_mysql/ModMysql.h
+index 1c7e5d7..b93f8f2 100644
+--- a/apps/dsm/mods/mod_mysql/ModMysql.h
++++ b/apps/dsm/mods/mod_mysql/ModMysql.h
+@@ -88,6 +88,8 @@ DEF_SCCondition(MyConnectedCondition);
+ DEF_ACTION_1P(SCMySaveResultAction);
+ DEF_ACTION_1P(SCMyUseResultAction);
+ DEF_ACTION_2P(SCMyPlayDBAudioAction);
++DEF_ACTION_2P(SCMyPlayDBAudioFrontAction);
++DEF_ACTION_2P(SCMyPlayDBAudioLoopedAction);
+ DEF_ACTION_2P(SCMyGetFileFromDBAction);
+ DEF_ACTION_2P(SCMyPutFileToDBAction);
+ 
+diff --git a/doc/dsm/mods/Readme.mod_mysql.txt b/doc/dsm/mods/Readme.mod_mysql.txt
+index 8d4509b..9a52195 100644
+--- a/doc/dsm/mods/Readme.mod_mysql.txt
++++ b/doc/dsm/mods/Readme.mod_mysql.txt
+@@ -91,6 +91,16 @@ Actions:
+ 
+   filename is there to detect file type
+ 
++-- play a file from DB, looped 
++  mysql.playDBAudioLooped(string query, string filename)
++
++  filename is there to detect file type
++
++-- play a file from DB, at the front in the playlist 
++  mysql.playDBAudioFront(string query, string filename)
++
++  filename is there to detect file type
++
+ -- get a file from DB to local fs
+   mysql.getFileFromDB(string query, string filename)
+ 
+-- 
+1.7.10.4
+

@@ -5,11 +5,9 @@
 using std::string;
 
 #include "sip/trans_layer.h"
-#include "AmArg.h"
 
 /* enforce common naming in Req&Rpl */
 class _AmSipMsgInDlg
-  : public ArgObject
 {
  public:
   string       method;
@@ -75,7 +73,6 @@ class AmSipRequest : public _AmSipMsgInDlg
 
   string rack_method;
   unsigned int rack_cseq;
-  string via_branch;
 
  AmSipRequest() : _AmSipMsgInDlg() { }
   ~AmSipRequest() { }

@@ -33,7 +33,6 @@ SBC - feature-wishlist
 - fallback profile
  */
 #include "SBC.h"
-#include "ampi/SBCCallControlAPI.h"
 
 #include "log.h"
 #include "AmUtils.h"
@@ -47,8 +46,6 @@ SBC - feature-wishlist
 #include "HeaderFilter.h"
 #include "ParamReplacer.h"
 #include "SDPFilter.h"
-#include "SBCCallRegistry.h"
-#include "ReplacesMapper.h"
 
 using std::map;
 
@@ -290,9 +287,6 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
   } else if (method == "setRegexMap"){
     args.assertArrayFmt("u");
     setRegexMap(args,ret);
-  } else if (method == "postControlCmd"){
-    args.assertArrayFmt("ss"); // at least call-ltag, cmd
-    postControlCmd(args,ret);
   } else if(method == "_list"){ 
     ret.push(AmArg("listProfiles"));
     ret.push(AmArg("reloadProfiles"));
@@ -302,7 +296,6 @@ void SBCFactory::invoke(const string& method, const AmArg& args,
     ret.push(AmArg("setActiveProfile"));
     ret.push(AmArg("getRegexMapNames"));
     ret.push(AmArg("setRegexMap"));
-    ret.push(AmArg("postControlCmd"));
   }  else
     throw AmDynInvoke::NotImplemented(method);
 }
@@ -486,22 +479,6 @@ void SBCFactory::setRegexMap(const AmArg& args, AmArg& ret) {
   ret.push("OK");
 }
 
-void SBCFactory::postControlCmd(const AmArg& args, AmArg& ret) {
-  SBCControlEvent* evt;
-  if (args.size()<3) {
-    evt = new SBCControlEvent(args[1].asCStr());
-  } else {
-    evt = new SBCControlEvent(args[1].asCStr(), args[2]);
-  }
-  if (!AmSessionContainer::instance()->postEvent(args[0].asCStr(), evt)) {
-    ret.push(404);
-    ret.push("Not found");
-  } else {
-    ret.push(202);
-    ret.push("Accepted");
-  }
-}
-
 SBCDialog::SBCDialog(const SBCCallProfile& call_profile)
   : m_state(BB_Init),
     prepaid_acc(NULL),
@@ -515,7 +492,6 @@ SBCDialog::SBCDialog(const SBCCallProfile& call_profile)
 
 SBCDialog::~SBCDialog()
 {
-  SBCCallRegistry::removeCall(dlg.local_tag);
 }
 
 void SBCDialog::onInvite(const AmSipRequest& req)
@@ -642,15 +618,6 @@ void SBCDialog::onInvite(const AmSipRequest& req)
       replaceParameters(call_profile.auth_credentials.pwd, "auth_pwd", REPLACE_VALS);
   }
 
-  if (call_profile.uas_auth_bleg_enabled) {
-    call_profile.uas_auth_bleg_credentials.realm =
-      replaceParameters(call_profile.uas_auth_bleg_credentials.realm, "uas_auth_bleg_realm", REPLACE_VALS);
-    call_profile.uas_auth_bleg_credentials.user =
-      replaceParameters(call_profile.uas_auth_bleg_credentials.user, "uas_auth_bleg_user", REPLACE_VALS);
-    call_profile.uas_auth_bleg_credentials.pwd =
-      replaceParameters(call_profile.uas_auth_bleg_credentials.pwd, "uas_auth_bleg_pwd", REPLACE_VALS);
-  }
-
   if (!call_profile.outbound_interface.empty()) {
     call_profile.outbound_interface = 
       replaceParameters(call_profile.outbound_interface, "outbound_interface",
@@ -730,15 +697,6 @@ void SBCDialog::onInvite(const AmSipRequest& req)
     }
   }
 
-  call_profile.fix_replaces_inv =
-      replaceParameters(call_profile.fix_replaces_inv, "fix_replaces_inv", REPLACE_VALS);
-  call_profile.fix_replaces_ref =
-      replaceParameters(call_profile.fix_replaces_ref, "fix_replaces_ref", REPLACE_VALS);
-
-  if (call_profile.fix_replaces_inv == "yes") {
-    fixReplaces(invite_req, true);
-  }
-
 #undef REPLACE_VALS
 
   DBG("SBC: connecting to '%s'\n",ruri.c_str());
@@ -787,41 +745,17 @@ void SBCDialog::process(AmEvent* ev)
     }
   }
 
-  SBCControlEvent* ctl_event;
-  if (ev->event_id == SBCControlEvent_ID &&
-      (ctl_event = dynamic_cast<SBCControlEvent*>(ev)) != NULL) {
-    onControlCmd(ctl_event->cmd, ctl_event->params);
-    return;
-  }
-
   AmB2BCallerSession::process(ev);
 }
 
-void SBCDialog::onControlCmd(string& cmd, AmArg& params) {
-  if (cmd == "teardown") {
-    DBG("teardown requested from control cmd\n");
-    stopCall();
-    return;
-  }
-  DBG("ignoring unknown control cmd : '%s'\n", cmd.c_str());
-}
-
 int SBCDialog::relayEvent(AmEvent* ev) {
-  if (ev->event_id == B2BSipRequest) {
-
+  if ((call_profile.headerfilter != Transparent) &&
+      (ev->event_id == B2BSipRequest)) {
+    // header filter
     B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
-      assert(req_ev);
-
-    if (call_profile.headerfilter != Transparent) {
-      inplaceHeaderFilter(req_ev->req.hdrs,
-			  call_profile.headerfilter_list, call_profile.headerfilter);
-    }
-
-    if (req_ev->req.method == SIP_METH_REFER &&
-	call_profile.fix_replaces_ref == "yes") {
-      fixReplaces(req_ev->req, false);
-    }
-
+    assert(req_ev);
+    inplaceHeaderFilter(req_ev->req.hdrs,
+			call_profile.headerfilter_list, call_profile.headerfilter);
   } else {
     if (ev->event_id == B2BSipReply) {
       if ((call_profile.headerfilter != Transparent) ||
@@ -885,11 +819,6 @@ void SBCDialog::onSipRequest(const AmSipRequest& req) {
       dlg.reply(req, 405, "Method Not Allowed", "", "", "", SIP_FLAGS_VERBATIM);
       return;
     }
-  }
-
-  if (fwd && req.method == SIP_METH_INVITE) {
-      DBG("replying 100 Trying of INVITE msg to be fwd'ed\n");
-      dlg.reply(req, 100, SIP_REPLY_TRYING);
   }
 
   AmB2BCallerSession::onSipRequest(req);
@@ -1078,18 +1007,6 @@ void SBCDialog::createCalleeSession()
     }
   }
 
-  if (call_profile.uas_auth_bleg_enabled) {
-    AmDynInvokeFactory* fact = AmPlugIn::instance()->getFactory4Di("uac_auth");
-    if (NULL != fact) {
-      AmDynInvoke* di_inst = fact->getInstance();
-      if(NULL != di_inst) {
-	callee_session->setAuthDI(di_inst);
-      }
-    } else {
-      ERROR("B-leg UAS auth enabled (uas_auth_bleg_enabled), but uac_auth module not loaded!\n");
-    }
-  }
-
   if (call_profile.sst_enabled) {
     AmSessionEventHandler* h = SBCFactory::session_timer_fact->getHandler(callee_session);
     if(!h) {
@@ -1166,11 +1083,6 @@ void SBCDialog::createCalleeSession()
     throw;
   }
 
-  // A->B
-  SBCCallRegistry::addCall(dlg.local_tag, SBCCallRegistryEntry(callee_dlg.callid, callee_dlg.local_tag, ""));
-  // B->A
-  SBCCallRegistry::addCall(callee_dlg.local_tag, SBCCallRegistryEntry(dlg.callid, dlg.local_tag, dlg.remote_tag));
-
   callee_session->start();
   
   AmSessionContainer* sess_cont = AmSessionContainer::instance();
@@ -1179,7 +1091,7 @@ void SBCDialog::createCalleeSession()
 
 SBCCalleeSession::SBCCalleeSession(const AmB2BCallerSession* caller,
 				   const SBCCallProfile& call_profile) 
-  : auth(NULL),auth_di(NULL),
+  : auth(NULL),
     call_profile(call_profile),
     AmB2BCalleeSession(caller)
 {
@@ -1194,8 +1106,6 @@ SBCCalleeSession::SBCCalleeSession(const AmB2BCallerSession* caller,
 SBCCalleeSession::~SBCCalleeSession() {
   if (auth) 
     delete auth;
-
-  SBCCallRegistry::removeCall(dlg.local_tag);
 }
 
 inline UACAuthCred* SBCCalleeSession::getCredentials() {
@@ -1203,21 +1113,13 @@ inline UACAuthCred* SBCCalleeSession::getCredentials() {
 }
 
 int SBCCalleeSession::relayEvent(AmEvent* ev) {
-  if (ev->event_id == B2BSipRequest) {
-
+  if ((call_profile.headerfilter != Transparent) &&
+      (ev->event_id == B2BSipRequest)) {
+    // header filter
     B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
-      assert(req_ev);
-
-    if (call_profile.headerfilter != Transparent) {
-      inplaceHeaderFilter(req_ev->req.hdrs,
-			  call_profile.headerfilter_list, call_profile.headerfilter);
-    }
-
-    if (req_ev->req.method == SIP_METH_REFER &&
-	call_profile.fix_replaces_ref == "yes") {
-      fixReplaces(req_ev->req, false);
-    }
-
+    assert(req_ev);
+    inplaceHeaderFilter(req_ev->req.hdrs,
+			call_profile.headerfilter_list, call_profile.headerfilter);
   } else {
     if (ev->event_id == B2BSipReply) {
       if ((call_profile.headerfilter != Transparent) ||
@@ -1248,17 +1150,6 @@ int SBCCalleeSession::relayEvent(AmEvent* ev) {
   return AmB2BCalleeSession::relayEvent(ev);
 }
 
-void SBCCalleeSession::process(AmEvent* ev) {
-  SBCControlEvent* ctl_event;
-  if (ev->event_id == SBCControlEvent_ID &&
-      (ctl_event = dynamic_cast<SBCControlEvent*>(ev)) != NULL) {
-    onControlCmd(ctl_event->cmd, ctl_event->params);
-    return;
-  }
-
-  AmB2BCalleeSession::process(ev);
-}
-
 void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
   // AmB2BSession does not call AmSession::onSipRequest for 
   // forwarded requests - so lets call event handlers here
@@ -1282,45 +1173,6 @@ void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
     }
   }
 
-  if (call_profile.uas_auth_bleg_enabled && NULL != auth_di) {
-    AmArg di_args, di_ret;
-    try {
-      DBG("Auth: checking authentication\n");
-      di_args.push((ArgObject*)&req);
-      di_args.push(call_profile.uas_auth_bleg_credentials.realm);
-      di_args.push(call_profile.uas_auth_bleg_credentials.user);
-      di_args.push(call_profile.uas_auth_bleg_credentials.pwd);
-      auth_di->invoke("checkAuth", di_args, di_ret);
-
-      if (di_ret.size() >= 3) {
-	if (di_ret[0].asInt() != 200) {
-	  DBG("Auth: replying %u %s - hdrs: '%s'\n",
-	      di_ret[0].asInt(), di_ret[1].asCStr(), di_ret[2].asCStr());
-	  dlg.reply(req, di_ret[0].asInt(), di_ret[1].asCStr(), "", "", di_ret[2].asCStr());
-	  return;
-	} else {
-	  DBG("Successfully authenticated request.\n");
-	}
-      } else {
-	ERROR("internal: no proper result from checkAuth: '%s'\n", AmArg::print(di_ret).c_str());
-      }
-
-    } catch (const AmDynInvoke::NotImplemented& ni) {
-      ERROR("not implemented DI function 'checkAuth'\n");
-    } catch (const AmArg::OutOfBoundsException& oob) {
-      ERROR("out of bounds in  DI call 'checkAuth'\n");
-    } catch (const AmArg::TypeMismatchException& oob) {
-      ERROR("type mismatch  in  DI call checkAuth\n");
-    } catch (...) {
-      ERROR("unexpected Exception  in  DI call checkAuth\n");
-    }
-  }
-
-  if (fwd) {
-      DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
-      dlg.reply(req, 100, SIP_REPLY_TRYING);
-  }
-
   AmB2BCalleeSession::onSipRequest(req);
 }
 
@@ -1332,25 +1184,18 @@ void SBCCalleeSession::onSipReply(const AmSipReply& reply, int old_dlg_status,
   bool fwd = t != relayed_req.end();
   DBG("onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
   DBG("onSipReply: content-type = %s\n",reply.content_type.c_str());
-
   if(fwd) {
     CALL_EVENT_H(onSipReply,reply, old_dlg_status, trans_method);
   }
 
-  // update call registry (unfortunately has to be done always -
-  // not possible to determine if learned in this reply)
-  if (!dlg.remote_tag.empty() && reply.code >= 200 && trans_method == SIP_METH_INVITE) {
-    SBCCallRegistry::updateCall(other_id, dlg.remote_tag);
-  }
-
-  if (NULL == auth) {
+  if (NULL == auth) {    
     AmB2BCalleeSession::onSipReply(reply,old_dlg_status, trans_method);
     return;
   }
   
   unsigned int cseq_before = dlg.cseq;
   if (!auth->onSipReply(reply, old_dlg_status, trans_method)) {
-    AmB2BCalleeSession::onSipReply(reply, old_dlg_status, trans_method);
+      AmB2BCalleeSession::onSipReply(reply, old_dlg_status, trans_method);
   } else {
     if (cseq_before != dlg.cseq) {
       DBG("uac_auth consumed reply with cseq %d and resent with cseq %d; "
@@ -1376,15 +1221,6 @@ void SBCCalleeSession::onSendRequest(const string& method, const string& content
   
   AmB2BCalleeSession::onSendRequest(method, content_type,
 				     body, hdrs, flags, cseq);
-}
-
-void SBCCalleeSession::onControlCmd(string& cmd, AmArg& params) {
-  if (cmd == "teardown") {
-    DBG("relaying teardown control cmd to A leg\n");
-    relayEvent(new SBCControlEvent(cmd, params));
-    return;
-  }
-  DBG("ignoring unknown control cmd : '%s'\n", cmd.c_str());
 }
 
 int SBCCalleeSession::filterBody(AmSdp& sdp, bool is_a2b) {

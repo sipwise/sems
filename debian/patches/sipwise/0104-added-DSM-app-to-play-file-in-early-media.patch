@@ -1,0 +1,132 @@
+From 9ef3648f15a7a54dc28dfb9a15c70255a6c741c3 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 29 May 2012 18:46:49 +0200
+Subject: [PATCH] added DSM app to play file in early media
+
+--
+-- This DSM app
+--   o plays early media from a file in the DB
+--   o replies with final reply code/reason from P-App-Param
+--
+-- Parameters (P-App-Param):
+--    audio_id   - indicating audio file in DB; must be wav 16 bit pcm format (with wav header)
+--    fr_code    - final reply code
+--    fr_reason  - final reply reason
+--
+--  Example: P-App-Param: audio_id=rbt;fr_code=404;fr_reason="Not found"
+
+DB table is provisioning.audio_files, select by id, e.g.
++-------+-------------+------+-----+---------+-------+
+| Field | Type        | Null | Key | Default | Extra |
++-------+-------------+------+-----+---------+-------+
+| id    | varchar(20) | YES  |     | NULL    |       |
+| data  | mediumblob  | YES  |     | NULL    |       |
++-------+-------------+------+-----+---------+-------+
+---
+ apps/early_dbprompt/early_dbprompt.dsm      |   65 +++++++++++++++++++++++++++
+ apps/early_dbprompt/etc/early_dbprompt.conf |   20 +++++++++
+ 2 files changed, 85 insertions(+)
+ create mode 100644 apps/early_dbprompt/early_dbprompt.dsm
+ create mode 100644 apps/early_dbprompt/etc/early_dbprompt.conf
+
+diff --git a/apps/early_dbprompt/early_dbprompt.dsm b/apps/early_dbprompt/early_dbprompt.dsm
+new file mode 100644
+index 0000000..bd383f7
+--- /dev/null
++++ b/apps/early_dbprompt/early_dbprompt.dsm
+@@ -0,0 +1,65 @@
++--
++-- This DSM app 
++--   o plays early media from a file in the DB
++--   o replies with final reply code/reason from P-App-Param
++--
++-- Parameters (P-App-Param):
++--    audio_id   - indicating audio file in DB; must be wav 16 bit pcm format (with wav header)
++--    fr_code    - final reply code
++--    fr_reason  - final reply reason
++--
++--  Example: P-App-Param: audio_id=rbt;fr_code=404;fr_reason="Not found"
++
++import(mod_utils);
++import(mod_dlg);
++import(mod_mysql);
++
++initial state START;
++
++transition "DB exception" START - exception / {
++  log(1, "Error in initializing :");
++  logAll(1);
++
++  -- reply with fr_code/reason immediately 
++  dlg.reply($fr_code, $fr_reason);
++
++  -- alternatively, reply with 500:
++  -- dlg.reply(500, "Server Internal Error");
++  stop(false);
++} -> END;
++
++transition "invite" START - invite / {
++  if test($audio_id != "") {
++    mysql.connect();
++    throwOnError();
++    -- play waiting file from DB
++    mysql.playDBAudio(SELECT data FROM provisioning.audio_files WHERE id="$audio_id", rbt.wav);
++    throwOnError();
++    mysql.disconnect();
++  }
++
++  -- send 183 with early media
++  dlg.acceptInvite(183, "Progress");
++
++  -- no default 200 OK
++  set($connect_session=0);
++
++  -- start RTP processing 
++  connectMedia();
++} -> WAITING;
++
++state WAITING;
++
++transition "CANCEL received" WAITING - hangup / {
++  dlg.reply(487, "Request Terminated");
++  removeTimers();
++  stop(false);
++} -> END;
++
++transition "end of prompt" WAITING - noAudio / {
++  dlg.reply($fr_code, $fr_reason);
++  removeTimers();
++  stop(false);
++} -> END;
++
++state END;
+\ No newline at end of file
+diff --git a/apps/early_dbprompt/etc/early_dbprompt.conf b/apps/early_dbprompt/etc/early_dbprompt.conf
+new file mode 100644
+index 0000000..eb0c581
+--- /dev/null
++++ b/apps/early_dbprompt/etc/early_dbprompt.conf
+@@ -0,0 +1,20 @@
++
++# configuration for early_dbprompt app
++
++# DSM configuration
++diag_path=/usr/lib/sems/early_dbprompt 
++mod_path=/usr/lib/sems/plug-in/
++load_diags=early_dbprompt
++register_apps=early_dbprompt
++run_invite_event=yes
++set_param_variables=yes
++
++# application configuration:
++
++# database connection:
++db_url="mysql://root:frafos@localhost/provisioning"
++
++
++# local testing:
++#diag_path=../apps/early_dbprompt
++#mod_path=../apps/dsm/mods/lib
+-- 
+1.7.10.4
+

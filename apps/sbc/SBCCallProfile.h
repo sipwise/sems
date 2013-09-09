@@ -68,17 +68,11 @@ struct SBCCallProfile {
   FilterType sdpfilter;
   set<string> sdpfilter_list;
 
-  string fix_replaces_inv;
-  string fix_replaces_ref;
-
   bool sst_enabled;
   bool use_global_sst_config;
 
   bool auth_enabled;
   UACAuthCred auth_credentials;
-
-  bool uas_auth_bleg_enabled;
-  UACAuthCred uas_auth_bleg_credentials;
 
   bool call_timer_enabled;
   string call_timer;

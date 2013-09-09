@@ -61,8 +61,6 @@ DSMAction* SCMysqlModule::getAction(const string& from_str) {
   DEF_CMD("mysql.saveResult",         SCMySaveResultAction);
   DEF_CMD("mysql.useResult",          SCMyUseResultAction);
   DEF_CMD("mysql.playDBAudio",        SCMyPlayDBAudioAction);
-  DEF_CMD("mysql.playDBAudioFront",   SCMyPlayDBAudioFrontAction);
-  DEF_CMD("mysql.playDBAudioLooped",  SCMyPlayDBAudioLoopedAction);
   DEF_CMD("mysql.getFileFromDB",      SCMyGetFileFromDBAction);
   DEF_CMD("mysql.putFileToDB",        SCMyPutFileToDBAction);
 
@@ -452,14 +450,12 @@ EXEC_ACTION_START(SCMyUseResultAction) {
 } EXEC_ACTION_END;
 
 
-bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
-		 map<string,string>* event_params, const string& par1, const string& par2,
-		 bool looped, bool front) {
+CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
+EXEC_ACTION_START(SCMyPlayDBAudioAction) {
   mysqlpp::Connection* conn = 
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn)
-    EXEC_ACTION_STOP;
-
+  if (NULL == conn) 
+    return false;
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
 
   try {
@@ -470,14 +466,14 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
       mysqlpp::Row row = res.fetch_row();
       if (!row) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
-	sc_sess->SET_STRERROR("result does not have row");
-	EXEC_ACTION_STOP;
+	sc_sess->SET_STRERROR("result does not have row"); 
+	return false;
       }
       FILE *t_file = tmpfile();
       if (NULL == t_file) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
 	sc_sess->SET_STRERROR("tmpfile() failed: "+string(strerror(errno)));
-	EXEC_ACTION_STOP;
+	return false;
       }
 
       fwrite(row.at(0).data(), 1, row.at(0).size(), t_file);
@@ -487,12 +483,10 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
       if (a_file->fpopen(par2, AmAudioFile::Read, t_file)) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
 	sc_sess->SET_STRERROR("fpopen failed!");
-	EXEC_ACTION_STOP;
+	return false;
       }
 
-      a_file->loop.set(looped);
-
-      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL), front);
+      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL));
       sc_sess->transferOwnership(a_file);
 
       sc_sess->CLR_ERRNO;    
@@ -507,25 +501,6 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
-  return false;
-}
-
-CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
-EXEC_ACTION_START(SCMyPlayDBAudioAction) {
-  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
-	      /*looped = */ false, /*front = */ false);
-} EXEC_ACTION_END;
-
-CONST_ACTION_2P(SCMyPlayDBAudioFrontAction, ',', true);
-EXEC_ACTION_START(SCMyPlayDBAudioFrontAction) {
-  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
-	      /*looped = */ false, /*front = */ true);
-} EXEC_ACTION_END;
-
-CONST_ACTION_2P(SCMyPlayDBAudioLoopedAction, ',', true);
-EXEC_ACTION_START(SCMyPlayDBAudioLoopedAction) {
-  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
-	      /*looped = */ true, /*front = */ false);
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCMyGetFileFromDBAction, ',', true);

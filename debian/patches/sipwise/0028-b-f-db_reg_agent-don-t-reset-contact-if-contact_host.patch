@@ -1,0 +1,42 @@
+From a94de00b66459ddcb8dc8e691b184115503bb85e Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 11 Aug 2011 16:45:18 +0200
+Subject: [PATCH] b/f: db_reg_agent: don't reset contact if contact_hostport
+ specified
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp |   11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index d56fc17..8d91710 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -454,7 +454,8 @@ void DBRegAgent::updateRegistration(long subscriber_id,
+   }
+ 
+   bool need_reregister = it->second->getInfo().domain != realm
+-    || it->second->getInfo().user != user;
++    || it->second->getInfo().user != user
++    || it->second->getInfo().contact != contact;
+ 
+   string old_realm = it->second->getInfo().domain;
+   string old_user = it->second->getInfo().user;
+@@ -1065,7 +1066,13 @@ void DBRegAgent::DIupdateRegistration(int subscriber_id, const string& user,
+       subscriber_id, user.c_str(),
+       pass.c_str(), realm.c_str());
+ 
+-  updateRegistration(subscriber_id, user, pass, realm, contact);
++  string contact_uri = contact;
++  if (contact_uri.empty() && !contact_hostport.empty()) {
++    contact_uri = "sip:"+ user + "@" + contact_hostport;
++  }
++
++  updateRegistration(subscriber_id, user, pass, realm, contact_uri);
++
+   ret.push(200);
+   ret.push("OK");
+ }
+-- 
+1.7.10.4
+

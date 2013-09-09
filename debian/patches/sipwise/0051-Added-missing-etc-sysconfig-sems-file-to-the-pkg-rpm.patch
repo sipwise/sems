@@ -1,0 +1,21 @@
+From ff35bf841f54d82adbbacaf7391360150567a5b6 Mon Sep 17 00:00:00 2001
+From: Peter Lemenkov <lemenkov@gmail.com>
+Date: Sat, 5 May 2012 12:50:33 +0400
+Subject: [PATCH] Added missing /etc/sysconfig/sems file to the pkg/rpm
+
+Signed-off-by: Peter Lemenkov <lemenkov@gmail.com>
+---
+ pkg/rpm/sems.sysconfig |    1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pkg/rpm/sems.sysconfig
+
+diff --git a/pkg/rpm/sems.sysconfig b/pkg/rpm/sems.sysconfig
+new file mode 100644
+index 0000000..9186ef7
+--- /dev/null
++++ b/pkg/rpm/sems.sysconfig
+@@ -0,0 +1 @@
++OPTIONS=""
+-- 
+1.7.10.4
+

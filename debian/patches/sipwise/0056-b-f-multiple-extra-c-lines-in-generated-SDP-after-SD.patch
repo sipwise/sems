@@ -1,0 +1,61 @@
+From b35e23f33a6fec44bb4d7effeb6684341d4dace7 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 7 Aug 2012 13:20:08 +0200
+Subject: [PATCH] b/f: multiple extra c-lines in generated SDP after SDP
+ filter (fixes #132)
+
+corresponds to fix in master 12f56bd35
+---
+ core/AmSdp.cpp |   17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/core/AmSdp.cpp b/core/AmSdp.cpp
+index 86fb878..90168cd 100644
+--- a/core/AmSdp.cpp
++++ b/core/AmSdp.cpp
+@@ -207,19 +207,18 @@ void AmSdp::print(string& body) const
+ 
+   for(std::vector<SdpMedia>::const_iterator media_it = media.begin();
+       media_it != media.end(); media_it++) {
+-      
++
+       out_buf += "m=" + media_t_2_str(media_it->type) + " " + int2str(media_it->port) + " " + transport_p_2_str(media_it->transport);
+ 
++      string options;
++
+       if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPSAVP) {
+-	string options;
++
+ 	for(std::vector<SdpPayload>::const_iterator pl_it = media_it->payloads.begin();
+ 	    pl_it != media_it->payloads.end(); pl_it++) {
+ 
+ 	  out_buf += " " + int2str(pl_it->payload_type);
+ 
+-	  if (!media_it->conn.address.empty())
+-	    options += "c=IN IP4 "+media_it->conn.address+"\r\n";
+-
+ 	  if (pl_it->encoding_name.empty()) // don't add rtpmap if no encoding name given
+ 	    continue;
+ 
+@@ -241,12 +240,16 @@ void AmSdp::print(string& body) const
+ 	  
+ 	}
+ 
+-	out_buf += "\r\n" + options;
+ 
+       } else {
+ 	// for other transports (UDP/UDPTL) just print out fmt
+-	out_buf += " " + media_it->fmt + "\r\n";
++	out_buf += " " + media_it->fmt;
++	// ... and continue with c=, attributes, ...
+       }
++      if (!media_it->conn.address.empty())
++	out_buf += "\r\nc=IN IP4 "+media_it->conn.address;
++
++      out_buf += "\r\n" + options;
+ 
+       // add attributes (media level)
+       for (std::vector<SdpAttribute>::const_iterator a_it=
+-- 
+1.7.10.4
+

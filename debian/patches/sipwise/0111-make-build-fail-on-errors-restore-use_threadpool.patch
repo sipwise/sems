@@ -1,0 +1,53 @@
+From 1bc63b19e22d34a9ad1b76bb51193a0d93c77654 Mon Sep 17 00:00:00 2001
+From: Andrew Pogrebennyk <apogrebennyk@sipwise.com>
+Date: Tue, 5 Mar 2013 11:49:27 +0100
+Subject: [PATCH] make build fail on errors; restore use_threadpool
+
+---
+ Makefile      |    4 ++--
+ Makefile.defs |    4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 1d02340..a5cecf0 100644
+--- a/Makefile
++++ b/Makefile
+@@ -23,11 +23,11 @@ clean:
+ 
+ .PHONY: modules
+ modules:
+-	-@for r in $(subdirs) "" ; do \
++	@for r in $(subdirs) "" ; do \
+ 		if [ -n "$$r" ]; then \
+ 			echo  "" ; \
+ 			echo  "making $$r" ; \
+-			$(MAKE) -C $$r all; \
++			$(MAKE) -C $$r all || exit 1; \
+ 		fi ; \
+ 	done 
+ 
+diff --git a/Makefile.defs b/Makefile.defs
+index 9379c0f..24b9091 100644
+--- a/Makefile.defs
++++ b/Makefile.defs
+@@ -21,7 +21,7 @@ endif
+ #version number
+ VERSION = 1
+ PATCHLEVEL = 4
+-SUBLEVEL = 3
++SUBLEVEL = 3 
+ 
+ ifneq ($(SCM_REV),)
+ RELEASE = $(SCM_REV)
+@@ -50,7 +50,7 @@ CPPFLAGS += -D_DEBUG \
+ #      if compiled without thread pool support, every
+ #      session will have its own thread.
+ #
+-#USE_THREADPOOL = yes
++USE_THREADPOOL = yes
+ 
+ # compile with spandsp DTMF detection? see soft-switch.org
+ #   this needs a fairly new version of spandsp - tested with 0.0.4pre11
+-- 
+1.7.10.4
+

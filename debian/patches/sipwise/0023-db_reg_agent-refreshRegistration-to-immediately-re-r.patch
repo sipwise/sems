@@ -1,0 +1,73 @@
+From 398fce127c200a2fc334735c1dab3f178bb2efa2 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 19 Jul 2011 19:09:03 +0200
+Subject: [PATCH] db_reg_agent: refreshRegistration to immediately re-register
+
+---
+ apps/db_reg_agent/DBRegAgent.cpp |   14 +++++++++++++-
+ apps/db_reg_agent/DBRegAgent.h   |    1 +
+ doc/Readme.db_reg_agent.txt      |    1 +
+ 3 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.cpp b/apps/db_reg_agent/DBRegAgent.cpp
+index 167b5d0..8a35c7d 100644
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -1021,6 +1021,14 @@ void DBRegAgent::DIremoveRegistration(int subscriber_id, AmArg& ret) {
+   ret.push("OK");
+ }
+ 
++void DBRegAgent::DIrefreshRegistration(int subscriber_id, AmArg& ret) {
++  DBG("DI method: refreshRegistration(%i)\n", subscriber_id);
++  scheduleRegistration(subscriber_id);
++
++  ret.push(200);
++  ret.push("OK");
++}
++
+ // ///////// DI API ///////////////////
+ 
+ void DBRegAgent::invoke(const string& method,
+@@ -1049,10 +1057,14 @@ void DBRegAgent::invoke(const string& method,
+   } else if (method == "removeRegistration"){
+     args.assertArrayFmt("i"); // subscriber_id
+     DIremoveRegistration(args.get(0).asInt(), ret);
+-  } else if(method == "_list"){ 
++  } else if (method == "refreshRegistration"){
++    args.assertArrayFmt("i"); // subscriber_id
++    DIrefreshRegistration(args.get(0).asInt(), ret);
++  }  else if(method == "_list"){
+     ret.push(AmArg("createRegistration"));
+     ret.push(AmArg("updateRegistration"));
+     ret.push(AmArg("removeRegistration"));
++    ret.push(AmArg("refreshRegistration"));
+   }  else
+     throw AmDynInvoke::NotImplemented(method);
+ }
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index 47c1046..7fa42da 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -234,6 +234,7 @@ class DBRegAgent
+ 			    const string& pass, const string& realm,
+ 			    const string& contact, AmArg& ret);
+   void DIremoveRegistration(int subscriber_id, AmArg& ret);
++  void DIrefreshRegistration(int subscriber_id, AmArg& ret);
+ 
+ 
+  public:
+diff --git a/doc/Readme.db_reg_agent.txt b/doc/Readme.db_reg_agent.txt
+index 882996b..6817075 100644
+--- a/doc/Readme.db_reg_agent.txt
++++ b/doc/Readme.db_reg_agent.txt
+@@ -28,6 +28,7 @@ DI control functions
+ 
+  createRegistration(int subscriber_id, string user, string pass, string realm [, string contact])
+  updateRegistration(int subscriber_id, string user, string pass, string realm [, string contact])
++ refreshRegistration(int subscriber_id)
+  removeRegistration(int subscriber_id)
+ 
+ In order to be restart-safe also when sending requests is delayed through ratelimiting,
+-- 
+1.7.10.4
+

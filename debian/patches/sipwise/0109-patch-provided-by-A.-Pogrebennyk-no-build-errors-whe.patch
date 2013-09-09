@@ -1,0 +1,58 @@
+From d4054b48cf64020a0b3d28a49ca692281b316ff5 Mon Sep 17 00:00:00 2001
+From: Vladimir Broz <vladimir.broz@frafos.com>
+Date: Mon, 4 Mar 2013 19:58:19 +0100
+Subject: [PATCH] patch provided by A. Pogrebennyk - no build errors when
+ using CI system
+
+was:  082f06f5 ... and not installing default config files
+
+Note: proper targets should be used (e.g. install-bin) if only
+      binaries should be installed, or alternatively the pkg script should
+      remove installed cfg files afterwards. install target
+      installs the complete package
+---
+ apps/Makefile                    |    6 +++---
+ core/plug-in/Makefile.app_module |    4 ++--
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/apps/Makefile b/apps/Makefile
+index 394a78f..80196de 100644
+--- a/apps/Makefile
++++ b/apps/Makefile
+@@ -58,11 +58,11 @@ clean:
+ 
+ .PHONY: modules
+ modules:
+-	-@for r in $(app_modules) "" ; do \
+-		if [ -n "$$r" ]; then \
++	@for r in $(app_modules) "" ; do \
++		if [ -n "$$r" -a -f "$$r"/Makefile ]; then \
+ 			echo  "" ; \
+ 			echo  "" ; \
+-			COREPATH=../$(COREPATH) $(MAKE) -C $$r all; \
++			COREPATH=../$(COREPATH) $(MAKE) -C $$r all || exit 1; \
+ 		fi ; \
+ 	done 
+ 
+diff --git a/core/plug-in/Makefile.app_module b/core/plug-in/Makefile.app_module
+index ad8587d..03c3ff9 100644
+--- a/core/plug-in/Makefile.app_module
++++ b/core/plug-in/Makefile.app_module
+@@ -27,12 +27,12 @@ depends  = $(srcs:.cpp=.d)
+ 
+ .PHONY: all
+ all: $(extra_target)
+-	-@$(MAKE) deps    && \
++	@$(MAKE) deps    && \
+ 	  $(MAKE) $(lib_full_name)
+ 
+ .PHONY: module_package
+ module_package: $(extra_target)
+-	-@$(MAKE) deps    && \
++	@$(MAKE) deps    && \
+ 	  $(MAKE) $(lib_name)
+ 
+ 
+-- 
+1.7.10.4
+

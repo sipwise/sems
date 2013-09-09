@@ -1,0 +1,110 @@
+From ec95bd97ae2f57754ef452bfb041e92d9b9bf4dd Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Sun, 15 Apr 2012 21:02:51 +0200
+Subject: [PATCH] DSM: functions for tracking/garbage collecting avar objects
+
+---
+ apps/dsm/DSMCoreModule.cpp |   50 ++++++++++++++++++++++++++++++++++++++++++++
+ apps/dsm/DSMCoreModule.h   |    4 ++++
+ doc/dsm/dsm_syntax.txt     |    5 +++++
+ 3 files changed, 59 insertions(+)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index ae34ac4..c7ea2ce 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -123,6 +123,10 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
+   DEF_CMD("B2B.clearHeaders", SCB2BClearHeadersAction);
+   DEF_CMD("B2B.setHeaders", SCB2BSetHeadersAction);
+ 
++  DEF_CMD("trackObject", SCTrackObjectAction);
++  DEF_CMD("releaseObject", SCReleaseObjectAction);
++  DEF_CMD("freeObject", SCFreeObjectAction);
++
+   return NULL;
+ }
+ 
+@@ -1333,3 +1337,49 @@ EXEC_ACTION_START(SCCreateSystemDSMAction) {
+   
+ } EXEC_ACTION_END;
+ 
++DSMDisposable* getObjectFromVariable(DSMSession* sc_sess, const string& var_name) {
++  AVarMapT::iterator it = sc_sess->avar.find(var_name);
++  if (it == sc_sess->avar.end()) {
++    DBG("object '%s' not found\n", var_name.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("object '"+var_name+"' not found\n");
++    return NULL;
++  }
++
++  DSMDisposable* disp = dynamic_cast<DSMDisposable*>(it->second.asObject());
++  if (NULL == disp) {
++    DBG("object '%s' is not a DSMDisposable\n", var_name.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("object '"+var_name+"' is not a DSMDisposable\n");
++    return NULL;
++  }
++  return disp;
++}
++
++EXEC_ACTION_START(SCTrackObjectAction) {
++  string var_name = resolveVars(arg, sess, sc_sess, event_params);
++  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
++  if (NULL == disp) {
++    EXEC_ACTION_STOP;
++  }
++  sc_sess->transferOwnership(disp);
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCReleaseObjectAction) {
++  string var_name = resolveVars(arg, sess, sc_sess, event_params);
++  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
++  if (NULL == disp) {
++    EXEC_ACTION_STOP;
++  }
++  sc_sess->releaseOwnership(disp);
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCFreeObjectAction) {
++  string var_name = resolveVars(arg, sess, sc_sess, event_params);
++  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
++  if (NULL == disp) {
++    EXEC_ACTION_STOP;
++  }
++  delete disp;
++  sc_sess->avar.erase(var_name);
++} EXEC_ACTION_END;
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index c00c258..6eca3aa 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -113,6 +113,10 @@ DEF_ACTION_1P(SCUnregisterEventQueueAction);
+ 
+ DEF_ACTION_2P(SCCreateSystemDSMAction);
+ 
++DEF_ACTION_1P(SCTrackObjectAction);
++DEF_ACTION_1P(SCReleaseObjectAction);
++DEF_ACTION_1P(SCFreeObjectAction);
++
+ class SCDIAction					
+ : public DSMAction {
+   vector<string> params;
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index f0d9414..5f9506b 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -267,6 +267,11 @@ B2B call control
+   unregisterEventQueue(queue_name)
+     unregister events queue queue_name
+ 
++ Garbage collector:
++  trackObject(varname)    - track object referenced with varname, i.e. enable garbage
++                            collection with the current call/systemDSM
++  releaseObject(varname)  - release object referenced with varname from garbage collector
++
+ Conditions
+ ==========
+  
+-- 
+1.7.10.4
+

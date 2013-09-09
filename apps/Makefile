@@ -23,7 +23,7 @@ else
  ifneq ($(local_exclude_app_modules),)
    exclude_app_modules = $(local_exclude_app_modules)
  else
-   exclude_app_modules += mp3 examples py_sems xmlrpc2di gateway jsonrpc twit mobile_push
+   exclude_app_modules += mp3 examples py_sems xmlrpc2di gateway jsonrpc twit
 
    ifneq ($(USE_MONITORING), yes)
    exclude_app_modules += monitoring
@@ -58,16 +58,16 @@ clean:
 
 .PHONY: modules
 modules:
-	@for r in $(app_modules) "" ; do \
-		if [ -n "$$r" -a -f "$$r"/Makefile ]; then \
+	-@for r in $(app_modules) "" ; do \
+		if [ -n "$$r" ]; then \
 			echo  "" ; \
 			echo  "" ; \
-			COREPATH=../$(COREPATH) $(MAKE) -C $$r all || exit 1; \
+			COREPATH=../$(COREPATH) $(MAKE) -C $$r all; \
 		fi ; \
 	done 
 
 .PHONY: install
-install: install-bin
+install: install-bin install-cfg
 
 .PHONY: install-bin
 install-bin:

@@ -1,0 +1,28 @@
+From 389dd5c772502cd02a17e353bb61a9fdd5ded9a2 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 25 May 2012 01:59:30 +0200
+Subject: [PATCH] db_reg_agent: b/f: on updateRegistration, update credentials
+ (pwd), too
+
+---
+ core/AmSipRegistration.cpp |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/core/AmSipRegistration.cpp b/core/AmSipRegistration.cpp
+index 5193f9d..8beaf9d 100644
+--- a/core/AmSipRegistration.cpp
++++ b/core/AmSipRegistration.cpp
+@@ -76,6 +76,10 @@ void AmSIPRegistration::setRegistrationInfo(const SIPRegistrationInfo& _info) {
+       _info.user.c_str(), _info.domain.c_str());
+   info = _info;
+ 
++  cred.realm = info.domain;
++  cred.user = info.user;
++  cred.pwd = info.pwd;
++
+   req.user     = info.user;
+   req.r_uri    = "sip:"+info.domain;
+   req.from     = info.name+" <sip:"+info.user+"@"+info.domain+">";
+-- 
+1.7.10.4
+

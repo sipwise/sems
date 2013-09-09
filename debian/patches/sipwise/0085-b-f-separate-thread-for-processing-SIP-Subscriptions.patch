@@ -1,0 +1,71 @@
+From c2f72bec4673d53902ff13c9b882af37e31d914e Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 18:43:38 +0200
+Subject: [PATCH] b/f: separate thread for processing SIP Subscriptions (avoid
+ deadlock on EventDispatcher)
+
+the AmSipSubscriptionContainter thread is only started once a subscription is used.
+---
+ core/AmSipSubscriptionContainer.cpp |    9 ++++++---
+ core/AmSipSubscriptionContainer.h   |    9 ++++-----
+ 2 files changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/core/AmSipSubscriptionContainer.cpp b/core/AmSipSubscriptionContainer.cpp
+index 1c0cecc..0e8ba4d 100644
+--- a/core/AmSipSubscriptionContainer.cpp
++++ b/core/AmSipSubscriptionContainer.cpp
+@@ -44,6 +44,9 @@ _AmSipSubscriptionContainer::~_AmSipSubscriptionContainer() {
+ void _AmSipSubscriptionContainer::initialize() {
+   if (!initialized) {
+     // AmEventDispatcher::instance()->addEventQueue(SUBSCRIPTION_CONTAINER_EVQ_ID, this);
++    initialized = true;
++    DBG("Starting SIP Subscription client thread ([%p])\n", this);
++    start();
+   }
+ }
+ 
+@@ -102,9 +105,9 @@ void _AmSipSubscriptionContainer::removeSubscription(const string& sub_handle) {
+   subscriptions_mut.unlock();
+ }
+ 
+-// AmEventQueueInterface
+-void _AmSipSubscriptionContainer::postEvent(AmEvent* event) {
+-  auto_ptr<AmEvent> l_event(event);
++// AmEventProcessingThread
++void _AmSipSubscriptionContainer::onEvent(AmEvent* event) {
++  //  auto_ptr<AmEvent> l_event(event);
+ 
+   AmSipRequestEvent* sip_req_ev = dynamic_cast<AmSipRequestEvent*>(event);
+   if (sip_req_ev) {
+diff --git a/core/AmSipSubscriptionContainer.h b/core/AmSipSubscriptionContainer.h
+index 09dbe7d..556733b 100644
+--- a/core/AmSipSubscriptionContainer.h
++++ b/core/AmSipSubscriptionContainer.h
+@@ -30,11 +30,10 @@
+ #define _AmSipSubscriptionContainer_h_
+ 
+ #include "AmSipSubscription.h"
+-#include "AmEventQueue.h"
+-#include "AmThread.h"
++#include "AmEventProcessingThread.h"
+ 
+ class _AmSipSubscriptionContainer 
+-: public AmEventQueueInterface
++: public AmEventProcessingThread
+ {
+   AmSipSubscriptionMap subscriptions;
+   AmMutex subscriptions_mut;
+@@ -50,8 +49,8 @@ class _AmSipSubscriptionContainer
+   bool refreshSubscription(const string& sub_handle, unsigned int wanted_expires=0);
+   void removeSubscription(const string& sub_handle);
+ 
+-  // AmEventQueueInterface
+-  void postEvent(AmEvent* event);
++  // AmEventProcessingThread
++  void onEvent(AmEvent* event);
+ };
+ 
+ typedef singleton<_AmSipSubscriptionContainer> AmSipSubscriptionContainer;
+-- 
+1.7.10.4
+

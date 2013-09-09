@@ -33,6 +33,8 @@
 
 #define MOD_NAME "registrar_client"
 
+#define REGISTER_SEND_TIMEOUT 60 
+
 #include <unistd.h>
 
 //EXPORT_SIP_EVENT_HANDLER_FACTORY(SIPRegistrarClient, MOD_NAME);
@@ -44,6 +46,142 @@ extern "C" void* plugin_class_create()
     assert(dynamic_cast<AmDynInvokeFactory*>(reg_c));
 
     return (AmPluginFactory*)reg_c;
+}
+
+
+SIPRegistration::SIPRegistration(const string& handle,
+				 const SIPRegistrationInfo& info,
+				 const string& sess_link) 
+  : info(info),
+    dlg(this),
+    cred(info.domain, info.auth_user, info.pwd),
+    active(false),
+    reg_begin(0),
+    reg_expires(0),
+    remove(false),
+    sess_link(sess_link),
+    reg_send_begin(0),
+    waiting_result(false),
+    seh(NULL)
+{
+  req.cmd      = "sems";
+  req.user     = info.user;
+  req.method   = "REGISTER";
+  req.r_uri    = "sip:"+info.domain;
+  req.from     = info.name+" <sip:"+info.user+"@"+info.domain+">";
+  req.from_uri = "sip:"+info.user+"@"+info.domain;
+  req.from_tag = handle;
+  req.to       = req.from;
+  req.to_tag   = "";
+  req.callid   = AmSession::getNewId(); 
+  //
+
+  // clear dlg.callid? ->reregister?
+  dlg.updateStatusFromLocalRequest(req);
+  dlg.cseq = 50;
+}
+
+SIPRegistration::~SIPRegistration() {
+  setSessionEventHandler(NULL);
+}
+
+void SIPRegistration::setSessionEventHandler(AmSessionEventHandler* new_seh) {
+  if (seh)
+    delete seh;
+  seh = new_seh;
+}
+ 
+void SIPRegistration::doRegistration() 
+{
+    waiting_result = true;
+    req.to_tag     = "";
+    dlg.remote_tag = "";
+    req.r_uri    = "sip:"+info.domain;
+    dlg.remote_uri = req.r_uri;
+    
+    // set outbound proxy as next hop 
+    if (!info.proxy.empty()) {
+	dlg.outbound_proxy = info.proxy;
+    } else if (!AmConfig::OutboundProxy.empty()) 
+	dlg.outbound_proxy = AmConfig::OutboundProxy;
+    //else 
+    //    dlg.outbound_proxy = "";
+    
+    if (dlg.sendRequest(req.method, "", "", "Expires: 1000\n") < 0)
+      ERROR("failed to send registration.\n");
+    
+    // save TS
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    reg_send_begin  = now.tv_sec;
+}
+
+void SIPRegistration::doUnregister() 
+{
+    waiting_result = true;
+    req.to_tag     = "";
+    dlg.remote_tag = "";
+    req.r_uri      = "sip:"+info.domain;
+    dlg.remote_uri = req.r_uri;
+    
+    // set outbound proxy as next hop 
+    if (!info.proxy.empty()) {
+	dlg.outbound_proxy = info.proxy;
+    } else if (!AmConfig::OutboundProxy.empty()) 
+	dlg.outbound_proxy = AmConfig::OutboundProxy;
+    //else 
+    //    dlg.outbound_proxy = "";
+    
+    if (dlg.sendRequest(req.method, "", "", "Expires: 0\n") < 0)
+      ERROR("failed to send deregistration.\n");
+
+    // save TS
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    reg_send_begin  = now.tv_sec;
+}
+
+void SIPRegistration::onSendRequest(const string& method,
+				    const string& content_type,
+				    const string& body,
+				    string& hdrs,
+				    int flags,
+				    unsigned int cseq) {
+  if (seh)
+    seh->onSendRequest(method, content_type, body,
+		       hdrs,flags,cseq);
+}
+	
+void SIPRegistration::onSendReply(const AmSipRequest& req,
+				  unsigned int  code,
+				  const string& reason,
+				  const string& content_type,
+				  const string& body,
+				  string& hdrs,
+				  int flags) {
+  if (seh)
+    seh->onSendReply(req,code,reason,
+		     content_type,body,hdrs,flags);
+}
+
+SIPRegistration::RegistrationState SIPRegistration::getState() {
+  if (active) 
+    return RegisterActive;
+  if (waiting_result)
+    return RegisterPending;
+	
+  return RegisterExpired;
+}
+
+unsigned int SIPRegistration::getExpiresLeft() {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+	
+  int diff = reg_begin + reg_expires  - now.tv_sec;
+  if (diff < 0) 
+    return 0;
+  else 
+    return diff;
 }
 
 //-----------------------------------------------------------
@@ -91,6 +229,31 @@ void SIPRegistrarClient::run() {
     }
   }
 }
+	
+void SIPRegistration::onRegisterExpired() {
+  if (sess_link.length()) {
+    AmSessionContainer::instance()->postEvent(sess_link,
+					      new SIPRegistrationEvent(SIPRegistrationEvent::RegisterTimeout,
+								       req.from_tag));
+  }
+  DBG("Registration '%s' expired.\n", (info.user+"@"+info.domain).c_str());
+  active = false;
+  remove = true;
+}
+
+void SIPRegistration::onRegisterSendTimeout() {
+  if (sess_link.length()) {
+    AmSessionContainer::instance()->postEvent(sess_link,
+					      new SIPRegistrationEvent(SIPRegistrationEvent::RegisterSendTimeout,
+								       req.from_tag));
+  }
+  DBG("Registration '%s' REGISTER request timeout.\n", 
+      (info.user+"@"+info.domain).c_str());
+  active = false;
+  remove = true;
+}
+
+
 
 void SIPRegistrarClient::checkTimeouts() {
   //	DBG("checking timeouts...\n");
@@ -99,11 +262,11 @@ void SIPRegistrarClient::checkTimeouts() {
   reg_mut.lock();
   vector<string> remove_regs;
 
-  for (map<string, AmSIPRegistration*>::iterator it = registrations.begin();
+  for (map<string, SIPRegistration*>::iterator it = registrations.begin();
        it != registrations.end(); it++) {
     if (it->second->active) {
       if (it->second->registerExpired(now.tv_sec)) {
-	AmSIPRegistration* reg = it->second;
+	SIPRegistration* reg = it->second;
 	reg->onRegisterExpired();
       } else if (!it->second->waiting_result && 
 		 it->second->timeToReregister(now.tv_sec)) {
@@ -113,14 +276,14 @@ void SIPRegistrarClient::checkTimeouts() {
       remove_regs.push_back(it->first);
     } else if (it->second->waiting_result && 
 	       it->second->registerSendTimeout(now.tv_sec)) {
-      AmSIPRegistration* reg = it->second;
+      SIPRegistration* reg = it->second;
       reg->onRegisterSendTimeout();
     }
   }
   for (vector<string>::iterator it = remove_regs.begin(); 
        it != remove_regs.end(); it++) {
     DBG("removing registration\n");
-    AmSIPRegistration* reg = registrations[*it];
+    SIPRegistration* reg = registrations[*it];
     registrations.erase(*it);
     if (reg)
       delete reg;
@@ -137,7 +300,7 @@ int SIPRegistrarClient::onLoad() {
 void SIPRegistrarClient::onServerShutdown() {
   // TODO: properly wait until unregistered, with timeout
   DBG("shutdown SIP registrar client: deregistering\n");
-  for (std::map<std::string, AmSIPRegistration*>::iterator it=
+  for (std::map<std::string, SIPRegistration*>::iterator it=
 	 registrations.begin(); it != registrations.end(); it++) {
     it->second->doUnregister();
     AmEventDispatcher::instance()->delEventQueue(it->first);
@@ -184,16 +347,116 @@ void SIPRegistrarClient::process(AmEvent* ev)
 }
 
 void SIPRegistrarClient::onSipReplyEvent(AmSipReplyEvent* ev) {
-  AmSIPRegistration* reg = get_reg(ev->reply.local_tag);
+  SIPRegistration* reg = get_reg(ev->reply.local_tag);
   if (reg != NULL) {
       reg->getDlg()->updateStatus(ev->reply);//onSipReply(ev->reply);
   }
 }
 
+bool SIPRegistration::registerSendTimeout(time_t now_sec) {
+  return now_sec > reg_send_begin + REGISTER_SEND_TIMEOUT;
+}
+
+bool SIPRegistration::timeToReregister(time_t now_sec) {
+  //   	if (active) 
+  //   		DBG("compare %lu with %lu\n",(reg_begin+reg_expires), (unsigned long)now_sec);
+  return (((unsigned long)reg_begin+ reg_expires/2) < (unsigned long)now_sec);	
+}
+
+bool SIPRegistration::registerExpired(time_t now_sec) {
+  return ((reg_begin+reg_expires) < (unsigned int)now_sec);	
+}
+
+void SIPRegistration::onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method)
+{
+  if ((seh!=NULL) && seh->onSipReply(reply, old_dlg_status, trans_method))
+    return;
+
+  waiting_result = false;
+
+  if ((reply.code>=200)&&(reply.code<300)) {
+    DBG("positive reply to REGISTER!\n");
+    size_t end  = 0;
+    string local_contact_hdr = dlg.getContactHdr();
+    local_contact.parse_contact(local_contact_hdr, (size_t)0, end);
+    local_contact.dump();
+
+    string contacts = reply.contact;
+    if (contacts.empty()) 
+      contacts = getHeader(reply.hdrs, "Contact", "m", true);
+    bool found = false;
+
+    if (!contacts.length()) {
+      DBG("received positive reply to de-Register \n");
+      active = false;
+      remove = true;
+    } else {
+      end = 0;
+      while (!found) {
+	if (contacts.length() == end)
+	  break;
+
+	if (!server_contact.parse_contact(contacts, end, end)) {
+	  ERROR("while parsing contact\n");
+	  break;
+	}
+	server_contact.dump();
+				
+	if (server_contact.isEqual(local_contact)) {
+	  DBG("contact found\n");
+	  found = active = true;
+	  //bool str2i(const string& str, unsigned int& result);
+					
+	  if (str2i(server_contact.params["expires"], reg_expires)) {
+	    ERROR("could not extract expires value.\n");
+	    reg_expires = 500;
+	  }
+	  DBG("got an expires of %d\n", reg_expires);
+	  // save TS
+	  struct timeval now;
+	  gettimeofday(&now, NULL);
+	  reg_begin = now.tv_sec;
+
+	  if (sess_link.length()) {
+	    DBG("posting SIPRegistrationEvent to '%s'\n", sess_link.c_str());
+	    AmSessionContainer::instance()->postEvent(sess_link,
+						      new SIPRegistrationEvent(SIPRegistrationEvent::RegisterSuccess,
+									       req.from_tag,
+									       reply.code, reply.reason));
+	  }
+	  break;
+	}
+      }
+    }
+    if (!found) {
+      if (sess_link.length()) {
+	AmSessionContainer::instance()->postEvent(sess_link,
+						  new SIPRegistrationEvent(SIPRegistrationEvent::RegisterNoContact,
+									   req.from_tag,
+									   reply.code, reply.reason));
+      }
+      DBG("no matching Contact - deregistered.\n");
+      active = false;
+      remove = true;
+    }
+		
+  } else if (reply.code >= 300) {
+    DBG("Registration failed.\n");
+    if (sess_link.length()) {
+      AmSessionContainer::instance()->postEvent(sess_link,
+						new SIPRegistrationEvent(SIPRegistrationEvent::RegisterFailed,
+									 req.from_tag,
+									 reply.code, reply.reason));
+    }
+    active = false;
+    remove = true;		
+  }
+}
+
 void SIPRegistrarClient::onNewRegistration(SIPNewRegistrationEvent* new_reg) {
 
-  AmSIPRegistration* reg = new AmSIPRegistration(new_reg->handle, new_reg->info, 
-						 new_reg->sess_link);
+  SIPRegistration* reg = new SIPRegistration(new_reg->handle, new_reg->info, 
+					     new_reg->sess_link);
   
   if (uac_auth_i != NULL) {
     DBG("enabling UAC Auth for new registration.\n");
@@ -224,7 +487,7 @@ void SIPRegistrarClient::onNewRegistration(SIPNewRegistrationEvent* new_reg) {
 }
 
 void SIPRegistrarClient::onRemoveRegistration(SIPRemoveRegistrationEvent* new_reg) {
-  AmSIPRegistration* reg = get_reg(new_reg->handle);
+  SIPRegistration* reg = get_reg(new_reg->handle);
   if (reg)
     reg->doUnregister();
 }
@@ -247,13 +510,13 @@ bool SIPRegistrarClient::hasRegistration(const string& handle) {
   return get_reg(handle) != NULL;
 }
 
-AmSIPRegistration* SIPRegistrarClient::
+SIPRegistration* SIPRegistrarClient::
 get_reg(const string& reg_id) 
 {
   DBG("get registration '%s'\n", reg_id.c_str());
-  AmSIPRegistration* res = NULL;
+  SIPRegistration* res = NULL;
   reg_mut.lock();
-  map<string, AmSIPRegistration*>::iterator it = 
+  map<string, SIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end())
     res = it->second;
@@ -262,12 +525,12 @@ get_reg(const string& reg_id)
   return res;
 }
 
-AmSIPRegistration* SIPRegistrarClient::
+SIPRegistration* SIPRegistrarClient::
 get_reg_unsafe(const string& reg_id) 
 {
   //	DBG("get registration_unsafe '%s'\n", reg_id.c_str());
-  AmSIPRegistration* res = NULL;
-  map<string, AmSIPRegistration*>::iterator it = 
+  SIPRegistration* res = NULL;
+  map<string, SIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end())
     res = it->second;
@@ -275,19 +538,19 @@ get_reg_unsafe(const string& reg_id)
   return res;
 }
 
-AmSIPRegistration* SIPRegistrarClient::
+SIPRegistration* SIPRegistrarClient::
 remove_reg(const string& reg_id) {
   reg_mut.lock();
-  AmSIPRegistration* reg = remove_reg_unsafe(reg_id);
+  SIPRegistration* reg = remove_reg_unsafe(reg_id);
   reg_mut.unlock();
   return reg;
 }
 
-AmSIPRegistration* SIPRegistrarClient::
+SIPRegistration* SIPRegistrarClient::
 remove_reg_unsafe(const string& reg_id) {
   DBG("removing registration '%s'\n", reg_id.c_str());
-  AmSIPRegistration* reg = NULL;
-  map<string, AmSIPRegistration*>::iterator it = 
+  SIPRegistration* reg = NULL;
+  map<string, SIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end()) {
     reg = it->second;
@@ -300,12 +563,12 @@ remove_reg_unsafe(const string& reg_id) {
 }
 
 void SIPRegistrarClient::
-add_reg(const string& reg_id, AmSIPRegistration* new_reg) 
+add_reg(const string& reg_id, SIPRegistration* new_reg) 
 {
   DBG("adding registration '%s'  (this = %ld)\n", reg_id.c_str(), (long)this);
-  AmSIPRegistration* reg = NULL;
+  SIPRegistration* reg = NULL;
   reg_mut.lock();
-  map<string, AmSIPRegistration*>::iterator it = 
+  map<string, SIPRegistration*>::iterator it = 
     registrations.find(reg_id);
   if (it!=registrations.end()) {
     reg = it->second;
@@ -329,14 +592,13 @@ string SIPRegistrarClient::createRegistration(const string& domain,
 					      const string& auth_user,
 					      const string& pwd,
 					      const string& sess_link,
-					      const string& proxy,
-                                              const string& contact) {
+					      const string& proxy) {
 	
   string handle = AmSession::getNewId();
   instance()->
     postEvent(new SIPNewRegistrationEvent(SIPRegistrationInfo(domain, user, 
 							      name, auth_user, pwd, 
-							      proxy, contact),
+							      proxy),
 					  handle, sess_link));
   return handle;
 }
@@ -353,7 +615,7 @@ bool SIPRegistrarClient::getRegistrationState(const string& handle,
   bool res = false;
   reg_mut.lock();
 
-  AmSIPRegistration* reg = get_reg_unsafe(handle);
+  SIPRegistration* reg = get_reg_unsafe(handle);
   if (reg) {
     res = true;
     state = reg->getState();
@@ -367,7 +629,7 @@ bool SIPRegistrarClient::getRegistrationState(const string& handle,
 void SIPRegistrarClient::listRegistrations(AmArg& res) {
   reg_mut.lock();
 
-  for (map<string, AmSIPRegistration*>::iterator it = 
+  for (map<string, SIPRegistration*>::iterator it = 
 	 registrations.begin(); it != registrations.end(); it++) {
     AmArg r;
     r["handle"] = it->first;
@@ -377,7 +639,6 @@ void SIPRegistrarClient::listRegistrations(AmArg& res) {
     r["auth_user"] = it->second->getInfo().auth_user;
     r["proxy"] = it->second->getInfo().proxy;
     r["event_sink"] = it->second->getEventSink();
-    r["contact"] = it->second->getInfo().contact;
     res.push(r);
   }
 
@@ -389,11 +650,9 @@ void SIPRegistrarClient::invoke(const string& method, const AmArg& args,
 				AmArg& ret)
 {
   if(method == "createRegistration"){
-    string proxy, contact;
+    string proxy;
     if (args.size() > 6)
       proxy = args.get(6).asCStr();
-    if (args.size() > 7)
-      contact = args.get(7).asCStr();
 
     ret.push(createRegistration(args.get(0).asCStr(),
 				args.get(1).asCStr(),
@@ -401,7 +660,7 @@ void SIPRegistrarClient::invoke(const string& method, const AmArg& args,
 				args.get(3).asCStr(),
 				args.get(4).asCStr(),
 				args.get(5).asCStr(),
-				proxy, contact
+				proxy
 				).c_str());
   }
   else if(method == "removeRegistration"){

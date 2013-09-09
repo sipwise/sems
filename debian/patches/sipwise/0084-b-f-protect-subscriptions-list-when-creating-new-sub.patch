@@ -1,0 +1,46 @@
+From 3327473f14ce196fc78e911fb1ae5ae4c8a95388 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 18:21:05 +0200
+Subject: [PATCH] b/f: protect subscriptions list when creating new
+ subscription
+
+---
+ core/AmSipSubscriptionContainer.cpp |   16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/core/AmSipSubscriptionContainer.cpp b/core/AmSipSubscriptionContainer.cpp
+index fb3bdd9..1c0cecc 100644
+--- a/core/AmSipSubscriptionContainer.cpp
++++ b/core/AmSipSubscriptionContainer.cpp
+@@ -52,16 +52,24 @@ string _AmSipSubscriptionContainer::createSubscription(const AmSipSubscriptionIn
+ 						       unsigned int wanted_expires) {
+   initialize();
+   string handle = AmSession::getNewId();
+-  subscriptions[handle] = new AmSipSubscription(handle, info, sess_link);
+-  subscriptions[handle]->setExpiresInterval(wanted_expires);
++  AmSipSubscription* new_sub = new AmSipSubscription(handle, info, sess_link);
++  new_sub->setExpiresInterval(wanted_expires);
++
++  subscriptions_mut.lock();
++  subscriptions[handle] = new_sub;
++  subscriptions_mut.unlock();
++
+   AmEventDispatcher::instance()->addEventQueue(handle, this);
+-  if (!subscriptions[handle]->doSubscribe()) {
++  if (!new_sub->doSubscribe()) {
+     DBG("subscribe failed - removing subscription\b");
+     AmEventDispatcher::instance()->delEventQueue(handle);
+-    delete subscriptions[handle];
++    subscriptions_mut.lock();
+     subscriptions.erase(handle);
++    subscriptions_mut.unlock();
++    delete new_sub;
+     return "";
+   }
++
+   return handle;
+ }
+ 
+-- 
+1.7.10.4
+

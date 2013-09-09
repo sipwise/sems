@@ -1,0 +1,36 @@
+From 6d7fd116c3449aa34826d41ab60247ef511914a0 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Mon, 17 Oct 2011 14:48:57 +0200
+Subject: [PATCH] b/f: on receiving re-INVITE without SDP, reply 488 and
+ continue call
+
+---
+ core/AmSession.cpp |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/core/AmSession.cpp b/core/AmSession.cpp
+index f542946..c4bfdfb 100644
+--- a/core/AmSession.cpp
++++ b/core/AmSession.cpp
+@@ -271,7 +271,7 @@ void AmSession::negotiate(const string& sdp_body,
+     throw AmSession::Exception(400,"session description parsing failed");
+ 
+   if(sdp.media.empty())
+-    throw AmSession::Exception(400,"no media line found in SDP message");
++    throw AmSession::Exception(488,"no media line found in SDP message");
+     
+   m_payloads = sdp.getCompatiblePayloads(getPayloadProvider(), MT_AUDIO, r_host, r_port);
+ 
+@@ -1033,7 +1033,8 @@ void AmSession::onInvite(const AmSipRequest& req)
+   }catch(const AmSession::Exception& e){
+ 
+     ERROR("%i %s\n",e.code,e.reason.c_str());
+-    setStopped();
++    if (dlg.getStatus() < AmSipDialog::Connected)
++      setStopped();
+     dlg.reply(req,e.code,e.reason);
+   }
+ }
+-- 
+1.7.10.4
+

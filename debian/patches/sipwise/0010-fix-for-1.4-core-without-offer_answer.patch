@@ -1,0 +1,25 @@
+From bf784d25063ef111ea8ed0356a214119a484de6c Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 31 May 2011 01:23:34 +0200
+Subject: [PATCH] fix for 1.4 core without offer_answer
+
+---
+ apps/db_reg_agent/Makefile |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/apps/db_reg_agent/Makefile b/apps/db_reg_agent/Makefile
+index bb5b3c1..fc93878 100644
+--- a/apps/db_reg_agent/Makefile
++++ b/apps/db_reg_agent/Makefile
+@@ -1,7 +1,7 @@
+ plug_in_name = db_reg_agent
+ 
+ module_ldflags = -lmysqlpp
+-module_cflags  = -DHAS_OFFER_ANSWER -DMOD_NAME=\"$(plug_in_name)\" -I/usr/include/mysql++ -I/usr/include/mysql
++module_cflags  = -DMOD_NAME=\"$(plug_in_name)\" -I/usr/include/mysql++ -I/usr/include/mysql
+ 
+ COREPATH ?=../../core
+ include $(COREPATH)/plug-in/Makefile.app_module
+-- 
+1.7.10.4
+

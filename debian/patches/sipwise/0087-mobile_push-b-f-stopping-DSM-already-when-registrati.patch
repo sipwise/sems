@@ -1,0 +1,37 @@
+From e084af4ac1dd9cd56be0862098580e22b037f8f8 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 19:35:23 +0200
+Subject: [PATCH] mobile_push: b/f: stopping DSM already when registration
+ there
+
+(no need to wait until subscription is terminated, subscription handling is in core anyway)
+---
+ apps/mobile_push/mobile_push.dsm |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/apps/mobile_push/mobile_push.dsm b/apps/mobile_push/mobile_push.dsm
+index 61ad783..601a500 100644
+--- a/apps/mobile_push/mobile_push.dsm
++++ b/apps/mobile_push/mobile_push.dsm
+@@ -152,6 +152,7 @@ transition "NOTIFY received, with body" WAITING - subscription(#status!="termina
+   if test($active_contacts != 0) {
+     replyWith300();
+     subscription.remove($r.handle);
++    stop(false);
+   }
+ 
+   releaseRegEvalObjects();
+@@ -169,9 +170,9 @@ transition "NOTIFY received, terminated (but with body)" WAITING - subscription(
+     replyWith300();
+   } else {
+     dlg.reply(480, "Not found");
+-    stop(false);
+   }
+   releaseRegEvalObjects();
++  stop(false);
+ } -> END;
+ 
+ transition "NOTIFY received, subscription terminated" WAITING - subscription(#status=="terminated") / {
+-- 
+1.7.10.4
+

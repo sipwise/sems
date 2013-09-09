@@ -1,0 +1,198 @@
+From a0e3c17b36f2f622f39808088f429bebfb5df6b6 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 1 Aug 2013 19:10:46 +0200
+Subject: [PATCH] sbc: SIP UAS authentication for B leg
+ (uas_auth_bleg_enabled)
+
+Notes:
+- All of those profile options must be set
+ uas_auth_bleg_realm
+ uas_auth_bleg_user
+ uas_auth_bleg_pwd
+
+- On realm mismatch, it is not authenticated
+
+- URI is not checked against the Authorization URI
+
+Conflicts:
+
+	apps/sbc/SBC.cpp
+	apps/sbc/SBC.h
+	apps/sbc/SBCCallProfile.cpp
+	apps/sbc/SBCCallProfile.h
+	apps/sbc/etc/transparent.sbcprofile.conf
+---
+ apps/sbc/SBC.cpp                         |   57 +++++++++++++++++++++++++++++-
+ apps/sbc/SBC.h                           |    2 ++
+ apps/sbc/SBCCallProfile.cpp              |    6 ++++
+ apps/sbc/SBCCallProfile.h                |    3 ++
+ apps/sbc/etc/transparent.sbcprofile.conf |    6 ++++
+ 5 files changed, 73 insertions(+), 1 deletion(-)
+
+diff --git a/apps/sbc/SBC.cpp b/apps/sbc/SBC.cpp
+index 7709814..6302cb3 100644
+--- a/apps/sbc/SBC.cpp
++++ b/apps/sbc/SBC.cpp
+@@ -639,6 +639,15 @@ void SBCDialog::onInvite(const AmSipRequest& req)
+       replaceParameters(call_profile.auth_credentials.pwd, "auth_pwd", REPLACE_VALS);
+   }
+ 
++  if (call_profile.uas_auth_bleg_enabled) {
++    call_profile.uas_auth_bleg_credentials.realm =
++      replaceParameters(call_profile.uas_auth_bleg_credentials.realm, "uas_auth_bleg_realm", REPLACE_VALS);
++    call_profile.uas_auth_bleg_credentials.user =
++      replaceParameters(call_profile.uas_auth_bleg_credentials.user, "uas_auth_bleg_user", REPLACE_VALS);
++    call_profile.uas_auth_bleg_credentials.pwd =
++      replaceParameters(call_profile.uas_auth_bleg_credentials.pwd, "uas_auth_bleg_pwd", REPLACE_VALS);
++  }
++
+   if (!call_profile.outbound_interface.empty()) {
+     call_profile.outbound_interface = 
+       replaceParameters(call_profile.outbound_interface, "outbound_interface",
+@@ -1049,6 +1058,18 @@ void SBCDialog::createCalleeSession()
+     }
+   }
+ 
++  if (call_profile.uas_auth_bleg_enabled) {
++    AmDynInvokeFactory* fact = AmPlugIn::instance()->getFactory4Di("uac_auth");
++    if (NULL != fact) {
++      AmDynInvoke* di_inst = fact->getInstance();
++      if(NULL != di_inst) {
++	callee_session->setAuthDI(di_inst);
++      }
++    } else {
++      ERROR("B-leg UAS auth enabled (uas_auth_bleg_enabled), but uac_auth module not loaded!\n");
++    }
++  }
++
+   if (call_profile.sst_enabled) {
+     AmSessionEventHandler* h = SBCFactory::session_timer_fact->getHandler(callee_session);
+     if(!h) {
+@@ -1133,7 +1154,7 @@ void SBCDialog::createCalleeSession()
+ 
+ SBCCalleeSession::SBCCalleeSession(const AmB2BCallerSession* caller,
+ 				   const SBCCallProfile& call_profile) 
+-  : auth(NULL),
++  : auth(NULL),auth_di(NULL),
+     call_profile(call_profile),
+     AmB2BCalleeSession(caller)
+ {
+@@ -1226,6 +1247,40 @@ void SBCCalleeSession::onSipRequest(const AmSipRequest& req) {
+     }
+   }
+ 
++  if (call_profile.uas_auth_bleg_enabled && NULL != auth_di) {
++    AmArg di_args, di_ret;
++    try {
++      DBG("Auth: checking authentication\n");
++      di_args.push((ArgObject*)&req);
++      di_args.push(call_profile.uas_auth_bleg_credentials.realm);
++      di_args.push(call_profile.uas_auth_bleg_credentials.user);
++      di_args.push(call_profile.uas_auth_bleg_credentials.pwd);
++      auth_di->invoke("checkAuth", di_args, di_ret);
++
++      if (di_ret.size() >= 3) {
++	if (di_ret[0].asInt() != 200) {
++	  DBG("Auth: replying %u %s - hdrs: '%s'\n",
++	      di_ret[0].asInt(), di_ret[1].asCStr(), di_ret[2].asCStr());
++	  dlg.reply(req, di_ret[0].asInt(), di_ret[1].asCStr(), "", "", di_ret[2].asCStr());
++	  return;
++	} else {
++	  DBG("Successfully authenticated request.\n");
++	}
++      } else {
++	ERROR("internal: no proper result from checkAuth: '%s'\n", AmArg::print(di_ret).c_str());
++      }
++
++    } catch (const AmDynInvoke::NotImplemented& ni) {
++      ERROR("not implemented DI function 'checkAuth'\n");
++    } catch (const AmArg::OutOfBoundsException& oob) {
++      ERROR("out of bounds in  DI call 'checkAuth'\n");
++    } catch (const AmArg::TypeMismatchException& oob) {
++      ERROR("type mismatch  in  DI call checkAuth\n");
++    } catch (...) {
++      ERROR("unexpected Exception  in  DI call checkAuth\n");
++    }
++  }
++
+   if (fwd) {
+       DBG("replying 100 Trying of %s msg to be fwd'ed\n", req.method.c_str());
+       dlg.reply(req, 100, SIP_REPLY_TRYING);
+diff --git a/apps/sbc/SBC.h b/apps/sbc/SBC.h
+index 01c1ab1..930d749 100644
+--- a/apps/sbc/SBC.h
++++ b/apps/sbc/SBC.h
+@@ -156,6 +156,7 @@ class SBCCalleeSession
+ : public AmB2BCalleeSession, public CredentialHolder
+ {
+   AmSessionEventHandler* auth;
++  AmDynInvoke* auth_di;
+   SBCCallProfile call_profile;
+ 
+  protected:
+@@ -183,6 +184,7 @@ class SBCCalleeSession
+   inline UACAuthCred* getCredentials();
+   
+   void setAuthHandler(AmSessionEventHandler* h) { auth = h; }
++  void setAuthDI(AmDynInvoke* di_inst) { auth_di = di_inst; }
+ };
+ 
+ extern void assertEndCRLF(string& s);
+diff --git a/apps/sbc/SBCCallProfile.cpp b/apps/sbc/SBCCallProfile.cpp
+index b727e82..8a2cddb 100644
+--- a/apps/sbc/SBCCallProfile.cpp
++++ b/apps/sbc/SBCCallProfile.cpp
+@@ -118,6 +118,11 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
+   call_timer_enabled = cfg.getParameter("enable_call_timer", "no") == "yes";
+   call_timer = cfg.getParameter("call_timer");
+ 
++  uas_auth_bleg_enabled = cfg.getParameter("enable_bleg_uas_auth", "no") == "yes";
++  uas_auth_bleg_credentials.realm = cfg.getParameter("uas_auth_bleg_realm");
++  uas_auth_bleg_credentials.user = cfg.getParameter("uas_auth_bleg_user");
++  uas_auth_bleg_credentials.pwd = cfg.getParameter("uas_auth_bleg_pwd");
++
+   prepaid_enabled = cfg.getParameter("enable_prepaid", "no") == "yes";
+   prepaid_accmodule = cfg.getParameter("prepaid_accmodule");
+   prepaid_uuid = cfg.getParameter("prepaid_uuid");
+@@ -228,6 +233,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
+ 
+     INFO("SBC:      SST %sabled\n", sst_enabled?"en":"dis");
+     INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
++    INFO("SBC:      SIP UAS auth for B leg %sabled\n", uas_auth_bleg_enabled?"en":"dis");
+     INFO("SBC:      call timer %sabled\n", call_timer_enabled?"en":"dis");
+     if (call_timer_enabled) {
+       INFO("SBC:                  %s seconds\n", call_timer.c_str());
+diff --git a/apps/sbc/SBCCallProfile.h b/apps/sbc/SBCCallProfile.h
+index bec361c..fe20dfc 100644
+--- a/apps/sbc/SBCCallProfile.h
++++ b/apps/sbc/SBCCallProfile.h
+@@ -74,6 +74,9 @@ struct SBCCallProfile {
+   bool auth_enabled;
+   UACAuthCred auth_credentials;
+ 
++  bool uas_auth_bleg_enabled;
++  UACAuthCred uas_auth_bleg_credentials;
++
+   bool call_timer_enabled;
+   string call_timer;
+ 
+diff --git a/apps/sbc/etc/transparent.sbcprofile.conf b/apps/sbc/etc/transparent.sbcprofile.conf
+index 3356b07..f34f527 100644
+--- a/apps/sbc/etc/transparent.sbcprofile.conf
++++ b/apps/sbc/etc/transparent.sbcprofile.conf
+@@ -51,6 +51,12 @@
+ #auth_user=$P(u)
+ #auth_pwd=$P(p)
+ 
++## UAS auth for B leg
++#uas_auth_bleg_enabled=yes
++#uas_auth_bleg_realm=$P(sr)
++#uas_auth_bleg_user=$P(su)
++#uas_auth_bleg_pwd=$P(sp)
++
+ ## call timer
+ #enable_call_timer=yes
+ #call_timer=60
+-- 
+1.7.10.4
+

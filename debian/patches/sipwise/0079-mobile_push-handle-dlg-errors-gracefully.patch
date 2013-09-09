@@ -1,0 +1,38 @@
+From 0e6245da71cfa21725d10ff61ddeb4a7b4f54c5e Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 17 Apr 2012 16:21:36 +0200
+Subject: [PATCH] mobile_push: handle dlg errors gracefully
+
+---
+ apps/mobile_push/mobile_push.dsm |    8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/apps/mobile_push/mobile_push.dsm b/apps/mobile_push/mobile_push.dsm
+index b88caa7..c5a99b3 100644
+--- a/apps/mobile_push/mobile_push.dsm
++++ b/apps/mobile_push/mobile_push.dsm
+@@ -30,6 +30,13 @@ import(mod_curl);
+ 
+ initial state START;
+ 
++transition "SIP dialog error" START - exception; test(#type=="dlg") / {
++  log(1, "Error in accepting call:");
++  logParams(1);
++  set($connect_session=0);
++  stop(false);
++} -> END;
++
+ transition "DB exception" START - exception / {
+   log(1, "Error in initializing mobile push:");
+   logAll(1);
+@@ -55,6 +62,7 @@ transition "invite" START - invite / {
+ 
+   -- send 183 with early media
+   dlg.acceptInvite(183, "Progress");
++  throwOnError();
+   -- no default 200 OK
+   set($connect_session=0);
+ 
+-- 
+1.7.10.4
+

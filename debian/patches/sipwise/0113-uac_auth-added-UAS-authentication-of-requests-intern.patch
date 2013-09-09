@@ -1,0 +1,624 @@
+From ff1ef48889ce75be45b199b7af6397a9bc38bec1 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 1 Aug 2013 17:54:16 +0200
+Subject: [PATCH] uac_auth: added UAS authentication of requests (internal
+ API)
+
+Conflicts:
+
+	core/plug-in/uac_auth/UACAuth.h
+	core/tests/Makefile
+---
+ core/AmSipHeaders.h               |    1 +
+ core/plug-in/uac_auth/UACAuth.cpp |  255 ++++++++++++++++++++++++++++++++++---
+ core/plug-in/uac_auth/UACAuth.h   |   39 ++++--
+ core/tests/Makefile               |    9 +-
+ core/tests/sems_tests.cpp         |    2 +
+ core/tests/test_auth.cpp          |   45 +++++++
+ core/tests/test_auth.h            |    1 +
+ doc/Readme.uac_auth.txt           |   60 ++++++++-
+ 8 files changed, 376 insertions(+), 36 deletions(-)
+ create mode 100644 core/tests/test_auth.cpp
+ create mode 100644 core/tests/test_auth.h
+
+diff --git a/core/AmSipHeaders.h b/core/AmSipHeaders.h
+index 78b39c3..4abb428 100644
+--- a/core/AmSipHeaders.h
++++ b/core/AmSipHeaders.h
+@@ -11,6 +11,7 @@
+ #define SIP_METH_ACK            "ACK"
+ #define SIP_METH_SUBSCRIBE      "SUBSCRIBE"
+ #define SIP_METH_NOTIFY         "NOTIFY"
++#define SIP_METH_CANCEL         "CANCEL"
+ 
+ #define SIP_HDR_FROM            "From"
+ #define SIP_HDR_TO              "To"
+diff --git a/core/plug-in/uac_auth/UACAuth.cpp b/core/plug-in/uac_auth/UACAuth.cpp
+index 327b8f5..54c8df7 100644
+--- a/core/plug-in/uac_auth/UACAuth.cpp
++++ b/core/plug-in/uac_auth/UACAuth.cpp
+@@ -47,6 +47,7 @@ EXPORT_SESSION_EVENT_HANDLER_FACTORY(UACAuthFactory, MOD_NAME);
+ EXPORT_PLUGIN_CLASS_FACTORY(UACAuthFactory, MOD_NAME);
+ 
+ UACAuthFactory* UACAuthFactory::_instance=0;
++string UACAuth::server_nonce_secret = "CKASLD§$>NLKJSLDKFJ"; // replaced on load
+ 
+ UACAuthFactory* UACAuthFactory::instance()
+ {
+@@ -57,7 +58,7 @@ UACAuthFactory* UACAuthFactory::instance()
+ 
+ void UACAuthFactory::invoke(const string& method, const AmArg& args, AmArg& ret)
+ {
+-  if(method == "getHandler"){
++  if (method == "getHandler") {
+     CredentialHolder* c = dynamic_cast<CredentialHolder*>(args.get(0).asObject());
+     DialogControl* cc = dynamic_cast<DialogControl*>(args.get(1).asObject());
+ 
+@@ -69,14 +70,43 @@ void UACAuthFactory::invoke(const string& method, const AmArg& args, AmArg& ret)
+       ERROR("wrong types in call to getHandler.  (c=%ld, cc= %ld)\n", 
+ 	    (unsigned long)c, (unsigned long)cc);
+     }
+-  }
+-  else
++  } else if (method == "checkAuth") {
++
++    // params: Request realm user pwd
++    if (args.size() < 4) {
++      ERROR("missing arguments to uac_auth checkAuth function, expected Request realm user pwd\n");
++      throw AmArg::TypeMismatchException();
++    }
++
++    AmSipRequest* req = dynamic_cast<AmSipRequest*>(args.get(0).asObject());
++    if (NULL == req)
++      throw AmArg::TypeMismatchException();
++    UACAuth::checkAuthentication(req, args.get(1).asCStr(),
++				 args.get(2).asCStr(),
++				 args.get(3).asCStr(), ret);
++  } else 
+     throw AmDynInvoke::NotImplemented(method);
+ }
+ 
+ 
+ int UACAuthFactory::onLoad()
+ {
++  string secret;
++  AmConfigReader conf;
++  string cfg_file_path = AmConfig::ModConfigPath + "uac_auth.conf";
++  if(conf.loadFile(cfg_file_path)){
++    WARN("Could not open '%s', assuming that default values are fine\n",
++	 cfg_file_path.c_str());
++    secret = AmSession::getNewId(); // ?? TODO: is this cryptoproof?
++  } else {
++    secret = conf.getParameter("server_secret");
++    if (secret.size()<5) {
++      ERROR("server_secret in '%s' too short!\n", cfg_file_path.c_str());
++      return -1;
++    }
++  }
++
++  UACAuth::setServerSecret(secret);
+   return 0;
+ }
+ 
+@@ -269,21 +299,32 @@ void w_MD5Update(MD5_CTX *ctx, const string& s) {
+   MD5Update(ctx, a, s.length());
+ }
+ 
+-
++// supr gly
+ string UACAuth::find_attribute(const string& name, const string& header) {
+-  string res;
+   size_t pos1 = header.find(name);
+-  if (pos1!=string::npos) {
+-    pos1+=name.length();
+-    pos1 = header.find_first_not_of(" =\"", pos1);
+-    if (pos1 != string::npos) {
+-      size_t pos2 = header.find_first_of(",\"", pos1);
+-      if (pos2 != string::npos) {
+-	res = header.substr(pos1, pos2-pos1);
+-      }
++
++  while (true) {
++    if (pos1 == string::npos)
++      return "";
++    
++    if (!pos1 || header[pos1-1] == ',' || header[pos1-1] == ' ')
++      break;
++
++    pos1 = header.find(name, pos1+1);
++  }
++
++  pos1+=name.length();
++  pos1 = header.find_first_not_of(" =\"", pos1);
++  if (pos1 != string::npos) {
++    size_t pos2 = header.find_first_of(",\"", pos1);
++    if (pos2 != string::npos) {
++      return header.substr(pos1, pos2-pos1);
++    } else {
++      return header.substr(pos1); // end of hdr
+     }
+   }
+-  return res;
++
++  return "";
+ }
+ 
+ bool UACAuth::parse_header(const string& auth_hdr, UACAuthDigestChallenge& challenge) {
+@@ -380,9 +421,9 @@ bool UACAuth::do_auth(const UACAuthDigestChallenge& challenge,
+   }
+ 
+   /* do authentication */
+-  uac_calc_HA1( challenge, cnonce, ha1);
++  uac_calc_HA1( challenge, credential, cnonce, ha1);
+   uac_calc_HA2( method, uri, challenge, qop_auth_int ? hentity : NULL, ha2);
+-  uac_calc_response( ha1, ha2, challenge, cnonce, qop_value, response);
++  uac_calc_response( ha1, ha2, challenge, cnonce, qop_value, nonce_count, response);
+   DBG("calculated response = %s\n", response);
+ 
+   // compile auth response
+@@ -443,19 +484,23 @@ static inline void cvt_hex(HASH bin, HASHHEX hex)
+  * calculate H(A1)
+  */
+ void UACAuth::uac_calc_HA1(const UACAuthDigestChallenge& challenge,
++			   const UACAuthCred* _credential,
+ 			   string cnonce,
+ 			   HASHHEX sess_key)
+ {
++  if (NULL == _credential)
++    return;
++
+   MD5_CTX Md5Ctx;
+   HASH HA1;
+ 
+   MD5Init(&Md5Ctx);
+-  w_MD5Update(&Md5Ctx, credential->user);
++  w_MD5Update(&Md5Ctx, _credential->user);
+   w_MD5Update(&Md5Ctx, ":");
+   // use realm from challenge 
+   w_MD5Update(&Md5Ctx, challenge.realm); 
+   w_MD5Update(&Md5Ctx, ":");
+-  w_MD5Update(&Md5Ctx, credential->pwd);
++  w_MD5Update(&Md5Ctx, _credential->pwd);
+   MD5Final(HA1, &Md5Ctx);
+ 
+   // MD5sess ...not supported
+@@ -520,7 +565,7 @@ void UACAuth::uac_calc_hentity( const string& body, HASHHEX hentity )
+  */
+ void UACAuth::uac_calc_response(HASHHEX ha1, HASHHEX ha2,
+ 				const UACAuthDigestChallenge& challenge, const string& cnonce,
+-				const string& qop_value, HASHHEX response)
++				const string& qop_value, unsigned int nonce_count, HASHHEX response)
+ {
+   unsigned char hc[1]; hc[0]=':';
+   MD5_CTX Md5Ctx;
+@@ -532,6 +577,7 @@ void UACAuth::uac_calc_response(HASHHEX ha1, HASHHEX ha2,
+   w_MD5Update(&Md5Ctx, challenge.nonce);
+   MD5Update(&Md5Ctx, hc, 1);
+ 
++
+   if (!qop_value.empty()) {
+       
+     w_MD5Update(&Md5Ctx, int2hex(nonce_count,true));
+@@ -546,3 +592,174 @@ void UACAuth::uac_calc_response(HASHHEX ha1, HASHHEX ha2,
+   MD5Final(RespHash, &Md5Ctx);
+   cvt_hex(RespHash, response);
+ }
++
++/** calculate nonce: time-stamp H(time-stamp private-key) */
++string UACAuth::calcNonce() {
++  string result;
++  HASHHEX hash;
++  MD5_CTX Md5Ctx;
++  HASH RespHash;
++
++  time_t now = time(NULL);
++  result = int2hex(now);
++  
++  MD5Init(&Md5Ctx);
++  w_MD5Update(&Md5Ctx, result);
++  w_MD5Update(&Md5Ctx, server_nonce_secret);
++  MD5Final(RespHash, &Md5Ctx);
++  cvt_hex(RespHash, hash);
++
++  return result+string((const char*)hash);
++}
++
++/** check nonce integrity. @return true if correct */
++bool UACAuth::checkNonce(const string& nonce) {
++  HASHHEX hash;
++  MD5_CTX Md5Ctx;
++  HASH RespHash;
++
++#define INT_HEX_LEN int(2*sizeof(int))
++
++  if (nonce.size() != INT_HEX_LEN+HASHHEXLEN) {
++    DBG("wrong nonce length (expected %u, got %zd)\n", INT_HEX_LEN+HASHHEXLEN, nonce.size());
++    return false;
++  }
++
++  MD5Init(&Md5Ctx);
++  w_MD5Update(&Md5Ctx, nonce.substr(0,INT_HEX_LEN));
++  w_MD5Update(&Md5Ctx, server_nonce_secret);
++  MD5Final(RespHash, &Md5Ctx);
++  cvt_hex(RespHash, hash);
++
++  return !strncmp((const char*)hash, &nonce[INT_HEX_LEN], HASHHEXLEN);
++}
++
++void UACAuth::setServerSecret(const string& secret) {
++  server_nonce_secret = secret;
++  DBG("Server Nonce secret set\n");
++}
++
++void UACAuth::checkAuthentication(const AmSipRequest* req, const string& realm, const string& user,
++				  const string& pwd, AmArg& ret) {
++  if (req->method == SIP_METH_ACK || req->method == SIP_METH_CANCEL) {
++    DBG("letting pass %s request without authentication\n", req->method.c_str());
++    ret.push(200);
++    ret.push("OK");
++    ret.push("");
++    return;
++  }
++
++  string auth_hdr = getHeader(req->hdrs, "Authorization");
++  bool authenticated = false;
++
++  if (auth_hdr.size()) {
++    UACAuthDigestChallenge r_challenge;
++
++    r_challenge.realm = find_attribute("realm", auth_hdr);
++    r_challenge.nonce = find_attribute("nonce", auth_hdr);
++    r_challenge.qop = find_attribute("qop", auth_hdr);
++    string r_response = find_attribute("response", auth_hdr);
++    string r_username = find_attribute("username", auth_hdr);
++    string r_uri = find_attribute("uri", auth_hdr);
++    string r_cnonce = find_attribute("cnonce", auth_hdr);
++
++    DBG("got realm '%s' nonce '%s', qop '%s', response '%s', username '%s' uri '%s' cnonce '%s'\n",
++	r_challenge.realm.c_str(), r_challenge.nonce.c_str(), r_challenge.qop.c_str(),
++	r_response.c_str(), r_username.c_str(), r_uri.c_str(), r_cnonce.c_str() );
++
++    if (r_response.size() != HASHHEXLEN) {
++      DBG("Auth: response length mismatch (wanted %u hex chars): '%s'\n", HASHHEXLEN, r_response.c_str());
++      goto auth_end;
++    }
++
++    if (realm != r_challenge.realm) {
++      DBG("Auth: realm mismatch: required '%s' vs '%s'\n", realm.c_str(), r_challenge.realm.c_str());
++      goto auth_end;
++    }
++
++    if (user != r_username) {
++      DBG("Auth: user mismatch: '%s' vs '%s'\n", user.c_str(), r_username.c_str());
++      goto auth_end;
++    }
++
++    if (!checkNonce(r_challenge.nonce)) {
++      DBG("Auth: incorrect nonce '%s'\n", r_challenge.nonce.c_str());
++      goto auth_end;
++    }
++
++    // we don't check the URI
++    // if (r_uri != req->r_uri) {
++    //   DBG("Auth: incorrect URI in request: '%s'\n", r_challenge.nonce.c_str());
++    //   goto auth_end;
++    // }
++
++    UACAuthCred credential;
++    credential.user = user;
++    credential.pwd = pwd;
++
++    unsigned int client_nonce_count = 1;
++
++    HASHHEX ha1;
++    HASHHEX ha2;
++    HASHHEX hentity;
++    HASHHEX response;
++    bool    qop_auth=false;
++    bool    qop_auth_int=false;
++    string  qop_value;
++
++    if(!r_challenge.qop.empty()){
++
++      if (r_challenge.qop == "auth")
++	qop_auth = true;
++      else if (r_challenge.qop == "auth-int")
++	qop_auth_int = true;
++
++      if(qop_auth || qop_auth_int) {
++
++	// get nonce count from request
++	string nonce_count_str = find_attribute("nc", auth_hdr);
++	if (str2i(nonce_count_str, client_nonce_count)) {
++	  DBG("Error parsing nonce_count '%s'\n", nonce_count_str.c_str());
++	  goto auth_end;
++	}
++
++	DBG("got client_nonce_count %u\n", client_nonce_count);
++
++	// auth-int? calculate hentity
++	if(qop_auth_int){
++	  uac_calc_hentity(req->body, hentity);
++	  qop_value = "auth-int";
++	} else {
++	  qop_value = "auth";
++	}
++
++      }
++    }
++
++    uac_calc_HA1(r_challenge, &credential, r_cnonce, ha1);
++    uac_calc_HA2(req->method, r_uri, r_challenge, qop_auth_int ? hentity : NULL, ha2);
++    uac_calc_response( ha1, ha2, r_challenge, r_cnonce, qop_value, client_nonce_count, response);
++    DBG("calculated our response vs request: '%s' vs '%s'", response, r_response.c_str());
++
++    if (!strncmp((const char*)response, r_response.c_str(), HASHHEXLEN)) {
++      DBG("Auth: authentication successfull\n");
++      authenticated = true;
++    } else {
++      DBG("Auth: authentication NOT successfull\n");
++    }
++  }
++
++ auth_end: 
++  if (authenticated) {
++    ret.push(200);
++    ret.push("OK");
++    ret.push("");
++  } else {
++    ret.push(401);
++    ret.push("Unauthorized");
++    ret.push(SIP_HDR_COLSP(SIP_HDR_WWW_AUTHENTICATE) "Digest "
++	     "realm=\""+realm+"\", "
++	     "qop=\"auth,auth-int\", "
++	     "nonce=\""+calcNonce()+"\"\r\n");
++  }
++}
+diff --git a/core/plug-in/uac_auth/UACAuth.h b/core/plug-in/uac_auth/UACAuth.h
+index 504c3a3..7088cdc 100644
+--- a/core/plug-in/uac_auth/UACAuth.h
++++ b/core/plug-in/uac_auth/UACAuth.h
+@@ -100,6 +100,8 @@ struct SIPRequestInfo {
+ /** \brief SessionEventHandler for implementing uac authentication */
+ class UACAuth : public AmSessionEventHandler
+ {
++  static string server_nonce_secret;
++
+   std::map<unsigned int, SIPRequestInfo> sent_requests;
+ 
+   UACAuthCred* credential;
+@@ -113,24 +115,26 @@ class UACAuth : public AmSessionEventHandler
+ 
+   bool nonce_reuse; // reused nonce?
+ 
+-  std::string find_attribute(const std::string& name, const std::string& header);
+-  bool parse_header(const std::string& auth_hdr, UACAuthDigestChallenge& challenge);
++  static std::string find_attribute(const std::string& name, const std::string& header);
++  static bool parse_header(const std::string& auth_hdr, UACAuthDigestChallenge& challenge);
+ 
+-  void uac_calc_HA1(const UACAuthDigestChallenge& challenge,
+-		    std::string cnonce,
+-		    HASHHEX sess_key);
++  static void uac_calc_HA1(const UACAuthDigestChallenge& challenge,
++			   const UACAuthCred* _credential,
++			   std::string cnonce,
++			   HASHHEX sess_key);
+ 
+-  void uac_calc_HA2( const std::string& method, const std::string& uri,
+-		     const UACAuthDigestChallenge& challenge,
+-		     HASHHEX hentity,
+-		     HASHHEX HA2Hex );
++  static void uac_calc_HA2( const std::string& method, const std::string& uri,
++			    const UACAuthDigestChallenge& challenge,
++			    HASHHEX hentity,
++			    HASHHEX HA2Hex );
+ 
+-  void uac_calc_hentity( const std::string& body, HASHHEX hentity );
++  static void uac_calc_hentity( const std::string& body, HASHHEX hentity );
+ 	
+-  void uac_calc_response( HASHHEX ha1, HASHHEX ha2,
+-			  const UACAuthDigestChallenge& challenge,
+-			  const std::string& cnonce, const string& qop_value, 
+-			  HASHHEX response);
++  static void uac_calc_response( HASHHEX ha1, HASHHEX ha2,
++				 const UACAuthDigestChallenge& challenge,
++				 const std::string& cnonce, const string& qop_value,
++				 unsigned int nonce_count, 
++				 HASHHEX response);
+ 	
+   /**
+    *  do auth on cmd with nonce in auth_hdr if possible
+@@ -174,6 +178,13 @@ class UACAuth : public AmSessionEventHandler
+ 			   const string& body,
+ 			   string& hdrs,
+ 			   int flags);
++
++  static string calcNonce();
++  static bool checkNonce(const string& nonce);
++  static void checkAuthentication(const AmSipRequest* req, const string& realm,
++				  const string& user, const string& pwd, AmArg& ret);
++
++  static void setServerSecret(const string& secret);
+ };
+ 
+ 
+diff --git a/core/tests/Makefile b/core/tests/Makefile
+index 5b79a9d..c614e80 100644
+--- a/core/tests/Makefile
++++ b/core/tests/Makefile
+@@ -7,6 +7,9 @@ CORE_HDRS=$(CORE_SRCS:.cpp=.h)
+ CORE_OBJS=$(CORE_SRCS:.cpp=.o)
+ CORE_DEPS=$(subst ../,,$(CORE_SRCS:.cpp=.d))
+ 
++AUTH_DIR=../plug-in/uac_auth
++AUTH_OBJS=$(AUTH_DIR)/UACAuth.o
++
+ SRCS=$(wildcard *.cpp)
+ HDRS=$(SRCS:.cpp=.h)
+ OBJS=$(SRCS:.cpp=.o)
+@@ -40,6 +43,9 @@ deps: $(DEPS)
+ .PHONY: core_deps
+ core_deps: $(CORE_DEPS)
+ 
++AUTH_OBJS: $(AUTH_DIR)/UACAuth.cpp $(AUTH_DIR)/UACAuth.h
++	cd $(AUTH_DIR) ; $(MAKE) AUTH_OBJS
++
+ COREPATH=..
+ include ../../Makefile.defs
+ 
+@@ -56,8 +62,7 @@ include ../../Makefile.defs
+ $(NAME): $(OBJS) $(CORE_OBJS) $(SIP_STACK) ../../Makefile.defs
+ 	-@echo ""
+ 	-@echo "making $(NAME)"
+-	$(LD) -o $(NAME) $(OBJS) $(CORE_OBJS) $(SIP_STACK) $(LDFLAGS) $(EXTRA_LDFLAGS)
+-
++	$(LD) -o $(NAME) $(OBJS) $(CORE_OBJS) $(SIP_STACK) $(LDFLAGS) $(EXTRA_LDFLAGS) $(AUTH_OBJS)
+ 
+ ifeq '$(NAME)' '$(MAKECMDGOALS)'
+ include $(DEPS) $(CORE_DEPS)
+diff --git a/core/tests/sems_tests.cpp b/core/tests/sems_tests.cpp
+index 109a0b0..1c3a1bc 100644
+--- a/core/tests/sems_tests.cpp
++++ b/core/tests/sems_tests.cpp
+@@ -21,6 +21,8 @@ FCT_BGN() {
+   init_logging();
+   log_stderr=true;
+   log_level=3;
++
++  FCTMF_SUITE_CALL(test_auth);
+   FCTMF_SUITE_CALL(test_headers);
+   FCTMF_SUITE_CALL(test_jsonarg);
+ } FCT_END();
+diff --git a/core/tests/test_auth.cpp b/core/tests/test_auth.cpp
+new file mode 100644
+index 0000000..450b625
+--- /dev/null
++++ b/core/tests/test_auth.cpp
+@@ -0,0 +1,45 @@
++#include "fct.h"
++
++#include "log.h"
++
++#include "AmSipHeaders.h"
++#include "AmSipMsg.h"
++#include "AmUtils.h"
++#include "plug-in/uac_auth/UACAuth.h"
++
++FCTMF_SUITE_BGN(test_auth) {
++
++    FCT_TEST_BGN(nonce_gen) {
++
++      string nonce = UACAuth::calcNonce();
++      //      DBG("nonce '%s'\n", nonce.c_str());    
++      fct_chk( UACAuth::checkNonce(nonce));
++    } FCT_TEST_END();
++
++    FCT_TEST_BGN(nonce_wrong_secret) {
++      UACAuth::setServerSecret("secret1");
++      string nonce = UACAuth::calcNonce();
++      UACAuth::setServerSecret("secret2");
++      fct_chk( !UACAuth::checkNonce(nonce));
++    } FCT_TEST_END();
++
++    FCT_TEST_BGN(nonce_wrong_nonce) {
++      string nonce = UACAuth::calcNonce();
++      nonce[0]=0;
++      nonce[1]=0;
++      fct_chk( !UACAuth::checkNonce(nonce));
++    } FCT_TEST_END();
++
++    FCT_TEST_BGN(nonce_wrong_nonce) {
++      string nonce = UACAuth::calcNonce();
++      nonce+="hallo";
++      fct_chk( !UACAuth::checkNonce(nonce));
++    } FCT_TEST_END();
++
++    FCT_TEST_BGN(nonce_wrong_nonce2) {
++      string nonce = UACAuth::calcNonce();
++      nonce[nonce.size()-1]=nonce[nonce.size()-2];
++      fct_chk( !UACAuth::checkNonce(nonce));
++    } FCT_TEST_END();
++
++} FCTMF_SUITE_END();
+diff --git a/core/tests/test_auth.h b/core/tests/test_auth.h
+new file mode 100644
+index 0000000..8d1c8b6
+--- /dev/null
++++ b/core/tests/test_auth.h
+@@ -0,0 +1 @@
++ 
+diff --git a/doc/Readme.uac_auth.txt b/doc/Readme.uac_auth.txt
+index 37e8e90..0d8a062 100644
+--- a/doc/Readme.uac_auth.txt
++++ b/doc/Readme.uac_auth.txt
+@@ -1,4 +1,4 @@
+-uac_auth Client authentication 
++uac_auth Client / Server authentication 
+ 
+ 
+ how to use uac_auth
+@@ -41,3 +41,61 @@ How to
+ 
+ see announce_auth app for example application
+ 
++
++How to use server auth
++----------------------
++
++To authenticate a request, use the "checkAuth" DI function.
++
++ Arguments:
++     args[0] - ArgObject pointing to the Request (AmSipRequest object)
++     args[1] - realm
++     args[2] - user
++     args[3] - password
++ Return values:
++     ret[0] - code: 200 for successful auth, 401 for unsuccessful (ie.
++     ret[1] - reason string
++     ret[2] - optional auth header
++
++Limitations
++-----------
++
++- URI in auth hdr is not checked
++- multiple Authorization headers are probably not properly processed (only the first one is used)
++
++code example:
++
++    AmDynInvokeFactory* fact = 
++      AmPlugIn::instance()->getFactory4Di("uac_auth");
++    if (NULL != fact) {
++      AmDynInvoke* di_inst = fact->getInstance();
++      if(di_inst) {
++	AmArg di_args, di_ret;
++	try {
++	  di_args.push(AmArg((AmObject*)&req));
++	  di_args.push("myrealm");
++	  di_args.push("myuser");
++	  di_args.push("mypwd");
++	  di_inst->invoke("checkAuth", di_args, di_ret);
++	  
++	  if (di_ret.size() >= 3) {
++	    if (di_ret[0].asInt() != 200) {
++	      DBG("Auth: replying %u %s - hdrs: '%s'\n",
++		  di_ret[0].asInt(), di_ret[1].asCStr(), di_ret[2].asCStr());
++	      dlg->reply(req, di_ret[0].asInt(), di_ret[1].asCStr(), NULL, di_ret[2].asCStr());
++	      return;
++	    } else {
++	      DBG("Successfully authenticated request.\n");
++	    }
++	  }
++	} catch (const AmDynInvoke::NotImplemented& ni) {
++	  ERROR("not implemented DI function 'checkAuth'\n");
++	} catch (const AmArg::OutOfBoundsException& oob) {
++	  ERROR("out of bounds in  DI call 'checkAuth'\n");
++	} catch (const AmArg::TypeMismatchException& oob) {
++	  ERROR("type mismatch  in  DI call checkAuth\n");
++	} catch (...) {
++	  ERROR("unexpected Exception  in  DI call checkAuth\n");
++	}
++     }
++  }
+-- 
+1.7.10.4
+

@@ -110,25 +110,19 @@ void AmSipDialog::updateStatus(const AmSipRequest& req)
 
   // Sanity checks
   if (r_cseq_i && req.cseq <= r_cseq){
-    string hdrs; bool i = false;
-    if (req.method == SIP_METH_NOTIFY) {
-      if (AmConfig::IgnoreNotifyLowerCSeq)
-	i = true;
-      else
-	// clever trick to not break subscription dialog usage
-	// for implementations which follow 3265 instead of 5057
-	hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
+    INFO("remote cseq lower than previous ones - refusing request\n");
+    // see 12.2.2
+    string hdrs;
+    if (req.method == "NOTIFY") {
+      // clever trick to not break subscription dialog usage
+      // for implementations which follow 3265 instead of 5057
+      hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
     }
 
-    if (!i) {
-      INFO("remote cseq lower than previous ones - refusing request\n");
-      // see 12.2.2
-      reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs,
-		  next_hop_for_replies ? next_hop_ip : "",
-		  next_hop_for_replies ? next_hop_port : 0);
-
-      return;
-    }
+    reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs,
+		next_hop_for_replies ? next_hop_ip : "",
+		next_hop_for_replies ? next_hop_port : 0);
+    return;
   }
 
   if (req.method == "INVITE") {
@@ -168,7 +162,6 @@ void AmSipDialog::updateStatus(const AmSipRequest& req)
     remote_party = req.from;
     local_party  = req.to;
     route        = req.route;
-    first_branch = req.via_branch;
   }
 
   int cont = rel100OnRequestIn(req);
@@ -1015,6 +1008,12 @@ int AmSipDialog::sendRequest(const string& method,
 			     int flags)
 {
   string msg,ser_cmd;
+  string m_hdrs = hdrs;
+
+  if(hdl)
+    hdl->onSendRequest(method,content_type,body,m_hdrs,flags,cseq);
+
+  rel100OnRequestOut(method, m_hdrs);
 
   AmSipRequest req;
 
@@ -1034,9 +1033,10 @@ int AmSipDialog::sendRequest(const string& method,
     
   if((method!="BYE")&&(method!="CANCEL"))
     req.contact = getContactHdr();
-
-  req.hdrs = hdrs;
     
+  if(!m_hdrs.empty())
+    req.hdrs = m_hdrs;
+  
   if (!(flags&SIP_FLAGS_VERBATIM)) {
     // add Signature
     if (AmConfig::Signature.length())
@@ -1052,11 +1052,6 @@ int AmSipDialog::sendRequest(const string& method,
     req.content_type = content_type;
     req.body = body;
   }
-
-  if(hdl)
-    hdl->onSendRequest(method,content_type,body,req.hdrs,flags,cseq);
-
-  rel100OnRequestOut(method, req.hdrs);
 
   if (SipCtrlInterface::send(req, next_hop_ip, next_hop_port,outbound_interface))
     return -1;

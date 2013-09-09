@@ -1,0 +1,33 @@
+From e6c7b0887d5858a24a8f75379b9c833033b1bb96 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 18 Apr 2012 11:24:35 +0200
+Subject: [PATCH] b/f: remove session container dlg link when subscription
+ terminates
+
+---
+ core/AmSipSubscriptionContainer.cpp |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/AmSipSubscriptionContainer.cpp b/core/AmSipSubscriptionContainer.cpp
+index 0e8ba4d..9cdc616 100644
+--- a/core/AmSipSubscriptionContainer.cpp
++++ b/core/AmSipSubscriptionContainer.cpp
+@@ -130,6 +130,7 @@ void _AmSipSubscriptionContainer::onEvent(AmEvent* event) {
+       DBG("subscription '%s' terminated - removing\n", it->second->getDescription().c_str());
+       delete it->second;
+       subscriptions.erase(it);
++      AmEventDispatcher::instance()->delEventQueue(ltag);
+     }
+     subscriptions_mut.unlock();
+     return;
+@@ -158,6 +159,7 @@ void _AmSipSubscriptionContainer::onEvent(AmEvent* event) {
+       DBG("subscription '%s' terminated - removing\n", it->second->getDescription().c_str());
+       delete it->second;
+       subscriptions.erase(it);
++      AmEventDispatcher::instance()->delEventQueue(ltag);
+     }
+     subscriptions_mut.unlock();
+     return;
+-- 
+1.7.10.4
+

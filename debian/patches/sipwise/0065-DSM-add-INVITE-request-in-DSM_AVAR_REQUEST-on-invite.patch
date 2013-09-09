@@ -1,0 +1,36 @@
+From 548437b63b848a056cc42c9fe858f3569487d22a Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Mon, 16 Apr 2012 01:15:51 +0200
+Subject: [PATCH] DSM: add INVITE request in DSM_AVAR_REQUEST on invite event
+
+Conflicts:
+
+	apps/dsm/DSMCall.cpp
+---
+ apps/dsm/DSMCall.cpp |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/apps/dsm/DSMCall.cpp b/apps/dsm/DSMCall.cpp
+index 5ae7fd3..d1ff0f4 100644
+--- a/apps/dsm/DSMCall.cpp
++++ b/apps/dsm/DSMCall.cpp
+@@ -93,6 +93,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
+   bool run_session_invite = engine.onInvite(req, this);
+ 
+   if (run_invite_event) {
++    avar[DSM_AVAR_REQUEST] = AmArg(sip_req);
+     if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
+       run_session_invite =false;
+ 
+@@ -100,7 +101,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
+       DBG("session choose to not connect media\n");
+       run_session_invite = false;     // don't accept audio 
+     }    
+-
++    avar.erase(DSM_AVAR_REQUEST);
+   }
+ 
+   if (run_session_invite) 
+-- 
+1.7.10.4
+

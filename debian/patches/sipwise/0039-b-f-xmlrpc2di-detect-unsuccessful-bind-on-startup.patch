@@ -1,0 +1,63 @@
+From 7bad706714602b153b097b2fad29f28e5749a126 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@frafos.com>
+Date: Mon, 21 Nov 2011 14:07:31 +0100
+Subject: [PATCH] b/f: xmlrpc2di - detect unsuccessful bind on startup
+
+---
+ apps/xmlrpc2di/XMLRPC2DI.cpp |   16 +++++++++++++---
+ apps/xmlrpc2di/XMLRPC2DI.h   |    3 +++
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/apps/xmlrpc2di/XMLRPC2DI.cpp b/apps/xmlrpc2di/XMLRPC2DI.cpp
+index 5364eba..1672255 100644
+--- a/apps/xmlrpc2di/XMLRPC2DI.cpp
++++ b/apps/xmlrpc2di/XMLRPC2DI.cpp
+@@ -158,6 +158,10 @@ int XMLRPC2DI::load() {
+ 
+ 
+   server = new XMLRPC2DIServer(XMLRPCPort, bind_ip, export_di, direct_export, s);
++  if (!server->initialize()) {
++    return -1;
++  }
++
+   server->start();
+   return 0;
+ }
+@@ -431,11 +435,17 @@ void XMLRPC2DIServer::registerMethods(const std::string& iface) {
+ 	  iface.c_str());
+   }
+ }
+-  
+ 
+-void XMLRPC2DIServer::run() {
++bool XMLRPC2DIServer::initialize() {
+   DBG("Binding XMLRPC2DIServer to port %u \n", port);
+-  s->bindAndListen(port, bind_ip);
++  if (!s->bindAndListen(port, bind_ip)) {
++    ERROR("Binding XMLRPC2DIServer to %s:%u\n", bind_ip.c_str(), port);
++    return false;
++  }
++  return true;
++}
++
++void XMLRPC2DIServer::run() {
+ 
+   // register us as SIP event receiver for MOD_NAME
+   AmEventDispatcher::instance()->addEventQueue(MOD_NAME, this);
+diff --git a/apps/xmlrpc2di/XMLRPC2DI.h b/apps/xmlrpc2di/XMLRPC2DI.h
+index a3fef2d..fdc03b8 100644
+--- a/apps/xmlrpc2di/XMLRPC2DI.h
++++ b/apps/xmlrpc2di/XMLRPC2DI.h
+@@ -126,6 +126,9 @@ class XMLRPC2DIServer
+ 		  bool di_export, 
+ 		  string direct_export,
+ 		  XmlRpcServer* s);
++
++  bool initialize();
++
+   void run();
+   void on_stop();
+   
+-- 
+1.7.10.4
+

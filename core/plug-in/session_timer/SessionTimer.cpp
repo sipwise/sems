@@ -103,7 +103,7 @@ bool SessionTimer::onSipReply(const AmSipReply& reply, int old_dlg_status,
 	    unsigned int new_cseq = s->dlg.cseq;
 	    // resend request with interval i_minse
 	    if (s->dlg.sendRequest(orig_req.method,orig_req.content_type,
-				   orig_req.body, orig_req.hdrs, SIP_FLAGS_VERBATIM) == 0) {
+				    orig_req.body, orig_req.hdrs) == 0) {
               DBG("request with new Session Interval %u successfully sent.\n", i_minse);
 	      // undo SIP dialog status change
 	      if (s->dlg.getStatus() != old_dlg_status)
@@ -271,7 +271,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
     
     remote_timer_aware = 
       key_in_list(getHeader(req.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
-		  TIMER_OPTION_TAG);
+		  TIMER_OPTION_TAG, true);
     
     // determine session interval
     string sess_expires_hdr = getHeader(req.hdrs, SIP_HDR_SESSION_EXPIRES,

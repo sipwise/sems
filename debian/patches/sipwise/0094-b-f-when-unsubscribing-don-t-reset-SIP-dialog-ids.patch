@@ -1,0 +1,35 @@
+From 04672b2bac433f83bee9d7468460be0361cad5c7 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 18 Apr 2012 14:59:26 +0200
+Subject: [PATCH] b/f: when unsubscribing, don't reset SIP dialog ids
+
+---
+ core/AmSipSubscription.cpp |   10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/core/AmSipSubscription.cpp b/core/AmSipSubscription.cpp
+index 09727de..f2dcf0a 100644
+--- a/core/AmSipSubscription.cpp
++++ b/core/AmSipSubscription.cpp
+@@ -178,18 +178,8 @@ bool AmSipSubscription::doUnsubscribe()
+     return true;
+   }
+ 
+-  req.to_tag     = "";
+-  dlg.remote_tag = "";
+   dlg.remote_uri = req.r_uri;
+     
+-  // set outbound proxy as next hop 
+-  if (!info.proxy.empty()) {
+-    dlg.outbound_proxy = info.proxy;
+-  } else if (!AmConfig::OutboundProxy.empty()) 
+-    dlg.outbound_proxy = AmConfig::OutboundProxy;
+-  //else 
+-  //    dlg.outbound_proxy = "";
+-
+   string hdrs;
+   hdrs += SIP_HDR_COLSP(SIP_HDR_EVENT) + info.event;
+   if (!info.id.empty())
+-- 
+1.7.10.4
+

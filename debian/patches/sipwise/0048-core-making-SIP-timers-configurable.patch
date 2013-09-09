@@ -1,0 +1,284 @@
+From 83ad77d1c2f873a9a63901da1232bdec3904622e Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 25 Apr 2012 17:34:19 +0200
+Subject: [PATCH] core: making SIP timers configurable
+
+sems.conf settings: sip_timer_a=400
+
+Conflicts:
+
+	core/AmConfig.cpp
+---
+ core/AmConfig.cpp         |   14 ++++++++++++
+ core/etc/sems.conf.sample |   28 ++++++++++++++++++++++++
+ core/sip/sip_timers.cpp   |   45 ++++++++++++++++++++++++++++++++++++++
+ core/sip/sip_timers.h     |   53 ++++++++++++++++++++++++++++++---------------
+ core/sip/trans_layer.cpp  |   13 ++++++-----
+ 5 files changed, 131 insertions(+), 22 deletions(-)
+ create mode 100644 core/sip/sip_timers.cpp
+
+diff --git a/core/AmConfig.cpp b/core/AmConfig.cpp
+index 701d3f2..c096366 100644
+--- a/core/AmConfig.cpp
++++ b/core/AmConfig.cpp
+@@ -39,6 +39,7 @@
+ #include "AmConfigReader.h"
+ #include "AmUtils.h"
+ #include "AmSession.h"
++#include "sip/sip_timers.h"
+ 
+ #include <cctype>
+ #include <algorithm>
+@@ -312,6 +313,19 @@ int AmConfig::readConfiguration()
+     DisableDNSSRV = (cfg.getParameter("disable_dns_srv") == "yes");
+   }
+   
++
++  for (char c = 'a'; c <= 'm'; c++) {
++    if(cfg.hasParameter(string("sip_timer_")+c)) {
++      sip_timers[c-'a']=cfg.getParameterInt(string("sip_timer_")+c, sip_timers[c-'a']);
++      DBG("Set SIP Timer '%c' to %u ms\n", 'A'+c-'a', sip_timers[c-'a']);
++    }
++  }
++
++  if (cfg.hasParameter("sip_timer_t2")) {
++    sip_timer_t2 = cfg.getParameterInt("sip_timer_t2", DEFAULT_T2_TIMER);
++    DBG("Set SIP Timer T2 to %u ms\n", sip_timer_t2);
++  }
++
+   // plugin_path
+   if (cfg.hasParameter("plugin_path"))
+     PlugInPath = cfg.getParameter("plugin_path");
+diff --git a/core/etc/sems.conf.sample b/core/etc/sems.conf.sample
+index 3a845dc..597fbc6 100644
+--- a/core/etc/sems.conf.sample
++++ b/core/etc/sems.conf.sample
+@@ -456,6 +456,34 @@ use_default_signature=yes
+ #   default settings (i.e. leave out) for these should be OK
+ #   for most applications
+ 
++# SIP timers configuration (in milliseconds)
++#
++# sip_timer_a=<n millisec>
++# sip_timer_b=<n millisec>
++# ...
++# sip_timer_m=<n millisec>
++#
++# timers A to J as in RFC3261.
++# Timer L: handle 200 ACKs automatically in INVITE client trans.
++# Timer M: cycle throught multiple addresses in case the R-URI
++#          resolves to multiple addresses
++#
++# Warning: Timer values are not checked whether they are appropriate!
++#          Leave to default values if in doubt.
++#
++# Example:
++#  # equivalent to fr_timer=20 in sip-router
++#  sip_timer_b=20000
++#  sip_timer_f=20000
++
++# sip_timer_t2=<n millisec)   T2 timer configuration
++#  (Cap for re-send request/response backoff)
++#
++# Warning: Timer values are not checked whether they are appropriate!
++#          Leave to default values if in doubt.
++#
++#sip_timer_t2=4000
++
+ # skip DNS SRV lookup? [yes, no]
+ #
+ # according to RFC, if no port is specified, destination IP address
+diff --git a/core/sip/sip_timers.cpp b/core/sip/sip_timers.cpp
+new file mode 100644
+index 0000000..25f1e66
+--- /dev/null
++++ b/core/sip/sip_timers.cpp
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (C) 2012 Stefan Sayer
++ *
++ * This file is part of SEMS, a free SIP media server.
++ *
++ * SEMS is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version. This program is released under
++ * the GPL with the additional exemption that compiling, linking,
++ * and/or using OpenSSL is allowed.
++ *
++ * For a license to use the SEMS software under conditions
++ * other than those described here, or to purchase support for this
++ * software, please contact iptel.org by e-mail at the following addresses:
++ *    info@iptel.org
++ *
++ * SEMS is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License 
++ * along with this program; if not, write to the Free Software 
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#include "sip_timers.h"
++
++unsigned int sip_timers[n_sip_timers] = {
++  DEFAULT_A_TIMER,
++  DEFAULT_B_TIMER,
++  DEFAULT_C_TIMER,
++  DEFAULT_D_TIMER,
++  DEFAULT_E_TIMER,
++  DEFAULT_F_TIMER,
++  DEFAULT_G_TIMER,
++  DEFAULT_H_TIMER,
++  DEFAULT_I_TIMER,
++  DEFAULT_J_TIMER,
++  DEFAULT_K_TIMER,
++  DEFAULT_L_TIMER,
++  DEFAULT_M_TIMER
++};
++
++unsigned int sip_timer_t2 = DEFAULT_T2_TIMER;
+diff --git a/core/sip/sip_timers.h b/core/sip/sip_timers.h
+index a59eaf7..13eb038 100644
+--- a/core/sip/sip_timers.h
++++ b/core/sip/sip_timers.h
+@@ -76,40 +76,41 @@ enum sip_timer_type {
+  */
+ 
+ #define T1_TIMER  500 /* 500 ms */
+-#define T2_TIMER 4000 /*   4 s  */
++#define DEFAULT_T2_TIMER 4000 /*   4 s  */
+ #define T4_TIMER 5000 /*   5 s  */
+ 
+ //type 0x01
+-#define A_TIMER  T1_TIMER
++#define DEFAULT_A_TIMER  T1_TIMER
++
+ //type 0x02
+-#define B_TIMER  64*T1_TIMER
++#define DEFAULT_B_TIMER  64*T1_TIMER
+ 
+ //type 0x0d
+-#define C_TIMER  (3*60*1000)
++#define DEFAULT_C_TIMER  (3*60*1000)
+ 
+ //type 0x03
+-#define D_TIMER  64*T1_TIMER
++#define DEFAULT_D_TIMER  64*T1_TIMER
+ 
+ //type 0x04
+-#define E_TIMER  T1_TIMER
++#define DEFAULT_E_TIMER  T1_TIMER
++
+ //type 0x05
+-#define F_TIMER  64*T1_TIMER
++#define DEFAULT_F_TIMER  64*T1_TIMER
+ 
+ //type 0x06
+-#define K_TIMER  T4_TIMER
+-
++#define DEFAULT_K_TIMER  T4_TIMER
+ 
+ //type 0x07
+-#define G_TIMER  T1_TIMER
++#define DEFAULT_G_TIMER  T1_TIMER
++
+ //type 0x08
+-#define H_TIMER  64*T1_TIMER
++#define DEFAULT_H_TIMER  64*T1_TIMER
+ 
+ //type 0x09
+-#define I_TIMER  T4_TIMER
++#define DEFAULT_I_TIMER  T4_TIMER
+ 
+ //type 0x0a
+-#define J_TIMER  64*T1_TIMER
+-
++#define DEFAULT_J_TIMER  64*T1_TIMER
+ 
+ // Following timer values are not defined by
+ // RFC 3261.
+@@ -117,16 +118,34 @@ enum sip_timer_type {
+ // Used to handle 200 ACKs automatically
+ // in INVITE client transactions.
+ //type 0x0b
+-#define L_TIMER  64*T1_TIMER
++#define DEFAULT_L_TIMER  64*T1_TIMER
+ 
+ // Transport address failover timer:
+ // - used to cycle throught multiple addresses
+ //   in case the R-URI resolves to multiple addresses
+ //type 0x0c
+-#define M_TIMER  (B_TIMER/4)
+-
++#define DEFAULT_M_TIMER  (DEFAULT_B_TIMER/4)
++
++#define A_TIMER sip_timers['A'-'A']
++#define B_TIMER sip_timers['B'-'A']
++#define C_TIMER sip_timers['C'-'A']
++#define D_TIMER sip_timers['D'-'A']
++#define E_TIMER sip_timers['E'-'A']
++#define F_TIMER sip_timers['F'-'A']
++#define G_TIMER sip_timers['G'-'A']
++#define H_TIMER sip_timers['H'-'A']
++#define I_TIMER sip_timers['I'-'A']
++#define J_TIMER sip_timers['J'-'A']
++#define K_TIMER sip_timers['K'-'A']
++#define L_TIMER sip_timers['L'-'A']
++#define M_TIMER sip_timers['M'-'A']
++
++#define n_sip_timers 'M'-'A'+1
++extern unsigned int sip_timers[n_sip_timers];
+ #endif
+ 
++#define T2_TIMER sip_timer_t2
++extern unsigned int sip_timer_t2;
+ 
+ /** EMACS **
+  * Local variables:
+diff --git a/core/sip/trans_layer.cpp b/core/sip/trans_layer.cpp
+index 6589586..c468f5c 100644
+--- a/core/sip/trans_layer.cpp
++++ b/core/sip/trans_layer.cpp
+@@ -1648,7 +1648,7 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
+ 
+ 	n++;
+ 	tr->msg->send();
+-	tr->reset_timer((n<<16) | type, T1_TIMER<<n, bucket->get_id());
++	tr->reset_timer((n<<16) | type, A_TIMER<<n, bucket->get_id());
+ 	break;
+ 	
+     case STIMER_B:  // Calling: -> Terminated
+@@ -1748,7 +1748,7 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
+ 	break;
+ 
+     case STIMER_E:  // Trying/Proceeding: (re-)send request
+-    case STIMER_G:  // Completed: (re-)send response
++    case STIMER_G:  { // Completed: (re-)send response
+ 
+ 	n++; // re-transmission counter
+ 
+@@ -1768,13 +1768,16 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
+ 	    tr->msg->send();
+ 	}
+ 
+-	if(T1_TIMER<<n > T2_TIMER) {
++	unsigned int retr_timer = (type == STIMER_E) ?
++	    E_TIMER << n : G_TIMER << n;
++
++	if(retr_timer<<n > T2_TIMER) {
+ 	    tr->reset_timer((n<<16) | type, T2_TIMER, bucket->get_id());
+ 	}
+ 	else {
+-	    tr->reset_timer((n<<16) | type, T1_TIMER<<n, bucket->get_id());
++	    tr->reset_timer((n<<16) | type, retr_timer, bucket->get_id());
+ 	}
+-	break;
++    } break;
+ 
+     case STIMER_M:
+ 	{
+-- 
+1.7.10.4
+

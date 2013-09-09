@@ -1,0 +1,40 @@
+From 1cc98167704d3c3fde7197867d2a2763bff481f8 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Tue, 7 Aug 2012 13:58:41 +0200
+Subject: [PATCH] b/f:removed superfluous debug log messages introduced in
+ 26fdaa8eaf
+
+---
+ core/AmSession.cpp |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/core/AmSession.cpp b/core/AmSession.cpp
+index 3806199..b8601d3 100644
+--- a/core/AmSession.cpp
++++ b/core/AmSession.cpp
+@@ -909,11 +909,11 @@ void AmSession::onSipReply(const AmSipReply& reply,
+   DBG("negotiate_onreply = %s\n", negotiate_onreply?"true":"false");
+   if (negotiate_onreply) {    
+     if(old_dlg_status < AmSipDialog::Connected){
+-      DBG("old is < conn\n");
++
+       switch(dlg.getStatus()){
+ 	
+       case AmSipDialog::Connected:
+-	      DBG("case conn\n");
++
+ 	try {
+ 	  RTPStream()->setMonitorRTPTimeout(true);
+ 
+@@ -942,7 +942,7 @@ void AmSession::onSipReply(const AmSipReply& reply,
+ 	break;
+ 	
+       case AmSipDialog::Pending:
+-	DBG("case pending\n");
++
+ 	switch(reply.code){
+ 	  // todo: 180 with body (remote rbt)
+ 	case 180: { 
+-- 
+1.7.10.4
+

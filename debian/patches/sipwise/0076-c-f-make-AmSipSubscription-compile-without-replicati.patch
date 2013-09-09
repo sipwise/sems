@@ -1,0 +1,45 @@
+From e27a4ea3fbfb3d35b7bf52d6a026d2b73f1cdbf0 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 8 Aug 2012 12:07:51 +0200
+Subject: [PATCH] c/f: make AmSipSubscription compile without replication
+ support
+
+---
+ core/AmSipSubscription.cpp |    6 +++++-
+ core/AmSipSubscription.h   |    2 ++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/core/AmSipSubscription.cpp b/core/AmSipSubscription.cpp
+index 3fbeab1..09727de 100644
+--- a/core/AmSipSubscription.cpp
++++ b/core/AmSipSubscription.cpp
+@@ -31,7 +31,11 @@ AmSipSubscription::AmSipSubscription(const string& handle,
+ 				     const AmSipSubscriptionInfo& info,
+ 				     const string& sess_link) 
+   : info(info),
+-    dlg(sess_checkpoint, this),
++    dlg(
++#ifdef WITH_REPLICATION
++	sess_checkpoint,
++#endif
++	this),
+     cred(info.domain, info.from_user, info.pwd),
+     sub_begin(0),
+     sub_expires(0),
+diff --git a/core/AmSipSubscription.h b/core/AmSipSubscription.h
+index 95db8bc..910dc72 100644
+--- a/core/AmSipSubscription.h
++++ b/core/AmSipSubscription.h
+@@ -127,7 +127,9 @@ class AmSipSubscription
+  protected:
+ 
+   AmSipDialog dlg;
++#ifdef WITH_REPLICATION
+   AmSessionCheckpoint sess_checkpoint;
++#endif
+   UACAuthCred cred;
+ 
+   AmSipSubscriptionInfo info;
+-- 
+1.7.10.4
+
