@@ -29,9 +29,6 @@
 #include "AmUtils.h"
 #include "AmMediaProcessor.h"
 #include "DSM.h"
-#include "AmConferenceStatus.h"
-#include "AmAdvancedAudio.h"
-#include "AmSipSubscription.h"
 
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
 
@@ -96,7 +93,6 @@ void DSMCall::onInvite(const AmSipRequest& req) {
   bool run_session_invite = engine.onInvite(req, this);
 
   if (run_invite_event) {
-    avar[DSM_AVAR_REQUEST] = AmArg(&req);
     if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
       run_session_invite =false;
 
@@ -104,7 +100,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
       DBG("session choose to not connect media\n");
       run_session_invite = false;     // don't accept audio 
     }    
-    avar.erase(DSM_AVAR_REQUEST);
+
   }
 
   if (run_session_invite) 
@@ -387,14 +383,6 @@ void DSMCall::process(AmEvent* event)
     engine.runEvent(this, this, DSMCondition::PlaylistSeparator, &params);
   }
 
-  ConferenceEvent * conf_ev = dynamic_cast<ConferenceEvent*>(event);
-  if (conf_ev) {
-    map<string, string> params;
-    params["type"] = "conference_event";
-    params["id"] = int2str(conf_ev->event_id);
-    engine.runEvent(this, this, DSMCondition::DSMEvent, &params);
-  }
-
   // todo: give modules the possibility to define/process events
   JsonRpcEvent* jsonrpc_ev = dynamic_cast<JsonRpcEvent*>(event);
   if (jsonrpc_ev) { 
@@ -451,33 +439,6 @@ void DSMCall::process(AmEvent* event)
 
   }
 
-  if (event->event_id == E_SIP_SUBSCRIPTION) {
-    SIPSubscriptionEvent* sub_ev = dynamic_cast<SIPSubscriptionEvent*>(event);
-    if (sub_ev) {
-      DBG("DSM Call received SIP Subscription Event\n");
-      map<string, string> params;
-      params["status"] = sub_ev->getStatusText();
-      params["code"] = int2str(sub_ev->code);
-      params["reason"] = sub_ev->reason;
-      params["expires"] = int2str(sub_ev->expires);
-      params["has_body"] = (!sub_ev->notify_body.empty())?"true":"false";
-      if (!sub_ev->notify_body.empty()) {
-	avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] = AmArg(sub_ev->notify_body);
-      }
-      engine.runEvent(this, this, DSMCondition::SIPSubscription, &params);
-      avar.erase(DSM_AVAR_SIPSUBSCRIPTION_BODY);
-    }
-  }
-
-  AmRtpTimeoutEvent* timeout_ev = dynamic_cast<AmRtpTimeoutEvent*>(event);
-  if (timeout_ev) {
-    map<string, string> params;
-    params["type"] = "rtp_timeout";
-    params["timeout_value"] = int2str(AmConfig::DeadRtpTime);
-    engine.runEvent(this, this, DSMCondition::RTPTimeout, &params);
-    return;
-  }
-
   AmB2BCallerSession::process(event);
 }
 
@@ -485,13 +446,13 @@ inline UACAuthCred* DSMCall::getCredentials() {
   return cred.get();
 }
 
-void DSMCall::playPrompt(const string& name, bool loop, bool front) {
+void DSMCall::playPrompt(const string& name, bool loop) {
   DBG("playing prompt '%s'\n", name.c_str());
   if (prompts->addToPlaylist(name,  (long)this, playlist, 
-			    front, loop))  {
+			    /*front =*/ false, loop))  {
     if ((var["prompts.default_fallback"] != "yes") ||
       default_prompts->addToPlaylist(name,  (long)this, playlist, 
-				    front, loop)) {
+				    /*front =*/ false, loop)) {
       DBG("checked [%p]\n", default_prompts);
       throw DSMException("prompt", "name", name);
     } else {
@@ -508,17 +469,9 @@ void DSMCall::closePlaylist(bool notify) {
   playlist.close(notify);  
 }
 
-void DSMCall::flushPlaylist() {
-  DBG("flush playlist\n");
-  playlist.close(false);  
-}
-
-void DSMCall::addToPlaylist(AmPlaylistItem* item, bool front) {
+void DSMCall::addToPlaylist(AmPlaylistItem* item) {
   DBG("add item to playlist\n");
-  if (front)
-    playlist.addToPlayListFront(item);
-  else
-    playlist.addToPlaylist(item);
+  playlist.addToPlaylist(item);
 }
 
 void DSMCall::playFile(const string& name, bool loop, bool front) {
@@ -535,18 +488,6 @@ void DSMCall::playFile(const string& name, bool loop, bool front) {
   if (loop) 
     af->loop.set(true);
 
-  if (front)
-    playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
-  else
-    playlist.addToPlaylist(new AmPlaylistItem(af, NULL));
-
-  audiofiles.push_back(af);
-  CLR_ERRNO;
-}
-
-void DSMCall::playSilence(unsigned int length, bool front) {
-  AmNullAudio* af = new AmNullAudio();
-  af->setReadLength(length);
   if (front)
     playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
   else
@@ -678,14 +619,10 @@ void DSMCall::addSeparator(const string& name, bool front) {
 }
 
 void DSMCall::transferOwnership(DSMDisposable* d) {
-  if (d == NULL)
-    return;
   gc_trash.insert(d);
 }
 
 void DSMCall::releaseOwnership(DSMDisposable* d) {
-  if (d == NULL)
-    return;
   gc_trash.erase(d);
 }
 

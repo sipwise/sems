@@ -9,10 +9,6 @@
 #define SIP_METH_UPDATE         "UPDATE"
 #define SIP_METH_BYE            "BYE"
 #define SIP_METH_ACK            "ACK"
-#define SIP_METH_SUBSCRIBE      "SUBSCRIBE"
-#define SIP_METH_NOTIFY         "NOTIFY"
-#define SIP_METH_CANCEL         "CANCEL"
-#define SIP_METH_REFER          "REFER"
 
 #define SIP_HDR_FROM            "From"
 #define SIP_HDR_TO              "To"
@@ -28,7 +24,6 @@
 #define SIP_HDR_P_ASSERTED_IDENTITY "P-Asserted-Identity"
 #define SIP_HDR_P_PREFERRED_IDENTITY "P-Preferred-Identity"
 #define SIP_HDR_REFER_TO        "Refer-To"
-#define SIP_HDR_REFER_TO_COMPACT "r"
 #define SIP_HDR_EXPIRES         "Expires"
 #define SIP_HDR_SESSION_EXPIRES "Session-Expires"
 #define SIP_HDR_MIN_SE          "Min-SE"
@@ -40,10 +35,6 @@
 #define SIP_HDR_WWW_AUTHENTICATE "WWW-Authenticate"
 #define SIP_HDR_ALLOW            "Allow"
 #define SIP_HDR_RETRY_AFTER      "Retry-After"
-#define SIP_HDR_ACCEPT           "Accept"
-#define SIP_HDR_EVENT            "Event"
-#define SIP_HDR_SUBSCRIPTION_STATE "Subscription-State"
-#define SIP_HDR_REPLACES          "Replaces"
 
 #define SIP_HDR_COL(_hdr)       _hdr ":"
 #define SIP_HDR_COLSP(_hdr)     SIP_HDR_COL(_hdr) " "
@@ -66,6 +57,5 @@
 #define SIP_REPLY_EXTENSION_REQUIRED    "Extension Required"
 #define SIP_REPLY_LOOP_DETECTED         "Loop Detected"
 #define SIP_REPLY_NOT_EXIST             "Call Leg/Transaction Does Not Exist"
-#define SIP_REPLY_TRYING                "Trying"
 
 #endif /* __AMSIPHEADERS_H__ */

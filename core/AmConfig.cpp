@@ -39,7 +39,6 @@
 #include "AmConfigReader.h"
 #include "AmUtils.h"
 #include "AmSession.h"
-#include "sip/sip_timers.h"
 
 #include <cctype>
 #include <algorithm>
@@ -77,7 +76,6 @@ string       AmConfig::NextHopIP               = "";
 unsigned int AmConfig::NextHopPort             = 0;
 bool         AmConfig::NextHopForReplies       = false;
 bool         AmConfig::ProxyStickyAuth         = false;
-bool         AmConfig::IgnoreNotifyLowerCSeq   = false;
 bool         AmConfig::DisableDNSSRV           = false;
 string       AmConfig::Signature               = "";
 unsigned int AmConfig::MaxForwards             = MAX_FORWARDS;
@@ -98,8 +96,6 @@ string       AmConfig::SessionLimitErrReason   = "Server overload";
 unsigned int AmConfig::OptionsSessionLimit            = 0;
 unsigned int AmConfig::OptionsSessionLimitErrCode     = 503;
 string       AmConfig::OptionsSessionLimitErrReason   = "Server overload";
-
-bool         AmConfig::AcceptForkedDialogs     = true;
 
 bool         AmConfig::ShutdownMode            = false;
 unsigned int AmConfig::ShutdownModeErrCode     = 503;
@@ -310,27 +306,10 @@ int AmConfig::readConfiguration()
     ProxyStickyAuth = (cfg.getParameter("proxy_sticky_auth") == "yes");
   }
 
-  if(cfg.hasParameter("ignore_notify_lower_cseq")) {
-    IgnoreNotifyLowerCSeq = (cfg.getParameter("ignore_notify_lower_cseq") == "yes");
-  }
-
   if(cfg.hasParameter("disable_dns_srv")) {
     DisableDNSSRV = (cfg.getParameter("disable_dns_srv") == "yes");
   }
   
-
-  for (char c = 'a'; c <= 'm'; c++) {
-    if(cfg.hasParameter(string("sip_timer_")+c)) {
-      sip_timers[c-'a']=cfg.getParameterInt(string("sip_timer_")+c, sip_timers[c-'a']);
-      DBG("Set SIP Timer '%c' to %u ms\n", 'A'+c-'a', sip_timers[c-'a']);
-    }
-  }
-
-  if (cfg.hasParameter("sip_timer_t2")) {
-    sip_timer_t2 = cfg.getParameterInt("sip_timer_t2", DEFAULT_T2_TIMER);
-    DBG("Set SIP Timer T2 to %u ms\n", sip_timer_t2);
-  }
-
   // plugin_path
   if (cfg.hasParameter("plugin_path"))
     PlugInPath = cfg.getParameter("plugin_path");
@@ -532,9 +511,6 @@ int AmConfig::readConfiguration()
       OptionsSessionLimitErrReason = limit[2];
     }
   }
-
-  if(cfg.hasParameter("accept_forked_dialogs"))
-    AcceptForkedDialogs = !(cfg.getParameter("accept_forked_dialogs") == "no");
 
   if(cfg.hasParameter("shutdown_mode_reply")){
     string c_reply = cfg.getParameter("shutdown_mode_reply");    

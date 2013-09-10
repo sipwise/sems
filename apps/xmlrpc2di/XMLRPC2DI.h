@@ -192,8 +192,6 @@ class XMLRPC2DI
   
   static bool DebugServerParams;
   static bool DebugServerResult;
-  
-  static unsigned int debug_log_level;
 };
 
 #endif

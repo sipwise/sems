@@ -173,8 +173,6 @@ class AmSipDialog
   string remote_tag;
   string local_tag;
 
-  string first_branch;
-
   string remote_party; // To/From
   string local_party;  // To/From
 

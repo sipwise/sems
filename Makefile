@@ -23,11 +23,11 @@ clean:
 
 .PHONY: modules
 modules:
-	@for r in $(subdirs) "" ; do \
+	-@for r in $(subdirs) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo  "" ; \
 			echo  "making $$r" ; \
-			$(MAKE) -C $$r all || exit 1; \
+			$(MAKE) -C $$r all; \
 		fi ; \
 	done 
 

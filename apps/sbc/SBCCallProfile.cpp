@@ -108,9 +108,6 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     }
   }
 
-  fix_replaces_inv = cfg.getParameter("fix_replaces_inv");
-  fix_replaces_ref = cfg.getParameter("fix_replaces_ref");;
-
   sst_enabled = cfg.getParameter("enable_session_timer", "no") == "yes";
   use_global_sst_config = !cfg.hasParameter("session_expires");
   
@@ -120,11 +117,6 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 
   call_timer_enabled = cfg.getParameter("enable_call_timer", "no") == "yes";
   call_timer = cfg.getParameter("call_timer");
-
-  uas_auth_bleg_enabled = cfg.getParameter("enable_bleg_uas_auth", "no") == "yes";
-  uas_auth_bleg_credentials.realm = cfg.getParameter("uas_auth_bleg_realm");
-  uas_auth_bleg_credentials.user = cfg.getParameter("uas_auth_bleg_user");
-  uas_auth_bleg_credentials.pwd = cfg.getParameter("uas_auth_bleg_pwd");
 
   prepaid_enabled = cfg.getParameter("enable_prepaid", "no") == "yes";
   prepaid_accmodule = cfg.getParameter("prepaid_accmodule");
@@ -223,9 +215,6 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	 sdpfilter_enabled?"en":"dis", FilterType2String(sdpfilter),
 	 sdpfilter_list.size());
 
-    INFO("SBC:      fixing Replaces in INVITE: '%s'\n", fix_replaces_inv.c_str());
-    INFO("SBC:      fixing Replaces in REFER: '%s'\n", fix_replaces_ref.c_str());
-
     INFO("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
     if (rtprelay_enabled) {
       if (!force_symmetric_rtp.empty()) {
@@ -239,7 +228,6 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 
     INFO("SBC:      SST %sabled\n", sst_enabled?"en":"dis");
     INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
-    INFO("SBC:      SIP UAS auth for B leg %sabled\n", uas_auth_bleg_enabled?"en":"dis");
     INFO("SBC:      call timer %sabled\n", call_timer_enabled?"en":"dis");
     if (call_timer_enabled) {
       INFO("SBC:                  %s seconds\n", call_timer.c_str());

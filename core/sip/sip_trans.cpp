@@ -45,8 +45,7 @@ int _timer_type_lookup[] = {
     0,1,2, // STIMER_G, STIMER_H, STIMER_I
     0,     // STIMER_J
     2,     // STIMER_L; shares the same slot as STIMER_D
-    2,     // STIMER_M; shares the same slot as STIMER_D/STIMER_K
-    1,     // STIMER_C; shares the same slot at STIMER_B (INV trans only)
+    2      // STIMER_M; shares the same slot as STIMER_D/STIMER_K
 };
 
 inline timer** fetch_timer(unsigned int timer_type, timer** base)
@@ -121,7 +120,7 @@ timer* sip_trans::get_timer(unsigned int timer_type)
 }
 
 
-char _timer_name_lookup[] = {'0','A','B','D','E','F','K','G','H','I','J','L','M','C'};
+char _timer_name_lookup[] = {'0','A','B','D','E','F','K','G','H','I','J','L','M'};
 #define timer_name(type) \
     (_timer_name_lookup[(type) & 0xFFFF])
 
@@ -155,15 +154,13 @@ void trans_timer_cb(timer* t, unsigned int bucket_id, sip_trans* tr)
 	if(bucket->exist(tr)){
 	    DBG("Transaction timer expired: type=%c, trans=%p, eta=%i, t=%i\n",
 		timer_name(t->type),tr,t->expires,wheeltimer::instance()->wall_clock);
-
-	    // timer_expired unlocks the bucket
 	    trans_layer::instance()->timer_expired(t,bucket,tr);
 	}
 	else {
 	    WARN("Ignoring expired timer (%p): transaction"
 		 " %p does not exist anymore\n",t,tr);
-	    bucket->unlock();
 	}
+	bucket->unlock();
     }
     else {
 	ERROR("Invalid bucket id\n");

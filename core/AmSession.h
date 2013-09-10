@@ -328,10 +328,6 @@ public:
   /** setter for rtp_str->receiving */
   void setReceiving(bool receive) { RTPStream()->receiving = receive; }
 
-  /** setter for rtp_str->force_receive_dtmf*/
-  void setForceDtmfReceiving(bool receive) { RTPStream()->force_receive_dtmf = receive; }
-
-  /* ----         SIP dialog attributes                  ---- */
   /** Gets the Session's call ID */
   const string& getCallID() const;
 
@@ -340,9 +336,6 @@ public:
 
   /** Gets the Session's local tag */
   const string& getLocalTag() const;
-
-  /** Gets the branch param of the first via in the original INVITE*/
-  const string& getFirstBranch() const;
 
   /** Sets the Session's local tag if not set already */
   void setLocalTag();

@@ -70,6 +70,8 @@ $(NAME): $(NAME).o $(OBJS) ../Makefile.defs
 
 install: all mk-install-dirs \
 	install-audio \
+	install-modules-cfg \
+	install-cfg \
 	install-bin \
 	install-modules
 

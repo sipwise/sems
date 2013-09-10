@@ -456,34 +456,6 @@ use_default_signature=yes
 #   default settings (i.e. leave out) for these should be OK
 #   for most applications
 
-# SIP timers configuration (in milliseconds)
-#
-# sip_timer_a=<n millisec>
-# sip_timer_b=<n millisec>
-# ...
-# sip_timer_m=<n millisec>
-#
-# timers A to J as in RFC3261.
-# Timer L: handle 200 ACKs automatically in INVITE client trans.
-# Timer M: cycle throught multiple addresses in case the R-URI
-#          resolves to multiple addresses
-#
-# Warning: Timer values are not checked whether they are appropriate!
-#          Leave to default values if in doubt.
-#
-# Example:
-#  # equivalent to fr_timer=20 in sip-router
-#  sip_timer_b=20000
-#  sip_timer_f=20000
-
-# sip_timer_t2=<n millisec)   T2 timer configuration
-#  (Cap for re-send request/response backoff)
-#
-# Warning: Timer values are not checked whether they are appropriate!
-#          Leave to default values if in doubt.
-#
-#sip_timer_t2=4000
-
 # skip DNS SRV lookup? [yes, no]
 #
 # according to RFC, if no port is specified, destination IP address
@@ -504,17 +476,6 @@ use_default_signature=yes
 #
 #100rel=require
 
-#
-# accept forked dialogs on UAS side? [yes|no]
-#
-#  no - INVITE with existing callid+remote_tag is replied with 482.
-# yes - INVITE with existing callid+remote_tag+via_branch is replied with 482.
-#       Forked INVITEs (!= via-branch) are accepted. 
-#
-# Default: yes
-#
-#accept_forked_dialogs=no
-
 # Make SIP authenticated requests sticky to the proxy? [yes | no]
 #
 # If enabled, host of request-URI of out-of-dialog requests that are 
@@ -524,13 +485,6 @@ use_default_signature=yes
 # default: no
 #
 # proxy_sticky_auth=yes
-
-# Ignore too low CSeq for NOTIFYs? [yes | no]
-#
-# May be necessary to interwork with simplistic/old SIP event notification 
-# implementations.
-#
-#ignore_notify_lower_cseq=yes
 
 #
 # Accept final replies without To-tag? [yes|no]

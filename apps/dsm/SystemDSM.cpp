@@ -6,7 +6,6 @@
 
 #include "DSMStateDiagramCollection.h"
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
-#include "AmSipSubscription.h"
 
 SystemDSM::SystemDSM(const DSMScriptConfig& config,
 		     const string& startDiagName,
@@ -128,28 +127,10 @@ void SystemDSM::process(AmEvent* event) {
 
   }
 
-  if (event->event_id == E_SIP_SUBSCRIPTION) {
-    SIPSubscriptionEvent* sub_ev = dynamic_cast<SIPSubscriptionEvent*>(event);
-    if (sub_ev) {
-      DBG("SystemDSM received SIP Subscription Event\n");
-      map<string, string> params;
-      params["status"] = sub_ev->getStatusText();
-      params["code"] = int2str(sub_ev->code);
-      params["reason"] = sub_ev->reason;
-      params["expires"] = int2str(sub_ev->expires);
-      params["has_body"] = (!sub_ev->notify_body.empty())?"true":"false";
-      if (!sub_ev->notify_body.empty()) {
-	avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] = AmArg(sub_ev->notify_body);
-      }
-      engine.runEvent(&dummy_session, this, DSMCondition::SIPSubscription, &params);
-      avar.erase(DSM_AVAR_SIPSUBSCRIPTION_BODY);
-    }
-  }
-
   if (event->event_id == E_SYSTEM) {
     AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(event);
     if(sys_ev){	
-      DBG("SystemDSM received system Event\n");
+      DBG("SystemDSM received system Event\n");      
       map<string, string> params;
       params["type"] = AmSystemEvent::getDescription(sys_ev->sys_event);
       engine.runEvent(&dummy_session, this, DSMCondition::System, &params);
@@ -170,9 +151,8 @@ void SystemDSM::_func {						\
     throw DSMException("core", "cause", "not implemented");		\
   }
 
-NOT_IMPLEMENTED(playPrompt(const string& name, bool loop, bool front));
+NOT_IMPLEMENTED(playPrompt(const string& name, bool loop));
 NOT_IMPLEMENTED(playFile(const string& name, bool loop, bool front));
-NOT_IMPLEMENTED(playSilence(unsigned int length, bool front));
 NOT_IMPLEMENTED(recordFile(const string& name));
 NOT_IMPLEMENTED_UINT(getRecordLength());
 NOT_IMPLEMENTED_UINT(getRecordDataSize());
@@ -181,8 +161,7 @@ NOT_IMPLEMENTED(setInOutPlaylist());
 NOT_IMPLEMENTED(setInputPlaylist());
 NOT_IMPLEMENTED(setOutputPlaylist());
 
-NOT_IMPLEMENTED(addToPlaylist(AmPlaylistItem* item, bool front));
-NOT_IMPLEMENTED(flushPlaylist());
+NOT_IMPLEMENTED(addToPlaylist(AmPlaylistItem* item));
 NOT_IMPLEMENTED(closePlaylist(bool notify));
 NOT_IMPLEMENTED(setPromptSet(const string& name));
 NOT_IMPLEMENTED(addSeparator(const string& name, bool front));

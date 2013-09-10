@@ -727,32 +727,14 @@ int _trans_layer::set_destination_ip(sip_msg* msg, cstring* next_hop, unsigned s
     return 0;
 }
 
-static void translate_string(sip_msg* dst_msg, cstring& dst,
-			     sip_msg* src_msg, cstring& src)
-{
-    dst.s = (char*)src.s + (dst_msg->buf - src_msg->buf);
-    dst.len = src.len;
-}
-
-static void translate_hdr(sip_msg* dst_msg, sip_header*& dst, 
-			  sip_msg* src_msg, sip_header* src)
-{
-    dst = new sip_header();
-    dst_msg->hdrs.push_back(dst);
-    dst->type = src->type;
-    translate_string(dst_msg,dst->name,src_msg,src->name);
-    translate_string(dst_msg,dst->value,src_msg,src->value);
-    dst->p = NULL;
-}
-
 void _trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
 {
     t->reset_all_timers();
     t->state = TS_TERMINATED;
 
     // send 408 to 'ua'
+    sip_msg  msg;
     sip_msg* req = t->msg;
-    sip_msg  msg(req->buf,req->len);
 
     msg.type = SIP_REPLY;
     msg.u.reply = new sip_reply();
@@ -760,27 +742,14 @@ void _trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
     msg.u.reply->code = 408;
     msg.u.reply->reason = cstring("Timeout");
 
-    translate_hdr(&msg,msg.from, req,req->from);
-    msg.from->p = new sip_from_to();
-    parse_from_to((sip_from_to*)msg.from->p,
-		  msg.from->value.s,msg.from->value.len);
-
-    translate_hdr(&msg,msg.to, req,req->to);
-    msg.to->p = new sip_from_to();
-    parse_from_to((sip_from_to*)msg.to->p,
-		  msg.to->value.s,msg.to->value.len);
-
-    translate_hdr(&msg,msg.cseq, req,req->cseq);
-    msg.cseq->p = new sip_cseq();
-    parse_cseq((sip_cseq*)msg.cseq->p,
-	       msg.cseq->value.s,msg.cseq->value.len);
-
-    translate_hdr(&msg,msg.callid, req,req->callid);
-
-    bucket->remove(t);
-    bucket->unlock();
+    msg.from = req->from;
+    msg.to = req->to;
+    msg.cseq = req->cseq;
+    msg.callid = req->callid;
 
     ua->handle_sip_reply(&msg);
+
+    bucket->remove(t);
 }
 
 int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
@@ -1233,18 +1202,10 @@ void _trans_layer::received_msg(sip_msg* msg)
 	    // Reply matched UAC transaction
 	    
 	    DBG("Reply matched an existing transaction\n");
-	    int res = update_uac_reply(bucket,t,msg);
-	    if(res < 0){
+	    if(update_uac_reply(bucket,t,msg) < 0){
 		ERROR("update_uac_trans() failed, so what happens now???\n");
 		break;
 	    }
-	    if (res) {
-		bucket->unlock();
-		ua->handle_sip_reply(msg);
-		DROP_MSG;
-		//return; - part of DROP_MSG
-	    }
-
 	    // do not touch the transaction anymore:
 	    // it could have been deleted !!!
 	}
@@ -1301,12 +1262,8 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 	    // fall through trap
 
 	case TS_PROCEEDING:
-	    if(t->msg->u.request->method != sip_request::CANCEL) {
-		if(t->msg->u.request->method == sip_request::INVITE) {
-		    t->reset_timer(STIMER_C, C_TIMER, bucket->get_id());
-		}
+	    if(t->msg->u.request->method != sip_request::CANCEL)
 		goto pass_reply;
-	    }
 	    else
 		goto end;
 
@@ -1340,9 +1297,7 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		t->clear_timer(STIMER_B);
 
 	    case TS_PROCEEDING:
-	
-		t->clear_timer(STIMER_C);
-
+		
 		t->state = TS_COMPLETED;
 		send_non_200_ack(msg,t);
 		t->reset_timer(STIMER_D, D_TIMER, bucket->get_id());
@@ -1381,11 +1336,6 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		t->clear_timer(STIMER_A);
 		t->clear_timer(STIMER_M);
 		t->clear_timer(STIMER_B);
-
-		// Timer B & C share the same slot,
-		// so it would pretty useless to clear
-		// the same timer slote another time ;-)
-		//t->clear_timer(STIMER_C);
 
 		t->reset_timer(STIMER_L, L_TIMER, bucket->get_id());
 
@@ -1453,7 +1403,8 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
     }
 
  pass_reply:
-    return 1;
+    assert(ua);
+    ua->handle_sip_reply(msg);
  end:
     return 0;
 }
@@ -1686,7 +1637,7 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 
 	n++;
 	tr->msg->send();
-	tr->reset_timer((n<<16) | type, A_TIMER<<n, bucket->get_id());
+	tr->reset_timer((n<<16) | type, T1_TIMER<<n, bucket->get_id());
 	break;
 	
     case STIMER_B:  // Calling: -> Terminated
@@ -1694,37 +1645,10 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	tr->clear_timer(STIMER_B);
 	if(tr->state == TS_CALLING) {
 	    DBG("Transaction timeout!\n");
-	    // unlocks the bucket
 	    timeout(bucket,tr);
-	    return;
 	}
 	else {
 	    DBG("Transaction timeout timer hit while state=0x%x",tr->state);
-	}
-	break;
-
-    case STIMER_C: // Proceeding -> Terminated
-	
-	// Note: remember well, we first set timer C
-	//       after the first provisional reply.
-	tr->clear_timer(STIMER_C);
-	if(tr->state != TS_PROCEEDING)
-	    break; // shouldn't happen
-
-	bucket->unlock();
-
-	{
-	    // send CANCEL
-	    trans_ticket tt(tr,bucket);
-	    cancel(&tt);
-	    
-	    // Now remove the transaction
-	    bucket->lock();
-	    if(bucket->exist(tr)) {
-		// unlocks the bucket
-		timeout(bucket,tr);
-		return;
-	    }
 	}
 	break;
 
@@ -1737,9 +1661,8 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	case TS_TRYING:
 	case TS_PROCEEDING:
 	    DBG("Transaction timeout!\n");
-	    // unlocks the bucket
 	    timeout(bucket,tr);
-	    return;
+	    break;
 	}
 	break;
 
@@ -1789,7 +1712,7 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	break;
 
     case STIMER_E:  // Trying/Proceeding: (re-)send request
-    case STIMER_G:  { // Completed: (re-)send response
+    case STIMER_G:  // Completed: (re-)send response
 
 	n++; // re-transmission counter
 
@@ -1809,16 +1732,13 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	    tr->msg->send();
 	}
 
-	unsigned int retr_timer = (type == STIMER_E) ?
-	    E_TIMER << n : G_TIMER << n;
-
-	if(retr_timer<<n > T2_TIMER) {
+	if(T1_TIMER<<n > T2_TIMER) {
 	    tr->reset_timer((n<<16) | type, T2_TIMER, bucket->get_id());
 	}
 	else {
-	    tr->reset_timer((n<<16) | type, retr_timer, bucket->get_id());
+	    tr->reset_timer((n<<16) | type, T1_TIMER<<n, bucket->get_id());
 	}
-    } break;
+	break;
 
     case STIMER_M:
 	{
@@ -1828,7 +1748,7 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	    // get the next ip
 	    if(tr->msg->h_dns.next_ip(&sa) < 0){
 		tr->clear_timer(STIMER_M);
-		break;
+		return;
 	    }
 
 	    //If a SRV record is involved, the port number
@@ -1863,8 +1783,6 @@ void _trans_layer::timer_expired(timer* t, trans_bucket* bucket, sip_trans* tr)
 	ERROR("Invalid timer type %i\n",t->type);
 	break;
     }
-
-    bucket->unlock();
 }
 
 /**

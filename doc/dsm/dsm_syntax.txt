@@ -113,7 +113,7 @@ Playing prompts and file I/O
    if $prompts.default_fallback=yes, default prompt set is tried if
    prompt not found in current prompt set
    Throws "prompt" exeption with #name if prompt not found.
- playPromptFront(param) - play a prompt at first item in the playlist
+
  playPromptLooped(param)
 
  setPromptSet(name)
@@ -129,9 +129,6 @@ Playing prompts and file I/O
    position in the playlist, and looped.
    Throws "file" exeption with #path if file can not be opened
 
- playSilence(millisec)      - play silence for millisec ms
- playSilenceFront(millisec) - play silence for millisec ms at first position in playlist
-
  recordFile(filename)
    Throws "file" exeption with #path if file can not be opened for recording
 
@@ -144,24 +141,15 @@ Playing prompts and file I/O
    set playlist as input and output
  addSeparator(id [, bool front])
    fires event when playlist hits it ; front=[true|false]
- connectMedia()     - set playlist as input and output of session,
-                      and start processing of RTP and audio 
-                     (connect to mediaprocessor)
- disconnectMedia()  - stop processing of RTP and audio (disconnect from mediaprocessor)
+ connectMedia() 
+   set playlist as input and output of session, and connect to mediaprocessor 
+ disconnectMedia() 
+   disconnect from mediaprocessor
 
- enableReceiving()  - enable processing of received RTP
- disableReceiving() - disable processing of received RTP
-
- monitorRTPTimeout(enabled=false)
-   set call to monitor RTP timeout (enabled="true" or "false")
-
- enableForceDTMFReceiving()  - enable/disable RTP DTMF packets processing even 
- disableForceDTMFReceiving()   if received RTP is not processed, e.g. after
-                               disableReceiving() or in passive mode
-                               (only for RFC2833/4733 DTMF, *no* in-band)
-
- mute()             - set RTP stream to muted (don't send RTP packets)
- unmute()           - set RTP stream to unmuted (do send RTP packets)
+ mute() 
+   set RTP stream to muted (don't send and receive RTP packets)
+ unmute() 
+   set RTP stream to unmuted (send and receive RTP packets)
 
 DTMF
 ----
@@ -279,12 +267,6 @@ B2B call control
   unregisterEventQueue(queue_name)
     unregister events queue queue_name
 
- Object memory management/Garbage collector:
-  freeObject(varname)     - free object referenced with varname immediately
-  trackObject(varname)    - track object referenced with varname, i.e. enable garbage
-                            collection with the current call/systemDSM
-  releaseObject(varname)  - release object referenced with varname from garbage collector
-  
 Conditions
 ==========
  
@@ -338,26 +320,6 @@ brackets match.
 
  keyPress(key)
   alias to key(#key==key)
-
- remoteDisappeared(expr)
-   remote end in an established call is unreachable (408/481 received)
-   parameters: see sipReply (below), except #old_dlg_status
-
-   set #processed="true" if you don't want default behaviour (clear call)
-
- sessionTimeout(expr)
-   session expired (SST)
-   parameters: none
-
-   set #processed="true" if you don't want default behaviour (clear call)
-
- rtpTimeout(expr)
-   RTP timeout detected
-
-   #type           - "rtp_timeout"
-   #timeout_value  - RTP timeout value (as configured)
-
-   set #processed="true" if you don't want default behaviour (clear call)
 
  invite
    invite received/sent (only with run_invite_event):
@@ -442,12 +404,6 @@ brackets match.
 
    #params.*  - parameters array
 
-subscription - SIP subscription status
-   #status   - status: "active", "pending", "failed", "terminated", "timeout"
-   #code     - SIP response code (if failed)
-   #reason   - SIP response reason (if failed)
-   NOTIFY body in avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] (if #status=="active")
-
  jsonRpcResponse - json-rpc response received
    #ev_type  - JsonRpcResponse
    #id       - response ID
@@ -455,11 +411,6 @@ subscription - SIP subscription status
    #udata    - user data that was saved when sending the request
 
    #result.* or #error.* - response data array (or error data)
-
-conference events:
-  generic events with 
-   #type     - "conference_event"
-   #id       - event ID
 
 Selects
 =======

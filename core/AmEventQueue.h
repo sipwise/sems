@@ -71,7 +71,7 @@ public:
   AmEventQueue(AmEventHandler* handler);
   virtual ~AmEventQueue();
 
-  virtual void postEvent(AmEvent*);
+  void postEvent(AmEvent*);
   void processEvents();
   void waitForEvent();
   void wakeup();
