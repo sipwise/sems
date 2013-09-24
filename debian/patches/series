@@ -119,3 +119,4 @@ sipwise/0118-utils-added-URL_encode-and-URL_decode-functions.patch
 sipwise/0119-sbc-fix-call-transfers-with-Replaces-through-SBC.patch
 sipwise/0120-sbc-update-SBCCallRegistry-only-on-positive-replies-.patch
 sipwise/0121-sbc-call-registry-more-verbosity-on-new-entry.patch
+sipwise/0122-b-f-b2bua-if-200-to-INV-without-SDP-use-SDP-from-18x.patch
