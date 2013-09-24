@@ -121,4 +121,6 @@ sipwise/0120-sbc-update-SBCCallRegistry-only-on-positive-replies-.patch
 sipwise/0121-sbc-call-registry-more-verbosity-on-new-entry.patch
 sipwise/0122-b-f-b2bua-if-200-to-INV-without-SDP-use-SDP-from-18x.patch
 sipwise/sw_vsc.patch
+sipwise/0001-fix-sems-process-returns-always-0-when-daemonized.patch
+sipwise/0002-core-fix-return-status-pipe-machinery-in-non-daemon-.patch
 no_config.patch
