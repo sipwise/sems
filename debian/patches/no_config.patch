@@ -1,0 +1,11 @@
+--- a/apps/Makefile
++++ b/apps/Makefile
+@@ -67,7 +67,7 @@
+ 	done 
+ 
+ .PHONY: install
+-install: install-bin install-cfg
++install: install-bin
+ 
+ .PHONY: install-bin
+ install-bin:
