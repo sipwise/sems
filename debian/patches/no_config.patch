@@ -9,3 +9,36 @@
  
  .PHONY: install-bin
  install-bin:
+--- a/apps/dsm/mods/Makefile
++++ b/apps/dsm/mods/Makefile
+@@ -41,7 +41,7 @@
+ 	done 
+ 
+ .PHONY: install
+-install: install-bin install-cfg
++install: install-bin
+ 
+ .PHONY: install-bin
+ install-bin:
+--- a/apps/examples/Makefile
++++ b/apps/examples/Makefile
+@@ -33,7 +33,7 @@
+ 	done 
+ 
+ .PHONY: install
+-install: install-bin install-cfg
++install: install-bin
+ 
+ .PHONY: install-bin
+ install-bin:
+--- a/apps/examples/tutorial/Makefile
++++ b/apps/examples/tutorial/Makefile
+@@ -33,7 +33,7 @@
+ 	done 
+ 
+ .PHONY: install
+-install: install-bin install-cfg
++install: install-bin
+ 
+ .PHONY: install-bin
+ install-bin:
