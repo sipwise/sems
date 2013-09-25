@@ -42,3 +42,14 @@
  
  .PHONY: install-bin
  install-bin:
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -70,8 +70,6 @@
+ 
+ install: all mk-install-dirs \
+ 	install-audio \
+-	install-modules-cfg \
+-	install-cfg \
+ 	install-bin \
+ 	install-modules
+ 
