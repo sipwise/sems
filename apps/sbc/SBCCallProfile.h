@@ -68,6 +68,9 @@ struct SBCCallProfile {
   FilterType sdpfilter;
   set<string> sdpfilter_list;
 
+  string fix_replaces_inv;
+  string fix_replaces_ref;
+
   bool sst_enabled;
   bool use_global_sst_config;
 

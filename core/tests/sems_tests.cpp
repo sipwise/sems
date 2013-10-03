@@ -23,6 +23,8 @@ FCT_BGN() {
   log_level=3;
   FCTMF_SUITE_CALL(test_headers);
   FCTMF_SUITE_CALL(test_jsonarg);
+  FCTMF_SUITE_CALL(test_uriparser);
+  FCTMF_SUITE_CALL(test_replaces);
 } FCT_END();
 
 

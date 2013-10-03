@@ -108,6 +108,9 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     }
   }
 
+  fix_replaces_inv = cfg.getParameter("fix_replaces_inv");
+  fix_replaces_ref = cfg.getParameter("fix_replaces_ref");;
+
   sst_enabled = cfg.getParameter("enable_session_timer", "no") == "yes";
   use_global_sst_config = !cfg.hasParameter("session_expires");
   
@@ -214,6 +217,9 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     INFO("SBC:      SDP filter is %sabled, %s, %zd items in list\n",
 	 sdpfilter_enabled?"en":"dis", FilterType2String(sdpfilter),
 	 sdpfilter_list.size());
+
+    INFO("SBC:      fixing Replaces in INVITE: '%s'\n", fix_replaces_inv.c_str());
+    INFO("SBC:      fixing Replaces in REFER: '%s'\n", fix_replaces_ref.c_str());
 
     INFO("SBC:      RTP relay %sabled\n", rtprelay_enabled?"en":"dis");
     if (rtprelay_enabled) {
