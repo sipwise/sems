@@ -1,3 +1,18 @@
+ngcp-sems (1.4.3+spce3.0.1) unstable; urgency=low
+
+  [ Stefan Sayer ]
+  * [a8e16f8] core: added AmUriParser functions to bring inline with 1.6
+  * [2e5eb44] core: AmUriParser: fix headers in nameaddr_str, added parse_nameaddr function alias
+  * [16597a6] utils: added URL_encode and URL_decode functions
+  * [f9220a2] sbc: fix call transfers with Replaces through SBC
+  * [26035b6] sbc: update SBCCallRegistry only on positive replies to INVITE
+  * [6e77a3a] sbc: call registry: more verbosity on new entry
+
+  [ Andrew Pogrebennyk ]
+  * [4bfecd5] Fix the ReplacesMapper.cpp compilation.
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Thu, 03 Oct 2013 23:18:11 +0200
+
 ngcp-sems (1.4.3+spce3.0.0) unstable; urgency=low
 
   [ Stefan Sayer ]
