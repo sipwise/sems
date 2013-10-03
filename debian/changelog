@@ -1,3 +1,9 @@
+ngcp-sems (1.4.3+spce2.8.2) unstable; urgency=low
+
+  * [f2fae05] Fix the ReplacesMapper.cpp compilation.
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Thu, 03 Oct 2013 23:19:32 +0200
+
 ngcp-sems (1.4.3+spce2.8.1) unstable; urgency=low
 
   [ Stefan Sayer ]
