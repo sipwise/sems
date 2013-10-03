@@ -27,6 +27,7 @@
 #include "AmUtils.h"
 #include "AmUriParser.h"
 #include "AmSipHeaders.h"
+#include "log.h"
 
 bool findTag(const string replaces, const string& tag, size_t& p1, size_t& len);
 
