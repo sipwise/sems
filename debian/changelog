@@ -1,3 +1,15 @@
+ngcp-sems (1.4.3+spce2.8.1) unstable; urgency=low
+
+  [ Stefan Sayer ]
+  * [a0b8354] core: added AmUriParser functions to bring inline with 1.6
+  * [db05c3b] core: AmUriParser: fix headers in nameaddr_str, added parse_nameaddr function alias
+  * [8b76713] utils: added URL_encode and URL_decode functions
+  * [135890a] sbc: fix call transfers with Replaces through SBC
+  * [7222625] sbc: update SBCCallRegistry only on positive replies to INVITE
+  * [6bf57c9] sbc: call registry: more verbosity on new entry
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Thu, 03 Oct 2013 23:00:29 +0200
+
 ngcp-sems (1.4.3+spce2.8.0) unstable; urgency=low
 
   * Branched and tagged for 2.8 release.
