@@ -1,3 +1,18 @@
+ngcp-sems (1:1.4.3-1+0~mr3.3) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [f001e93] Add upstream patch
+  * [e580ff5] No config patch
+  * [f0494e3] Add sw_vcs module
+  * [fab40f2] fix typo
+  * [09a5f5d] Update no_config patch
+  * [a867449] Add return status patch
+  * [fabbeda] update no_config.patch
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Sat, 01 Feb 2014 19:57:22 +0100
+
 ngcp-sems (1:1.4.3-1) unstable; urgency=low
 
   * Use quilt to manage patches
