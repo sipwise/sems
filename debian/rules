@@ -23,7 +23,7 @@ EXCLUDED_MODULES=gateway mp3 memcachedstore py_sems
 
 EXCLUDED_DSM_MODULES=mod_aws
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
-CPPFLAGS += -DHAVE_XMLRPCPP_SSL 
+CPPFLAGS += -DHAVE_XMLRPCPP_SSL
 # for older than lenny add:
 # -DHAVE_OLD_SPANDSP_CALLBACK
 
@@ -43,7 +43,7 @@ configure-stamp:
 
 build: build-stamp
 
-build-stamp: configure-stamp 
+build-stamp: configure-stamp
 	dh_testdir
 
 # Add here commands to compile the package.
@@ -79,7 +79,7 @@ install: build
 		DESTDIR=$(CURDIR)/debian/ngcp-sems \
 		prefix=/usr \
 		cfg-target=/etc/sems/
-	
+
 	USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)" \
 	$(MAKE) -C tools/ install \
 		DESTDIR=$(CURDIR)/debian/ngcp-sems \
@@ -103,43 +103,37 @@ install: build
 		app_modules="$(PYTHON_MODULES)" \
 		DESTDIR=$(CURDIR)/debian/ngcp-sems-python-modules \
 		prefix=/usr \
-		cfg-target=/etc/sems/  
+		cfg-target=/etc/sems/
 
 # install mod_py DSM module
 	USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)" \
 	$(MAKE) -C apps/dsm/mods/mod_py install \
 		DESTDIR=$(CURDIR)/debian/ngcp-sems-python-modules \
 		prefix=/usr \
-		cfg-target=/etc/sems/  
+		cfg-target=/etc/sems/
 
 # This single target is used to build all the packages, all at once, or
 # one at a time. So keep in mind: any options passed to commands here will
 # affect _all_ packages. Anything you want to only affect one package
 # should be put in another target, such as the install target.
-binary-common: 
+binary-common:
 	dh_testdir
 	dh_testroot
 	dh_installdocs doc/*.txt
 	dh_installdocs doc/dsm/
 	dh_installexamples
 	dh_installmenu
-#	dh_installlogrotate
-#	dh_installemacsen
-#	dh_installpam
-#	dh_installmime
 	dh_installinit  --name=sems -- defaults 23
 	dh_installcron
 	dh_installman
 	dh_installinfo
-#	dh_undocumented
-	dh_installchangelogs 
+	dh_lintian
+	dh_installchangelogs
 	dh_link
 	dh_strip --dbg-package=ngcp-sems-dbg
-	dh_compress 
+	dh_compress
 	dh_fixperms
-#	dh_makeshlibs
 	dh_installdeb
-#	dh_perl
 	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
