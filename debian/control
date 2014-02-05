@@ -22,6 +22,7 @@ Architecture: any
 Depends: adduser,
          libpcrecpp0,
          ngcp-sems-prompts,
+         python,
          ${misc:Depends},
          ${shlibs:Depends}
 Suggests: ngcp-sems-python-modules
