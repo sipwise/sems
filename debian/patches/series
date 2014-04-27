@@ -123,4 +123,5 @@ sipwise/0122-b-f-b2bua-if-200-to-INV-without-SDP-use-SDP-from-18x.patch
 sipwise/sw_vsc.patch
 sipwise/0001-fix-sems-process-returns-always-0-when-daemonized.patch
 sipwise/0002-core-fix-return-status-pipe-machinery-in-non-daemon-.patch
+sipwise/0123-MT-6475-check-method-ACK-or-PRACK-before-deleting-tr.patch
 no_config.patch
