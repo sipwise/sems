@@ -1,3 +1,12 @@
+ngcp-sems (1:1.4.3-1+0~mr3.2.2.1) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [ed3c56a] MT#6475 check method (ACK or PRACK) before deleting transaction
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 13 May 2014 12:09:26 +0200
+
 ngcp-sems (1:1.4.3-1+0~mr3.2.2.0) unstable; urgency=low
 
   * New release.
