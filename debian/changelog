@@ -1,3 +1,19 @@
+ngcp-sems (1:1.4.3-1+0~mr3.3.1.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [068e494] MT#58889 add lintian overrides
+  * [008737c] MT#5889 use dh_python2 to deal with python built files
+
+  [ Michael Prokop ]
+  * [207610c] MT#6511 Bump Standards-Version to 3.9.5
+
+  [ Andrew Pogrebennyk ]
+  * [99ca300] MT#6475 check method (ACK or PRACK) before deleting transaction
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 26 May 2014 16:01:07 +0200
+
 ngcp-sems (1:1.4.3-1+0~mr3.3) unstable; urgency=low
 
   [ Victor Seva ]
