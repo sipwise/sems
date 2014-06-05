@@ -1,0 +1,158 @@
+From 05143404a15ca0c24dcfe51a5b123c4a5112cfa3 Mon Sep 17 00:00:00 2001
+From: Raphael Coeffic <rco@iptel.org>
+Date: Tue, 20 Nov 2012 15:32:47 +0100
+Subject: [PATCH] added reference counting to plug-in interfaces.
+
+Allows to register the same plug-in factory under different purposes, but still destroying it correctly.
+
+AmPluginFactory::onUnload() had to be removed as it would not have worked due to multiple inheritance from this same class. Instead, plug-in implementors should implement atomic_ref_cnt::on_destroy (new method) to achieve the same functionality.
+---
+ apps/db_reg_agent/DBRegAgent.h |  5 +++++
+ core/AmApi.h                   |  8 ++------
+ core/AmPlugIn.cpp              | 26 +++++++++++---------------
+ core/atomic_types.h            |  5 ++++-
+ 4 files changed, 22 insertions(+), 22 deletions(-)
+
+diff --git a/apps/db_reg_agent/DBRegAgent.h b/apps/db_reg_agent/DBRegAgent.h
+index 191bd6c..868d999 100644
+--- a/apps/db_reg_agent/DBRegAgent.h
++++ b/apps/db_reg_agent/DBRegAgent.h
+@@ -157,6 +157,11 @@ class DBRegAgent
+ 
+   int onLoad();
+ 
++  // atomic_ref_cnt interface
++  void on_destroy() {
++    onUnload();
++  }
++
+   void onUnload();
+ 
+   RegistrationTimer registration_scheduler;
+diff --git a/core/AmApi.h b/core/AmApi.h
+index d776799..1671e0e 100644
+--- a/core/AmApi.h
++++ b/core/AmApi.h
+@@ -35,6 +35,7 @@
+ #include "AmConfigReader.h"
+ #include "AmArg.h"
+ #include "AmEventQueue.h"
++#include "atomic_types.h"
+ 
+ #include <stdarg.h>
+ 
+@@ -63,6 +64,7 @@
+  * \brief Base interface for plugin factories
+  */
+ class AmPluginFactory
++  : public virtual atomic_ref_cnt
+ {
+   string plugin_name;
+ 
+@@ -82,11 +84,6 @@
+    */
+   virtual int onLoad()=0;
+ 
+-
+-  /**
+-   * Enables the plug-in to deinitialize once the server is stopped.
+-   */
+-  virtual void onUnload() { };
+ };
+ 
+ /**
+diff --git a/core/AmPlugIn.cpp b/core/AmPlugIn.cpp
+index 94c4c67..f0eabe4 100644
+--- a/core/AmPlugIn.cpp
++++ b/core/AmPlugIn.cpp
+@@ -115,21 +115,11 @@ AmPlugIn::AmPlugIn()
+ {
+ }
+ 
+-static std::set<AmPluginFactory*> deleted_factories;
+-static std::set<string> deleted_factories_names;
+ 
+ static void delete_plugin_factory(std::pair<string, AmPluginFactory*> pf)
+ {
+-  if ((deleted_factories.find(pf.second) == deleted_factories.end()) &&
+-      (deleted_factories_names.find(pf.first) == deleted_factories_names.end())) {
+-    DBG("onUnload of plugin '%s'\n", pf.first.c_str());
+-    pf.second->onUnload();
+-
+-    DBG("deleting plug-in factory: %s\n", pf.first.c_str());
+-    deleted_factories.insert(pf.second);
+-    deleted_factories_names.insert(pf.first);
+-    delete pf.second;
+-  }
++  DBG("decreasing reference to plug-in factory: %s\n", pf.first.c_str());
++  dec_ref(pf.second);
+ }
+ 
+ AmPlugIn::~AmPlugIn()
+@@ -568,6 +558,7 @@ int AmPlugIn::loadAppPlugIn(AmPluginFactory* f)
+     return -1;
+   }      
+ 
++  inc_ref(sf);
+   name2app.insert(std::make_pair(sf->getName(),sf));
+   DBG("application '%s' loaded.\n",sf->getName().c_str());
+ 
+@@ -589,7 +580,8 @@ int AmPlugIn::loadSehPlugIn(AmPluginFactory* f)
+     ERROR("session component '%s' already loaded !\n",sf->getName().c_str());
+     goto error;
+   }
+-      
++
++  inc_ref(sf);
+   name2seh.insert(std::make_pair(sf->getName(),sf));
+   DBG("session component '%s' loaded.\n",sf->getName().c_str());
+ 
+@@ -601,7 +593,11 @@ int AmPlugIn::loadSehPlugIn(AmPluginFactory* f)
+ 
+ int AmPlugIn::loadBasePlugIn(AmPluginFactory* f)
+ {
+-  name2base.insert(std::make_pair(f->getName(),f));
++  inc_ref(f);
++  if(!name2base.insert(std::make_pair(f->getName(),f)).second){
++    // insertion failed
++    dec_ref(f);
++  }
+   return 0;
+ }
+ 
+@@ -914,7 +910,7 @@ AmSessionFactory* AmPlugIn::findSessionFactory(AmSipRequest& req)
+   ERROR(comp_name "'%s' already registered !\n", param_name.c_str());	\
+   return false;								\
+   }									\
+-									\
++  inc_ref(f);								\
+   instance()->map_name.insert(std::make_pair(param_name,f));		\
+   DBG(comp_name " '%s' registered.\n",param_name.c_str());		\
+   return true;
+diff --git a/core/atomic_types.h b/core/atomic_types.h
+index d1bd84f..0fadfab 100644
+--- a/core/atomic_types.h
++++ b/core/atomic_types.h
+@@ -198,6 +198,7 @@ protected:
+     : atomic_int() {}
+ 
+   virtual ~atomic_ref_cnt() {}
++  virtual void on_destroy() {}
+ 
+   friend void inc_ref(atomic_ref_cnt* rc);
+   friend void dec_ref(atomic_ref_cnt* rc);
+@@ -212,8 +213,10 @@ inline void inc_ref(atomic_ref_cnt* rc)
+ inline void dec_ref(atomic_ref_cnt* rc)
+ {
+   assert(rc);
+-  if(rc->dec_and_test())
++  if(rc->dec_and_test()){
++    rc->on_destroy();
+     delete rc;
++  }
+ }
+ 
+ 
+-- 
+2.0.0
+
