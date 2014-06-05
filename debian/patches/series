@@ -124,4 +124,5 @@ sipwise/sw_vsc.patch
 sipwise/0001-fix-sems-process-returns-always-0-when-daemonized.patch
 sipwise/0002-core-fix-return-status-pipe-machinery-in-non-daemon-.patch
 sipwise/0123-MT-6475-check-method-ACK-or-PRACK-before-deleting-tr.patch
+sipwise/0124-added-reference-counting-to-plug-in-interfaces.patch
 no_config.patch
