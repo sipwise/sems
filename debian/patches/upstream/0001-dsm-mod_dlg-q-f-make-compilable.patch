@@ -1,0 +1,24 @@
+From c008d587acc92faa62afb622ce15e85a72d54c38 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?V=C3=A1clav=20Kubart?= <vaclav.kubart@frafos.com>
+Date: Fri, 16 May 2014 16:19:55 +0200
+Subject: [PATCH] dsm mod_dlg q/f: make compilable
+
+---
+ apps/dsm/mods/mod_dlg/ModDlg.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/apps/dsm/mods/mod_dlg/ModDlg.h b/apps/dsm/mods/mod_dlg/ModDlg.h
+index 23cb104..098f772 100644
+--- a/apps/dsm/mods/mod_dlg/ModDlg.h
++++ b/apps/dsm/mods/mod_dlg/ModDlg.h
+@@ -52,6 +52,7 @@ DEF_ACTION_1P(DLGGetOtherIdAction);
+ DEF_ACTION_1P(DLGGetRtpRelayModeAction);
+ 
+ DEF_ACTION_2P(DLGReferAction);
++DEF_ACTION_2P(DLGInfoAction);
+ DEF_ACTION_2P(DLGB2BRelayErrorAction);
+ 
+ DEF_ACTION_2P(DLGAddReplyBodyPartAction);
+-- 
+2.0.0.rc0
+

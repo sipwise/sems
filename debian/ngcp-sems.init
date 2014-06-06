@@ -5,16 +5,17 @@
 # Required-Stop:     $local_fs $remote_fs $network $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Should-Start:      mysql
+# Should-Start:      mysql sshd
 # Should-Stop:       mysql
 # Short-Description: Start/stop SEMS Application Server
 ### END INIT INFO
 
 
-# read configuration from /etc/default/sems file
-if test -f /etc/default/sems ; then
-  . /etc/default/sems
+# read configuration from /etc/default/ngcp-sems file
+if test -f /etc/default/ngcp-sems ; then
+  . /etc/default/ngcp-sems
 fi
+
 
 if test "$SEMS_RUN" = "no" ; then
     echo -ne "Sems start disabled by default file"
@@ -22,11 +23,16 @@ if test "$SEMS_RUN" = "no" ; then
 fi
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/sbin/sems
-NAME=sems
-DESC=sems
+DAEMON=/usr/sbin/ngcp-sems
+NAME=ngcp-sems
+DESC=ngcp-sems
 
 PARAMS=""
+
+if ! test -d $SEMS_RUNDIR ; then
+   mkdir $SEMS_RUNDIR
+fi
+chown $SEMS_USER:$SEMS_GROUP $SEMS_RUNDIR
 
 if test "$SEMS_PIDFILE" ; then
   PARAMS="$PARAMS -P $SEMS_PIDFILE"
@@ -54,12 +60,15 @@ if test "$SEMS_CREATE_CORE" = "yes" ; then
 	ulimit -c unlimited
 fi
 
+# raise file descriptors limit - call hold consumes two fds for RTP ports and one for moh file
+ulimit -n 100000
+
 if ! test -f $DAEMON ; then
   echo "Error: cannot find $DAEMON"
   exit 0
 fi
 
-LD_LIBRARY_PATH=/usr/lib/sems
+LD_LIBRARY_PATH=/usr/lib/ngcp-sems
 export LD_LIBRARY_PATH
 
 set -e
@@ -68,6 +77,10 @@ set -e
 
 case "$1" in
   start)
+	if ! /usr/sbin/ngcp-check_active -q; then
+	  echo "Ignored start action in inactive node"
+	  exit 0
+	fi
 	echo "Starting $DESC: $NAME"
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
 		--exec $DAEMON -- $PARAMS
@@ -79,36 +92,14 @@ case "$1" in
 		--exec $DAEMON
 	log_end_msg $?
 	;;
-  #reload)
-	#
-	#	If the daemon can reload its config files on the fly
-	#	for example by sending it SIGHUP, do it here.
-	#
-	#	If the daemon responds to changes in its config file
-	#	directly anyway, make this a do-nothing entry.
-	#
-	# echo "Reloading $DESC configuration files."
-	# start-stop-daemon --stop --signal 1 --quiet --pidfile \
-	#	$SEMS_PIDFILE --exec $DAEMON
-  #;;
   restart|force-reload)
-	#
-	#	If the "reload" option is implemented, move the "force-reload"
-	#	option to the "reload" entry above. If not, "force-reload" is
-	#	just the same as "restart".
-	#
-	# Check if configuration is valid before restarting the server
-        #(($DAEMON $CFGPARAMS -c 2>&1) | grep "config file ok, exiting") > /dev/null
-	#if [ $? -ne 0 ]; then
-        #    ($DAEMON $CFGPARAMS -c 2>&1)
-	#    echo -e "\nThere are errors in the configuration file. Please fix them first"
-	#    echo -e "\n$out\n"
-	#    exit 0
-	#fi
-	
 	echo "Restarting $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --quiet --pidfile \
 		$SEMS_PIDFILE --exec $DAEMON
+	if ! /usr/sbin/ngcp-check_active -q; then
+	  echo "Ignored start action in inactive node"
+	  exit 0
+	fi
 	sleep 5
 	start-stop-daemon --start --quiet --pidfile \
 		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS

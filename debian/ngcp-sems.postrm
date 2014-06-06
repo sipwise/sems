@@ -7,7 +7,7 @@ removal_wrapper() {
   # remove the init script only on ce systems, as the
   # the pro system handle it inside the monitoring/HA setup
   if ! [ -x "$(which ngcp-check_active 2>/dev/null)" ]; then
-    update-rc.d sems remove >/dev/null
+    update-rc.d ngcp-sems remove >/dev/null
   fi
 }
 

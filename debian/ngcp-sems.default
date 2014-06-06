@@ -1,6 +1,6 @@
 # configuration for SEMS - SIP Express Media Server
 #
-# this file is sourced by SEMS init script /etc/init.d/sems
+# this file is sourced by SEMS init script /etc/init.d/sems-pbx
 
 # Note: the #DEBCONF-xxx-START and DEBCONF-xxx-END lines are used for
 # debconf configuration, please don't remove or alter them.
@@ -15,16 +15,18 @@ SEMS_CFG_FILE="/etc/sems/sems.conf"
 
 # user to run ser as
 #DEBCONF-USER-START
-SEMS_USER="sems"
+SEMS_USER="sems-pbx"
 #DEBCONF-USER-END
 
 # group to run ser as
 #DEBCONF-GROUP-START
-SEMS_GROUP="sems"
+SEMS_GROUP="sems-pbx"
 #DEBCONF-GROUP-END
 
-# ser pidfile
-SEMS_PIDFILE="/var/run/sems/sems.pid"
+SEMS_RUNDIR="/var/run/sems"
+
+# sems pidfile
+SEMS_PIDFILE="$SEMS_RUNDIR/sems.pid"
 
 # set if you want to create core files
 #DEBCONF-CREATE_CORE-START

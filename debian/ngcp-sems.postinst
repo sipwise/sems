@@ -2,10 +2,10 @@
 
 set -e
 
-# don't do anything when called with other argument than configure 
+# don't do anything when called with other argument than configure
 case "$1" in
   configure)
-  ;;  
+  ;;
   abort-upgrade|abort-remove|abort-deconfigure)
     exit 0
   ;;
@@ -16,19 +16,19 @@ case "$1" in
 esac
 
 restart_handler() {
-  if [ -x "/etc/init.d/sems" ]; then
+  if [ -x "/etc/init.d/ngcp-sems" ]; then
     if [ -x "$(which invoke-rc.d 2>/dev/null)" ]; then
-      invoke-rc.d sems restart || exit $?
+      invoke-rc.d ngcp-sems restart || exit $?
     else
-      /etc/init.d/sems restart || exit $?
+      /etc/init.d/ngcp-sems restart || exit $?
     fi
   fi
 }
 
 initscript_handler() {
-  if [ -x "/etc/init.d/sems" ]; then
-    update-rc.d sems defaults >/dev/null
-    invoke-rc.d sems start || exit $?
+  if [ -x "/etc/init.d/ngcp-sems" ]; then
+    update-rc.d ngcp-sems defaults >/dev/null
+    invoke-rc.d ngcp-sems start || exit $?
   fi
 }
 
@@ -41,42 +41,28 @@ init_handler() {
     initscript_handler
   else # do not restart daemon on inactive node in pro systems
     if ngcp-check_active ; then
-      echo "Active node detected, restarting sems"
+      echo "Active node detected, restarting ngcp-sems"
       restart_handler
     else
-      echo "Inactive node detected, ignoring request to restart sems"
+      echo "Inactive node detected, ignoring request to restart ngcp-sems"
     fi
   fi
 }
 
 # add sems user
 adduser --quiet --system --group --disabled-password --shell /bin/false \
---gecos "SIP Express Media Server" --home /var/run/sems sems || true
-
-if [ -d /usr/doc -a ! -e /usr/doc/sems -a -d /usr/share/doc/sems ]; then
-  ln -sf ../share/doc/sems /usr/doc/sems
-fi
-
-# create voicebox spool directory if 
-if [ ! -d /var/spool/voicebox ]; then 
-  mkdir -p /var/spool/voicebox/
-fi
-
-# make directory writable for sems user
-if [ -d /var/spool/voicebox ]; then 
-  chown sems /var/spool/voicebox
-fi
+--gecos "SIP Express Media Server" --home /var/run/ngcp-sems sems || true
 
 init_handler
 
 echo ""
 echo "***"
-echo "Configuration of sems has finished."
+echo "Configuration of ngcp-sems has finished."
 echo ""
-echo "To restart it when configuration has changed use '/etc/init.d/sems restart'"
+echo "To restart it when configuration has changed use '/etc/init.d/ngcp-sems restart'"
 echo ""
-echo "To change it's configuration use 'dpkg-reconfigure sems'"
+echo "To change it's configuration use 'dpkg-reconfigure ngcp-sems'"
 echo "***"
-echo ""                                                         
+echo ""
 
 exit 0
