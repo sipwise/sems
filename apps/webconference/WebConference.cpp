@@ -72,6 +72,10 @@ bool WebConferenceFactory::ignore_pin = false;
 
 bool WebConferenceFactory::PrivateRoomsMode = false;
 
+bool WebConferenceFactory::LoopFirstParticipantPrompt = false;
+
+unsigned int WebConferenceFactory::LonelyUserTimer = 0;
+
 string WebConferenceFactory::participant_id_paramname; // default: param not used
 string WebConferenceFactory::participant_id_hdr = "X-ParticipantID"; // default header
 
@@ -222,6 +226,18 @@ int WebConferenceFactory::load()
     PrivateRoomsMode = true;
   DBG("Private rooms mode %sabled.\n", PrivateRoomsMode ? "en":"dis");
 
+  LoopFirstParticipantPrompt =
+    cfg.getParameter("loop_first_participant_prompt") == "yes";
+
+  LonelyUserTimer = cfg.getParameterInt("lonely_user_timer", 0);
+  if (!LonelyUserTimer) {
+    DBG("'lonely user' timer not used\n");
+  } else {
+    DBG("Timer for 'lonely user' used: %u seconds\n", LonelyUserTimer);
+  }
+
+  DBG("Looping first participant prompt: %s\n", LoopFirstParticipantPrompt ? "yes":"no");
+
   if (cfg.getParameter("support_rooms_timeout") == "yes") {
     cleaner = new WebConferenceCleaner(this);
     cleaner->start();
@@ -352,7 +368,8 @@ void WebConferenceFactory::setupSessionTimer(AmSession* s) {
 }
 
 // incoming calls 
-AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req)
+AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					  const map<string,string>& app_params)
 {
   if (NULL != session_timer_f) {
     if (!session_timer_f->onInvite(req, cfg))
@@ -379,28 +396,17 @@ AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req)
 }
 
 // outgoing calls 
-AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req,
+AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req, const string& app_name,
 					  AmArg& session_params)
 {
-  UACAuthCred* cred = NULL;
-  if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
-    if (cred_obj)
-      cred = dynamic_cast<UACAuthCred*>(cred_obj);
-  }
-
+  UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
   AmSession* s = new WebConferenceDialog(prompts, getInstance(), cred); 
 
-  AmSessionEventHandlerFactory* uac_auth_f = 
-    AmPlugIn::instance()->getFactory4Seh("uac_auth");
-  if (uac_auth_f != NULL) {
-    DBG("UAC Auth enabled for new announcement session.\n");
-    AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-    if (h != NULL )
-      s->addHandler(h);
+  if (NULL == cred) {
+    WARN("discarding unknown session parameters.\n");
   } else {
-    ERROR("uac_auth interface not accessible. Load uac_auth for authenticated dialout.\n");
-  }		
+    AmUACAuth::enable(s);
+  }
 
   s->setUri(getAccessUri(req.user));
 
@@ -730,7 +736,8 @@ void WebConferenceFactory::dialout(const AmArg& args, AmArg& ret) {
   AmArg* a = new AmArg();
   a->setBorrowedPointer(new UACAuthCred("", auth_user, auth_pwd));
 
-  string localtag = AmUAC::dialout(room.c_str(), APP_NAME,  to,  
+  string app_name = APP_NAME;
+  string localtag = AmUAC::dialout(room.c_str(), app_name,  to,  
 				   "<" + from +  ">", from, "<" + to + ">", 
 				   string(""), // callid
 				   headers,    // headers

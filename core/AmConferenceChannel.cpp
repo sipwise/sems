@@ -14,15 +14,33 @@ AmConferenceChannel::~AmConferenceChannel()
     AmConferenceStatus::releaseChannel(conf_id,channel_id);
 }
 
-int AmConferenceChannel::put(unsigned int user_ts, unsigned char* buffer, unsigned int size)
+int AmConferenceChannel::put(unsigned long long system_ts, unsigned char* buffer,
+			     int input_sample_rate, unsigned int size)
 {
-  status->getMixer()->PutChannelPacket(channel_id,user_ts,buffer,size);
+  memcpy((unsigned char*)samples,buffer,size);
+  AmMultiPartyMixer* mixer = status->getMixer();
+  mixer->lock();
+  size = resampleInput(samples,size,input_sample_rate,
+		       mixer->GetCurrentSampleRate());
+  mixer->PutChannelPacket(channel_id,system_ts,
+			  (unsigned char*)samples,size);
+  mixer->unlock();
   return size;
 }
 
-int AmConferenceChannel::get(unsigned int user_ts, unsigned char* buffer, unsigned int nb_samples)
+int AmConferenceChannel::get(unsigned long long system_ts, unsigned char* buffer,
+			     int output_sample_rate, unsigned int nb_samples)
 {
-  unsigned int size = PCM16_S2B(nb_samples);
-  status->getMixer()->GetChannelPacket(channel_id,user_ts,buffer,size);
+  if (!nb_samples || !output_sample_rate)
+    return 0;
+
+  AmMultiPartyMixer* mixer = status->getMixer();
+  mixer->lock();
+  unsigned int size = output_sample_rate ?
+    PCM16_S2B(nb_samples * mixer->GetCurrentSampleRate() / output_sample_rate) : 0;
+  unsigned int mixer_sample_rate = 0;
+  mixer->GetChannelPacket(channel_id,system_ts,buffer,size,mixer_sample_rate);
+  size = resampleOutput(buffer,size,mixer_sample_rate,output_sample_rate);
+  mixer->unlock();
   return size;
 }

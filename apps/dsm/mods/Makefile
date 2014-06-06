@@ -1,10 +1,10 @@
-DSMPATH = ../
+DSMPATH = ..
 COREPATH = $(DSMPATH)/../../core
 .DEFAULT_GOAL := all
 
 include $(COREPATH)/../Makefile.defs
 
-exclude_dsm_modules ?= mod_mysql mod_aws
+exclude_dsm_modules ?= mod_mysql mod_aws mod_curl mod_xml
 
 ifneq ($(USE_MONITORING), yes)
 exclude_dsm_modules += mod_monitoring

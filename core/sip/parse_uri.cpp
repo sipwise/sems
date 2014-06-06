@@ -32,6 +32,12 @@
 #include "parse_uri.h"
 #include "log.h"
 
+sip_uri::sip_uri()
+    : scheme(UNKNOWN),
+      trsp(NULL)
+{   
+}
+
 sip_uri::~sip_uri()
 {
     list<sip_avp*>::iterator it;
@@ -330,6 +336,15 @@ static int parse_sip_uri(sip_uri* uri, const char* beg, int len)
 
     DBG("Converted URI port (%.*s) to int (%i)\n",
 	uri->port_str.len,uri->port_str.s,uri->port);
+
+    for(list<sip_avp*>::iterator it = uri->params.begin();
+	it != uri->params.end(); it++) {
+
+	if(!lower_cmp_n((*it)->name.s,(*it)->name.len,
+			"transport",9)) {
+	    uri->trsp = *it;
+	}
+    }
 
     return 0;
 }

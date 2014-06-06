@@ -40,11 +40,12 @@ AmSipDispatcher* AmSipDispatcher::instance()
   return _instance ? _instance : ((_instance = new AmSipDispatcher()));
 }
 
-void AmSipDispatcher::handleSipMsg(AmSipReply &reply)
+void AmSipDispatcher::handleSipMsg(const string& dialog_id, AmSipReply &reply)
 {
+  const string& id = dialog_id.empty() ? reply.from_tag : dialog_id;
   AmSipReplyEvent* ev = new AmSipReplyEvent(reply);
 
-  if(!AmEventDispatcher::instance()->post(reply.local_tag,ev)){
+  if(!AmEventDispatcher::instance()->post(id,ev)){
     if ((reply.code >= 100) && (reply.code < 300)) {
       if (AmConfig::UnhandledReplyLoglevel >= 0) {
 	_LOG(AmConfig::UnhandledReplyLoglevel,
@@ -65,34 +66,9 @@ void AmSipDispatcher::handleSipMsg(AmSipRequest &req)
 
   AmEventDispatcher* ev_disp = AmEventDispatcher::instance();
 
-  if(!local_tag.empty()) {
-    AmSipRequestEvent* ev = new AmSipRequestEvent(req);
-
-      if(!ev_disp->post(local_tag,ev)) {
-
-	  delete ev;
-	  if(req.method != "ACK") {
-	    AmSipDialog::reply_error(req,481,
-				     "Call leg/Transaction does not exist");
-	  }
-	  else {
-	    DBG("received ACK for non-existing dialog "
-		"(callid=%s;remote_tag=%s;local_tag=%s)\n",
-		callid.c_str(),remote_tag.c_str(),local_tag.c_str());
-	  }
-      }
-
-      return;
-  }
-
-  DBG("method: `%s' [%zd].\n", req.method.c_str(), req.method.length());
-  if(req.method == "INVITE"){
+  if(req.method == SIP_METH_CANCEL){
       
-      AmSessionContainer::instance()->startSessionUAS(req);
-  }
-  else if(req.method == "CANCEL"){
-      
-    if(ev_disp->postSipRequest(callid, remote_tag, req)){
+    if(ev_disp->postSipRequest(req)){
       return;
     }
   
@@ -100,30 +76,59 @@ void AmSipDispatcher::handleSipMsg(AmSipRequest &req)
     AmSipDialog::reply_error(req,481,SIP_REPLY_NOT_EXIST);
     return;
   } 
-  else if(req.method == "BYE"){
+  else if(!local_tag.empty()) {
+    // in-dlg request
+    AmSipRequestEvent* ev = new AmSipRequestEvent(req);
+
+    // Contact-user may contain internal dialog ID (must be tried before using
+    // local_tag for identification)
+    if(!req.user.empty() && ev_disp->post(req.user,ev))
+      return;
+
+    if(ev_disp->post(local_tag,ev))
+      return;
+
+    delete ev;
+    if(req.method != SIP_METH_ACK) {
+      AmSipDialog::reply_error(req,481,
+			       "Call leg/Transaction does not exist");
+    }
+    else {
+      DBG("received ACK for non-existing dialog "
+	  "(callid=%s;remote_tag=%s;local_tag=%s)\n",
+	  callid.c_str(),remote_tag.c_str(),local_tag.c_str());
+    }
+
+    return;
+  }
+
+  DBG("method: `%s' [%zd].\n", req.method.c_str(), req.method.length());
+  if(req.method == SIP_METH_INVITE){
+      
+      AmSessionContainer::instance()->startSessionUAS(req);
+  }
+  else if(req.method == SIP_METH_BYE ||
+	  req.method == SIP_METH_PRACK){
     
-    // BYE of a (here) non-existing dialog
+    // BYE/PRACK of a (here) non-existing dialog
     AmSipDialog::reply_error(req,481,SIP_REPLY_NOT_EXIST);
     return;
 
   } else {
-    try {
-      AmSessionFactory* sess_fact = AmPlugIn::instance()->findSessionFactory(req);
-      if(!sess_fact){
 
-	  AmSipDialog::reply_error(req,404,"Not found");
-	  return;
-      }
-
+    string app_name;
+    AmSessionFactory* sess_fact = AmPlugIn::instance()->findSessionFactory(req,app_name);
+    if (sess_fact) {
       sess_fact->onOoDRequest(req);
-    } catch (const AmSession::Exception& e) {
-      AmSipDialog::reply_error(req,e.code, e.reason);
-      return;
-    } catch (...) {
-      ERROR("Server internal Error: unhandled exception while handling out-of-dialog '%s'\n",
-	    req.method.c_str());
-      AmSipDialog::reply_error(req,500,SIP_REPLY_SERVER_INTERNAL_ERROR);
       return;
     }
+	
+    if (req.method == SIP_METH_OPTIONS) {
+      AmSessionFactory::replyOptions(req);
+      return;
+    }
+      
+    AmSipDialog::reply_error(req,404,"Not found");
   }
+
 }

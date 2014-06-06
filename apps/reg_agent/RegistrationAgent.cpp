@@ -42,6 +42,7 @@
 #define CFG_PARAM_AUTH    "auth_user"
 #define CFG_PARAM_PASS    "pwd"
 #define CFG_PARAM_PROXY   "proxy"
+#define CFG_PARAM_CONTACT "contact"
 
 #define MAX_ACCOUNTS      100
 
@@ -72,6 +73,7 @@ int RegistrationAgentFactory::onLoad()
     ri.auth_user = cfg.getParameter(CFG_PARAM_AUTH+idx_str,"");
     ri.passwd = cfg.getParameter(CFG_PARAM_PASS+idx_str,"");
     ri.proxy = cfg.getParameter(CFG_PARAM_PROXY+idx_str,"");
+    ri.contact = cfg.getParameter(CFG_PARAM_CONTACT+idx_str,"");
 
     if (!ri.domain.length() || !ri.user.length()) {
       // not including the passwd: might be IP based registration
@@ -85,9 +87,9 @@ int RegistrationAgentFactory::onLoad()
       ri.auth_user = ri.user;
 
     dialer.add_reg(ri);
-    DBG("Adding registration account #%d (%s %s %s %s %s)\n", i, 
+    DBG("Adding registration account #%d (%s %s %s %s %s %s)\n", i,
         ri.domain.c_str(), ri.user.c_str(), ri.display_name.c_str(), 
-        ri.auth_user.c_str(), ri.proxy.c_str());
+        ri.auth_user.c_str(), ri.proxy.c_str(), ri.contact.c_str());
 
     i ++;
     idx_str = int2str(i);
@@ -107,7 +109,8 @@ void RegistrationAgentFactory::postEvent(AmEvent* ev) {
   dialer.postEvent(ev);
 }
 
-AmSession* RegistrationAgentFactory::onInvite(const AmSipRequest& req)
+AmSession* RegistrationAgentFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					      const map<string,string>& app_params)
 {
   return NULL;
 }
@@ -122,20 +125,21 @@ void RegThread::create_registration(RegInfo& ri) {
   if (di_f == NULL) {
     ERROR("unable to get a registrar_client\n");
   } else {
-    AmDynInvoke* uac_auth_i = di_f->getInstance();
-    if (uac_auth_i!=NULL) {
+    AmDynInvoke* registrar_client_i = di_f->getInstance();
+    if (registrar_client_i!=NULL) {
 
       DBG("calling createRegistration\n");
       AmArg di_args, reg_handle;
       di_args.push(ri.domain.c_str());
       di_args.push(ri.user.c_str());
       di_args.push(ri.display_name.c_str()); // display name
-      di_args.push(ri.auth_user.c_str());  // auth_user
-      di_args.push(ri.passwd.c_str());    // pwd
-      di_args.push("reg_agent"); //sess_link
-      di_args.push(ri.proxy.c_str()); 
+      di_args.push(ri.auth_user.c_str());    // auth_user
+      di_args.push(ri.passwd.c_str());       // pwd
+      di_args.push("reg_agent");             //sess_link
+      di_args.push(ri.proxy.c_str());
+      di_args.push(ri.contact.c_str());
 			
-      uac_auth_i->invoke("createRegistration", di_args, reg_handle);
+      registrar_client_i->invoke("createRegistration", di_args, reg_handle);
       if (reg_handle.size()) 
 	ri.handle = reg_handle.get(0).asCStr();
     }
@@ -149,12 +153,12 @@ bool RegThread::check_registration(const RegInfo& ri) {
   if (di_f == NULL) {
     ERROR("unable to get a registrar_client\n");
   } else {
-    AmDynInvoke* uac_auth_i = di_f->getInstance();
-    if (uac_auth_i!=NULL) {
+    AmDynInvoke* registrar_client_i = di_f->getInstance();
+    if (registrar_client_i!=NULL) {
 
       AmArg di_args, res;
       di_args.push(ri.handle.c_str());
-      uac_auth_i->invoke("getRegistrationState", di_args, res);
+      registrar_client_i->invoke("getRegistrationState", di_args, res);
       if (res.size()) {
 	if (!res.get(0).asInt())
 	  return false; // does not exist

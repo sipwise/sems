@@ -51,7 +51,8 @@ int JukecallFactory::onLoad()
   return 0;
 }
 
-AmSession* JukecallFactory::onInvite(const AmSipRequest& req)
+AmSession* JukecallFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				     const map<string,string>& app_params)
 {
   if (req.user.length() <= 3) {
     throw AmSession::Exception(403, "Need a number to call");
@@ -71,11 +72,11 @@ JukecallSession::~JukecallSession()
 {
 }
 
-void JukecallSession::onSessionStart(const AmSipRequest& req)
+void JukecallSession::onSessionStart()
 {
   if (state != JC_none) {
     // reinvite
-    AmB2ABCallerSession::onSessionStart(req);
+    AmB2ABCallerSession::onSessionStart();
     return;
   }
 
@@ -83,7 +84,7 @@ void JukecallSession::onSessionStart(const AmSipRequest& req)
   DBG("playing file\n");
 
   if(initial_announcement.open(INITIAL_ANNOUNCEMENT,AmAudioFile::Read)) {
-    dlg.bye();
+    dlg->bye();
     throw string("CTConfDDialog::onSessionStart: Cannot open file '%s'\n", INITIAL_ANNOUNCEMENT);
   }
 
@@ -91,6 +92,8 @@ void JukecallSession::onSessionStart(const AmSipRequest& req)
   setOutput(&initial_announcement);
 
   state = JC_initial_announcement;
+
+  AmB2ABCallerSession::onSessionStart();
 }
 
 void JukecallSession::onDtmf(int event, int duration_msec) {
@@ -125,10 +128,10 @@ void JukecallSession::process(AmEvent* event)
     switch(state) {
     case JC_initial_announcement: {
       state = JC_connect;
-      string callee = "sip:" + dlg.user.substr(3) + "@" + dlg.domain;
+      string callee = "sip:" + dlg->user.substr(3) + "@" + dlg->domain;
       DBG("-------------------------- connecting %s ------------------------\n", callee.c_str());
       connectCallee(callee, callee, 
-		    dlg.remote_party, dlg.remote_uri);
+		    dlg->remote_party, dlg->remote_uri);
 
       return;
 

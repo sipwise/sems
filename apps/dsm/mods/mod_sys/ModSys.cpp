@@ -101,13 +101,7 @@ EXEC_ACTION_START(SCMkDirAction) {
 
 bool sys_get_parent_dir(const char* path, char* parentPath) {
 
-  //size_t pos = strcspn(dirPath, "/\\");
-#ifdef __CORRECT_ISO_CPP_STRING_H_PROTO
-  const char* ptr;
-#else
-  char* ptr;
-#endif
-  ptr = strrchr(path, '/'); // search char from end reverse
+  const char* ptr = strrchr(path, '/'); // search char from end reverse
   if (ptr == NULL) {
     ptr = strrchr(path, '\\'); // search char from end reverse
     if (ptr == NULL) {
@@ -127,14 +121,17 @@ bool sys_get_parent_dir(const char* path, char* parentPath) {
 
 bool sys_mkdir_recursive(const char* p) {
   if (!file_exists(p)) {
-    char parent_dir[strlen(p)+1];
+    char* parent_dir = new char[strlen(p)+1];
     bool has_parent = sys_get_parent_dir(p, parent_dir);
     if (has_parent) {
       bool parent_exists = sys_mkdir_recursive(parent_dir);
       if (parent_exists) {
-	return sys_mkdir(p);
+	bool ret = sys_mkdir(p);
+	delete [] parent_dir;
+	return ret;
       }
     }
+    delete [] parent_dir;
     return false;
   }
   return true;
@@ -312,10 +309,10 @@ EXEC_ACTION_START(SCSysGetTimestampAction) {
   // long unsigned msecs = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
   char ms_buf[40];
-  snprintf(ms_buf, 40, "%lu", tv.tv_sec);
+  snprintf(ms_buf, 40, "%li", tv.tv_sec);
   sc_sess->var[varname+".tv_sec"] = ms_buf;
 
-  snprintf(ms_buf, 40, "%lu", tv.tv_usec);
+  snprintf(ms_buf, 40, "%li", (long int)tv.tv_usec);
   sc_sess->var[varname+".tv_usec"] = ms_buf;
 
   DBG("got timestamp $%s=%s, $%s=%s, \n",
@@ -343,10 +340,10 @@ EXEC_ACTION_START(SCSysSubTimestampAction) {
   timersub(&tv1,&tv2,&diff);
 
   char ms_buf[40];
-  snprintf(ms_buf, 40, "%lu", diff.tv_sec);
+  snprintf(ms_buf, 40, "%li", diff.tv_sec);
   sc_sess->var[t1+".tv_sec"] = ms_buf;
 
-  snprintf(ms_buf, 40, "%lu", diff.tv_usec);
+  snprintf(ms_buf, 40, "%li", (long int)diff.tv_usec);
   sc_sess->var[t1+".tv_usec"] = ms_buf;
 
   // may be overflowing - use only if timestamps known

@@ -73,7 +73,8 @@ int AnnounceB2BFactory::onLoad()
   return 0;
 }
 
-AmSession* AnnounceB2BFactory::onInvite(const AmSipRequest& req)
+AmSession* AnnounceB2BFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					const map<string,string>& app_params)
 {
   string announce_path = AnnouncePath;
   string announce_file = announce_path + req.domain
@@ -101,21 +102,26 @@ AnnounceCallerDialog::AnnounceCallerDialog(const string& filename)
   set_sip_relay_only(false);
 }
 
-void AnnounceCallerDialog::onSessionStart(const AmSipRequest& req)
+void AnnounceCallerDialog::onInvite(const AmSipRequest& req)
+{
+  callee_addr = req.to;
+  callee_uri  = req.r_uri;
+
+  AmB2BCallerSession::onInvite(req);
+}
+
+void AnnounceCallerDialog::onSessionStart()
 {
   // we can drop all received packets
   // this disables DTMF detection as well
   setReceiving(false);
 
-  callee_addr = req.to;
-  callee_uri  = req.r_uri;
-
-  AmB2BCallerSession::onSessionStart(req);
-
   if(wav_file.open(filename,AmAudioFile::Read))
     throw string("AnnouncementDialog::onSessionStart: Cannot open file\n");
     
   setOutput(&wav_file);
+
+  AmB2BCallerSession::onSessionStart();
 }
 
 void AnnounceCallerDialog::process(AmEvent* event)

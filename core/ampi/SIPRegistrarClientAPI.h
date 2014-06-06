@@ -26,24 +26,24 @@
 
 using std::string;
 struct SIPRegistrationEvent : public AmEvent {
-	string handle;
-	unsigned int code;
-	string reason;
+  string handle;
+  unsigned int code;
+  string reason;
 	
-	SIPRegistrationEvent(int t, const string& handle,
-						 unsigned int code=0, const string& reason="") 
-		: AmEvent(t), handle(handle), code(code), reason(reason) {}
+ SIPRegistrationEvent(int t, const string& handle,
+		      unsigned int code=0, const string& reason="")
+   : AmEvent(t), handle(handle), code(code), reason(reason) {}
 
-	enum {
-		RegisterSuccess=0, 
-		RegisterFailed,
-		RegisterNoContact,
-		RegisterTimeout,
-		RegisterSendTimeout
-	};
+  enum {
+    RegisterSuccess=0,
+    RegisterFailed,
+    RegisterNoContact,
+    RegisterTimeout,
+    RegisterSendTimeout
+  };
 };
 
-const char* getSIPRegistationStateString(unsigned int s) {
+inline const char* getSIPRegistationStateString(unsigned int s) {
   switch (s) {
   case 0: return "RegisterPending";
   case 1: return "RegisterActive";

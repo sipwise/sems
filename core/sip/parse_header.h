@@ -63,6 +63,7 @@ struct sip_header
 	H_RECORD_ROUTE,
 	H_CONTENT_TYPE,
 	H_CONTENT_LENGTH,
+	H_MAX_FORWARDS,
 	
 	H_OTHER
     };
@@ -79,9 +80,10 @@ struct sip_header
     ~sip_header();
 };
 
-struct sip_msg;
+int parse_header_type(sip_header* h);
 
-int parse_headers(sip_msg* msg, char** c);
+int parse_headers(list<sip_header*>& hdrs, char** c, char* end);
+void free_headers(list<sip_header*>& hdrs);
 
 #endif
 

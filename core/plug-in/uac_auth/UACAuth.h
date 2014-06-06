@@ -30,17 +30,13 @@
 
 #include "AmApi.h"
 #include "AmSession.h"
+#include "AmOfferAnswer.h"
 #include "ampi/UACAuthAPI.h"
+#include "AmUtils.h"
 
 #include <string>
 using std::string;
 #include <map>
-
-#define HASHLEN 16
-typedef unsigned char HASH[HASHLEN];
-
-#define HASHHEXLEN 32
-typedef unsigned char HASHHEX[HASHHEXLEN+1];
 
 /** \brief Challenge in uac auth */
 struct UACAuthDigestChallenge {
@@ -60,7 +56,7 @@ class UACAuthFactory
   public AmDynInvoke
 {
   static UACAuthFactory* _instance;
-  AmSessionEventHandler* getHandler(AmSipDialog* dlg, 
+  AmSessionEventHandler* getHandler(AmBasicSipDialog* dlg, 
 				    CredentialHolder* s);
  public:
   UACAuthFactory(const string& name)
@@ -82,16 +78,18 @@ class UACAuthFactory
 /** \brief contains necessary information for UAC auth of a SIP request */
 struct SIPRequestInfo {
   string method;
-  string content_type;
-  string body;
+  AmMimeBody body;
   string hdrs;
-	
+  //AmOfferAnswer::OAState oa_state;
+
   SIPRequestInfo(const string& method, 
-		 const string& content_type,
-		 const string& body,
-		 const string& hdrs)
-    : method(method), content_type(content_type),
-       body(body), hdrs(hdrs) { }
+		 const AmMimeBody* body,
+		 const string& hdrs
+		 )
+    : method(method), hdrs(hdrs)
+  {
+    if(body) this->body = *body;
+  }
 
   SIPRequestInfo() {}
 
@@ -100,10 +98,12 @@ struct SIPRequestInfo {
 /** \brief SessionEventHandler for implementing uac authentication */
 class UACAuth : public AmSessionEventHandler
 {
+  static string server_nonce_secret;
+
   std::map<unsigned int, SIPRequestInfo> sent_requests;
 
   UACAuthCred* credential;
-  AmSipDialog* dlg;
+  AmBasicSipDialog* dlg;
 
   UACAuthDigestChallenge challenge;
   unsigned int challenge_code;
@@ -112,25 +112,27 @@ class UACAuth : public AmSessionEventHandler
   unsigned int nonce_count;
 
   bool nonce_reuse; // reused nonce?
+ 
+  static std::string find_attribute(const std::string& name, const std::string& header);
+  static bool parse_header(const std::string& auth_hdr, UACAuthDigestChallenge& challenge);
 
-  std::string find_attribute(const std::string& name, const std::string& header);
-  bool parse_header(const std::string& auth_hdr, UACAuthDigestChallenge& challenge);
+  static void uac_calc_HA1(const UACAuthDigestChallenge& challenge,
+			   const UACAuthCred* _credential,
+			   std::string cnonce,
+			   HASHHEX sess_key);
 
-  void uac_calc_HA1(const UACAuthDigestChallenge& challenge,
-		    std::string cnonce,
-		    HASHHEX sess_key);
+  static void uac_calc_HA2( const std::string& method, const std::string& uri,
+			    const UACAuthDigestChallenge& challenge,
+			    HASHHEX hentity,
+			    HASHHEX HA2Hex );
 
-  void uac_calc_HA2( const std::string& method, const std::string& uri,
-		     const UACAuthDigestChallenge& challenge,
-		     HASHHEX hentity,
-		     HASHHEX HA2Hex );
-
-  void uac_calc_hentity( const std::string& body, HASHHEX hentity );
+  static void uac_calc_hentity( const std::string& body, HASHHEX hentity );
 	
-  void uac_calc_response( HASHHEX ha1, HASHHEX ha2,
-			  const UACAuthDigestChallenge& challenge,
-			  const std::string& cnonce, const string& qop_value, 
-			  HASHHEX response);
+  static void uac_calc_response( HASHHEX ha1, HASHHEX ha2,
+				 const UACAuthDigestChallenge& challenge,
+				 const std::string& cnonce, const string& qop_value,
+				 unsigned int nonce_count, 
+				 HASHHEX response);
 	
   /**
    *  do auth on cmd with nonce in auth_hdr if possible
@@ -138,7 +140,7 @@ class UACAuth : public AmSessionEventHandler
    */
   bool do_auth(const unsigned int code, const string& auth_hdr,  
 	       const string& method, const string& uri, 
-	       const string& body, string& result);
+	       const AmMimeBody* body, string& result);
 
   /**
    *  do auth on cmd with saved challenge
@@ -147,33 +149,35 @@ class UACAuth : public AmSessionEventHandler
   bool do_auth(const UACAuthDigestChallenge& challenge,
 	       const unsigned int code,
 	       const string& method, const string& uri,
-	       const string& body, string& result);
+	       const AmMimeBody* body, string& result);
 	
  public:
 	
-  UACAuth(AmSipDialog* dlg, UACAuthCred* cred);
+  UACAuth(AmBasicSipDialog* dlg, UACAuthCred* cred);
   virtual ~UACAuth(){ }
   
   /* SEH Hooks @see AmSessionEventHandler */
   virtual bool process(AmEvent*);
   virtual bool onSipEvent(AmSipEvent*);
   virtual bool onSipRequest(const AmSipRequest&);
-  virtual bool onSipReply(const AmSipReply&, int old_dlg_status, const string& trans_method);
-	
-  virtual bool onSendRequest(const string& method, 
-			     const string& content_type,
-			     const string& body,
-			     string& hdrs,
-			     int flags,
-			     unsigned int cseq);
-	
-  virtual bool onSendReply(const AmSipRequest& req,
-			   unsigned int  code,
-			   const string& reason,
-			   const string& content_type,
-			   const string& body,
-			   string& hdrs,
-			   int flags);
+  virtual bool onSipReply(const AmSipRequest&, const AmSipReply&, 
+			  AmBasicSipDialog::Status old_status);
+  virtual bool onSendRequest(AmSipRequest& req, int& flags);
+  virtual bool onSendReply(const AmSipRequest& req, AmSipReply& reply, int& flags);
+
+  static string calcNonce();
+  static bool checkNonce(const string& nonce);
+  static void checkAuthentication(const AmSipRequest* req, const string& realm,
+				  const string& user, const string& pwd, AmArg& ret);
+
+  static void setServerSecret(const string& secret);
+
+  /** time-constant string compare function (but leaks timing of length mismatch)
+      @return true if matching */
+  static bool tc_isequal(const std::string& s1, const std::string& s2);
+  /** time-constant string compare function @return true if matching */
+  static bool tc_isequal(const char* s1, const char* s2, size_t len);
+
 };
 
 

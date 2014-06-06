@@ -13,8 +13,8 @@ set( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 PROJECT (SEMS)
 
 SET(SEMS_MAJOR_VERSION 1)
-SET(SEMS_MINOR_VERSION 4)
-SET(SEMS_BUILD_VERSION 2)
+SET(SEMS_MINOR_VERSION 6)
+SET(SEMS_BUILD_VERSION 0)
 SET(SEMS_EXTRA_VERSION dev)
 
 IF(EXISTS ${CMAKE_SOURCE_DIR}/.git)
@@ -26,6 +26,8 @@ ELSE(EXISTS ${CMAKE_SOURCE_DIR}/.git)
 ENDIF(EXISTS ${CMAKE_SOURCE_DIR}/.git)
 
 MESSAGE(STATUS "Configuring ${CMAKE_PROJECT_NAME} v. ${SEMS_VERSION}")
+
+SET(SEMS_APP_NAME "sems")
 
 IF(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR AND NOT MSVC_IDE)
 	message(FATAL_ERROR "In-source builds are not allowed.
@@ -40,7 +42,7 @@ OPTION(SEMS_USE_SPANDSP       "Build with spandsp" OFF)
 OPTION(SEMS_USE_LIBSAMPLERATE "Build with libsamplerate" OFF)
 OPTION(SEMS_USE_ZRTP          "Build with ZRTP" OFF)
 OPTION(SEMS_USE_MP3           "Build with Lame MP3" OFF)
-OPTION(SEMS_USE_ILBC          "Build with bundled iLBC library" ON)
+OPTION(SEMS_USE_ILBC          "Build with iLBC library (fallback to bundled)" ON)
 OPTION(SEMS_USE_TTS           "Build with Text-to-speech support (requires Flite)" OFF)
 OPTION(SEMS_USE_OPENSSL       "Build with OpenSSL" OFF)
 OPTION(SEMS_USE_MONITORING    "Build with monitoring support" OFF)
@@ -84,6 +86,8 @@ MESSAGE(STATUS "SEMS doc prefix was set to: ${SEMS_DOC_PREFIX}")
 
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
+FIND_PACKAGE(Libevent2 REQUIRED)
+
 # compile with spandsp DTMF detection? see soft-switch.org
 #   this needs a fairly new version of spandsp - tested with 0.0.4pre11
 #   will not work with spandsp 0.0.2 .
@@ -124,9 +128,14 @@ ELSE(SEMS_USE_MP3)
 ENDIF(SEMS_USE_MP3)
 
 IF(SEMS_USE_ILBC)
-	MESSAGE(STATUS "Using bundled iLBC library: YES (default)")
+	FIND_PACKAGE(Ilbc)
+	IF(ILBC_FOUND)
+		MESSAGE(STATUS "Using iLBC library: YES (external)")
+	ELSE(ILBC_FOUND)
+		MESSAGE(STATUS "Using iLBC library: YES (bundled, default)")
+	ENDIF(ILBC_FOUND)
 ELSE(SEMS_USE_ILBC)
-	MESSAGE(STATUS "Using bundled iLBC library: NO")
+	MESSAGE(STATUS "Uusing iLBC library: NO")
 ENDIF(SEMS_USE_ILBC)
 
 # build in support for monitoring?
@@ -221,12 +230,25 @@ ELSE(LIBEV_FOUND)
 	MESSAGE(STATUS "Using libev: NO")
 ENDIF(LIBEV_FOUND)
 
+# Let's try to find librtmp development files
+FIND_PACKAGE(Librtmp)
+IF(RTMP_FOUND)
+	MESSAGE(STATUS "Using librtmp: YES")
+ELSE(RTMP_FOUND)
+	MESSAGE(STATUS "Using librtmp: NO")
+ENDIF(RTMP_FOUND)
+
+# Check for res_search in -lresolv
+include(${CMAKE_SOURCE_DIR}/cmake/CheckSymbolExists.cmake)
+SET(CMAKE_REQUIRED_LIBRARIES resolv)
+CHECK_SYMBOL_EXISTS(res_search resolv.h HAVE_RES_SEARCH)
+MESSAGE(STATUS "Have res_search: ${HAVE_RES_SEARCH} ")
 
 INCLUDE_DIRECTORIES (${SEMS_SOURCE_DIR}/core/ampi)
 INCLUDE_DIRECTORIES (${SEMS_SOURCE_DIR}/core/amci)
 INCLUDE_DIRECTORIES (${SEMS_SOURCE_DIR}/core)
 
-CONFIGURE_FILE( sems.h.cmake ${SEMS_SOURCE_DIR}/core/sems.h )
+CONFIGURE_FILE( ${SEMS_SOURCE_DIR}/core/sems.h.cmake ${SEMS_SOURCE_DIR}/core/sems.h )
 
 IF(CMAKE_COMPILER_IS_GNUCC)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_THREAD_SAFE -D_REENTRANT -Wall -fPIC -g -O2")

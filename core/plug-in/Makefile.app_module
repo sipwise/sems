@@ -1,7 +1,8 @@
 COREPATH ?=../..
+DEFSPATH ?=$(COREPATH)/..
 .DEFAULT_GOAL := all
 
-include $(COREPATH)/../Makefile.defs
+include $(DEFSPATH)/Makefile.defs
 
 LIB_LDFLAGS  += $(module_ldflags)
 CPPFLAGS += -I $(COREPATH)
@@ -10,7 +11,7 @@ CFLAGS   += $(module_cflags)
 CPPFLAGS += $(module_cflags)
 CXXFLAGS += $(module_cflags)
 
-app_module_dir = $(COREPATH)/lib
+app_module_dir ?= $(COREPATH)/lib
 
 lib_name = $(plug_in_name).so
 lib_full_name ?= $(app_module_dir)/$(lib_name)
@@ -26,22 +27,14 @@ objs     = $(srcs:.cpp=.o)
 depends  = $(srcs:.cpp=.d)
 
 .PHONY: all
-all: $(extra_target)
-	-@$(MAKE) deps    && \
-	  $(MAKE) $(lib_full_name)
+all: $(extra_target) $(lib_full_name)
 
 .PHONY: module_package
-module_package: $(extra_target)
-	-@$(MAKE) deps    && \
-	  $(MAKE) $(lib_name)
-
+module_package: $(extra_target) $(lib_name)
 
 .PHONY: clean
 clean: $(extra_clean)
 	-@rm -f $(objs) $(depends) $(lib_name)
-
-.PHONY: deps
-deps: $(depends) $(extra_depends)
 
 .PHONY: install
 install: all $(extra_install) $(DESTDIR)$(modules-prefix)/$(modules-dir)
@@ -87,29 +80,21 @@ $(plug_in_name)_lib:
 		fi ; \
 	done
 
-%.d: %.cpp Makefile $(COREPATH)/plug-in/Makefile.app_module $(COREPATH)/../Makefile.defs
-	$(CXX) -MM $< $(CXXFLAGS) $(CPPFLAGS) > $@
+%.o: %.cpp $(DEFSPATH)/Makefile.defs
+	$(CXX) -MMD $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-%.d: %.c Makefile $(COREPATH)/plug-in/Makefile.app_module $(COREPATH)/../Makefile.defs
-	$(CC) -MM $< $(CFLAGS) $(CPPFLAGS) > $@
-
-%.o: %.cpp %.d $(COREPATH)/../Makefile.defs
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
-
-%.o: %.c %.d $(COREPATH)/../Makefile.defs
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
-
+%.o: %.c $(DEFSPATH)/Makefile.defs
+	$(CC) -MMD $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 $(lib_full_name): $(lib_name)
+ifneq ($(lib_full_name),$(lib_name))
+ifneq ($(lib_full_name),./$(lib_name))
 	cp $(lib_name) $(lib_full_name)
+endif
+endif
+
+-include $(depends)
 
 $(lib_name): $(objs) $(module_extra_objs) Makefile
 	$(LD) -o $(lib_name) $(objs) $(module_extra_objs) $(LIB_LDFLAGS)
 
-ifeq ($(lib_full_name),$(MAKECMDGOALS))
-include $(depends)
-endif
-
-ifeq (,$(MAKECMDGOALS))
-include $(depends)
-endif

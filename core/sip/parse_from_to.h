@@ -32,33 +32,17 @@
 
 #include "sip_parser.h"
 #include "parse_header.h"
-#include "parse_uri.h"
-
-struct sip_nameaddr
-{
-    cstring body;
-
-    cstring name;
-    cstring addr;
-
-    sip_uri uri;
-};
+#include "parse_nameaddr.h"
 
 struct sip_from_to: public sip_parsed_hdr
 {
-    sip_nameaddr   nameaddr;
-    list<sip_avp*> params;
+    sip_nameaddr  nameaddr;
+    cstring       tag;
 
-    cstring tag;
-
-    sip_from_to(): 
-	sip_parsed_hdr(),params()
-    {}
-
-    ~sip_from_to();
+    sip_from_to(): sip_parsed_hdr() {}
+    ~sip_from_to() {}
 };
 
-int parse_nameaddr(sip_nameaddr* na, const char** c, int len);
 int parse_from_to(sip_from_to* ft, const char* beg, int len);
 
 inline sip_from_to* get_from(const sip_msg* msg)

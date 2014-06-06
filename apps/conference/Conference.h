@@ -93,8 +93,10 @@ public:
 #endif
 
   ConferenceFactory(const string& _app_name);
-  virtual AmSession* onInvite(const AmSipRequest&);
-  virtual AmSession* onRefer(const AmSipRequest& req);
+  virtual AmSession* onInvite(const AmSipRequest&, const string& app_name,
+			      const map<string,string>& app_params);
+  virtual AmSession* onRefer(const AmSipRequest& req, const string& app_name,
+			     const map<string,string>& app_params);
   virtual int onLoad();
 };
 
@@ -126,6 +128,8 @@ class ConferenceDialog : public AmSession
   string                        extra_headers;
   string                        language;
 
+  bool                          listen_only;
+
   auto_ptr<AmSipRequest>        transfer_req;
 
 
@@ -151,13 +155,14 @@ public:
   void process(AmEvent* ev);
   void onStart();
   void onDtmf(int event, int duration);
-  void onSessionStart(const AmSipRequest& req);
+  void onInvite(const AmSipRequest& req);
+  void onSessionStart();
   void onBye(const AmSipRequest& req);
 
-  void onOutboundCallFailed(const AmSipReply& reply);
   void onSipRequest(const AmSipRequest& req);
-  void onSipReply(const AmSipReply& reply, int old_dlg_status,
-		  const string& trans_method);
+  void onSipReply(const AmSipRequest& req,
+		  const AmSipReply& reply, 
+		  AmBasicSipDialog::Status old_dlg_status);
 
 #ifdef WITH_SAS_TTS
   void onZRTPEvent(zrtp_event_t event, zrtp_stream_ctx_t *stream_ctx);

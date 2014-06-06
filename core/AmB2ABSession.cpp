@@ -112,7 +112,7 @@ void AmB2ABSession::onBye(const AmSipRequest& req) {
 
 void AmB2ABSession::terminateLeg()
 {
-  dlg.bye();
+  dlg->bye();
   disconnectSession();
   setStopped();
 }
@@ -245,9 +245,10 @@ void AmB2ABCallerSession::setupCalleeSession(AmB2ABCalleeSession* callee_session
   //  return;
   assert(callee_session);
 
-  AmSipDialog& callee_dlg = callee_session->dlg;
-  callee_dlg.callid       = AmSession::getNewId();
-  callee_dlg.local_tag    = other_id;
+  AmSipDialog* callee_dlg = callee_session->dlg;
+
+  callee_dlg->setCallid(AmSession::getNewId());
+  callee_dlg->setLocalTag(other_id);
 
 
   MONITORING_LOG(other_id.c_str(), 
@@ -298,15 +299,15 @@ void AmB2ABCalleeSession::onB2ABEvent(B2ABEvent* ev)
 		      "to",      co_ev->remote_party.c_str(),
 		      "ruri",    co_ev->remote_uri.c_str());
 
-      dlg.local_party  = co_ev->local_party;
-      dlg.local_uri    = co_ev->local_uri;
+      dlg->setLocalParty(co_ev->local_party);
+      dlg->setLocalUri(co_ev->local_uri);
 			
-      dlg.remote_party = co_ev->remote_party;
-      dlg.remote_uri   = co_ev->remote_uri;
+      dlg->setRemoteParty(co_ev->remote_party);
+      dlg->setRemoteUri(co_ev->remote_uri);
 
       setCallgroup(co_ev->callgroup);
 			
-      setNegotiateOnReply(true);
+      //setNegotiateOnReply(true);
       if (sendInvite(co_ev->headers)) {
 	throw string("INVITE could not be sent\n");
       }
@@ -333,7 +334,7 @@ void AmB2ABCalleeSession::onB2ABEvent(B2ABEvent* ev)
   AmB2ABSession::onB2ABEvent(ev);
 }
 
-void AmB2ABCalleeSession::onEarlySessionStart(const AmSipReply& rep) {
+void AmB2ABCalleeSession::onEarlySessionStart() {
   DBG("onEarlySessionStart of callee session\n");
   connectSession();
   is_connected = true;
@@ -341,7 +342,7 @@ void AmB2ABCalleeSession::onEarlySessionStart(const AmSipReply& rep) {
 }
 
 
-void AmB2ABCalleeSession::onSessionStart(const AmSipReply& rep) {
+void AmB2ABCalleeSession::onSessionStart() {
   DBG("onSessionStart of callee session\n");
   if (!is_connected) {
     is_connected = true;
@@ -351,21 +352,24 @@ void AmB2ABCalleeSession::onSessionStart(const AmSipReply& rep) {
   relayEvent(new B2ABConnectAudioEvent());
 }
 
-void AmB2ABCalleeSession::onSipReply(const AmSipReply& rep,
-				     int old_dlg_status,
-				     const string& trans_method) {
-  AmB2ABSession::onSipReply(rep, old_dlg_status, trans_method);
-  int status = dlg.getStatus();
+void AmB2ABCalleeSession::onSipReply(const AmSipRequest& req, const AmSipReply& rep,
+				     AmBasicSipDialog::Status old_dlg_status) {
+  AmB2ABSession::onSipReply(req, rep, old_dlg_status);
+  AmSipDialog::Status status = dlg->getStatus();
  
-  if ((old_dlg_status == AmSipDialog::Pending)&&
-      (status == AmSipDialog::Disconnected)) {
-	  
-    DBG("callee session creation failed. notifying caller session.\n");
-    DBG("this happened with reply: %d.\n", rep.code);
-    relayEvent(new B2ABConnectOtherLegFailedEvent(rep.code, rep.reason));
+  if ((old_dlg_status == AmSipDialog::Trying) ||
+      (old_dlg_status == AmSipDialog::Proceeding) ||
+      (old_dlg_status == AmSipDialog::Early)) {
 
-  } else if ((status == AmSipDialog::Pending) && (rep.code == 180)) {
-    relayEvent(new B2ABOtherLegRingingEvent());
+    if (status == AmSipDialog::Disconnected) {
+	  
+      DBG("callee session creation failed. notifying caller session.\n");
+      DBG("this happened with reply: %d.\n", rep.code);
+      relayEvent(new B2ABConnectOtherLegFailedEvent(rep.code, rep.reason));
+
+    } else if (rep.code == 180) {
+      relayEvent(new B2ABOtherLegRingingEvent());
+    }
   }
 }
 
@@ -443,31 +447,4 @@ void AmSessionAudioConnector::release() {
 void AmSessionAudioConnector::waitReleased() {
   released.wait_for();
 }
-
-// ----------------------- AudioDelayBridge -----------------
-/** BRIDGE_DELAY is needed because of possible different packet sizes */ 
-#define BRIDGE_DELAY 30 * SYSTEM_SAMPLERATE/1000 // 30ms
-
-/* AudioBridge */
-AmAudioDelayBridge::AmAudioDelayBridge()
-  : AmAudio(new AmAudioSimpleFormat(CODEC_PCM16))
-{
-  sarr.clear_all();
-}
-
-AmAudioDelayBridge::~AmAudioDelayBridge() { 
-}
-
-int AmAudioDelayBridge::write(unsigned int user_ts, unsigned int size) {  
-  //	DBG("bridge write %u - this = %lu\n", user_ts + BRIDGE_DELAY, (unsigned long) this);
-  sarr.write(user_ts + BRIDGE_DELAY, (short*) ((unsigned char*) samples), size >> 1); 
-  return size; 
-}
-
-int AmAudioDelayBridge::read(unsigned int user_ts, unsigned int size) { 
-  //	DBG("bridge read %u - this = %lu\n", user_ts, (unsigned long) this);
-  sarr.read(user_ts, (short*) ((unsigned char*) samples), size >> 1); 
-  return size;
-}
-
 

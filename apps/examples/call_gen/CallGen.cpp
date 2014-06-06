@@ -48,6 +48,7 @@ EXPORT_PLUGIN_CLASS_FACTORY(CallGenFactory,APP_NAME);
 
 string      CallGenFactory::DigitsDir;
 AmFileCache CallGenFactory::play_file;
+string      CallGenFactory::from_host;
 
 CallGenFactory::CallGenFactory(const string& _app_name)
   : AmSessionFactory(_app_name),
@@ -85,6 +86,8 @@ int CallGenFactory::load() {
 	  play_fname.c_str());
     return -1;
   }
+
+  from_host = cfg.getParameter("from_host", "callgen.example.net");
 
   // get prompts
   AM_PROMPT_START;
@@ -141,7 +144,7 @@ void CallGenFactory::checkTarget() {
   if (!target_args)
     return;
 
-  DBG("%zd active calls, %d current target, %d already scheduled\n", 
+  DBG("%zd active calls, %d current target, %d already scheduled\n",
       active_calls.size(), target_args->get(0).asInt(), scheduled);
 
   int missing_calls = 
@@ -161,14 +164,15 @@ void CallGenFactory::on_stop(){
   ERROR("not stoppable!\n");
 }
 
-AmSession* CallGenFactory::onInvite(const AmSipRequest& req)
-{
-  ERROR("DUH - need session params!.\n");
+AmSession* CallGenFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				    const map<string,string>& app_params) {
+  ERROR("incoming calls not supported!\n");
   return NULL;
 }
 
 // outgoing calls 
-AmSession* CallGenFactory::onInvite(const AmSipRequest& req, AmArg& args)
+AmSession* CallGenFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				    AmArg& args)
 {  
   size_t cnt = 0; 
   cnt++; // int    ncalls           = args.get(cnt++).asInt();
@@ -244,8 +248,7 @@ void CallGenFactory::createCall(const AmArg& args) {
   cnt++; // int    call_time_base   = args.get(cnt++).asInt();
   cnt++; // int    call_time_rand   = args.get(cnt++).asInt();
 
-  string from = "sip:callgen@"+ (AmConfig::Ifs.size() ?
-				 AmConfig::Ifs[0].LocalSIPIP : "localhost");
+  string from = "sip:callgen@"+from_host;
   string call_ruri = "sip:"+ruri_user;
 
   for (int i=0;i<ruri_rand_digits;i++) 
@@ -295,14 +298,25 @@ void CallGenFactory::scheduleCalls(const AmArg& args, AmArg& ret) {
   int    ncalls           = args.get(cnt++).asInt();
   int    wait_time_base   = args.get(cnt++).asInt();
   int    wait_time_rand   = args.get(cnt++).asInt();
-  DBG("scheduling %d calls...\n", ncalls);
+  int    ncalls_per_sec   = 1;
+  if (args.size()>9)
+    ncalls_per_sec = args[9].asInt();
+
+  DBG("scheduling %d calls (%d/s)\n", ncalls, ncalls_per_sec);
   
   time_t now;
   time(&now);
   actions_mut.lock();
-  for (int i=0;i<ncalls;i++) {
-    actions.insert(std::make_pair(now, args));
-    
+  int i=0;
+
+  while (i<ncalls) {
+    for (int j=0;j<ncalls_per_sec;j++) {
+      actions.insert(std::make_pair(now, args));
+      i++;
+      if (i==ncalls)
+	break;
+    }
+
     int wait_nsec = wait_time_base;
     if (wait_time_rand>0)
       wait_nsec+=(rand()%wait_time_rand);
@@ -329,12 +343,12 @@ void CallGenFactory::callGenStats(const AmArg& args, AmArg& ret) {
     target = target_args->get(0).asInt();
 
   string res = "CallGen statistics: \n " +
-    int2str((int)active_calls.size()) + " active calls\n " +
+    int2str((unsigned int)active_calls.size()) + " active calls\n " +
     int2str(target) + " current target\n " +
     int2str(scheduled) +" scheduled\n ";
 
   calls_list_mut.lock();
-  res += int2str((int)past_calls.size()) + " total calls\n ";
+  res += int2str((unsigned int)past_calls.size()) + " total calls\n ";
   calls_list_mut.unlock();
   ret.push(res.c_str());
 }
@@ -368,20 +382,20 @@ CallGenDialog::CallGenDialog(AmPromptCollection& prompts,
     play_rand_digits(play_rand_digits), 
     call_time_base(call_time_base), 
     call_time_rand(call_time_rand),
-    play_file(&CallGenFactory::play_file)
+    play_file(&CallGenFactory::play_file),
+    timer_started(false)
 {
 }
 
 CallGenDialog::~CallGenDialog()
 {
   prompts.cleanup((long)this);
-  play_list.close(false);
+  play_list.flush();
   report(CGDestroy);
 }
 
-void CallGenDialog::onInvite(const AmSipRequest& r) {
+void CallGenDialog::onStart() {
   report(CGCreate);
-  AmSession::onInvite(r);
 }
 
 void CallGenDialog::report(CallGenEvent what) {
@@ -391,7 +405,32 @@ void CallGenDialog::report(CallGenEvent what) {
 					 disconnect_ts);
 }
 
-void CallGenDialog::onSessionStart(const AmSipReply& rep) { 
+void CallGenDialog::setCallTimer() {
+  if (timer_started)
+    return;
+  timer_started = true;
+
+  int call_timer = call_time_base;
+  if (call_time_rand>0)
+    call_timer+=rand()%call_time_rand;
+
+  if (call_timer > 0) {
+    DBG("setting timer %d %d\n", CALL_TIMER, call_timer);
+    if (!setTimer(CALL_TIMER, call_timer)) {
+      ERROR("internal: setting timer!\n");
+      return;
+    }
+  }
+
+}
+
+void CallGenDialog::onEarlySessionStart() {
+  setCallTimer();
+
+  AmSession::onEarlySessionStart();
+}
+
+void CallGenDialog::onSessionStart() {
   time(&connect_ts);  
 
   report(CGConnect);
@@ -409,16 +448,10 @@ void CallGenDialog::onSessionStart(const AmSipReply& rep) {
 //   prompts.addToPlaylist(PLAY_FILE,  (long)this, play_list);
 
   setInOut(&play_list, &play_list);
-  int call_timer = call_time_base;
-  if (call_time_rand>0)
-    call_timer+=rand()%call_time_rand;
 
-  if (call_timer > 0) {
-    if (!setTimer(CALL_TIMER, call_timer)) {
-      ERROR("could not load user_timer from session_timer plug-in\n");
-      return;
-    }
-  }
+  setCallTimer();
+
+  AmSession::onSessionStart();
 }
 
 void CallGenDialog::process(AmEvent* event)
@@ -429,10 +462,10 @@ void CallGenDialog::process(AmEvent* event)
     time(&disconnect_ts);
     report(CGDisconnect);
 
-    play_list.close();
+    play_list.flush();
     setInOut(NULL,NULL);
     setStopped();
-    dlg.bye();
+    dlg->bye();
   }
   else
     AmSession::process(event);
@@ -443,7 +476,16 @@ void CallGenDialog::onBye(const AmSipRequest& req) {
   time(&disconnect_ts);
   report(CGDisconnect);
 
-  play_list.close();
+  play_list.flush();
   setInOut(NULL,NULL);
   setStopped();
+}
+
+void CallGenDialog::onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmBasicSipDialog::Status old_dlg_status) {
+  AmSession::onSipReply(req, reply, old_dlg_status);
+  if ((old_dlg_status < AmSipDialog::Connected) &&
+      dlg->getStatus() == AmSipDialog::Disconnected) {
+    DBG("SIP dialog status change: < Connected -> Disconnected, stopping call\n");
+    setStopped();
+  }
 }

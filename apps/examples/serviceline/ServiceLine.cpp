@@ -95,7 +95,8 @@ int ServiceLineFactory::onLoad()
   return 0;
 }
 
-AmSession* ServiceLineFactory::onInvite(const AmSipRequest& req)
+AmSession* ServiceLineFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					const map<string,string>& app_params)
 {
   string announce_path = AnnouncePath;
   string announce_file = announce_path + req.domain
@@ -122,12 +123,11 @@ ServiceLineCallerDialog::ServiceLineCallerDialog(const string& filename)
 {
 }
 
-void ServiceLineCallerDialog::onSessionStart(const AmSipRequest& req)
+void ServiceLineCallerDialog::onSessionStart()
 {
-
   if (started) {
     // reinvite
-    AmB2ABCallerSession::onSessionStart(req);
+    AmB2ABCallerSession::onSessionStart();
     return;
   }
   started = true;
@@ -137,6 +137,8 @@ void ServiceLineCallerDialog::onSessionStart(const AmSipRequest& req)
   
   setInOut(&playlist, &playlist);
   playlist.addToPlaylist(new AmPlaylistItem(&wav_file, NULL));
+
+  AmB2ABCallerSession::onSessionStart();
 }
 
 void ServiceLineCallerDialog::process(AmEvent* event)
@@ -174,21 +176,8 @@ AmB2ABCalleeSession* ServiceLineCallerDialog::createCalleeSession() {
   ServiceLineCalleeDialog* sess = 
     new ServiceLineCalleeDialog(getLocalTag(), connector);
 
-  AmSessionEventHandlerFactory* uac_auth_f = 
-    AmPlugIn::instance()->getFactory4Seh("uac_auth");
-  
-  if (NULL != uac_auth_f) {
-    DBG("UAC Auth enabled for new serviceline session.\n");
-    AmSessionEventHandler* h = uac_auth_f->getHandler(sess);
-    if (h != NULL )
-      sess->addHandler(h);
-    else {
-      ERROR("unable to set SIP UAC auth for new session.");
-    } 
-  } else {
-    ERROR("unable to get SIP UAC auth."
-	  "(uac_auth module loaded?)\n");
-  }
+  AmUACAuth::enable(sess);
+
   return sess;
 }
 

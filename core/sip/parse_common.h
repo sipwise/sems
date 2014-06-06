@@ -53,12 +53,15 @@ using std::list;
 #define LF        (0x0a) // '\n'
 #define SP        (0x20) // ' '
 #define HTAB      (0x09) // '\t'
-#define IS_WSP(c) (0x20==(c)||0x09==(c))
+#define IS_WSP(c) (SP==(c) || HTAB==(c))
 
 #define HCOLON    (':')
+#define SEMICOLON (';')
 #define COMMA     (',')
 #define DQUOTE    ('"')
+#define SLASH     ('/')
 #define BACKSLASH ('\\')
+#define HYPHEN    ('-')
 
 #define IS_ALPHA(c) (IS_IN(c,0x41,0x5a) || IS_IN(c,0x61,0x7a))
 #define IS_DIGIT(c) IS_IN(c,0x30,0x39)
@@ -91,8 +94,17 @@ using std::list;
 #define IS_USER(c) \
    (IS_UNRESERVED(c) || IS_USER_UNRESERVED(c)) // Escaped chars missing
 
-#define SIPVER_len 7 // "SIP" "/" 1*DIGIT 1*DIGIT
+//
+// SIP version constants
+//
 
+#define SIP_str    "SIP"
+#define SUP_SIPVER "/2.0"
+
+#define SIP_len        (sizeof(SIP_str)-/*0-term*/1)
+#define SUP_SIPVER_len (sizeof(SUP_SIPVER)-/*0-term*/1)
+
+#define SIPVER_len (SIP_len+SUP_SIPVER_len)
 
 //
 // Common states: (>100)
@@ -101,8 +113,7 @@ using std::list;
 enum {
     ST_CR=100,
     ST_LF,
-    ST_CRLF,
-    ST_EoL_WSP // [CR] LF WSP
+    ST_CRLF
 };
 
 #define case_CR_LF \
@@ -155,19 +166,55 @@ inline int lower_cmp(const char* l, const char* r, int len)
     const char* end = l+len;
 
     while(l!=end){
-	//if( LOWER_B(*l) != *r ){
-	if( LOWER_B(*l) != LOWER_B(*r) ){
+	if( LOWER_B(*l) == LOWER_B(*r) ){
+	    l++; r++;
+	    continue;
+	}
+	else if(LOWER_B(*l) < LOWER_B(*r)) {
+	    return -1;
+	}
+	else {
 	    return 1;
 	}
-	l++; r++;
     }
 
     return 0;
 }
 
+inline int lower_cmp_n(const char* l, int llen, const char* r, int rlen)
+{
+    if(llen == rlen)
+	return lower_cmp(l,r,rlen);
+    else if(llen < rlen)
+	return -1;
+
+    return 1;
+}
+
+inline int lower_cmp_n(const cstring& l, const cstring& r)
+{
+    return lower_cmp_n(l.s,l.len,r.s,r.len);
+}
+
 int parse_sip_version(const char* beg, int len);
 
+/** 
+ * Parse a list of Attribute-Value pairs beginning with 
+ * and separated by semi-colons until stop_char or the 
+ * end of the string is reached.
+ */
+int parse_gen_params_sc(list<sip_avp*>* params, const char** c, 
+			int len, char stop_char);
+
+/** 
+ * Parse a list of Attribute-Value pairs separated 
+ * by semi-colons until stop_char or the end of 
+ * the string is reached.
+ */
 int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_char);
+
+/** Free the parameters in the list (NOT the list itself) */
+void free_gen_params(list<sip_avp*>* params);
 
 #endif
 

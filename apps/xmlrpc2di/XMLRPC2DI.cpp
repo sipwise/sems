@@ -30,9 +30,11 @@
 #include "AmConfigReader.h"
 #include "AmUtils.h"
 #include "AmArg.h"
-#include "AmSession.h"
+#include "AmSessionContainer.h"
 #include "AmEventDispatcher.h"
 #include "TOXmlRpcClient.h"
+
+#include <exception>
 
 #define MOD_NAME "xmlrpc2di"
 
@@ -127,6 +129,8 @@ int XMLRPC2DI::load() {
   string bind_ip = cfg.getParameter("server_ip");
   if (bind_ip.empty()) {
     DBG("binding on ANY interface\n");
+  } else {
+    bind_ip = fixIface2IP(bind_ip, false);
   }
 
   string conf_xmlrpc_port = cfg.getParameter("xmlrpc_port",XMLRPC_PORT);
@@ -347,7 +351,9 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
     getcallsavg_method(s),
     getcallsmax_method(s),
     getcpsavg_method(s),
-    getcpsmax_method(s)
+    getcpsmax_method(s),
+    getcpslimit_method(s),
+    setcpslimit_method(s)
 
 
 {	
@@ -360,6 +366,8 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
   INFO("XMLRPC Server: enabled builtin method 'get_callsmax'\n");
   INFO("XMLRPC Server: enabled builtin method 'get_cpsavg'\n");
   INFO("XMLRPC Server: enabled builtin method 'get_cpsmax'\n");
+  INFO("XMLRPC Server: enabled builtin method 'get_cpslimit'\n");
+  INFO("XMLRPC Server: enabled builtin method 'set_cpslimit'\n");
 
   // export all methods via 'di' function? 
   if (di_export) {
@@ -513,6 +521,31 @@ void XMLRPC2DIServerSetShutdownmodeMethod::execute(XmlRpcValue& params, XmlRpcVa
   result = "200 OK";
 }
 
+void XMLRPC2DIServerGetCPSLimitMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
+  pair<unsigned int, unsigned int> l = AmSessionContainer::instance()->getCPSLimit();
+  DBG("XMLRPC2DI: get_cpslimit returns %d and %d\n", l.first, l.second);
+  result = int2str(l.first) + " " + int2str(l.second);
+}
+
+void XMLRPC2DIServerSetCPSLimitMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
+  AmSessionContainer::instance()->setCPSLimit((int)params[0]);
+  DBG("XMLRPC2DI: set cpslimit to %u.\n",
+    AmSessionContainer::instance()->getCPSLimit().first);
+  result = "200 OK";
+}
+
+void XMLRPC2DIServerGetCpsavgMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
+  int l = AmSessionContainer::instance()->getAvgCPS();
+  DBG("XMLRPC2DI: get_cpsavg returns %d\n", l);
+  result = l;
+}
+
+void XMLRPC2DIServerGetCpsmaxMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
+  int l = AmSessionContainer::instance()->getMaxCPS();
+  DBG("XMLRPC2DI: get_cpsmax returns %d\n", l);
+  result = l;
+}
+
 #define XMLMETH_EXEC(_meth, _sess_func, _descr)				\
   void _meth::execute(XmlRpcValue& params, XmlRpcValue& result) {	\
   unsigned int res = AmSession::_sess_func();				\
@@ -522,8 +555,6 @@ void XMLRPC2DIServerSetShutdownmodeMethod::execute(XmlRpcValue& params, XmlRpcVa
 
 XMLMETH_EXEC(XMLRPC2DIServerGetCallsavgMethod, getAvgSessionNum, "get_callsavg");
 XMLMETH_EXEC(XMLRPC2DIServerGetCallsmaxMethod, getMaxSessionNum, "get_callsmax");
-XMLMETH_EXEC(XMLRPC2DIServerGetCpsavgMethod,   getAvgCPS, "get_cpsavg");
-XMLMETH_EXEC(XMLRPC2DIServerGetCpsmaxMethod,   getMaxCPS, "get_cpsmax");
 #undef XMLMETH_EXEC
 
 void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
@@ -574,11 +605,13 @@ void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) 
     throw XmlRpcException("Exception: AmDynInvoke::NotImplemented: "
 			  + e.what, 504);
   } catch (const AmArg::OutOfBoundsException& e) {
-    throw XmlRpcException("Exception: AmArg out of bounds - paramter number mismatch.", 300);
+    throw XmlRpcException("Exception: AmArg out of bounds - parameter number mismatch.", 300);
   } catch (const AmArg::TypeMismatchException& e) {
     throw XmlRpcException("Exception: Type mismatch in arguments.", 300);
   } catch (const string& e) {
     throw XmlRpcException("Exception: "+e, 500);
+  } catch (const std::exception& e) {
+    throw XmlRpcException("Exception: " + string(e.what()), 500);
   } catch (...) {
     throw XmlRpcException("Exception occured.", 500);
   }
@@ -728,11 +761,13 @@ void DIMethodProxy::execute(XmlRpcValue& params,
     throw XmlRpcException("Exception: AmDynInvoke::NotImplemented: "
 			  + e.what, 504);
   } catch (const AmArg::OutOfBoundsException& e) {
-    throw XmlRpcException("Exception: AmArg out of bounds - paramter number mismatch.", 300);
+    throw XmlRpcException("Exception: AmArg out of bounds - parameter number mismatch.", 300);
   } catch (const AmArg::TypeMismatchException& e) {
     throw XmlRpcException("Exception: Type mismatch in arguments.", 300);
   } catch (const string& e) {
     throw XmlRpcException("Exception: "+e, 500);
+  } catch (const std::exception& e) {
+    throw XmlRpcException("Exception: " + string(e.what()), 500);
   } catch (...) {
     throw XmlRpcException("Exception occured.", 500);
   }

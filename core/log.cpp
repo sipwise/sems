@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "sems.h"
 
 #ifndef DISABLE_SYSLOG_LOG
 # include <syslog.h>
@@ -60,7 +61,7 @@ class SyslogLogFac : public AmLoggingFacility {
   int facility;		/**< syslog facility */
 
   void init() {
-    openlog("sems", LOG_PID | LOG_CONS, facility);
+    openlog(SEMS_APP_NAME, LOG_PID | LOG_CONS, facility);
     setlogmask(-1);
   }
 
@@ -122,13 +123,18 @@ void SyslogLogFac::log(int level, pid_t pid, pthread_t tid, const char* func, co
   static const int log2syslog_level[] = { LOG_ERR, LOG_WARNING, LOG_INFO, LOG_DEBUG };
 #ifdef _DEBUG
 
+  // replace \r\n through a dot
+  for(char* c=msg; (*c); c++)
+    if(*c == '\r' || *c == '\n')
+      *c = '.';
+
 # ifndef NO_THREADID_LOG
 #  ifdef LOG_LOC_DATA_ATEND
   syslog(log2syslog_level[level], "%s: %s [#%lx] [%s %s:%d]",
-      log_level2str[level], msg, tid, func, file, line);
+	 log_level2str[level], msg, (unsigned long)tid, func, file, line);
 #  else
   syslog(log2syslog_level[level], "[#%lx] [%s, %s:%d] %s: %s",
-	 tid, func, file, line, log_level2str[level], msg);
+	 (unsigned long)tid, func, file, line, log_level2str[level], msg);
 #  endif
 # else /* NO_THREADID_LOG */
 #  ifdef LOG_LOC_DATA_ATEND
@@ -198,4 +204,18 @@ void register_log_hook(AmLoggingFacility* fac)
 {
   AmLock lock(log_hooks_mutex);
   log_hooks.push_back(fac);
+}
+
+/**
+ * Print stack-trace through logging function
+ */
+void log_stacktrace(int ll)
+{
+   void* callstack[128];
+   int i, frames = backtrace(callstack, 128);
+   char** strs = backtrace_symbols(callstack, frames);
+   for (i = 0; i < frames; ++i) {
+     _LOG(ll,"stack-trace(%i): %s", i, strs[i]);
+   }
+   free(strs);
 }

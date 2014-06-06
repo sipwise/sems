@@ -91,12 +91,16 @@ string resolveVars(const string ts, AmSession* sess,
 
     switch(s[0]) {
     case '$': {
+      if (s.substr(1, 1)=="$")
+	return "$";
       map<string, string>::iterator it = sc_sess->var.find(s.substr(1));
       if (it != sc_sess->var.end())
 	return it->second;
       return "";
     }
     case '#': 
+      if (s.substr(1, 1)=="#")
+	return "#";
       if (event_params) {
 	map<string, string>::iterator it = event_params->find(s.substr(1));
 	if (it != event_params->end())
@@ -105,6 +109,8 @@ string resolveVars(const string ts, AmSession* sess,
       }else 
 	return string();
     case '@': {
+      if (s.substr(1, 1)=="@")
+	return "@";
       if (s.length() < 2)
 	return "@";
 
@@ -112,17 +118,21 @@ string resolveVars(const string ts, AmSession* sess,
       if (s1 == "local_tag")
 	return sess->getLocalTag();	
       else if (s1 == "user")
-	return sess->dlg.user;
+	return sess->dlg->getUser();
       else if (s1 == "domain")
-	return sess->dlg.domain;
+	return sess->dlg->getDomain();
       else if (s1 == "remote_tag")
 	return sess->getRemoteTag();
       else if (s1 == "callid")
 	return sess->getCallID();
       else if (s1 == "local_uri")
-	return sess->dlg.local_uri;
+	return sess->dlg->getLocalUri();
+      else if (s1 == "local_party")
+	return sess->dlg->getLocalParty();
       else if (s1 == "remote_uri")
-	return sess->dlg.remote_uri;
+	return sess->dlg->getRemoteUri();
+      else if (s1 == "remote_party")
+	return sess->dlg->getRemoteParty();
       else
 	return string();
     } 

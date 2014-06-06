@@ -36,7 +36,6 @@
 #include "iLBC_define.h"
 #include "iLBC_encode.h"
 #include "iLBC_decode.h"
-#include "constants.h"
 /**
  * @file plug-in/ilbc/ilbc.c
  * iLBC support 
@@ -55,8 +54,13 @@
 #define ILBC30  30 
 #define ILBC20  20
 
-extern const iLBC_ULP_Inst_t ULP_20msTbl;
-extern const iLBC_ULP_Inst_t ULP_30msTbl;
+#ifndef MIN_SAMPLE
+#define MIN_SAMPLE -32768
+#endif
+
+#ifndef MAX_SAMPLE
+#define MAX_SAMPLE 32767
+#endif
 
 static int iLBC_2_Pcm16_Ext( unsigned char* out_buf, unsigned char* in_buf, unsigned int size,
 			     unsigned int channels, unsigned int rate, long h_codec, int mode );
@@ -87,7 +91,7 @@ BEGIN_EXPORTS( "ilbc" , AMCI_NO_MODULEINIT, AMCI_NO_MODULEDESTROY )
   END_CODECS
     
   BEGIN_PAYLOADS
-    PAYLOAD( -1, "iLBC", 8000, 1, CODEC_ILBC, AMCI_PT_AUDIO_FRAME )
+    PAYLOAD( -1, "iLBC", 8000, 8000, 1, CODEC_ILBC, AMCI_PT_AUDIO_FRAME )
   END_PAYLOADS
 
   BEGIN_FILE_FORMATS
@@ -187,7 +191,7 @@ int Pcm16_2_iLBC( unsigned char* out_buf, unsigned char* in_buf, unsigned int si
   short* in_b = (short*)in_buf;
 
   float block[BLOCKL_MAX];
-  int i,k;
+  unsigned int i,k;
   iLBC_Codec_Inst_t* codec_inst;
   int out_buf_offset=0;
 

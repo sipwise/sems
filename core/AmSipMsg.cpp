@@ -3,6 +3,15 @@
 #include "AmUtils.h"
 #include "AmSipMsg.h"
 #include "AmSipHeaders.h"
+#include "sip/sip_trans.h"
+#include "sip/sip_parser.h"
+#include "sip/msg_logger.h"
+
+AmSipRequest::AmSipRequest() 
+  : _AmSipMsgInDlg(), 
+    max_forwards(-1) 
+{
+}
 
 string getHeader(const string& hdrs,const string& hdr_name, bool single)
 {
@@ -218,8 +227,9 @@ string AmSipRequest::print() const
   _PM(contact, "m");
 
   _PMB(hdrs, "hdr");
-  _PM(content_type, "c");
-  _PMB(body, "body");
+  //TODO: find some good debug info to print here
+  //_PM(content_type, "c");
+  //_PMB(body, "body");
 
   _PM(user, "user");
   _PM(domain, "domain");
@@ -231,6 +241,20 @@ string AmSipRequest::print() const
   return buf;
 }
 
+
+void AmSipRequest::log(msg_logger *logger) const
+{
+  tt.lock_bucket();
+  const sip_trans* t = tt.get_trans();
+  if (t) {
+    sip_msg* msg = t->msg;
+    logger->log(msg->buf,msg->len,&msg->remote_ip,
+        &msg->local_ip,msg->u.request->method_str);
+  }
+  tt.unlock_bucket();
+}
+
+
 string AmSipReply::print() const
 {
   string buf;
@@ -239,20 +263,21 @@ string AmSipReply::print() const
   _PMB(reason, "phrase");
   _PM(callid, "i");
   _PM(int2str(cseq), "cseq");
-  _PM(method, "cseq meth");
-  _PM(local_tag, "l-tag");
-  _PM(remote_tag, "r-tag");
+  //_PM(method, "cseq meth");
+  _PM(from_tag, "from-tag");
+  _PM(to_tag, "to-tag");
   //_PM(next_hop, "nhop");
   _PMB(route, "rtset");
   _PM(contact, "m");
 
   _PMB(hdrs, "hdr");
-  _PM(content_type, "c");
-  _PMB(body, "body");
+  //TODO: find some good debug info to print here
+  //_PM(content_type, "c");
+  //_PMB(body, "body");
 
-  _PM(next_request_uri, "next-r-uri");
+  _PM(contact, "contact");
 
-  buf = method + " [" + buf + "]";
+  buf = /*method +*/ " [" + buf + "]";
   return buf;
 }
 

@@ -83,14 +83,16 @@ int PinAuthConferenceFactory::onLoad()
   return 0;
 }
 
-// incoming calls - req is INVITE
-AmSession* PinAuthConferenceFactory::onInvite(const AmSipRequest& req)
+// incoming calls
+AmSession* PinAuthConferenceFactory::onInvite(const AmSipRequest&, const string& app_name,
+					      const map<string,string>& app_params)
 {
   return new PinAuthConferenceDialog(prompts);
 }
 
-// outgoing calls - rep is 200 class response to INVITE
-AmSession* PinAuthConferenceFactory::onInvite(const AmSipReply& rep)
+// outgoing calls
+AmSession* PinAuthConferenceFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					      AmArg& session_params)
 {
   return new PinAuthConferenceDialog(prompts);
 }
@@ -104,7 +106,7 @@ PinAuthConferenceDialog::PinAuthConferenceDialog(AmPromptCollection& prompts)
 
 PinAuthConferenceDialog::~PinAuthConferenceDialog()
 {
-  play_list.close(false);
+  play_list.flush();
   prompts.cleanup((long)this);
 }
 
@@ -124,7 +126,7 @@ void PinAuthConferenceDialog::connectConference(const string& room) {
   channel.reset(AmConferenceStatus::getChannel(conf_id,getLocalTag()));
 
   // clear the playlist
-  play_list.close(false);
+  play_list.flush();
 
   // add the channel to our playlist
   play_list.addToPlaylist(new AmPlaylistItem(channel.get(),
@@ -134,7 +136,7 @@ void PinAuthConferenceDialog::connectConference(const string& room) {
   setInOut(&play_list,&play_list);
 }
 
-void PinAuthConferenceDialog::onSessionStart(const AmSipRequest& req)
+void PinAuthConferenceDialog::onSessionStart()
 { 
   state = EnteringPin;
 
@@ -142,11 +144,13 @@ void PinAuthConferenceDialog::onSessionStart(const AmSipRequest& req)
 
   // set the playlist as input and output
   setInOut(&play_list,&play_list);
+
+  AmSession::onSessionStart();
 }
  
 void PinAuthConferenceDialog::onBye(const AmSipRequest& req)
 {
-  play_list.close();
+  play_list.flush();
   setInOut(NULL,NULL);
   channel.reset(NULL);
   setStopped();
@@ -220,7 +224,7 @@ void PinAuthConferenceDialog::onDtmf(int event, int duration)
       } else {
 	state = EnteringConference;
 	setInOut(NULL, NULL);
-	play_list.close();
+	play_list.flush();
 	for (size_t i=0;i<pin_str.length();i++) {
 	  string num = "";
 	  num[0] = pin_str[i];

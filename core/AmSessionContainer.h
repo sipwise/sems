@@ -82,6 +82,22 @@ class AmSessionContainer : public AmThread
 
   bool clean_sessions();
 
+  typedef std::queue<struct timeval> TimevalQueue;
+
+  /** Container for cps timevals*/
+  TimevalQueue cps_queue;
+  /** Maximum cps since the lasd getMaxCPS()*/
+  unsigned int max_cps;
+  /** Mutex to protect the cps container */
+  AmMutex      cps_mut;
+
+  enum { CPS_SAMPLERATE = 5 };
+
+  unsigned int CPSLimit;
+  unsigned int CPSHardLimit;
+
+  bool check_and_add_cps();
+
  public:
   static AmSessionContainer* instance();
 
@@ -98,7 +114,8 @@ class AmSessionContainer : public AmThread
    * @param req local request
    * @return a new session or NULL on error.
    */
-  AmSession* createSession(AmSipRequest& req, 
+  AmSession* createSession(const AmSipRequest& req, 
+			   string& app_name,
 			   AmArg* session_params = NULL);
 
   /**
@@ -108,6 +125,7 @@ class AmSessionContainer : public AmThread
   AddSessionStatus addSession(const string& callid,
 			      const string& remote_tag,
 			      const string& local_tag,
+			      const string& via_branch,
 			      AmSession* session);
 
   /**
@@ -127,7 +145,8 @@ class AmSessionContainer : public AmThread
    * Constructs a new session and adds it to the active session container. 
    * @param req client's request
    */
-  string startSessionUAC(AmSipRequest& req, 
+  string startSessionUAC(const AmSipRequest& req, 
+			 string& app_name,
 			 AmArg* session_params = NULL);
 
   /**
@@ -139,7 +158,9 @@ class AmSessionContainer : public AmThread
    * post an event into the event queue of the identified dialog.
    * @return false if session doesn't exist 
    */
-  bool postEvent(const string& callid, const string& remote_tag,
+  bool postEvent(const string& callid, 
+		 const string& remote_tag,
+		 const string& via_branch,
 		 AmEvent* event);
 
   /**
@@ -159,6 +180,29 @@ class AmSessionContainer : public AmThread
 
   /** enable unclean shutdown (will not broadcastShutdown event) */
   void enableUncleanShutdown();
+
+  /** Set the maximum number of calls per second to be accepted */
+  void setCPSLimit(unsigned int limit);
+
+  /** Set the maximum number of calls per second to be accepted as a percent 
+   * of the current CPS. Intented to be used by the components. 0 means turning off
+   * the soft limit.
+   */
+  void setCPSSoftLimit(unsigned int percent);
+
+  /** Return the maximum number of calls per second to be accepted */
+  pair<unsigned int, unsigned int> getCPSLimit();
+
+  /**
+   * Gets the timeaverage of calls per second in the last CPS_SAMPLERATE sec window
+   */
+  unsigned int getAvgCPS();
+  /**
+   * Gets the maximum of calls per second since last query
+   */
+  unsigned int getMaxCPS();
+
+  void initMonitoring();
 
   _MONITORING_DEFINE_INTERFACE;
 

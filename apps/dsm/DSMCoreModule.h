@@ -48,16 +48,25 @@ class DSMCoreModule
 };
 
 DEF_ACTION_1P(SCPlayPromptAction);
+DEF_ACTION_1P(SCPlayPromptFrontAction);
 DEF_ACTION_1P(SCPlayPromptLoopedAction);
 DEF_ACTION_1P(SCRecordFileAction);
 DEF_ACTION_1P(SCStopRecordAction);
 DEF_ACTION_1P(SCGetRecordDataSizeAction);
 DEF_ACTION_1P(SCGetRecordLengthAction);
+DEF_ACTION_1P(SCFlushPlaylistAction);
 DEF_ACTION_1P(SCClosePlaylistAction);
 DEF_ACTION_1P(SCSetInOutPlaylistAction);
+DEF_ACTION_1P(SCSetInputPlaylistAction);
+DEF_ACTION_1P(SCSetOutputPlaylistAction);
 DEF_ACTION_1P(SCStopAction);
 DEF_ACTION_1P(SCConnectMediaAction);
 DEF_ACTION_1P(SCDisconnectMediaAction);
+DEF_ACTION_1P(SCEnableReceivingAction);
+DEF_ACTION_1P(SCDisableReceivingAction);
+DEF_ACTION_1P(SCEnableForceDTMFReceiving);
+DEF_ACTION_1P(SCDisableForceDTMFReceiving);
+DEF_ACTION_1P(SCMonitorRTPTimeoutAction);
 DEF_ACTION_1P(SCMuteAction);
 DEF_ACTION_1P(SCUnmuteAction);
 DEF_ACTION_1P(SCEnableDTMFDetection);
@@ -98,20 +107,29 @@ DEF_ACTION_2P(SCGetParamAction);
 DEF_ACTION_2P(SCSetVarAction);
 DEF_ACTION_2P(SCPlayFileAction);
 DEF_ACTION_2P(SCPlayFileFrontAction);
+DEF_ACTION_1P(SCPlaySilenceAction);
+DEF_ACTION_1P(SCPlaySilenceFrontAction);
 DEF_ACTION_2P(SCPostEventAction);
+DEF_ACTION_1P(SCRelayB2BEventAction);
 
 DEF_ACTION_2P(SCB2BConnectCalleeAction);
 DEF_ACTION_1P(SCB2BTerminateOtherLegAction);
 DEF_ACTION_2P(SCB2BReinviteAction);
 
+DEF_ACTION_1P(SCB2BEnableEarlyMediaRelayAction);
 DEF_ACTION_1P(SCB2BAddHeaderAction);
 DEF_ACTION_1P(SCB2BClearHeadersAction);
 DEF_ACTION_2P(SCB2BSetHeadersAction);
+DEF_ACTION_1P(SCB2BRemoveHeaderAction);
 
 DEF_ACTION_1P(SCRegisterEventQueueAction);
 DEF_ACTION_1P(SCUnregisterEventQueueAction);
 
 DEF_ACTION_2P(SCCreateSystemDSMAction);
+
+DEF_ACTION_1P(SCTrackObjectAction);
+DEF_ACTION_1P(SCReleaseObjectAction);
+DEF_ACTION_1P(SCFreeObjectAction);
 
 class SCDIAction					
 : public DSMAction {

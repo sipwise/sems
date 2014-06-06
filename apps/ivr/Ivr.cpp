@@ -41,7 +41,9 @@
 #include <dirent.h>
 
 #include <set>
+#include <string>
 using std::set;
+using std::string;
 
 
 #define PYFILE_REGEX "(.+)\\.(py|pyc|pyo)$"
@@ -105,28 +107,6 @@ extern "C" {
     return Py_None;
   }
 
-  static PyObject* ivr_getSessionParam(PyObject*, PyObject* args)
-  {
-    char* headers;
-    char* header_name;
-    if(!PyArg_ParseTuple(args,"ss",&headers,&header_name))
-      return NULL;
-
-    string res;
-    string iptel_app_param = getHeader(headers, PARAM_HDR, true);
-    if (iptel_app_param.length()) {
-      res = get_header_keyvalue(iptel_app_param,header_name);
-    } else {
-      INFO("Use of P-%s is deprecated. \n", header_name);
-      INFO("Use '%s: %s=<addr>' instead.\n", PARAM_HDR, header_name);
-
-      res = getHeader(headers,string("P-") + header_name, true);
-    }
-
-	 
-    return PyString_FromString(res.c_str());
-  }
-
   static PyObject* ivr_createThread(PyObject*, PyObject* args)
   {
     PyObject* py_thread_object = NULL;
@@ -155,7 +135,6 @@ extern "C" {
   static PyMethodDef ivr_methods[] = {
     {"log", (PyCFunction)ivr_log, METH_VARARGS,"Log a message using Sems' logging system"},
     {"getHeader", (PyCFunction)ivr_getHeader, METH_VARARGS,"Python getHeader wrapper"},
-    {"getSessionParam", (PyCFunction)ivr_getSessionParam, METH_VARARGS,"Python getSessionParam wrapper"},
     {"createThread", (PyCFunction)ivr_createThread, METH_VARARGS, "Create another interpreter thread"},
     {"setIgnoreSigchld", (PyCFunction)ivr_ignoreSigchld, METH_VARARGS, "ignore SIGCHLD signal"},
     {NULL}  /* Sentinel */
@@ -360,7 +339,6 @@ bool IvrFactory::loadScript(const string& path)
   modName = PyString_FromString(path.c_str());
   
   mod     = PyImport_Import(modName);
-  Py_DECREF(modName);
   if (NULL != config) {
     // remove config ivr ivr_module while loading
     PyObject_DelAttrString(ivr_module, "config");
@@ -371,14 +349,21 @@ bool IvrFactory::loadScript(const string& path)
     PyErr_Print();
     WARN("IvrFactory: Failed to load \"%s\"\n", path.c_str());
 
+    // before python 2.4,
+    // it can happen that the module
+    // is still in the dictionnary.
     dict = PyImport_GetModuleDict();
     Py_INCREF(dict);
-    PyDict_DelItemString(dict,path.c_str());
+    if(PyDict_Contains(dict,modName)){
+      PyDict_DelItem(dict,modName);
+    }
     Py_DECREF(dict);
+    Py_DECREF(modName);
 
     return false;
   }
 
+  Py_DECREF(modName);
   dict = PyModule_GetDict(mod);
   dlg_class = PyDict_GetItemString(dict, "IvrDialog");
 
@@ -418,11 +403,6 @@ bool IvrFactory::loadScript(const string& path)
  */
 int IvrFactory::onLoad()
 {
-  if (!AmSession::timersSupported()) {	
-    ERROR("load session_timer plug-in (for timers)\n");
-    return -1;
-  }
-
   if(cfg.loadFile(add2path(AmConfig::ModConfigPath,1,MOD_NAME ".conf")))
     return -1;
 
@@ -461,7 +441,7 @@ int IvrFactory::onLoad()
 
   DBG("directory '%s' opened\n",script_path.c_str());
 
-  set<string> unique_entries;
+  std::set<string> unique_entries;
   regmatch_t  pmatch[2];
 
   struct dirent* entry=0;
@@ -479,7 +459,7 @@ int IvrFactory::onLoad()
   regfree(&reg);
 
   AmPlugIn* plugin = AmPlugIn::instance();
-  for(set<string>::iterator it = unique_entries.begin();
+  for(std::set<string>::iterator it = unique_entries.begin();
       it != unique_entries.end(); it++) {
 
     if(loadScript(*it)){
@@ -522,16 +502,16 @@ void IvrFactory::start_deferred_threads() {
 
 int IvrDialog::transfer(const string& target)
 {
-  return dlg.transfer(target);
+  return dlg->transfer(target);
 }
 
 int IvrDialog::refer(const string& target, int expires) {
-  return dlg.refer(target, expires);
+  return dlg->refer(target, expires);
 }
 
 int IvrDialog::drop()
 {
-  int res = dlg.drop();
+  int res = dlg->drop();
   if (res) 
     setStopped();
 	
@@ -555,15 +535,13 @@ void IvrFactory::setupSessionTimer(AmSession* s) {
 }
 
 /**
- * Load a script using user name from URI.
+ * Load a script using the app_name.
  * Note: there is no default script.
  */
-AmSession* IvrFactory::onInvite(const AmSipRequest& req)
+AmSession* IvrFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				const map<string,string>& app_params)
 {
-  if(req.cmd != MOD_NAME)
-    return newDlg(req.cmd);
-  else
-    return newDlg(req.user);
+  return newDlg(app_name);
 }
 
 IvrDialog::IvrDialog()
@@ -578,7 +556,7 @@ IvrDialog::~IvrDialog()
 {
   DBG("----------- IvrDialog::~IvrDialog() ------------- \n");
 
-  playlist.close(false);
+  playlist.flush();
   
   PYLOCK;
   Py_XDECREF(py_mod);
@@ -619,8 +597,12 @@ PyObject_VaCallMethod(PyObject *o, char *name, char *format, va_list va)
 
   func = PyObject_GetAttrString(o, name);
   if (func == NULL) {
-    PyErr_SetString(PyExc_AttributeError, name);
-    return 0;
+
+    DBG("method %s is not implemented, "
+	"trying default one (params: '%s')\n",
+	name,format);
+
+    Py_RETURN_TRUE;
   }
 
   if (!PyCallable_Check(func))
@@ -666,18 +648,10 @@ bool IvrDialog::callPyEventHandler(const char* name, const char* fmt, ...)
   va_end(va);
 
   if(!o) {
-
-    if(PyErr_ExceptionMatches(PyExc_AttributeError)){
-
-      DBG("method %s is not implemented, trying default one\n",name);
-      return true;
-    }
-
-    PyErr_Print();
+    if(PyErr_Occurred()) PyErr_Print();
   }
   else {
     if(o && PyBool_Check(o) && (o == Py_True)) {
-
       ret = true;
     }
 
@@ -687,44 +661,59 @@ bool IvrDialog::callPyEventHandler(const char* name, const char* fmt, ...)
   return ret;
 }
 
-void IvrDialog::onSessionStart(const AmSipRequest& req)
+void IvrDialog::onInvite(const AmSipRequest& req)
 {
-  callPyEventHandler("onSessionStart","(s)",req.hdrs.c_str());
-  setInOut(&playlist,&playlist);
-  AmB2BCallerSession::onSessionStart(req);
+  if(callPyEventHandler("onInvite","(s)",req.hdrs.c_str()))
+    AmB2BCallerSession::onInvite(req);
 }
 
-void IvrDialog::onSessionStart(const AmSipReply& rep)
+void IvrDialog::onSessionStart()
 {
-  invite_req.body = rep.body;
-  callPyEventHandler("onSessionStart","(s)",rep.hdrs.c_str());
+  callPyEventHandler("onSessionStart",NULL);
   setInOut(&playlist,&playlist);
-  AmB2BSession::onSessionStart(rep);
+  AmB2BCallerSession::onSessionStart();
+}
+
+int IvrDialog::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
+{
+  AmMimeBody* sdp_body = invite_req.body.hasContentType(SIP_APPLICATION_SDP);
+  if(!sdp_body) {
+    sdp_body = invite_req.body.addPart(SIP_APPLICATION_SDP);
+  }
+
+  if(sdp_body) {
+    string sdp_buf;
+    answer.print(sdp_buf);
+    sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+			 sdp_buf.length());
+  }
+
+  return AmB2BCallerSession::onSdpCompleted(offer,answer);
 }
 
 void IvrDialog::onBye(const AmSipRequest& req)
 {
   if(callPyEventHandler("onBye",NULL))
-    AmB2BSession::onBye(req);
+    AmB2BCallerSession::onBye(req);
 }
 
 void IvrDialog::onDtmf(int event, int duration_msec)
 {
   if(callPyEventHandler("onDtmf","(ii)",event,duration_msec))
-    AmB2BSession::onDtmf(event,duration_msec);
+    AmB2BCallerSession::onDtmf(event,duration_msec);
 }
 
 void IvrDialog::onOtherBye(const AmSipRequest& req)
 {
   if(callPyEventHandler("onOtherBye",NULL))
-    AmB2BSession::onOtherBye(req);
+    AmB2BCallerSession::onOtherBye(req);
 }
 
 bool IvrDialog::onOtherReply(const AmSipReply& r)
 {
   if(callPyEventHandler("onOtherReply","(is)",
 			r.code,r.reason.c_str()))
-    AmB2BSession::onOtherReply(r);
+    AmB2BCallerSession::onOtherReply(r);
   return false;
 }
 
@@ -745,18 +734,21 @@ void safe_Py_DECREF(PyObject* pyo) {
   Py_DECREF(pyo);
 }
 
-void IvrDialog::onSipReply(const AmSipReply& r, int old_dlg_status, const string& trans_method) {
-  PyObject* pyo = getPySipReply(r);
+void IvrDialog::onSipReply(const AmSipRequest& req,
+			   const AmSipReply& reply, 
+			   AmBasicSipDialog::Status old_dlg_status) 
+{
+  PyObject* pyo = getPySipReply(reply);
   callPyEventHandler("onSipReply","(O)", pyo);
   safe_Py_DECREF(pyo);
-  AmB2BSession::onSipReply(r,old_dlg_status,trans_method);
+  AmB2BCallerSession::onSipReply(req,reply,old_dlg_status);
 }
 
 void IvrDialog::onSipRequest(const AmSipRequest& r){
   PyObject* pyo = getPySipRequest(r);
   callPyEventHandler("onSipRequest","(O)", pyo);
   safe_Py_DECREF(pyo);
-  AmB2BSession::onSipRequest(r);
+  AmB2BCallerSession::onSipRequest(r);
 }
 
 void IvrDialog::onRtpTimeout() {
@@ -799,32 +791,32 @@ void IvrDialog::connectCallee(const string& remote_party, const string& remote_u
 void IvrDialog::createCalleeSession()
 {
   AmB2BCalleeSession* callee_session = new AmB2BCalleeSession(this);
-  AmSipDialog& callee_dlg = callee_session->dlg;
+  AmSipDialog* callee_dlg = callee_session->dlg;
   
-  other_id = AmSession::getNewId();
+  setOtherId(AmSession::getNewId());
   
-  callee_dlg.local_tag    = other_id;
-  callee_dlg.callid       = AmSession::getNewId();
+  callee_dlg->setLocalTag(getOtherId());
+  callee_dlg->setCallid(AmSession::getNewId());
   
   // this will be overwritten by ConnectLeg event 
-  callee_dlg.remote_party = dlg.local_party;
-  callee_dlg.remote_uri   = dlg.local_uri;
+  callee_dlg->setRemoteParty(dlg->getLocalParty());
+  callee_dlg->setRemoteUri(dlg->getLocalUri());
 
   if (b2b_callee_from_party.empty() && b2b_callee_from_uri.empty()) {
     // default: use the original To as From in the callee leg
-    callee_dlg.local_party  = dlg.remote_party;
-    callee_dlg.local_uri  = dlg.remote_uri;
+    callee_dlg->setLocalParty(dlg->getRemoteParty());
+    callee_dlg->setLocalUri(dlg->getRemoteUri());
   } else {
     // if given as parameters, use these
-    callee_dlg.local_party  = b2b_callee_from_party;
-    callee_dlg.local_uri  = b2b_callee_from_uri;
+    callee_dlg->setLocalParty(b2b_callee_from_party);
+    callee_dlg->setLocalUri(b2b_callee_from_uri);
   }
   
   DBG("Created B2BUA callee leg, From: %s\n",
-      callee_dlg.local_party.c_str());
+      callee_dlg->getLocalParty().c_str());
 
   callee_session->start();
   
   AmSessionContainer* sess_cont = AmSessionContainer::instance();
-  sess_cont->addSession(other_id,callee_session);
+  sess_cont->addSession(getOtherId(),callee_session);
 }

@@ -38,7 +38,6 @@ EXPORT_SESSION_FACTORY(b2b_connectFactory,MOD_NAME);
 
 b2b_connectFactory::b2b_connectFactory(const string& _app_name)
 : AmSessionFactory(_app_name)
-// , user_timer_fact(NULL)
 {
 }
 
@@ -58,20 +57,14 @@ int b2b_connectFactory::onLoad()
   if (cfg.getParameter("transparent_ruri")=="true")
     TransparentDestination = true;
   
-//   if (!AmSession::timersSupported()) {
-//     ERROR("load session_timer plug-in for timers\n");
-//     return -1;
-//   }
-
   return 0;
 }
 
 
-AmSession* b2b_connectFactory::onInvite(const AmSipRequest& req)
+AmSession* b2b_connectFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					const map<string,string>& app_params)
 {
-  string app_param = getHeader(req.hdrs, PARAM_HDR, true);
-
-  if (!app_param.length()) {
+  if (!app_params.size())  {
     throw  AmSession::Exception(500, "b2b_connect: parameters not found");
   }
 
@@ -92,22 +85,21 @@ b2b_connectDialog::~b2b_connectDialog()
 
 void b2b_connectDialog::onInvite(const AmSipRequest& req)
 {
-  if (dlg.getStatus() == AmSipDialog::Connected) {
+  if (dlg->getStatus() == AmSipDialog::Connected) {
     // reinvites
     AmB2ABCallerSession::onInvite(req);
     return;
   }
 
-  string app_param = getHeader(req.hdrs, PARAM_HDR, true);
   string remote_party, remote_uri;
 
-  if (!app_param.length()) {
-    throw AmSession::Exception(500, "b2b_connect: parameters not found");
-  }
+  domain = getAppParam("d");
+  user = getAppParam("u");
+  password = getAppParam("p");
 
-  domain = get_header_keyvalue(app_param,"d");
-  user = get_header_keyvalue(app_param,"u");
-  password = get_header_keyvalue(app_param,"p");
+  if (domain.empty() || user.empty()) {
+    throw AmSession::Exception(500, "b2b_connect: domain parameters not found");
+  }
 
   from = "sip:"+user+"@"+domain;
   if (b2b_connectFactory::TransparentDestination) {
@@ -117,7 +109,7 @@ void b2b_connectDialog::onInvite(const AmSipRequest& req)
       remote_uri = to = "sip:"+req.user+"@"+domain;
       remote_party = "<" + to + ">";
   }
-  if(dlg.reply(req, 100, "Connecting") != 0) {
+  if(dlg->reply(req, 100, "Connecting") != 0) {
     throw AmSession::Exception(500,"Failed to reply 100");
   }
 
@@ -129,7 +121,6 @@ void b2b_connectDialog::onInvite(const AmSipRequest& req)
     removeHeader(invite_req.hdrs, "Max-Forwards");
   }
 
-  dlg.updateStatus(req);
   recvd_req.insert(std::make_pair(req.cseq,req));
   
   connectCallee(remote_party, remote_uri, from, from, 
@@ -138,12 +129,11 @@ void b2b_connectDialog::onInvite(const AmSipRequest& req)
   MONITORING_LOG(other_id.c_str(), 
 		 "app", MOD_NAME);
   
-
 }
 
-void b2b_connectDialog::onSessionStart(const AmSipRequest& req)
+void b2b_connectDialog::onSessionStart()
 {
-  AmB2ABCallerSession::onSessionStart(req);
+  AmB2ABCallerSession::onSessionStart();
 }
 
 void b2b_connectDialog::onB2ABEvent(B2ABEvent* ev)
@@ -151,10 +141,10 @@ void b2b_connectDialog::onB2ABEvent(B2ABEvent* ev)
   if (ev->event_id == B2ABConnectOtherLegException) {
     B2ABConnectOtherLegExceptionEvent* ex_ev = 
       dynamic_cast<B2ABConnectOtherLegExceptionEvent*>(ev);
-    if (ex_ev && dlg.getStatus() == AmSipDialog::Pending) {
+    if (ex_ev && dlg->getStatus() < AmSipDialog::Connected) {
       DBG("callee leg creation failed with exception '%d %s'\n",
 	  ex_ev->code, ex_ev->reason.c_str());
-      dlg.reply(invite_req, ex_ev->code, ex_ev->reason);
+      dlg->reply(invite_req, ex_ev->code, ex_ev->reason);
       setStopped();
       return;
     }
@@ -163,10 +153,10 @@ void b2b_connectDialog::onB2ABEvent(B2ABEvent* ev)
   if (ev->event_id == B2ABConnectOtherLegFailed) {
     B2ABConnectOtherLegFailedEvent* f_ev = 
       dynamic_cast<B2ABConnectOtherLegFailedEvent*>(ev);
-    if (f_ev && dlg.getStatus() == AmSipDialog::Pending) {
+    if (f_ev && dlg->getStatus() < AmSipDialog::Connected) {
       DBG("callee leg creation failed with reply '%d %s'\n",
 	  f_ev->code, f_ev->reason.c_str());
-      dlg.reply(invite_req, f_ev->code, f_ev->reason);
+      dlg->reply(invite_req, f_ev->code, f_ev->reason);
       setStopped();
       return;
     }
@@ -220,14 +210,14 @@ void b2b_connectDialog::onBye(const AmSipRequest& req)
 }
 
 
-void b2b_connectDialog::onCancel()
+void b2b_connectDialog::onCancel(const AmSipRequest& req)
 {
-  if(dlg.getStatus() == AmSipDialog::Pending) {
+  if(dlg->getStatus() < AmSipDialog::Connected) {
     DBG("Wait for leg B to terminate");
   }
   else {
     DBG("Canceling leg A on CANCEL since dialog is not pending");
-    dlg.reply(invite_req, 487, "Request terminated");
+    dlg->reply(invite_req, 487, "Request terminated");
     setStopped();
   }
 }
@@ -235,25 +225,10 @@ void b2b_connectDialog::onCancel()
 
 AmB2ABCalleeSession* b2b_connectDialog::createCalleeSession()
 {
-  b2b_connectCalleeSession* sess = new b2b_connectCalleeSession(getLocalTag(),
-								connector, 
-								user, password);
+  b2b_connectCalleeSession* sess =
+    new b2b_connectCalleeSession(getLocalTag(), connector, user, password);
 
-  AmSessionEventHandlerFactory* uac_auth_f = 
-    AmPlugIn::instance()->getFactory4Seh("uac_auth");
-  
-  if (NULL != uac_auth_f) {
-    DBG("UAC Auth enabled for new b2b_connect session.\n");
-    AmSessionEventHandler* h = uac_auth_f->getHandler(sess);
-    if (h != NULL )
-      sess->addHandler(h);
-    else {
-      ERROR("unable to set SIP UAC auth for new session.");
-    } 
-  } else {
-    ERROR("unable to get SIP UAC auth."
-          "(uac_auth module loaded?)\n");
-  }
+  AmUACAuth::enable(sess);
 
   return sess;
 }
@@ -277,12 +252,12 @@ inline UACAuthCred* b2b_connectCalleeSession::getCredentials() {
 }
 
 void b2b_connectCalleeSession::onSipReply(const AmSipReply& reply,
-					  int old_dlg_status,
-					  const string& trans_method) {
-  AmB2ABCalleeSession::onSipReply(reply, old_dlg_status, trans_method);
+					  AmSipDialog::Status old_dlg_status) {
+
+  AmB2ABCalleeSession::onSipReply(reply, old_dlg_status);
  
-  if ((old_dlg_status == AmSipDialog::Pending)&&
-      (dlg.getStatus() == AmSipDialog::Disconnected)) {
+  if ((old_dlg_status < AmSipDialog::Connected) &&
+      (dlg->getStatus() == AmSipDialog::Disconnected)) {
     DBG("status change Pending -> Disconnected. Stopping session.\n");
     setStopped();
   }

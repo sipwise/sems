@@ -100,7 +100,8 @@ public:
   AnswerMachineFactory(const string& _app_name);
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
 };
 
 class AnswerMachineDialog : public AmSession
@@ -126,6 +127,8 @@ class AnswerMachineDialog : public AmSession
     void saveMessage();
     void saveBox(FILE* fp);
 
+    void onNoAudio();
+
  public:
   AnswerMachineDialog(const string& user, 
 		      const string& sender, 
@@ -143,7 +146,7 @@ class AnswerMachineDialog : public AmSession
 
     void process(AmEvent* event);
 
-    void onSessionStart(const AmSipRequest& req);
+    void onSessionStart();
     void onBye(const AmSipRequest& req);
     void onDtmf(int event, int duration_msec) {}
 

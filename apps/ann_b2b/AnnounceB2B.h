@@ -44,7 +44,8 @@ public:
   AnnounceB2BFactory(const string& _app_name);
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
 };
 
 /** \brief Session logic implementation of A leg in announce_b2b sessions */
@@ -60,7 +61,8 @@ public:
   AnnounceCallerDialog(const string& filename);
     
   void process(AmEvent* event);
-  void onSessionStart(const AmSipRequest& req);
+  void onInvite(const AmSipRequest& req);
+  void onSessionStart();
 };
 
 #endif

@@ -91,6 +91,10 @@ struct sip_reply
     sip_reply()
 	: code(0)
     {}
+
+    sip_reply(int code, const cstring& reason)
+	: code(code), reason(reason)
+    {}
 };
 
 
@@ -115,6 +119,7 @@ struct sip_msg
     sip_header*        cseq;
     sip_header*        rack;
 
+    list<sip_header*>  vias;
     sip_header*        via1;
     sip_via_parm*      via_p1;
 
@@ -131,16 +136,25 @@ struct sip_msg
     trsp_socket*       local_socket;
 
     sockaddr_storage   remote_ip;
-    dns_handle         h_dns;
-    
+
     sip_msg();
     sip_msg(const char* msg_buf, int msg_len);
     ~sip_msg();
 
-    int send();
+    void copy_msg_buf(const char* msg_buf, int msg_len);
+
+    int send(unsigned flags);
+
+    /**
+     * Releases pointers otherwise deleted by the destructor
+     * This is useful to abandon the memory pointed at if this
+     * message is a copy of another which do own the memory.
+     */
+    void release();
 };
 
 int parse_method(int* method, const char* beg, int len);
+int parse_headers(sip_msg* msg, char** c, char* end);
 int parse_sip_msg(sip_msg* msg, char*& err_msg);
 
 #define get_contact(msg) (msg->contacts.empty() ? NULL : (*msg->contacts.begin()))

@@ -75,12 +75,12 @@ IvrSipReply_dealloc(IvrSipReply* self)
 								
 								
 def_IvrSipReply_GETTER(IvrSipReply_getreason,     reason)
-def_IvrSipReply_GETTER(IvrSipReply_getnext_request_uri, next_request_uri)
-def_IvrSipReply_GETTER(IvrSipReply_gethdrs,         hdrs)
-def_IvrSipReply_GETTER(IvrSipReply_getremote_tag,   remote_tag)
-def_IvrSipReply_GETTER(IvrSipReply_getlocal_tag,    local_tag)
-def_IvrSipReply_GETTER(IvrSipReply_getroute,        route)
-def_IvrSipReply_GETTER(IvrSipReply_getbody,         body)
+def_IvrSipReply_GETTER(IvrSipReply_getcontact,    contact)
+def_IvrSipReply_GETTER(IvrSipReply_gethdrs,       hdrs)
+def_IvrSipReply_GETTER(IvrSipReply_getfrom_tag,   from_tag)
+def_IvrSipReply_GETTER(IvrSipReply_getto_tag,     to_tag)
+def_IvrSipReply_GETTER(IvrSipReply_getroute,      route)
+//def_IvrSipReply_GETTER(IvrSipReply_getbody,       body)
 
 static PyObject*
 IvrSipReply_getcseq(IvrSipReply *self, void *closure)
@@ -97,12 +97,12 @@ IvrSipReply_getcode(IvrSipReply *self, void *closure)
 static PyGetSetDef IvrSipReply_getset[] = {
   {(char*)"code",     (getter)IvrSipReply_getcode, NULL, (char*)"code", NULL},
   {(char*)"reason",   (getter)IvrSipReply_getreason, NULL, (char*)"reason", NULL},
-  {(char*)"next_request_uri",(getter)IvrSipReply_getnext_request_uri, NULL, (char*)"next_request_uri", NULL},
+  {(char*)"contact",(getter)IvrSipReply_getcontact, NULL, (char*)"contact", NULL},
   {(char*)"route",    (getter)IvrSipReply_getroute, NULL, (char*)"route", NULL},
   {(char*)"hdrs",     (getter)IvrSipReply_gethdrs, NULL, (char*)"hdrs", NULL},
-  {(char*)"body",     (getter)IvrSipReply_getbody, NULL, (char*)"body", NULL},
-  {(char*)"remote_tag", (getter)IvrSipReply_getremote_tag, NULL, (char*)"remote_tag", NULL},
-  {(char*)"local_tag",   (getter)IvrSipReply_getlocal_tag, NULL, (char*)"local_tag", NULL},
+  //{(char*)"body",     (getter)IvrSipReply_getbody, NULL, (char*)"body", NULL},
+  {(char*)"from_tag", (getter)IvrSipReply_getfrom_tag, NULL, (char*)"from_tag", NULL},
+  {(char*)"to_tag",   (getter)IvrSipReply_getto_tag, NULL, (char*)"to_tag", NULL},
   {(char*)"cseq",     (getter)IvrSipReply_getcseq, NULL, (char*)"cseq", NULL},
   {NULL}  /* Sentinel */
 };

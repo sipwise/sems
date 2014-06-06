@@ -31,11 +31,18 @@
 #define _sip_trans_h
 
 #include "cstring.h"
+#include "wheeltimer.h"
 
 #include <sys/socket.h>
 
+#include <list>
+using std::list;
+
 struct sip_msg;
+struct sip_target_set;
+
 class trsp_socket;
+class msg_logger;
 
 /**
  * Transaction types
@@ -60,6 +67,7 @@ enum {
     TS_TERMINATED_200,
     TS_TERMINATED, // UAC:INV,!INV; UAS:INV,!INV
 
+    TS_ABANDONED,
     TS_REMOVED
 };
 
@@ -70,20 +78,35 @@ enum {
  */
 #define SIP_TRANS_TIMERS 3
 
-class timer;
+class sip_trans;
 
+class trans_timer
+    : protected timer
+{
+    trans_timer(const trans_timer& ti) : timer() {}
+
+public:
+    unsigned int type;
+    unsigned int bucket_id;
+    sip_trans*   t;
+
+    trans_timer(unsigned int timer_type, unsigned int expires,
+		int bucket_id, sip_trans* t)
+        : timer(expires), type(timer_type),
+	  bucket_id(bucket_id), t(t)
+    {}
+
+    trans_timer(const trans_timer& ti, int bucket_id, sip_trans* t)
+        : timer(ti.expires), type(ti.type),
+	  bucket_id(bucket_id), t(t)
+    {}
+
+    void fire();
+};
 
 class sip_trans
 {
-    timer* timers[SIP_TRANS_TIMERS];
-
-    /**
-     * Resets a specific timer
-     *
-     * @param t the new timer
-     * @param timer_type @see sip_timer_type
-    */
-    void reset_timer(timer* t, unsigned int timer_type);    
+    trans_timer* timers[SIP_TRANS_TIMERS];
 
  public:
     /** Transaction type */
@@ -107,6 +130,12 @@ class sip_trans
     /** used by UAS only; keeps RSeq of last sent reliable 1xx */
     unsigned int last_rseq;
 
+    /** Dialog-ID used for UAC transactions */
+    cstring dialog_id;
+
+    /** Destination list for requests */
+    sip_target_set* targets;
+    
     /**
      * Retransmission buffer
      *  - UAC transaction: ACK
@@ -121,6 +150,12 @@ class sip_trans
     sockaddr_storage retr_addr;
     trsp_socket*     retr_socket;
 
+    /** flags used by send_request() */
+    unsigned int flags;
+
+    /** message logging */
+    msg_logger* logger;
+
     /**
      * Tells if a specific timer is set
      *
@@ -133,8 +168,7 @@ class sip_trans
      *
      * @param timer_type @see sip_timer_type
      */
-    timer* get_timer(unsigned int timer_type);
-
+    trans_timer* get_timer(unsigned int timer_type);
     
     /**
      * Resets a specfic timer with a delay value
@@ -146,6 +180,14 @@ class sip_trans
     void reset_timer(unsigned int timer_type, 
 		     unsigned int expire_delay /* ms */,
 		     unsigned int bucket_id);
+
+    /**
+     * Resets a specific timer
+     *
+     * @param t the new timer
+     * @param timer_type @see sip_timer_type
+    */
+    void reset_timer(trans_timer* t, unsigned int timer_type);
 
     /**
      * Clears a specfic timer
@@ -166,6 +208,9 @@ class sip_trans
 
     sip_trans();
     ~sip_trans();
+
+    const char* type_str() const;
+    const char* state_str() const;
 
     void dump() const;
 };

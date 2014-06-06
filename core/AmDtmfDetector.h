@@ -74,7 +74,7 @@ class AmDtmfEventQueue : public AmEventQueue
    * Reimplemented abstract method from AmEventQueue
    */
   void processEvents();
-  void putDtmfAudio(const unsigned char *, int size, int user_ts);
+  void putDtmfAudio(const unsigned char *, int size, unsigned long long system_ts);
 };
 
 /**
@@ -226,7 +226,7 @@ class AmInbandDtmfDetector
   /**
    * Entry point for audio stream
    */
-  virtual int streamPut(const unsigned char* samples, unsigned int size, unsigned int user_ts) = 0;
+  virtual int streamPut(const unsigned char* samples, unsigned int size, unsigned long long system_ts) = 0;
 };
 
 /**
@@ -272,12 +272,12 @@ class AmSemsInbandDtmfDetector
   void isdn_audio_calc_dtmf(const signed short* buf, int len, unsigned int ts);
 
  public:
-  AmSemsInbandDtmfDetector(AmKeyPressSink *keysink);
+  AmSemsInbandDtmfDetector(AmKeyPressSink *keysink, int sample_rate);
   ~AmSemsInbandDtmfDetector();
   /**
    * Entry point for audio stream
    */
-  int streamPut(const unsigned char* samples, unsigned int size, unsigned int user_ts);
+  int streamPut(const unsigned char* samples, unsigned int size, unsigned long long system_ts);
 };
 
 
@@ -302,13 +302,13 @@ class AmSpanDSPInbandDtmfDetector
 /*   void dtmf_rx_f(const char* digits, int len); */
 
  public: 
-  AmSpanDSPInbandDtmfDetector(AmKeyPressSink *keysink);
+  AmSpanDSPInbandDtmfDetector(AmKeyPressSink *keysink, int sample_rate);
   ~AmSpanDSPInbandDtmfDetector();
 
   /**
    * Entry point for audio stream
    */
-  int streamPut(const unsigned char* samples, unsigned int size, unsigned int user_ts);
+  int streamPut(const unsigned char* samples, unsigned int size, unsigned long long system_ts);
 };
 #endif // USE_SPANDSP
 
@@ -379,6 +379,19 @@ class AmRtpDtmfDetector
 };
 
 /**
+ * \brief DTMF sink class
+ *
+ * This class is an interface for components that whish to
+ * receive DTMF event notification.
+ */
+class AmDtmfSink
+{
+public:
+  virtual void postDtmfEvent(AmDtmfEvent *) = 0;
+  virtual ~AmDtmfSink() { }
+};
+
+/**
  * \brief DTMF detector class
  *
  * This class collects DTMF info from three sources: RTP (RFC 2833), 
@@ -395,7 +408,7 @@ class AmDtmfDetector
   /**
    * Session this class belongs to.
    */
-  AmSession *m_session;
+  AmDtmfSink *m_dtmfSink;
   AmRtpDtmfDetector m_rtpDetector;
   AmSipDtmfDetector m_sipDetector;
   std::auto_ptr<AmInbandDtmfDetector> m_inbandDetector;
@@ -450,13 +463,13 @@ class AmDtmfDetector
    * Constructor
    * @param session is the owner of this class instance
    */
-  AmDtmfDetector(AmSession *session);
+  AmDtmfDetector(AmDtmfSink *dtmf_sink);
   virtual ~AmDtmfDetector() {}
 
   void checkTimeout();
-  void putDtmfAudio(const unsigned char *, int size, int user_ts);
+  void putDtmfAudio(const unsigned char *, int size, unsigned long long system_ts);
 
-  void setInbandDetector(Dtmf::InbandDetectorType t);
+  void setInbandDetector(Dtmf::InbandDetectorType t, int sample_rate);
   friend class AmSipDtmfDetector;
   friend class AmRtpDtmfDetector;
   friend class AmInbandDtmfDetector;

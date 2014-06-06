@@ -16,7 +16,7 @@ twit_posting_msg = config['twit_posting_msg']
 
 class IvrDialog(IvrDialogBase) :
 
-	def onSessionStart( self, hdrs ) :
+	def onSessionStart( self ) :
 		self.t_msg = 'mirps! mirps! from iptel: '
 		account_found = False
 		if self.dialog.user.find(';')>=0:
@@ -29,10 +29,10 @@ class IvrDialog(IvrDialogBase) :
 					self.t_msg = unquote(parts[3])
 		
 		if not account_found:		
-			self.t_account = getSessionParam(hdrs,"u")
-			self.t_pwd = getSessionParam(hdrs,"p")
-			if (len(getSessionParam(hdrs,"m"))) and getSessionParam(hdrs,"m") != '<null>':
-				self.t_msg = unquote(getSessionParam(hdrs,"m"))
+			self.t_account = getAppParam("u")
+			self.t_pwd = getAppParam("p")
+			if (len(getAppParam("m"))) and getAppParam("m") != '<null>':
+				self.t_msg = unquote(getAppParam("m"))
 			if (self.t_account != '<null>' and self.t_account != '') and \
 				self.t_pwd != '<null>' and self.t_pwd != '':
 				account_found = True	

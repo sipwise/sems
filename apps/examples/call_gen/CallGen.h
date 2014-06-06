@@ -84,9 +84,13 @@ class CallGenFactory
 public:
   static string DigitsDir;
   static AmFileCache play_file;
+  static string from_host;
   CallGenFactory(const string& _app_name);
-  AmSession* onInvite(const AmSipRequest& req, AmArg& args);
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      AmArg& args);
+
   int onLoad();
 
   // DI API
@@ -134,17 +138,23 @@ private:
   int call_time_base; 
   int call_time_rand;
 
+  bool timer_started;
+
   void report(CallGenEvent what);
+  void setCallTimer();
 
 public:
   CallGenDialog(AmPromptCollection& prompts, 
 		int play_rand_digits, int call_time_base, int call_time_rand);
   ~CallGenDialog();
 
-  void onInvite(const AmSipRequest& r);
-  void onSessionStart(const AmSipReply& rep);
+  void onStart();
+  void onEarlySessionStart();
+  void onSessionStart();
   void onBye(const AmSipRequest& req);
   void process(AmEvent* event);
+  void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmBasicSipDialog::Status old_dlg_status);
+
 };
 
 #endif

@@ -44,8 +44,14 @@ using std::string;
 
 class udp_trsp_socket: public trsp_socket
 {
+    int sendto(const sockaddr_storage* sa, const char* msg, const int msg_len);
+    int sendmsg(const sockaddr_storage* sa, const char* msg, const int msg_len);
+
 public:
-    udp_trsp_socket() : trsp_socket() {}
+    udp_trsp_socket(unsigned short if_num, unsigned int opts,
+		    unsigned int sys_if_idx = 0)
+	: trsp_socket(if_num,opts,sys_if_idx) {}
+
     ~udp_trsp_socket() {}
 
     /**
@@ -53,6 +59,18 @@ public:
      * @return -1 if error(s) occured.
      */
     virtual int bind(const string& address, unsigned short port);
+
+    const char* get_transport() const
+    { return "udp"; }
+
+    int set_recvbuf_size(int rcvbuf_size);
+
+    /**
+     * Sends a message.
+     * @return -1 if error(s) occured.
+     */
+    int send(const sockaddr_storage* sa, const char* msg,
+	     const int msg_len, unsigned int flags);
 };
 
 class udp_trsp: public transport

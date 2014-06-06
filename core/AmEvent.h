@@ -33,8 +33,11 @@
 #include <string>
 using std::string;
 
-#define E_PLUGIN 100
-#define E_SYSTEM 101
+#define E_PLUGIN           100
+#define E_SYSTEM           101
+#define E_SIP_SUBSCRIPTION 102
+#define E_B2B_APP          103
+
 
 /** \brief base event class */
 struct AmEvent
@@ -60,11 +63,24 @@ struct AmPluginEvent: public AmEvent
   string      name;
   AmArg       data;
 
-  AmPluginEvent(const string& n)
-    : AmEvent(E_PLUGIN), name(n), data() {}
+  AmPluginEvent(const string& n);
 
-  AmPluginEvent(const string& n, const AmArg& d)
-    : AmEvent(E_PLUGIN), name(n), data(d) {}
+  AmPluginEvent(const string& n, const AmArg& d);
+};
+
+/**
+ * Timer Event: Name
+ */
+#define TIMEOUTEVENT_NAME "timer_timeout"
+
+/**
+ * \brief User Timer Event
+ * data[0]: int timer_id
+ */
+class AmTimeoutEvent : public AmPluginEvent
+{
+ public:
+  AmTimeoutEvent(int timer_id);
 };
 
 /**
@@ -80,22 +96,14 @@ struct AmSystemEvent : public AmEvent
 
   EvType sys_event;
 
-  AmSystemEvent(EvType e)
-    : AmEvent(E_SYSTEM), sys_event(e) { }
+  AmSystemEvent(EvType e);
 
-  AmSystemEvent(const AmSystemEvent& rhs) 
-    : AmEvent(rhs), sys_event(rhs.sys_event) { }
+  AmSystemEvent(const AmSystemEvent& rhs);
 
-  AmEvent* clone() {  return new AmSystemEvent(*this); };
+  AmEvent* clone();
 
-  static const char* getDescription(EvType t) {
-    switch (t) {
-    case ServerShutdown: return "ServerShutdown";
-    case User1: return "User1";
-    case User2: return "User2";
-    default: return "Unknown";
-    }
-  }
+  static const char* getDescription(EvType t);
+
 };
 
 /** \brief event handler interface */

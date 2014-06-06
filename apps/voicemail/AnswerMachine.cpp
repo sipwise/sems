@@ -451,11 +451,6 @@ int AnswerMachineFactory::onLoad()
   MaxRecordTime   = cfg.getParameterInt("max_record_time",DEFAULT_RECORD_TIME);
   RecFileExt      = cfg.getParameter("rec_file_ext",DEFAULT_AUDIO_EXT);
 
-  if (!AmSession::timersSupported()) {	
-    ERROR("load session_timer plug-in (for timers support)\n");
-    return -1;
-  }
-
   MessageStorage = NULL;
   MessageStorage = AmPlugIn::instance()->getFactory4Di("msg_storage");
   if(NULL == MessageStorage){
@@ -498,7 +493,8 @@ int AnswerMachineFactory::onLoad()
   return 0;
 }
 
-AmSession* AnswerMachineFactory::onInvite(const AmSipRequest& req)
+AmSession* AnswerMachineFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					  const map<string,string>& app_params)
 {
   string language;
   string email;
@@ -756,7 +752,7 @@ AnswerMachineDialog::AnswerMachineDialog(const string& user,
 
 AnswerMachineDialog::~AnswerMachineDialog()
 {
-  playlist.close(false);
+  playlist.flush();
 }
 
 void AnswerMachineDialog::process(AmEvent* event)
@@ -767,37 +763,7 @@ void AnswerMachineDialog::process(AmEvent* event)
     switch(ae->event_id){
 
     case AmAudioEvent::noAudio:
-
-      switch(status){
-
-      case 0: {
-	// announcement mode - no recording
-	if (MODE_ANN == vm_mode) {
-	  dlg.bye();
-	  setStopped();
-	  return;
-	}
-
-	playlist.addToPlaylist(new AmPlaylistItem(NULL,&a_msg));
-		
-	setTimer(RECORD_TIMER, AnswerMachineFactory::MaxRecordTime);
-
-	status = 1;
-      } break;
-
-      case 1:
-	a_beep.rewind();
-	playlist.addToPlaylist(new AmPlaylistItem(&a_beep,NULL));
-	status = 2;
-	break;
-
-      case 2:
-	dlg.bye();
-	saveMessage();
-	setStopped();
-	break;
-
-      }
+      onNoAudio();
       break;
 
     case AmAudioEvent::cleared:
@@ -816,14 +782,48 @@ void AnswerMachineDialog::process(AmEvent* event)
   if(plugin_event && plugin_event->name == "timer_timeout" &&
      plugin_event->data.get(0).asInt() == RECORD_TIMER) {
 
-    // clear list
-    playlist.close();
+    playlist.flush();
+    onNoAudio();
   }
   else
     AmSession::process(event);
 }
 
-void AnswerMachineDialog::onSessionStart(const AmSipRequest& req)
+void AnswerMachineDialog::onNoAudio()
+{
+  switch(status){
+    
+  case 0: {
+    // announcement mode - no recording
+    if (MODE_ANN == vm_mode) {
+      dlg->bye();
+      setStopped();
+      return;
+    }
+    
+    playlist.addToPlaylist(new AmPlaylistItem(NULL,&a_msg));
+    
+    setTimer(RECORD_TIMER, AnswerMachineFactory::MaxRecordTime);
+    
+    status = 1;
+  } break;
+
+  case 1:
+    a_beep.rewind();
+    playlist.addToPlaylist(new AmPlaylistItem(&a_beep,NULL));
+    status = 2;
+    break;
+    
+  case 2:
+    dlg->bye();
+    saveMessage();
+    setStopped();
+    break;
+    
+  }
+}
+
+void AnswerMachineDialog::onSessionStart()
 {
   // disable DTMF detection - don't use DTMF here
   setDtmfDetectionEnabled(false);
@@ -889,10 +889,13 @@ void AnswerMachineDialog::onSessionStart(const AmSipRequest& req)
   sprintf(now, "%d", (int) time(NULL));
   email_dict["ts"] = now;
 
+  AmSession::onSessionStart();
 }
 
 void AnswerMachineDialog::onBye(const AmSipRequest& req)
 {
+  dlg->reply(req,200,"OK");
+
   setInOut(NULL, NULL);
   saveMessage();
   setStopped();

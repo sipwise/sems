@@ -34,6 +34,8 @@ using std::string;
 
 
 #define MAX_CONFIG_LINE 2048
+#define CONFIG_FILE_SUFFIX ".conf"
+
 /**
  * \brief configuration file reader
  * 
@@ -48,17 +50,26 @@ class AmConfigReader
 
  public:
   int  loadFile(const string& path);
+  int  loadPluginConf(const string& mod_name);
+  int  loadString(const char* cfg_lines, size_t cfg_len);
+
   /** get md5 hash of file contents */
   bool getMD5(const string& path, string& md5hash, bool lowercase = true);
-  bool hasParameter(const string& param);
-  const string& getParameter(const string& param, const string& defval = "");
-  unsigned int getParameterInt(const string& param, unsigned int defval = 0);
+  void setParameter(const string& param, const string& val);
+  void eraseParameter(const string& param);
+  bool hasParameter(const string& param) const;
+
+  const string& getParameter(const string& param) const;
+  const string& getParameter(const string& param, const string& defval) const;
+  unsigned int getParameterInt(const string& param, unsigned int defval = 0) const;
 
   std::map<string,string>::const_iterator begin() const
     { return keys.begin(); }
 
   std::map<string,string>::const_iterator end() const
     { return keys.end(); }
+
+  void dump();
 };
 
 #endif

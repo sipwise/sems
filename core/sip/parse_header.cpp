@@ -30,8 +30,7 @@
 
 #include "parse_header.h"
 #include "parse_common.h"
-#include "sip_parser.h"
-#include "AmSipHeaders.h"
+#include "defs.h"
 
 #include "log.h"
 
@@ -45,35 +44,20 @@ using std::auto_ptr;
 
 #define COMPACT_len        1
 
-#define TO_len             2
-#define VIA_len            3
-#define FROM_len           4
-#define CSEQ_len           4
-#define RSEQ_len           SIP_HDR_LEN(SIP_HDR_RSEQ) // 4
-#define RACK_len           SIP_HDR_LEN(SIP_HDR_RACK) // 4
-#define ROUTE_len          5
-#define CALL_ID_len        7
-#define CONTACT_len        7
+#define TO_len             SIP_HDR_LEN(SIP_HDR_TO)    // 2
+#define VIA_len            SIP_HDR_LEN(SIP_HDR_VIA)   // 3
+#define FROM_len           SIP_HDR_LEN(SIP_HDR_FROM)  // 4
+#define CSEQ_len           SIP_HDR_LEN(SIP_HDR_CSEQ)  // 4
+#define RSEQ_len           SIP_HDR_LEN(SIP_HDR_RSEQ)  // 4
+#define RACK_len           SIP_HDR_LEN(SIP_HDR_RACK)  // 4
+#define ROUTE_len          SIP_HDR_LEN(SIP_HDR_ROUTE) // 5
+#define CALL_ID_len        SIP_HDR_LEN(SIP_HDR_CALL_ID) // 7
+#define CONTACT_len        SIP_HDR_LEN(SIP_HDR_CONTACT) // 7
 #define REQUIRE_len        SIP_HDR_LEN(SIP_HDR_REQUIRE) // 7
-#define CONTENT_TYPE_len   12
-#define RECORD_ROUTE_len   12
-#define CONTENT_LENGTH_len 14
-
-
-//
-// Low case headers 
-//
-
-const char* TO_lc = "to";
-const char* VIA_lc = "via";
-const char* FROM_lc = "from";
-const char* CSEQ_lc = "cseq";
-const char* ROUTE_lc = "route";
-const char* CALL_ID_lc = "call-id";
-const char* CONTACT_lc = "contact";
-const char* CONTENT_TYPE_lc = "content-type";
-const char* RECORD_ROUTE_lc = "record-route";
-const char* CONTENT_LENGTH_lc = "content-length";
+#define CONTENT_TYPE_len   SIP_HDR_LEN(SIP_HDR_CONTENT_TYPE) // 12
+#define RECORD_ROUTE_len   SIP_HDR_LEN(SIP_HDR_RECORD_ROUTE) // 12
+#define CONTENT_LENGTH_len SIP_HDR_LEN(SIP_HDR_CONTENT_LENGTH) // 14
+#define	MAX_FORWARDS_len   SIP_HDR_LEN(SIP_HDR_MAX_FORWARDS) // 12
 
 
 sip_header::sip_header()
@@ -104,7 +88,7 @@ sip_header::~sip_header()
 }
 
 
-static int parse_header_type(sip_msg* msg, sip_header* h)
+int parse_header_type(sip_header* h)
 {
     h->type = sip_header::H_UNPARSED;
 
@@ -114,25 +98,20 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
       switch (LOWER_B(h->name.s[0])) {
       case 'i': { // Call-ID 	
 	h->type = sip_header::H_CALL_ID;
-	msg->callid = h;
       } break;
       case 'm': { // Contact      
 	h->type = sip_header::H_CONTACT;
-	msg->contacts.push_back(h);
       } break;
 	//       case 'e': // Content-Encoding
 	// 	{} break;
       case 'l': { // Content-Length
 	h->type = sip_header::H_CONTENT_LENGTH;
-	msg->content_length = h;
       } break;
       case 'c': { // Content-Type	
 	h->type = sip_header::H_CONTENT_TYPE;
-	msg->content_type = h;
       } break;
       case 'f': { // From
 	h->type = sip_header::H_FROM;
-	msg->from = h;
       } break;
 	//       case 's': // Subject
 	// 	{} break;
@@ -140,12 +119,9 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
 	// 	{} break;
       case 't': { // To
 	h->type = sip_header::H_TO;
-	msg->to = h;
       } break;
       case 'v': {// Via	
 	h->type = sip_header::H_VIA;
-	if(!msg->via1)
-	  msg->via1 = h;
       } break;
       default:
 	h->type = sip_header::H_OTHER;
@@ -153,17 +129,14 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
     } break;
 
     case TO_len:
-	if(!lower_cmp(h->name.s,TO_lc,TO_len)){
+	if(!lower_cmp(h->name.s,SIP_HDR_TO,TO_len)){
 	    h->type = sip_header::H_TO;
-	    msg->to = h;
 	}
 	break;
 
     case VIA_len:
-	if(!lower_cmp(h->name.s,VIA_lc,VIA_len)){
+	if(!lower_cmp(h->name.s,SIP_HDR_VIA,VIA_len)){
 	    h->type = sip_header::H_VIA;
-	    if(!msg->via1)
-		msg->via1 = h;
 	}
 	break;
 
@@ -174,33 +147,30 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
 	switch(h->name.s[0]){
 	case 'f':
 	case 'F':
-	    if(!lower_cmp(h->name.s+1,FROM_lc+1,FROM_len-1)){
+	    if(!lower_cmp(h->name.s+1,SIP_HDR_FROM+1,FROM_len-1)){
 		h->type = sip_header::H_FROM;
-		msg->from = h;
 	    }
 	    break;
 	case 'c':
 	case 'C':
-	    if(!lower_cmp(h->name.s+1,CSEQ_lc+1,CSEQ_len-1)){
+	    if(!lower_cmp(h->name.s+1,SIP_HDR_CSEQ+1,CSEQ_len-1)){
 		h->type = sip_header::H_CSEQ;
-		msg->cseq = h;
 	    }
 	    break;
         case 'r':
         case 'R':
             switch(h->name.s[1]) {
-                case 'S':
+	    case 's':
+	    case 'S':
                     if(!lower_cmp(h->name.s+2, SIP_HDR_RSEQ+2,
                             SIP_HDR_LEN(SIP_HDR_RSEQ)-2))
                         h->type = sip_header::H_RSEQ;
                     break;
-                case 'A':
+	    case 'a':
+	    case 'A':
                     if(!lower_cmp(h->name.s+2, SIP_HDR_RACK+2, 
                             SIP_HDR_LEN(SIP_HDR_RACK)-2)) {
                         h->type = sip_header::H_RACK;
-                        if (msg->type == SIP_REQUEST && 
-                                msg->u.request->method == sip_request::PRACK)
-                            msg->rack = h;
                     }
                     break;
             }
@@ -209,9 +179,8 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
 	break;
 
     case ROUTE_len:
-	if(!lower_cmp(h->name.s+1,ROUTE_lc+1,ROUTE_len-1)){
+	if(!lower_cmp(h->name.s+1,SIP_HDR_ROUTE+1,ROUTE_len-1)){
 	    h->type = sip_header::H_ROUTE;
-	    msg->route.push_back(h);
 	}
 	break;
 
@@ -224,17 +193,15 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
 	    switch(h->name.s[1]){
 	    case 'a':
 	    case 'A':
-		if(!lower_cmp(h->name.s+2,CALL_ID_lc+2,CALL_ID_len-2)){
+		if(!lower_cmp(h->name.s+2,SIP_HDR_CALL_ID+2,CALL_ID_len-2)){
 		    h->type = sip_header::H_CALL_ID;
-		    msg->callid = h;
 		}
 		break;
 
 	    case 'o':
 	    case 'O':
-		if(!lower_cmp(h->name.s+2,CONTACT_lc+2,CONTACT_len-2)){
+		if(!lower_cmp(h->name.s+2,SIP_HDR_CONTACT+2,CONTACT_len-2)){
 		    h->type = sip_header::H_CONTACT;
-		    msg->contacts.push_back(h);
 		}
 		break;
 
@@ -258,28 +225,32 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
 
     //case RECORD_ROUTE_len:
     case CONTENT_TYPE_len:
+    //case MAX_FORWARDS_len:
 	switch(h->name.s[0]){
 	case 'c':
 	case 'C':
-	    if(!lower_cmp(h->name.s,CONTENT_TYPE_lc,CONTENT_TYPE_len)){
+	    if(!lower_cmp(h->name.s,SIP_HDR_CONTENT_TYPE,CONTENT_TYPE_len)){
 		h->type = sip_header::H_CONTENT_TYPE;
-		msg->content_type = h;
 	    }
 	    break;
 	case 'r':
 	case 'R':
-	    if(!lower_cmp(h->name.s,RECORD_ROUTE_lc,RECORD_ROUTE_len)){
+	    if(!lower_cmp(h->name.s,SIP_HDR_RECORD_ROUTE,RECORD_ROUTE_len)){
 		h->type = sip_header::H_RECORD_ROUTE;
-		msg->record_route.push_back(h);
+	    }
+	    break;
+	case 'm':
+	case 'M':
+	    if(!lower_cmp(h->name.s,SIP_HDR_MAX_FORWARDS,MAX_FORWARDS_len)){
+		h->type = sip_header::H_MAX_FORWARDS;
 	    }
 	    break;
 	}
 	break;
 
     case CONTENT_LENGTH_len:
-	if(!lower_cmp(h->name.s,CONTENT_LENGTH_lc,CONTENT_LENGTH_len)){
+	if(!lower_cmp(h->name.s,SIP_HDR_CONTENT_LENGTH,CONTENT_LENGTH_len)){
 	    h->type = sip_header::H_CONTENT_LENGTH;
-	    msg->content_length = h;
 	}
 	break;
 
@@ -291,13 +262,13 @@ static int parse_header_type(sip_msg* msg, sip_header* h)
     return h->type;
 }
 
-inline void add_parsed_header(sip_msg* msg, sip_header* hdr)
+void add_parsed_header(list<sip_header*>& hdrs, sip_header* hdr)
 {
-    parse_header_type(msg,hdr);
-    msg->hdrs.push_back(hdr);
+    parse_header_type(hdr);
+    hdrs.push_back(hdr);
 }
 
-int parse_headers(sip_msg* msg, char** c)
+int parse_headers(list<sip_header*>& hdrs, char** c, char* end)
 {
     //
     // Header states
@@ -313,9 +284,13 @@ int parse_headers(sip_msg* msg, char** c)
     int saved_st = 0;
 
     char* begin = *c;
+    if(!(*c) || (*c == end)) {
+	return 0;
+    }
+
     auto_ptr<sip_header> hdr(new sip_header());
 
-    for(;**c;(*c)++){
+    for(;(*c < end) && **c;(*c)++){
 
 	switch(st){
 
@@ -364,7 +339,6 @@ int parse_headers(sip_msg* msg, char** c)
 	    switch(**c){
 	    case HCOLON:
 		st = H_VALUE_SWS;
-		begin = *c+1;
 		break;
 
 	    case SP:
@@ -396,6 +370,8 @@ int parse_headers(sip_msg* msg, char** c)
 		    DBG("Malformed header: <%.*s>\n",(int)(*c-begin),begin);
 		    begin = *c;
 		    saved_st = H_NAME;
+		    //re-parse cur char w. new state
+		    (*c)--;
 		}
 		break;
 
@@ -407,7 +383,7 @@ int parse_headers(sip_msg* msg, char** c)
 		    //     hdr->name.len,hdr->name.s,
 		    //     hdr->value.len,hdr->value.s);
 
-		    add_parsed_header(msg,hdr.release());
+		    add_parsed_header(hdrs,hdr.release());
 		    hdr.reset(new sip_header());
 		    begin = *c;
 		    saved_st = H_NAME;
@@ -444,7 +420,7 @@ int parse_headers(sip_msg* msg, char** c)
 	    //	hdr->name.len,hdr->name.s,
 	    //	hdr->value.len,hdr->value.s);
 	    
-	    add_parsed_header(msg,hdr.release());
+	    add_parsed_header(hdrs,hdr.release());
 	    
 	    return 0;
 	}
@@ -472,7 +448,7 @@ int parse_headers(sip_msg* msg, char** c)
 		//	hdr->name.len,hdr->name.s,
 		//	hdr->value.len,hdr->value.s);
 		
-		add_parsed_header(msg,hdr.release());
+		add_parsed_header(hdrs,hdr.release());
 		
 		return 0;
 	    }
@@ -483,6 +459,14 @@ int parse_headers(sip_msg* msg, char** c)
     
     DBG("Incomplete header (st=%i;saved_st=%i)\n",st,saved_st);
     return UNEXPECTED_EOT;
+}
+
+void free_headers(list<sip_header*>& hdrs)
+{
+    while(!hdrs.empty()) {
+	delete hdrs.front();
+	hdrs.pop_front();
+    }
 }
 
 /** EMACS **

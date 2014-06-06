@@ -68,26 +68,32 @@ class AmPlaylist: public AmAudio
   AmEventQueue*          ev_q;
 
   void updateCurrentItem();
-  void gotoNextItem(bool notify = true);
+  void gotoNextItem(bool notify);
     
  protected:
-  // Fake implement AmAudio's pure virtual methods
+  /** Fake implement AmAudio's pure virtual methods */
   int read(unsigned int user_ts, unsigned int size){ return -1; }
   int write(unsigned int user_ts, unsigned int size){ return -1; }
-    
-  // override AmAudio
-  int get(unsigned int user_ts, unsigned char* buffer, unsigned int nb_samples);
-  int put(unsigned int user_ts, unsigned char* buffer, unsigned int size);
+
+  /** override AmAudio */
+  int get(unsigned long long system_ts, unsigned char* buffer, 
+	  int output_sample_rate, unsigned int nb_samples);
+
+  int put(unsigned long long system_ts, unsigned char* buffer, 
+	  int input_sample_rate, unsigned int size);
 	
- public:
-  AmPlaylist(AmEventQueue* q);
-  ~AmPlaylist();
+  /** from AmAudio */
+  void close();
     
+ public:
+  AmPlaylist(AmEventQueue* q = NULL);
+
   bool isEmpty();
 
   void addToPlaylist(AmPlaylistItem* item);
   void addToPlayListFront(AmPlaylistItem* item);
-  void close(bool notify = true);
+
+  void flush();
 };
 
 /**

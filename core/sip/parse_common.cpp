@@ -36,37 +36,24 @@
 #include <memory>
 using std::auto_ptr;
 
-//
-// SIP version constants
-//
-
-const char* SIP = "SIP";
-#define SIP_len 3
-
-const char* SUP_SIPVER = "2.0";
-#define SUP_SIPVER_len 3
-
-
 int parse_sip_version(const char* beg, int len)
 {
     const char* c = beg;
     //char* end = c+len;
 
-    if(len!=7){
+    if(len!=SIPVER_len){
 	DBG("SIP-Version string length != SIPVER_len\n");
 	return MALFORMED_SIP_MSG;
     }
 
-    if(memcmp(c,SIP,SIP_len) != 0){
+    if( ((c[0] != 'S')&&(c[0] != 's')) || 
+	((c[1] != 'I')&&(c[1] != 'i')) ||
+	((c[2] != 'P')&&(c[2] != 'p')) ) {
+
 	DBG("SIP-Version does not begin with \"SIP\"\n");
 	return MALFORMED_SIP_MSG;
     }
     c += SIP_len;
-
-    if(*c++ != '/'){
-	DBG("SIP-Version has no \"/\" after \"SIP\"\n");
-	return MALFORMED_SIP_MSG;
-    }
 
     if(memcmp(c,SUP_SIPVER,SUP_SIPVER_len) != 0){
 	DBG("Unsupported or malformed SIP-Version\n");
@@ -77,8 +64,8 @@ int parse_sip_version(const char* beg, int len)
     return 0;
 }
 
-
-int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_char)
+static int _parse_gen_params(list<sip_avp*>* params, const char** c, 
+			     int len, char stop_char, bool beg_w_sc)
 {
     enum {
 	VP_PARAM_SEP=0,
@@ -92,7 +79,9 @@ int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_
 
     const char* beg = *c;
     const char* end = beg+len;
-    int saved_st=0,st=VP_PARAM_SEP;
+    int saved_st=0;
+
+    int st = beg_w_sc ? VP_PARAM_SEP : VP_PARAM_SEP_SWS;
 
     auto_ptr<sip_avp> avp(new sip_avp());
 
@@ -215,6 +204,12 @@ int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_
 		beg = *c;
 		break;
 
+	    case ';':
+		st = VP_PARAM_SEP_SWS;
+		params->push_back(avp.release());
+		avp.reset(new sip_avp());
+		break;
+
 	    default:
 		st = VP_PVALUE;
 		beg = *c;
@@ -304,6 +299,12 @@ int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_
 	break;
 
     case VP_PARAM_SEP:
+    case VP_PARAM_SEP_SWS:
+	break;
+
+    case VP_PNAME_EQU:
+    case VP_PNAME_EQU_SWS:
+	params->push_back(avp.release());
 	break;
 
     default:
@@ -312,6 +313,26 @@ int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_
     }
 
     return 0;
+}
+
+int parse_gen_params_sc(list<sip_avp*>* params, const char** c, 
+			int len, char stop_char)
+{
+    return _parse_gen_params(params,c,len,stop_char,true);
+}
+
+int parse_gen_params(list<sip_avp*>* params, const char** c,
+		     int len, char stop_char)
+{
+    return _parse_gen_params(params,c,len,stop_char,false);
+}
+
+void free_gen_params(list<sip_avp*>* params)
+{
+    while(!params->empty()) {
+	delete params->front();
+	params->pop_front();
+    }
 }
 
 /** EMACS **

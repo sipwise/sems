@@ -49,15 +49,55 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
   DEF_CMD("dlg.connectCalleeRelayed", DLGConnectCalleeRelayedAction);
   DEF_CMD("dlg.dialout", DLGDialoutAction);
 
+  DEF_CMD("dlg.getRequestBody", DLGGetRequestBodyAction)
+  DEF_CMD("dlg.getReplyBody", DLGGetReplyBodyAction)
+
+  DEF_CMD("dlg.getOtherId", DLGGetOtherIdAction)
+  DEF_CMD("dlg.getRtpRelayMode", DLGGetRtpRelayModeAction)
+
+  DEF_CMD("dlg.refer", DLGReferAction);
+  DEF_CMD("dlg.info", DLGInfoAction);
+  DEF_CMD("dlg.relayError", DLGB2BRelayErrorAction);
+
+  DEF_CMD("dlg.addReplyBodyPart", DLGAddReplyBodyPartAction);
+  DEF_CMD("dlg.deleteReplyBodyPart", DLGDeleteReplyBodyPartAction);
+
 } MOD_ACTIONEXPORT_END;
 
-MOD_CONDITIONEXPORT_NONE(MOD_CLS_NAME);
+//MOD_CONDITIONEXPORT_NONE(MOD_CLS_NAME);
+
+
+MOD_CONDITIONEXPORT_BEGIN(MOD_CLS_NAME) {
+  if (cmd == "dlg.replyHasContentType")
+    return new DLGReplyHasContentTypeCondition(params, false);
+
+  if (cmd == "dlg.requestHasContentType")
+    return new DLGRequestHasContentTypeCondition(params, false);
+
+} MOD_CONDITIONEXPORT_END;
 
 bool DLGModule::onInvite(const AmSipRequest& req, DSMSession* sess) {
   // save inivital invite to last_req 
   // todo: save this in avar
  sess->last_req.reset(new AmSipRequest(req));
-  return true;
+ return true;
+}
+
+string replaceLineEnds(string input)
+{
+  string result;
+  size_t last = 0;
+  size_t pos;
+  while ((pos = input.find("\\r\\n", last)) != string::npos) {
+    result += input.substr(last, pos-last);
+    result += "\r\n";
+    last = pos + 4;
+  }
+  if (!input.substr(last).empty()) {
+    result += input.substr(last);
+    result += "\r\n";
+  }
+  return result;
 }
 
 // todo: convert errors to exceptions
@@ -67,6 +107,7 @@ void replyRequest(DSMSession* sc_sess, AmSession* sess,
 		  const AmSipRequest& req) {
   string code = resolveVars(par1, sess, sc_sess, event_params);
   string reason = resolveVars(par2, sess, sc_sess, event_params);
+  string hdrs = replaceLineEnds(resolveVars("$dlg.reply.hdrs", sess, sc_sess, event_params));
   unsigned int code_i;
   if (str2i(code, code_i)) {
     ERROR("decoding reply code '%s'\n", code.c_str());
@@ -74,14 +115,9 @@ void replyRequest(DSMSession* sc_sess, AmSession* sess,
     return;
   }
 
-  if (!sc_sess->last_req.get()) {
-    ERROR("no last request to reply\n");
-    sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
-    sc_sess->SET_STRERROR("no last request to reply");
-    return;
-  }
+  DBG("replying with %i %s, hdrs='%s'\n", code_i, reason.c_str(), hdrs.c_str());
 
-  if (sess->dlg.reply(req, code_i, reason)) {
+  if (sess->dlg->reply(req, code_i, reason, NULL, hdrs)) {
     sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
     sc_sess->SET_STRERROR("error sending reply");
   } else
@@ -90,6 +126,14 @@ void replyRequest(DSMSession* sc_sess, AmSession* sess,
 
 CONST_ACTION_2P(DLGReplyAction, ',', true);
 EXEC_ACTION_START(DLGReplyAction) {
+
+  if (!sc_sess->last_req.get()) {
+    ERROR("no last request to reply\n");
+    sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
+    sc_sess->SET_STRERROR("no last request to reply");
+    return false;
+  }
+
   replyRequest(sc_sess, sess, event_params, par1, par2, *sc_sess->last_req.get());
 } EXEC_ACTION_END;
 
@@ -114,7 +158,7 @@ EXEC_ACTION_START(DLGAcceptInviteAction) {
   unsigned int code_i=200;
   string reason = "OK";
   string code = resolveVars(par1, sess, sc_sess, event_params);
-  DBG("replying with code %s\n", code.c_str());
+  string hdrs = replaceLineEnds(resolveVars("$dlg.reply.hdrs", sess, sc_sess, event_params));
 
   if (code.length()) {
     reason = resolveVars(par2, sess, sc_sess, event_params);
@@ -127,6 +171,8 @@ EXEC_ACTION_START(DLGAcceptInviteAction) {
     }
   }
 
+  DBG("replying with %i %s, hdrs='%s'\n", code_i, reason.c_str(), hdrs.c_str());
+
   if (!sc_sess->last_req.get()) {
     ERROR("no last request to reply\n");
     sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
@@ -135,26 +181,26 @@ EXEC_ACTION_START(DLGAcceptInviteAction) {
   }
 
   try {
-    string sdp_reply;
-
-    sess->acceptAudio(sc_sess->last_req.get()->body,
-		      sc_sess->last_req.get()->hdrs,&sdp_reply);
-    if(sess->dlg.reply(*sc_sess->last_req.get(),code_i, reason,
-		 "application/sdp",sdp_reply) != 0)
+    AmMimeBody sdp_body;
+    if(sess->dlg->reply(*sc_sess->last_req.get(),code_i, reason,
+		       sdp_body.addPart(SIP_APPLICATION_SDP), hdrs) != 0)
       throw AmSession::Exception(500,"could not send response");
-	
+
   }catch(const AmSession::Exception& e){
 
     ERROR("%i %s\n",e.code,e.reason.c_str());
     sess->setStopped();
-    sess->dlg.reply(*sc_sess->last_req.get(),e.code,e.reason);
+    sess->dlg->reply(*sc_sess->last_req.get(),e.code,e.reason);
+
+    sc_sess->SET_ERRNO(DSM_ERRNO_DLG);
+    sc_sess->SET_STRERROR("Error accepting call: "+ int2str(e.code) + " "+ e.reason);
   }
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(DLGByeAction) {
   string hdrs = resolveVars(arg, sess, sc_sess, event_params);
 
-  if (sess->dlg.bye(hdrs)) {
+  if (sess->dlg->bye(hdrs)) {
     sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
     sc_sess->SET_STRERROR("Error sending bye");
   } else {
@@ -291,4 +337,278 @@ EXEC_ACTION_START(DLGDialoutAction) {
     sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
   }
 
+} EXEC_ACTION_END;
+
+MATCH_CONDITION_START(DLGReplyHasContentTypeCondition) {
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REPLY);
+  if (it == sc_sess->avar.end()) {
+    ERROR("DSM script error: dlg.replyHasContentType condition used for "
+	  "other event than sipReply event\n");
+    return false;
+  }
+
+  DSMSipReply* dsm_reply = NULL;
+  if (!isArgAObject(sc_sess->avar[DSM_AVAR_REPLY]) ||
+      (NULL ==
+       (dsm_reply = dynamic_cast<DSMSipReply*>(sc_sess->avar[DSM_AVAR_REPLY].asObject())))) {
+    ERROR("internal: DSM could not get DSMSipReply\n");
+    return false;
+  }
+
+  bool res = dsm_reply->reply->body.hasContentType(arg);
+
+  DBG("checking for content_type '%s': %s\n", arg.c_str(), res?"has it":"doesn't have it");
+  return res;
+} MATCH_CONDITION_END;
+
+MATCH_CONDITION_START(DLGRequestHasContentTypeCondition) {
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REQUEST);
+  if (it == sc_sess->avar.end()) {
+    ERROR("DSM script error: dlg.requestHasContentType condition used for "
+	  "other event than sipRequest event\n");
+    return false;
+  }
+
+  DSMSipRequest* dsm_req = NULL;
+  if (!isArgAObject(sc_sess->avar[DSM_AVAR_REQUEST]) ||
+      (NULL ==
+       (dsm_req = dynamic_cast<DSMSipRequest*>(sc_sess->avar[DSM_AVAR_REQUEST].asObject())))) {
+    ERROR("internal: DSM could not get DSMSipRequest\n");
+    return false;
+  }
+
+  bool res = dsm_req->req->body.hasContentType(arg);
+
+  DBG("checking for content_type '%s': %s\n", arg.c_str(), res?"has it":"doesn't have it");
+  return res;
+} MATCH_CONDITION_END;
+
+CONST_ACTION_2P(DLGGetRequestBodyAction, ',', false);
+EXEC_ACTION_START(DLGGetRequestBodyAction) {
+  DSMSipRequest* sip_req;
+
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REQUEST);
+  if (it == sc_sess->avar.end() ||
+      !isArgAObject(it->second) ||
+      !(sip_req = dynamic_cast<DSMSipRequest*>(it->second.asObject()))) {
+    throw DSMException("dlg", "cause", "no request");
+  }
+
+  string content_type = resolveVars(par1, sess, sc_sess, event_params);
+  string dstvar = resolveVars(par2, sess, sc_sess, event_params);
+
+  const AmMimeBody* msg_body = sip_req->req->body.hasContentType(content_type);
+  if (NULL == msg_body) {
+    DBG("body with content_type %s not found\n", content_type.c_str());
+    sc_sess->var.erase(dstvar);
+  } else {
+    sc_sess->var[dstvar] = string((const char*)msg_body->getPayload());
+    DBG("set $%s='%s'\n", dstvar.c_str(), sc_sess->var[dstvar].c_str());
+  }
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(DLGGetReplyBodyAction, ',', false);
+EXEC_ACTION_START(DLGGetReplyBodyAction) {
+  DSMSipReply* sip_req;
+
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REPLY);
+  if (it == sc_sess->avar.end() ||
+      !isArgAObject(it->second) ||
+      !(sip_req = dynamic_cast<DSMSipReply*>(it->second.asObject()))) {
+    throw DSMException("dlg", "cause", "no reply");
+  }
+
+  string content_type = resolveVars(par1, sess, sc_sess, event_params);
+  string dstvar = resolveVars(par2, sess, sc_sess, event_params);
+
+  const AmMimeBody* msg_body = sip_req->reply->body.hasContentType(content_type);
+  if (NULL == msg_body) {
+    DBG("body with content_type %s not found\n", content_type.c_str());
+    sc_sess->var.erase(dstvar);
+  } else {
+    sc_sess->var[dstvar] = string((const char*)msg_body->getPayload());
+    DBG("set $%s='%s'\n", dstvar.c_str(), sc_sess->var[dstvar].c_str());
+  }
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(DLGGetOtherIdAction) {
+  string varname = arg;
+  AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
+  if (NULL == b2b_sess) {
+    DBG("script writer error: dlg.getOtherId used without B2B session object.\n");
+    EXEC_ACTION_STOP;
+  }
+
+  if (varname.size() && varname[0] == '$')
+    varname.erase(0, 1);
+  sc_sess->var[varname] = b2b_sess->getOtherId();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(DLGGetRtpRelayModeAction) {
+  string varname = arg;
+  AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
+  if (NULL == b2b_sess) {
+    DBG("script writer error: dlg.getOtherId used without B2B session object.\n");
+    EXEC_ACTION_STOP;
+  }
+
+  if (varname.size() && varname[0] == '$')
+    varname.erase(0, 1);
+  switch (b2b_sess->getRtpRelayMode()) {
+  case AmB2BSession::RTP_Direct: sc_sess->var[varname] = "RTP_Direct"; break;
+  case AmB2BSession::RTP_Relay: sc_sess->var[varname] = "RTP_Relay"; break;
+  case AmB2BSession::RTP_Transcoding: sc_sess->var[varname] = "RTP_Transcoding"; break;
+  default: sc_sess->var[varname] = "Unknown"; break;
+  }
+
+  DBG("get RTP relay mode: %s='%s'\n", varname.c_str(), sc_sess->var[varname].c_str());
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(DLGReferAction, ',', true);
+EXEC_ACTION_START(DLGReferAction) {
+
+  AmSession* b2b_sess = dynamic_cast<AmSession*>(sess);
+  if (NULL == b2b_sess) {
+    throw DSMException("sbc", "type", "param", "cause",
+		       "dlg.refer used on non-session");
+  }
+
+  string refer_to = resolveVars(par1, sess, sc_sess, event_params);
+  string expires_s = resolveVars(par2, sess, sc_sess, event_params);
+
+  int expires = -1;
+  if (!expires_s.empty()) {
+    if (!str2int(expires_s, expires)) {
+      throw DSMException("sbc", "type", "param", "cause",
+			 "expires "+expires_s+" not valid");
+    }
+  }
+
+  if (NULL == b2b_sess->dlg) {
+      throw DSMException("sbc", "type", "param", "cause",
+			 "call doesn't have SIP dialog (OOPS!)");
+  }
+
+  if (b2b_sess->dlg->refer(refer_to, expires)) {
+    sc_sess->SET_ERRNO(DSM_ERRNO_DLG);
+    sc_sess->SET_STRERROR("sending REFER failed");
+  } else {
+    sc_sess->CLR_ERRNO;
+  }
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(DLGInfoAction, ',', true);
+EXEC_ACTION_START(DLGInfoAction) {
+
+  AmSession* b2b_sess = dynamic_cast<AmSession*>(sess);
+  if (NULL == b2b_sess) {
+    throw DSMException("sbc", "type", "param", "cause",
+		       "dlg.info used on non-session");
+  }
+
+  string content_type = resolveVars(par1, sess, sc_sess, event_params);
+  string body_str = resolveVars(par2, sess, sc_sess, event_params);
+
+  if (NULL == b2b_sess->dlg) {
+    throw DSMException("sbc", "type", "param", "cause",
+		       "call doesn't have SIP dialog (OOPS!)");
+  }
+
+  string body_crlf = body_str;
+  AmMimeBody *body = new AmMimeBody();
+  if (!content_type.empty()) {
+    DBG("body_crlf is '%s'\n", body_crlf.c_str());
+    while (true) {
+      size_t p = body_crlf.find("\\r\\n");
+      if (p==string::npos)
+	break;
+      body_crlf.replace(p, 4, "\r\n");
+    }
+    DBG("-> body_crlf is '%s'\n", body_crlf.c_str());
+    if (body->parse(content_type,
+		    reinterpret_cast<const unsigned char*>(body_crlf.c_str()),
+		    body_crlf.length())) {
+      throw DSMException("sbc", "type", "param", "cause",
+			 "parsing of INFO body failed");
+    }
+  }
+
+  if (b2b_sess->dlg->info("", body)) {
+    sc_sess->SET_ERRNO(DSM_ERRNO_DLG);
+    sc_sess->SET_STRERROR("sending INFO failed");
+  } else {
+    sc_sess->CLR_ERRNO;
+  }
+
+} EXEC_ACTION_END;
+
+#define GET_B2B_SESSION(action)						\
+  AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);		\
+  if (NULL == b2b_sess) {						\
+    throw DSMException("sbc", "type", "param", "cause",			\
+		       #action " used on non-b2b-session");		\
+  }
+
+CONST_ACTION_2P(DLGB2BRelayErrorAction, ',', false);
+EXEC_ACTION_START(DLGB2BRelayErrorAction) {
+  DSMSipRequest* sip_req;
+
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REQUEST);
+  if (it == sc_sess->avar.end() ||
+      !isArgAObject(it->second) || 
+      !(sip_req = dynamic_cast<DSMSipRequest*>(it->second.asObject()))) {
+    throw DSMException("dlg", "cause", "no request");
+  }
+  GET_B2B_SESSION(dlg.refer);
+
+  string code = resolveVars(par1, sess, sc_sess, event_params);
+  string reason = resolveVars(par2, sess, sc_sess, event_params);
+  unsigned int code_i;
+  if (str2i(code, code_i)) {
+    ERROR("decoding reply code '%s'\n", code.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    EXEC_ACTION_STOP;
+  }
+
+  b2b_sess->relayError(sip_req->req->method, sip_req->req->cseq, true, code_i, reason.c_str());
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(DLGAddReplyBodyPartAction, ',', false);
+EXEC_ACTION_START(DLGAddReplyBodyPartAction) {
+  DSMMutableSipReply* sip_reply;
+
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REPLY);
+  if (it == sc_sess->avar.end() ||
+      !isArgAObject(it->second) ||
+      !(sip_reply = dynamic_cast<DSMMutableSipReply*>(it->second.asObject()))) {
+    throw DSMException("dlg", "cause", "no reply");
+  }
+
+  string content_type = resolveVars(par1, sess, sc_sess, event_params);
+  string body_part = resolveVars(par2, sess, sc_sess, event_params);
+
+  AmMimeBody* new_part;
+
+  new_part = sip_reply->mutable_reply->body.addPart(content_type);
+  new_part->setPayload((const unsigned char*)body_part.c_str(),
+		       body_part.length());
+  DBG("added to reply body part %s='%s'\n",
+      content_type.c_str(), body_part.c_str());
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(DLGDeleteReplyBodyPartAction) {
+  DSMMutableSipReply* sip_reply;
+
+  AVarMapT::iterator it = sc_sess->avar.find(DSM_AVAR_REPLY);
+  if (it == sc_sess->avar.end() ||
+      !isArgAObject(it->second) ||
+      !(sip_reply = dynamic_cast<DSMMutableSipReply*>(it->second.asObject()))) {
+    throw DSMException("dlg", "cause", "no reply");
+  }
+
+  if (sip_reply->mutable_reply->body.deletePart(arg)) {
+    DBG("failed to delete reply body part '%s'\n", arg.c_str());
+  } else {
+    DBG("deleted reply body part '%s'\n", arg.c_str());
+  }
 } EXEC_ACTION_END;

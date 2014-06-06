@@ -57,6 +57,37 @@ trans_bucket::~trans_bucket()
 {
 }
 
+// return true if equal
+static inline bool compare_branch(sip_trans* t, sip_msg* msg,
+				  const char* branch, unsigned int branch_len)
+{
+    if(t->msg->via_p1->branch.len != branch_len + MAGIC_BRANCH_LEN)
+	return false;
+
+    if(t->msg->via_p1->host.len != 
+       msg->via_p1->host.len)
+	return false;
+
+    if(t->msg->via_p1->port.len != 
+       msg->via_p1->port.len)
+	return false;
+
+    if(memcmp(branch,
+	      t->msg->via_p1->branch.s+MAGIC_BRANCH_LEN,branch_len))
+	return false;
+
+    if(memcmp(t->msg->via_p1->host.s,
+	      msg->via_p1->host.s,msg->via_p1->host.len))
+	return false;
+
+    if(memcmp(t->msg->via_p1->port.s,
+	      msg->via_p1->port.s,msg->via_p1->port.len))
+	return false;
+
+    return true;
+}
+
+
 sip_trans* trans_bucket::match_request(sip_msg* msg, unsigned int ttype)
 {
     // assert(msg && msg->cseq && msg->callid);
@@ -102,37 +133,25 @@ sip_trans* trans_bucket::match_request(sip_msg* msg, unsigned int ttype)
 
 		// ACK is the only request that should match an existing
 		// transaction without being a re-transmission
-                if( ((*it)->msg->u.request->method == sip_request::INVITE)
-		    && (msg->u.request->method == sip_request::ACK) 
-		    && (t = match_200_ack(*it,msg)) ){
-
-		    break;
-                }
+		if( ((*it)->msg->u.request->method == sip_request::INVITE)
+		    && (msg->u.request->method == sip_request::ACK)) {
 		
+		    // match non-200 ACK first
+		    if(compare_branch(*it,msg,branch,(unsigned int)len)) {
+			t = *it;
+			break;
+		    }
+
+		    // branches do not match,
+		    // try to match a 200-ACK
+		    if((t = match_200_ack(*it,msg)) != NULL)
+			break;
+		}
+
 		continue;
 	    }
-	    
-	    if((*it)->msg->via_p1->branch.len != (unsigned int)len + MAGIC_BRANCH_LEN)
-		continue;
 
-	    if((*it)->msg->via_p1->host.len != 
-	       msg->via_p1->host.len)
-		continue;
-
-	    if((*it)->msg->via_p1->port.len != 
-	       msg->via_p1->port.len)
-		continue;
-
-	    if(memcmp(branch,
-		      (*it)->msg->via_p1->branch.s+MAGIC_BRANCH_LEN,len))
-		continue;
-
-	    if(memcmp((*it)->msg->via_p1->host.s,
-		      msg->via_p1->host.s,msg->via_p1->host.len))
-		continue;
-
-	    if(memcmp((*it)->msg->via_p1->port.s,
-		      msg->via_p1->port.s,msg->via_p1->port.len))
+	    if(!compare_branch(*it,msg,branch,(unsigned int)len))
 		continue;
 
 	    // found matching transaction
@@ -396,6 +415,33 @@ sip_trans* trans_bucket::match_1xx_prack(sip_msg* msg)
     return NULL;
 }
 
+sip_trans* trans_bucket::find_uac_trans(const cstring& dialog_id,
+					unsigned int inv_cseq)
+{
+    DBG("Matching dialog_id = '%.*s'\n",
+	dialog_id.len, dialog_id.s);
+
+    if(elmts.empty())
+	return NULL;
+    
+    trans_list::reverse_iterator it = elmts.rbegin();
+    for(;it!=elmts.rend();++it) {
+	    
+	sip_trans* t = *it;
+	if( t->type != TT_UAC ||
+	    t->msg->type != SIP_REQUEST ){
+	    continue;
+	}
+	sip_cseq* t_cseq = dynamic_cast<sip_cseq*>(t->msg->cseq->p);
+	if(t->dialog_id == dialog_id &&
+	   t_cseq && t_cseq->num == inv_cseq &&
+	   t->state != TS_ABANDONED)
+	    return t;
+    }
+
+    return NULL;
+}
+
 sip_trans* trans_bucket::add_trans(sip_msg* msg, unsigned int ttype)
 {
     sip_trans* t = new sip_trans();
@@ -422,6 +468,10 @@ sip_trans* trans_bucket::add_trans(sip_msg* msg, unsigned int ttype)
     return t;
 }
 
+void trans_bucket::append(sip_trans* t)
+{
+    elmts.push_back(t);
+}
 
 unsigned int hash(const cstring& ci, const cstring& cs)
 {
@@ -430,7 +480,7 @@ unsigned int hash(const cstring& ci, const cstring& cs)
     h = hashlittle(ci.s,ci.len,h);
     h = hashlittle(cs.s,cs.len,h);
 
-    return h & (H_TABLE_ENTRIES-1);
+    return h;
 }
 
 char _tag_lookup[] = {
@@ -459,10 +509,12 @@ inline void compute_tag(char* tag, unsigned int hl, unsigned int hh)
     tag[7] = _tag_lookup[(hh >> 10)&0x3F];
 }
 
-void compute_sl_to_tag(char* to_tag/*[8]*/, sip_msg* msg)
+static atomic_int __branch_cnt;
+
+void compute_sl_to_tag(char* to_tag/*[8]*/, const sip_msg* msg)
 {
-    unsigned int hl=0;
-    unsigned int hh=0;
+    unsigned int hl = __branch_cnt.inc();
+    unsigned int hh = __branch_cnt.inc();
     
     assert(msg->type == SIP_REQUEST);
     assert(msg->u.request);
@@ -497,9 +549,8 @@ void compute_branch(char* branch/*[8]*/, const cstring& callid, const cstring& c
     unsigned int hh=0;
     timeval      tv;
 
-    gettimeofday(&tv,NULL);
-
-    hh = hl = tv.tv_sec + tv.tv_usec;
+    hh = __branch_cnt.inc();
+    hl = __branch_cnt.inc();
 
     hl = hashlittle(callid.s,callid.len,hl);
     hh = hashlittle(cseq.s,cseq.len,hh);
@@ -514,20 +565,12 @@ trans_bucket* get_trans_bucket(const cstring& callid, const cstring& cseq_num)
 
 trans_bucket* get_trans_bucket(unsigned int h)
 {
-    assert(h < H_TABLE_ENTRIES);
     return _trans_table[h];
 }
 
 void dumps_transactions()
 {
-    for(int i=0; i<H_TABLE_ENTRIES; i++){
-
-	trans_bucket* bucket = get_trans_bucket(i);
-
-	bucket->lock();
-	bucket->dump();
-	bucket->unlock();
-    }
+    _trans_table.dump();
 }
 
 

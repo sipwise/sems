@@ -31,7 +31,7 @@
 #include "AmEvent.h"
 #include "AmSipMsg.h"
 
-class AmSipDialog;
+class AmBasicSipDialog;
 
 /** \brief base class for SIP events */
 class AmSipEvent: public AmEvent
@@ -45,7 +45,7 @@ class AmSipEvent: public AmEvent
     : AmEvent(ev)
     {}
 
-  virtual void operator() (AmSipDialog* dlg)=0;
+  virtual void operator() (AmBasicSipDialog* dlg)=0;
 };
 
 /** \brief UAS reply re-transmission timeout event */
@@ -69,10 +69,10 @@ class AmSipTimeoutEvent: public AmSipEvent
     : AmSipEvent(), type(t)
    {}
   AmSipTimeoutEvent(EvType t, AmSipRequest &_req, AmSipReply &_rpl)
-    : AmSipEvent(), req(_req), rpl(_rpl)
+    : AmSipEvent(), type(t), req(_req), rpl(_rpl)
     {}
 
-  virtual void operator() (AmSipDialog* dlg);
+  virtual void operator() (AmBasicSipDialog* dlg);
 };
 
 /** \brief SIP request event */
@@ -85,7 +85,7 @@ class AmSipRequestEvent: public AmSipEvent
     : AmSipEvent(), req(r)
     {}
 
-  virtual void operator() (AmSipDialog* dlg);
+  virtual void operator() (AmBasicSipDialog* dlg);
 };
 
 /** \brief SIP reply event */
@@ -97,7 +97,7 @@ class AmSipReplyEvent: public AmSipEvent
   AmSipReplyEvent(const AmSipReply& r) 
     : AmSipEvent(),reply(r) {}
 
-  virtual void operator() (AmSipDialog* dlg);
+  virtual void operator() (AmBasicSipDialog* dlg);
 };
 
 

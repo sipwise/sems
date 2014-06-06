@@ -29,6 +29,7 @@
 #include "AmRtpStream.h"
 #include "AmRtpPacket.h"
 #include "log.h"
+#include "AmConfig.h"
 
 #include <errno.h>
 
@@ -37,162 +38,160 @@
 #include <strings.h>
 #endif
 
-#include <sys/time.h>
-#include <sys/poll.h>
-
-#ifndef MAX_RTP_SESSIONS
-#define MAX_RTP_SESSIONS 2048
-#endif 
-
-#define RTP_POLL_TIMEOUT 50 /*50 ms*/
-
-
-AmRtpReceiver* AmRtpReceiver::_instance=0;
-
-AmRtpReceiver* AmRtpReceiver::instance()
+_AmRtpReceiver::_AmRtpReceiver()
 {
-  if(!_instance)
-    _instance = new AmRtpReceiver();
-
-  return _instance;
+  n_receivers = AmConfig::RTPReceiverThreads;
+  receivers = new AmRtpReceiverThread[n_receivers];
 }
 
-bool AmRtpReceiver::haveInstance() {
-  return NULL != _instance;
+_AmRtpReceiver::~_AmRtpReceiver()
+{
+  delete [] receivers;
 }
 
-AmRtpReceiver::AmRtpReceiver()
+AmRtpReceiverThread::AmRtpReceiverThread()
   : stop_requested(false)
 {
-  fds  = new struct pollfd[MAX_RTP_SESSIONS];
-  nfds = 0;
+  // libevent event base
+  ev_base = event_base_new();
 }
 
-AmRtpReceiver::~AmRtpReceiver()
+AmRtpReceiverThread::~AmRtpReceiverThread()
 {
-  delete [] (fds);
+  event_base_free(ev_base);
   INFO("RTP receiver has been recycled.\n");
 }
 
-void AmRtpReceiver::on_stop()
+void AmRtpReceiverThread::on_stop()
 {
   INFO("requesting RTP receiver to stop.\n");
-  stop_requested.set(true);
+  event_base_loopbreak(ev_base);
 }
 
-void AmRtpReceiver::dispose() 
+void AmRtpReceiverThread::stop_and_wait()
 {
-  if(_instance != NULL) {
-    if(!_instance->is_stopped()) {
-      _instance->stop();
-
-      while(!_instance->is_stopped()) 
-	usleep(10000);
-    }
-    // todo: add locking here
-    delete _instance;
-    _instance = NULL;
+  if(!is_stopped()) {
+    stop();
+    
+    while(!is_stopped()) 
+      usleep(10000);
   }
 }
 
-void AmRtpReceiver::run()
+void _AmRtpReceiver::dispose() 
 {
-  unsigned int   tmp_nfds = 0;
-  struct pollfd* tmp_fds  = new struct pollfd[MAX_RTP_SESSIONS];
-
-  while(!stop_requested.get()){
-	
-    fds_mut.lock();
-    tmp_nfds = nfds;
-    memcpy(tmp_fds,fds,nfds*sizeof(struct pollfd));
-    fds_mut.unlock();
-
-    int ret = poll(tmp_fds,tmp_nfds,RTP_POLL_TIMEOUT);
-    if(ret < 0)
-      ERROR("AmRtpReceiver: poll: %s\n",strerror(errno));
-
-    if(ret < 1)
-      continue;
-
-    for(unsigned int i=0; i<tmp_nfds; i++) {
-
-      if(!(tmp_fds[i].revents & POLLIN))
-	continue;
-
-      streams_mut.lock();
-      Streams::iterator it = streams.find(tmp_fds[i].fd);
-      if(it != streams.end()) {
-	AmRtpPacket* p = it->second->newPacket();
-	if (!p) {
-	  // drop received data
- 	  AmRtpPacket dummy;
- 	  dummy.recv(tmp_fds[i].fd);
-	  streams_mut.unlock();
-	  continue;
-	}
-
-	if(p->recv(tmp_fds[i].fd) > 0){
-	  int parse_res = p->parse();
-	  gettimeofday(&p->recv_time,NULL);
-		
-	  if (parse_res == -1) {
-	    DBG("error while parsing RTP packet.\n");
-	    it->second->clearRTPTimeout(&p->recv_time);
-	    it->second->freePacket(p);	  
-	  } else {
-	    it->second->bufferPacket(p);
-	  }
-	} else {
-	  it->second->freePacket(p);
-	}
-      }
-      streams_mut.unlock();      
-    }
+  for(unsigned int i=0; i<n_receivers; i++){
+    receivers[i].stop_and_wait();
   }
-
-  delete[] (tmp_fds);
 }
 
-void AmRtpReceiver::addStream(int sd, AmRtpStream* stream)
+void AmRtpReceiverThread::run()
 {
-  fds_mut.lock();
+  // fake event to prevent the event loop from exiting
+  int fake_fds[2];
+  pipe(fake_fds);
+  struct event* ev_default =
+    event_new(ev_base,fake_fds[0],
+	      EV_READ|EV_PERSIST,
+	      NULL,NULL);
+  event_add(ev_default,NULL);
 
-  if(nfds >= MAX_RTP_SESSIONS){
-    fds_mut.unlock();
-    ERROR("maximum number of sessions reached (%i)\n",
-	  MAX_RTP_SESSIONS);
-    throw string("maximum number of sessions reached");
+  // run the event loop
+  event_base_loop(ev_base,0);
+
+  // clean-up fake fds/event
+  event_free(ev_default);
+  close(fake_fds[0]);
+  close(fake_fds[1]);
+}
+
+void AmRtpReceiverThread::_rtp_receiver_read_cb(evutil_socket_t sd, 
+						short what, void* arg)
+{
+  AmRtpReceiverThread::StreamInfo* p_si =
+    static_cast<AmRtpReceiverThread::StreamInfo*>(arg);
+
+  p_si->thread->streams_mut.lock();
+  if(!p_si->stream) {
+    // we are about to get removed...
+    p_si->thread->streams_mut.unlock();
+    return;
   }
+  p_si->stream->recvPacket(sd);
+  p_si->thread->streams_mut.unlock();
+}
 
-  fds[nfds].fd      = sd;
-  fds[nfds].events  = POLLIN;
-  fds[nfds].revents = 0;
-  nfds++;
-
-  fds_mut.unlock();
-
+void AmRtpReceiverThread::addStream(int sd, AmRtpStream* stream)
+{
   streams_mut.lock();
-  streams.insert(std::make_pair(sd,stream));
+  if(streams.find(sd) != streams.end()) {
+    ERROR("trying to insert existing stream [%p] with sd=%i\n",
+	  stream,sd);
+    streams_mut.unlock();
+    return;
+  }
+
+  StreamInfo& si = streams[sd];
+  si.stream = stream;
+  event* ev_read = event_new(ev_base,sd,EV_READ|EV_PERSIST,
+			     AmRtpReceiverThread::_rtp_receiver_read_cb,&si);
+  si.ev_read = ev_read;
+  si.thread = this;
   streams_mut.unlock();
+
+  // This must be done when 
+  // streams_mut is NOT locked
+  event_add(ev_read,NULL);
 }
 
-void AmRtpReceiver::removeStream(int sd)
+void AmRtpReceiverThread::removeStream(int sd)
 {
-  fds_mut.lock();
-  for(unsigned int i=0; i<nfds; i++){
-
-    if(fds[i].fd == sd){
-
-      if(--nfds && (i < nfds)){
-	fds[i] = fds[nfds];
-      }
-
-      break;
-    }
+  streams_mut.lock();
+  Streams::iterator sit = streams.find(sd);
+  if(sit == streams.end()) {
+    streams_mut.unlock();
+    return;
   }
-  fds_mut.unlock();
+
+  StreamInfo& si = sit->second;
+  if(!si.stream || !si.ev_read){
+    streams_mut.unlock();
+    return;
+  }
+
+  si.stream = NULL;
+  event* ev_read = si.ev_read;
+  si.ev_read = NULL;
+
+  streams_mut.unlock();
+
+  // This must be done while
+  // streams_mut is NOT locked
+  event_free(ev_read);
 
   streams_mut.lock();
+  // this must be done AFTER event_free()
+  // so that the StreamInfo does not get
+  // deleted while in recvPaket()
+  // (see recv callback)
   streams.erase(sd);
   streams_mut.unlock();
+}
+
+void _AmRtpReceiver::start()
+{
+  for(unsigned int i=0; i<n_receivers; i++)
+    receivers[i].start();
+}
+
+void _AmRtpReceiver::addStream(int sd, AmRtpStream* stream)
+{
+  unsigned int i = sd % n_receivers;
+  receivers[i].addStream(sd,stream);
+}
+
+void _AmRtpReceiver::removeStream(int sd)
+{
+  unsigned int i = sd % n_receivers;
+  receivers[i].removeStream(sd);
 }

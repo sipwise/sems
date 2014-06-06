@@ -51,35 +51,35 @@ public:
     i = val;
   }
 
-  unsigned int get() {
+  unsigned int get() const {
     return i;
   }
 
 #if HAVE_ATOMIC_CAS
   // ++i;
-  unsigned int inc() {
-    return __sync_add_and_fetch(&i,1);
+  unsigned int inc(unsigned int add=1) {
+    return __sync_add_and_fetch(&i,add);
   }
 
   // --i;
-  unsigned int dec() {
-    return __sync_sub_and_fetch(&i,1);
+  unsigned int dec(unsigned int sub=1) {
+    return __sync_sub_and_fetch(&i,sub);
   }
 #else // if HAVE_ATOMIC_CAS
   // ++i;
-  unsigned int inc() {
+  unsigned int inc(unsigned int add=1) {
     unsigned int res;
     lock();
-    res = ++i;
+    res = (i += add);
     unlock();
     return res;
   }
 
   // --i;
-  unsigned int dec() {
+  unsigned int dec(unsigned int sub=1) {
     unsigned int res;
     lock();
-    res = --i;
+    res = (i -= sub);
     unlock();
     return res;
   }
@@ -100,6 +100,8 @@ class atomic_int64
   volatile unsigned long long ll;
   
 public:
+  atomic_int64(): ll(0) {}
+
 #if HAVE_ATOMIC_CAS
   void set(unsigned long long val) {
 #if !defined(__LP64__) || !__LP64__
@@ -128,20 +130,20 @@ public:
   }
 
   // returns ++ll;
-  unsigned long long inc() {
-    return __sync_add_and_fetch(&ll,1);
+  unsigned long long inc(unsigned long long add=1) {
+    return __sync_add_and_fetch(&ll,add);
   }
 
   // returns --ll;
-  unsigned long long dec() {
-    return __sync_sub_and_fetch(&ll,1);
+  unsigned long long dec(unsigned long long sub=1) {
+    return __sync_sub_and_fetch(&ll,sub);
   }
 
 #else // if HAVE_ATOMIC_CAS
 
   void set(unsigned long long val) {
 #if !defined(__LP64__) || !__LP64__
-    this->lock();
+    lock();
     ll = val;
     unlock();
 #else
@@ -162,19 +164,19 @@ public:
   }
 
   // returns ++ll;
-  unsigned long long inc() {
+  unsigned long long inc(unsigned long long add=1) {
     unsigned long long res;
     lock();
-    res = ++ll;
+    res = (ll += add);
     unlock();
     return res;
   }
 
   // returns --ll;
-  unsigned long long dec() {
+  unsigned long long dec(unsigned long long sub=1) {
     unsigned long long res;
     lock();
-    res = --ll;
+    res = (ll -= sub);
     unlock();
     return res;
   }
@@ -191,13 +193,17 @@ void inc_ref(atomic_ref_cnt* rc);
 void dec_ref(atomic_ref_cnt* rc);
 
 class atomic_ref_cnt
-  : protected atomic_int
 {
+  atomic_int ref_cnt;
+
 protected:
-  atomic_ref_cnt()
-    : atomic_int() {}
+  atomic_ref_cnt() {}
+
+  void _inc_ref() { ref_cnt.inc(); }
+  bool _dec_ref() { return ref_cnt.dec_and_test(); }
 
   virtual ~atomic_ref_cnt() {}
+  virtual void on_destroy() {}
 
   friend void inc_ref(atomic_ref_cnt* rc);
   friend void dec_ref(atomic_ref_cnt* rc);
@@ -206,14 +212,16 @@ protected:
 inline void inc_ref(atomic_ref_cnt* rc)
 {
   assert(rc);
-  rc->inc();
+  rc->_inc_ref();
 }
 
 inline void dec_ref(atomic_ref_cnt* rc)
 {
   assert(rc);
-  if(rc->dec_and_test())
+  if(rc->_dec_ref()){
+    rc->on_destroy();
     delete rc;
+  }
 }
 
 

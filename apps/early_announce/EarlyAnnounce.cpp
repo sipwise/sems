@@ -268,30 +268,20 @@ int EarlyAnnounceFactory::onLoad()
 
 void EarlyAnnounceDialog::onInvite(const AmSipRequest& req) 
 {
-  try {
+  AmMimeBody sdp_body;
+  sdp_body.addPart(SIP_APPLICATION_SDP);
 
-    string sdp_reply;
-    acceptAudio(req.body,req.hdrs,&sdp_reply);
-
-    if(dlg.reply(req,183,"Session Progress",
-		 "application/sdp",sdp_reply) != 0){
-
-      throw AmSession::Exception(500,"could not reply");
-    }
-    else {	    
-      invite_req = req;
-    }
-
-  } catch(const AmSession::Exception& e) {
-
-    ERROR("%i %s\n",e.code,e.reason.c_str());
-    setStopped();
-    AmSipDialog::reply_error(req,e.code,e.reason);
+  if(dlg->reply(req,183,"Session Progress",
+	       &sdp_body) != 0){
+    throw AmSession::Exception(500,"could not reply");
+  } else {
+    invite_req = req;
   }
 }
 
 
-AmSession* EarlyAnnounceFactory::onInvite(const AmSipRequest& req)
+AmSession* EarlyAnnounceFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					  const map<string,string>& app_params)
 {
 
 #ifdef USE_MYSQL
@@ -344,17 +334,20 @@ EarlyAnnounceDialog::~EarlyAnnounceDialog()
 {
 }
 
-void EarlyAnnounceDialog::onSessionStart(const AmSipRequest& req)
+void EarlyAnnounceDialog::onEarlySessionStart()
 {
   // we can drop all received packets
   // this disables DTMF detection as well
   setReceiving(false);
 
-  DBG("EarlyAnnounceDialog::onSessionStart\n");
+  DBG("EarlyAnnounceDialog::onEarlySessionStart\n");
+
   if(wav_file.open(filename,AmAudioFile::Read))
-    throw string("EarlyAnnounceDialog::onSessionStart: Cannot open file\n");
+    throw string("EarlyAnnounceDialog::onEarlySessionStart: Cannot open file");
     
   setOutput(&wav_file);
+
+  AmB2BCallerSession::onEarlySessionStart();
 }
 
 void EarlyAnnounceDialog::onBye(const AmSipRequest& req)
@@ -363,9 +356,9 @@ void EarlyAnnounceDialog::onBye(const AmSipRequest& req)
   setStopped();
 }
 
-void EarlyAnnounceDialog::onCancel()
+void EarlyAnnounceDialog::onCancel(const AmSipRequest& req)
 {
-  dlg.reply(invite_req,487,"Call terminated");
+  dlg->reply(invite_req,487,"Call terminated");
   setStopped();
 }
 
@@ -420,7 +413,7 @@ void EarlyAnnounceDialog::process(AmEvent* event)
 	}
 
 	DBG("Replying with code %d %s\n", code_i, reason.c_str());
-	dlg.reply(invite_req, code_i, reason);
+	dlg->reply(invite_req, code_i, reason);
 	
 	setStopped();
       } else {

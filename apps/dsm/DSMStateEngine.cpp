@@ -224,6 +224,18 @@ void DSMStateEngine::onBeforeDestroy(DSMSession* sc_sess, AmSession* sess) {
     (*it)->onBeforeDestroy(sc_sess, sess);
 }
 
+void DSMStateEngine::processSdpOffer(AmSdp& offer) {
+  for (vector<DSMModule*>::iterator it =
+	 mods.begin(); it != mods.end(); it++)
+    (*it)->processSdpOffer(offer);
+}
+
+void DSMStateEngine::processSdpAnswer(const AmSdp& offer, AmSdp& answer) {
+  for (vector<DSMModule*>::iterator it =
+	 mods.begin(); it != mods.end(); it++)
+    (*it)->processSdpAnswer(offer, answer);
+}
+
 bool DSMStateEngine::runactions(vector<DSMElement*>::iterator from, 
 				vector<DSMElement*>::iterator to, 
 				AmSession* sess,  DSMSession* sc_sess, DSMCondition::EventType event,
@@ -250,13 +262,13 @@ bool DSMStateEngine::runactions(vector<DSMElement*>::iterator from,
 	  break;
 	case DSMAction::Call:
 	  DBG("calling %s\n", se_modifier.c_str());
-	  if (callDiag(se_modifier, sess, sc_sess, event, event_params))  {
+	  if (callDiag(se_modifier, sess, sc_sess, event, event_params, it+1, to))  {
 	    // is_consumed = false; 
 	    return true;   
 	  } 
 	  break;
 	case DSMAction::Return: 
-	  if (returnDiag(sess, sc_sess)) {
+	  if (returnDiag(sess, sc_sess, event, event_params)) {
 	    //is_consumed = false;
 	    return true; 
 	  }
@@ -436,7 +448,7 @@ bool DSMStateEngine::runactions(vector<DSMElement*>::iterator from,
       continue;
     }
 
-    ERROR("DSMElement typenot understood\n");
+    ERROR("DSMElement type not understood\n");
   }
   return false;
 } 
@@ -514,17 +526,20 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
   map<string,string> exception_params;
   bool is_exception = run_exception;
 
+  DBG("o v DSM processing event, current state '%s' v\n", current->name.c_str());
   bool is_consumed = true;
   do {
     try {
       is_consumed = true;
 
+
+      DBG(" > state '%s'\n", current->name.c_str());
       for (vector<DSMTransition>::iterator tr = current->transitions.begin();
 	   tr != current->transitions.end();tr++) {
 	if (tr->is_exception != is_exception)
 	  continue;
 	
-	DBG("checking transition '%s'\n", tr->name.c_str());
+	DBG(" ...checking transition '%s'\n", tr->name.c_str());
 	
 	vector<DSMCondition*>::iterator con=tr->precond.begin();
 	while (con!=tr->precond.end()) {
@@ -533,7 +548,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	  con++;
 	}
 	if (con == tr->precond.end()) {
-	  DBG("transition '%s' matched.\n", tr->name.c_str());
+	  DBG(" .>>transition '%s' matched.\n", tr->name.c_str());
 	  
 	  //  matched all preconditions
 	  // find target state
@@ -548,7 +563,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	  
 	  // run post-actions
 	  if (current->post_actions.size()) {
-	    DBG("running %zd post_actions of state '%s'\n",
+	    DBG(" >>>running %zd post_actions of state '%s'\n",
 		current->post_actions.size(), current->name.c_str());
 	    if (runactions(current->post_actions.begin(), 
 			   current->post_actions.end(), 
@@ -559,7 +574,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	  
 	  // run transition actions
 	  if (tr->actions.size()) {
-	    DBG("running %zd actions of transition '%s'\n",
+	    DBG("  >>>running %zd actions of transition '%s'\n",
 		tr->actions.size(), tr->name.c_str());
 	    if (runactions(tr->actions.begin(), 
 			   tr->actions.end(), 
@@ -572,7 +587,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	  if (!target_st) {
 	    break;
 	  }
-	  DBG("changing to new state '%s'\n", target_st->name.c_str());
+	  DBG("  >>>changing to new state '%s'\n", target_st->name.c_str());
 	  
 #ifdef USE_MONITORING
 	  MONITORING_LOG(sess->getLocalTag().c_str(), "dsm_state", target_st->name.c_str());
@@ -594,7 +609,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	  
 	  // execute pre-actions
 	  if (current->pre_actions.size()) {
-	    DBG("running %zd pre_actions of state '%s'\n",
+	    DBG(" >>>running %zd pre_actions of state '%s'\n",
 		current->pre_actions.size(), current->name.c_str());
 	    if (runactions(current->pre_actions.begin(), 
 			   current->pre_actions.end(), 
@@ -602,6 +617,7 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
 	      break;
 	    }
 	  }
+	  DBG(" >>o arrived in state '%s'\n", current->name.c_str());
 	  
 	  break;
 	}
@@ -617,16 +633,22 @@ void DSMStateEngine::runEvent(AmSession* sess, DSMSession* sc_sess,
     }
 
   } while (!is_consumed);
+
+  DBG("o ^ DSM event processed/consumed; current state '%s' ^\n", current->name.c_str());
 }
 
 bool DSMStateEngine::callDiag(const string& diag_name, AmSession* sess, DSMSession* sc_sess,
-			   DSMCondition::EventType event,
-			   map<string,string>* event_params) {
+			      DSMCondition::EventType event,
+			      map<string,string>* event_params,
+			      vector<DSMElement*>::iterator actions_from, vector<DSMElement*>::iterator actions_to) {
   if (!current || !current_diag) {
     ERROR("no current diag to push\n");
     return false;
   }
-  stack.push_back(std::make_pair(current_diag, current));
+  stack.push_back(DSMStackElement(current_diag, current));
+  for (vector<DSMElement*>::iterator it = actions_from; it != actions_to; it++)
+    stack.back().actions.push_back(*it);
+
   return jumpDiag(diag_name, sess, sc_sess, event, event_params);
 }
 
@@ -673,14 +695,22 @@ bool DSMStateEngine::jumpDiag(const string& diag_name, AmSession* sess, DSMSessi
   return false;
 }
 
-bool DSMStateEngine::returnDiag(AmSession* sess, DSMSession* sc_sess) {
+bool DSMStateEngine::returnDiag(AmSession* sess, DSMSession* sc_sess,
+				DSMCondition::EventType event, map<string,string>* event_params) {
   if (stack.empty()) {
     ERROR("returning from empty stack\n");
     return false;
   }
-  current_diag = stack.back().first;
-  current = stack.back().second;
+  current_diag = stack.back().diag;
+  current = stack.back().state;
+  vector<DSMElement*> actions = stack.back().actions;
   stack.pop_back();
+
+  bool is_consumed; //?
+  DBG("executing %zd action elements from stack\n", actions.size());
+  if (actions.size()) {
+    runactions(actions.begin(), actions.end(), sess, sc_sess, event, event_params, is_consumed);
+  }
 
   MONITORING_LOG2(sess->getLocalTag().c_str(), 
 		  "dsm_diag", current_diag->getName().c_str(),

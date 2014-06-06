@@ -40,6 +40,15 @@ using std::string;
 
 #include <vector>
 #include <utility>
+#include <map>
+
+#include "md5.h"
+
+#define HASHLEN 16
+typedef unsigned char HASH[HASHLEN];
+
+#define HASHHEXLEN 32
+typedef unsigned char HASHHEX[HASHHEXLEN+1];
 
 //#define FIFO_PERM S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH
 
@@ -62,6 +71,11 @@ string int2str(unsigned int val);
  * Convert a long to a string. 
  */
 string long2str(long int val);
+
+/** 
+ * Convert a long long to a string. 
+ */
+string longlong2str(long long int val);
 
 /** 
  * Convert a a byte to a string using hexdecimal representation.
@@ -144,6 +158,12 @@ bool str2long(const string& str, long& result);
  */
 bool str2long(char*& str, long& result, char sep = ' ');
 
+/* translates string value into bool, returns false on error */
+bool str2bool(const string &s, bool &dst);
+
+std::string URL_decode(const std::string& s);
+std::string URL_encode(const std::string& s);
+
 /**
  * Parse code/reason line.
  * Syntax: "code reason"
@@ -179,14 +199,8 @@ string file_extension(const string& path);
  */
 string add2path(const string& path, int n_suffix, ...);
 
-struct in_addr;
-string get_addr_str(struct in_addr in);
-
-#ifdef SUPPORT_IPV6
-int inet_aton_v6(const char* name, struct sockaddr_storage* ss);
-void set_port_v6(struct sockaddr_storage* ss, short port);
-short get_port_v6(struct sockaddr_storage* ss);
-#endif
+string get_addr_str(const sockaddr_storage* addr);
+string get_addr_str_sip(const sockaddr_storage* addr);
 
 /** \brief microseconds sleep using select */
 #define sleep_us(nusecs) \
@@ -204,11 +218,6 @@ short get_port_v6(struct sockaddr_storage* ss);
  */
 int get_local_addr_for_dest(sockaddr_storage* remote_ip, sockaddr_storage* local);
 int get_local_addr_for_dest(const string& remote_ip, string& local);
-
-/**
- * Converts an IP address contained in a sockaddr_storage into a string.
- */
-int ip_addr_to_str(sockaddr_storage* ss, string& addr);
 
 string extract_tag(const string& addr);
 
@@ -233,6 +242,9 @@ string get_header_keyvalue(const string& param_hdr, const string& short_name, co
 
 /** get the value of key @param name from P-Iptel-Param header in hdrs */
 string get_session_param(const string& hdrs, const string& name);
+
+/** parse the P-App-Param header and extracts the parameters into a map */
+void parse_app_params(const string& hdrs, std::map<string,string>& app_params);
 
 /** support for thread-safe pseudo-random numbers  - init function */
 void init_random();
@@ -270,6 +282,14 @@ bool read_regex_mapping(const string& fname, const char* sep,
  */
 bool run_regex_mapping(const RegexMappingVector& mapping, const char* test_s,
 		       string& result);
+
+
+/** convert a binary MD5 hash to hex representation */
+void cvt_hex(HASH bin, HASHHEX hex);
+
+/** get an MD5 hash of a string */
+string calculateMD5(const string& input);
+
 #endif
 
 // Local Variables:

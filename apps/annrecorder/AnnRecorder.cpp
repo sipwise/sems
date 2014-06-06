@@ -104,12 +104,6 @@ int AnnRecorderFactory::onLoad()
   AM_PROMPT_ADD(BEEP, ANNREC_ANNOUNCE_PATH BEEP".wav");
   AM_PROMPT_END(prompts, cfg, MOD_NAME);
 
-
-  if (!AmSession::timersSupported()) {
-    ERROR("sorry, could not load user_timer from session_timer plug-in\n");
-    return -1;
-  }
-
   message_storage_fact = AmPlugIn::instance()->getFactory4Di("msg_storage");
   if(!message_storage_fact) {
     ERROR("sorry, could not get msg_storage, please load a suitable plug-in\n");
@@ -204,22 +198,18 @@ void AnnRecorderFactory::getAppParams(const AmSipRequest& req, map<string, strin
   params["type"] = typ;
 }
 
-AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req)
+AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					const map<string,string>& app_params)
 {
   map<string, string> params;
   getAppParams(req, params);
   return new AnnRecorderDialog(params, prompts, NULL);
 }
 
-AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req,
+AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req, const string& app_name,
 					 AmArg& session_params)
 {
-  UACAuthCred* cred = NULL;
-  if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
-    if (cred_obj)
-      cred = dynamic_cast<UACAuthCred*>(cred_obj);
-  }
+  UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
 
   map<string, string> params;
   getAppParams(req, params);
@@ -228,17 +218,7 @@ AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req,
   if (NULL == cred) {
     WARN("discarding unknown session parameters.\n");
   } else {
-    AmSessionEventHandlerFactory* uac_auth_f = 
-      AmPlugIn::instance()->getFactory4Seh("uac_auth");
-    if (uac_auth_f != NULL) {
-      DBG("UAC Auth enabled for new announcement session.\n");
-      AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-      if (h != NULL )
-	s->addHandler(h);
-    } else {
-      ERROR("uac_auth interface not accessible. "
-	    "Load uac_auth for authenticated dialout.\n");
-    }		
+    AmUACAuth::enable(s);
   }
 
   return s;
@@ -265,19 +245,10 @@ AnnRecorderDialog::~AnnRecorderDialog()
     unlink(msg_filename.c_str());
 }
 
-void AnnRecorderDialog::onSessionStart(const AmSipRequest& req)
+void AnnRecorderDialog::onSessionStart()
 {
   DBG("AnnRecorderDialog::onSessionStart\n");
-  startSession();
-}
 
-void AnnRecorderDialog::onSessionStart(const AmSipReply& rep)
-{
-  DBG("AnnRecorderDialog::onSessionStart (SEMS originator mode)\n");
-  startSession();
-}
-
-void AnnRecorderDialog::startSession(){
   prompts.addToPlaylist(WELCOME,  (long)this, playlist);
   prompts.addToPlaylist(YOUR_PROMPT,  (long)this, playlist);
   enqueueCurrent();
@@ -287,6 +258,8 @@ void AnnRecorderDialog::startSession(){
   // set the playlist as input and output
   setInOut(&playlist,&playlist);  
   state = S_WAIT_START;
+
+  AmSession::onSessionStart();
 }
 
 void AnnRecorderDialog::enqueueCurrent() {
@@ -319,14 +292,14 @@ void AnnRecorderDialog::onDtmf(int event, int duration_msec) {
   switch (state) {
   case S_WAIT_START: { 
     DBG("received key %d in state S_WAIT_START: start recording\n", event); 
-    playlist.close(false);
+    playlist.flush();
 
     wav_file.close();
     msg_filename = "/tmp/" + getLocalTag() + ".wav";
     if(wav_file.open(msg_filename,AmAudioFile::Write,false)) {
      ERROR("AnnRecorder: couldn't open %s for writing\n", 
 	   msg_filename.c_str());
-     dlg.bye();
+     dlg->bye();
      setStopped();
     }
     wav_file.setRecordTime(MAX_MESSAGE_TIME*1000);
@@ -339,14 +312,14 @@ void AnnRecorderDialog::onDtmf(int event, int duration_msec) {
   case S_RECORDING: {
     DBG("received key %d in state S_RECORDING: replay recording\n", event); 
     prompts.addToPlaylist(BEEP,  (long)this, playlist);
-    playlist.close(false);
+    playlist.flush();
     replayRecording();
     
   } break;
 
   case S_CONFIRM: { 
     DBG("received key %d in state S_CONFIRM save or redo\n", event); 
-    playlist.close(false);
+    playlist.flush();
 
     wav_file.close();
     if (event == 1) {
@@ -409,7 +382,7 @@ void AnnRecorderDialog::process(AmEvent* event)
   if(audio_event && (audio_event->event_id == AmAudioEvent::noAudio)){
 
     if (S_BYE == state) {
-      dlg.bye();
+      dlg->bye();
       setStopped();
       return;
     }

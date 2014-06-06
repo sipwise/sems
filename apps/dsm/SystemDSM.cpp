@@ -6,6 +6,9 @@
 
 #include "DSMStateDiagramCollection.h"
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
+#include "AmSipSubscription.h"
+#include "AmSessionContainer.h"
+#include "ampi/MonitoringAPI.h"
 
 SystemDSM::SystemDSM(const DSMScriptConfig& config,
 		     const string& startDiagName,
@@ -27,6 +30,14 @@ SystemDSM::SystemDSM(const DSMScriptConfig& config,
 }
 
 SystemDSM::~SystemDSM() {
+  for (std::set<DSMDisposable*>::iterator it=
+	 gc_trash.begin(); it != gc_trash.end(); it++)
+    delete *it;
+
+#ifdef USE_MONITORING
+  MONITORING_MARK_FINISHED(dummy_session.getLocalTag());
+#endif
+
 }
 
 void SystemDSM::run() {
@@ -127,10 +138,28 @@ void SystemDSM::process(AmEvent* event) {
 
   }
 
+  if (event->event_id == E_SIP_SUBSCRIPTION) {
+    SIPSubscriptionEvent* sub_ev = dynamic_cast<SIPSubscriptionEvent*>(event);
+    if (sub_ev) {
+      DBG("SystemDSM received SIP Subscription Event\n");
+      map<string, string> params;
+      params["status"] = sub_ev->getStatusText();
+      params["code"] = int2str(sub_ev->code);
+      params["reason"] = sub_ev->reason;
+      params["expires"] = int2str(sub_ev->expires);
+      params["has_body"] = sub_ev->notify_body.get()?"true":"false";
+      if (sub_ev->notify_body.get()) {
+  	avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] = AmArg(sub_ev->notify_body.get());
+      }
+      engine.runEvent(&dummy_session, this, DSMCondition::SIPSubscription, &params);
+      avar.erase(DSM_AVAR_SIPSUBSCRIPTION_BODY);
+    }
+  }
+
   if (event->event_id == E_SYSTEM) {
     AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(event);
     if(sys_ev){	
-      DBG("SystemDSM received system Event\n");      
+      DBG("SystemDSM received system Event\n");
       map<string, string> params;
       params["type"] = AmSystemEvent::getDescription(sys_ev->sys_event);
       engine.runEvent(&dummy_session, this, DSMCondition::System, &params);
@@ -141,18 +170,29 @@ void SystemDSM::process(AmEvent* event) {
 
 }
 
+  /** transfer ownership of object to this session instance */
+void SystemDSM::transferOwnership(DSMDisposable* d) {
+  gc_trash.insert(d);
+}
+
+  /** release ownership of object from this session instance */
+void SystemDSM::releaseOwnership(DSMDisposable* d) {
+  gc_trash.erase(d);
+}
+
 #define NOT_IMPLEMENTED(_func)					\
 void SystemDSM::_func {						\
-  throw DSMException("core", "cause", "not implemented");	\
+  throw DSMException("core", "cause", "not implemented in SystemDSM");	\
 }
 
 #define NOT_IMPLEMENTED_UINT(_func)					\
   unsigned int SystemDSM::_func {					\
-    throw DSMException("core", "cause", "not implemented");		\
+    throw DSMException("core", "cause", "not implemented in SystemDSM"); \
   }
 
-NOT_IMPLEMENTED(playPrompt(const string& name, bool loop));
+NOT_IMPLEMENTED(playPrompt(const string& name, bool loop, bool front));
 NOT_IMPLEMENTED(playFile(const string& name, bool loop, bool front));
+NOT_IMPLEMENTED(playSilence(unsigned int length, bool front));
 NOT_IMPLEMENTED(recordFile(const string& name));
 NOT_IMPLEMENTED_UINT(getRecordLength());
 NOT_IMPLEMENTED_UINT(getRecordDataSize());
@@ -161,8 +201,8 @@ NOT_IMPLEMENTED(setInOutPlaylist());
 NOT_IMPLEMENTED(setInputPlaylist());
 NOT_IMPLEMENTED(setOutputPlaylist());
 
-NOT_IMPLEMENTED(addToPlaylist(AmPlaylistItem* item));
-NOT_IMPLEMENTED(closePlaylist(bool notify));
+NOT_IMPLEMENTED(addToPlaylist(AmPlaylistItem* item, bool front));
+NOT_IMPLEMENTED(flushPlaylist());
 NOT_IMPLEMENTED(setPromptSet(const string& name));
 NOT_IMPLEMENTED(addSeparator(const string& name, bool front));
 NOT_IMPLEMENTED(connectMedia());
@@ -176,11 +216,11 @@ NOT_IMPLEMENTED(B2BconnectCallee(const string& remote_party,
 				 bool relayed_invite));
 NOT_IMPLEMENTED(B2BterminateOtherLeg());
 NOT_IMPLEMENTED(B2BaddReceivedRequest(const AmSipRequest& req));
+NOT_IMPLEMENTED(B2BsetRelayEarlyMediaSDP(bool enabled));
 NOT_IMPLEMENTED(B2BsetHeaders(const string& hdr, bool replaceCRLF));
 NOT_IMPLEMENTED(B2BclearHeaders());
 NOT_IMPLEMENTED(B2BaddHeader(const string& hdr));
-NOT_IMPLEMENTED(transferOwnership(DSMDisposable* d));
-NOT_IMPLEMENTED(releaseOwnership(DSMDisposable* d));
+NOT_IMPLEMENTED(B2BremoveHeader(const string& hdr));
 
 #undef NOT_IMPLEMENTED
 #undef NOT_IMPLEMENTED_UINT

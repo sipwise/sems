@@ -48,10 +48,13 @@ class trans_ticket;
 class udp_trsp_socket;
 class udp_trsp;
 
-class SipCtrlInterface:
+class tcp_server_socket;
+class tcp_trsp;
+
+class _SipCtrlInterface:
     public sip_ua
 {
-    void sip_msg2am_request(const sip_msg *msg, AmSipRequest &request);
+    bool sip_msg2am_request(const sip_msg *msg, const trans_ticket& tt, AmSipRequest &request);
     bool sip_msg2am_reply(sip_msg *msg, AmSipReply &reply);
     
     void prepare_routes_uac(const list<sip_header*>& routes, string& route_field);
@@ -67,16 +70,27 @@ class SipCtrlInterface:
     unsigned short    nr_udp_servers;
     udp_trsp**        udp_servers;
 
+    unsigned short    nr_tcp_sockets;
+    tcp_server_socket** tcp_sockets;
+
+    unsigned short    nr_tcp_servers;
+    tcp_trsp**        tcp_servers;
+
+    int alloc_udp_structs();
+    int init_udp_servers(int if_num);
+
+    int alloc_tcp_structs();
+    int init_tcp_servers(int if_num);
+
 public:
 
     static string outbound_host;
     static unsigned int outbound_port;
     static bool log_parsed_messages;
-    static int log_raw_messages;
     static int udp_rcvbuf;
 
-    SipCtrlInterface();
-    ~SipCtrlInterface(){}
+    _SipCtrlInterface();
+    ~_SipCtrlInterface(){}
 
     int load();
 
@@ -90,9 +104,9 @@ public:
      * @param req The request to send. If the request creates a transaction, 
      *            its ticket is written into req.tt.
      */
-    static int send(AmSipRequest &req,
-		    const string& next_hop_ip = "", unsigned short next_hop_port = 5060,
-		    int outbound_interface = -1);
+    static int send(AmSipRequest &req, const string& dialog_id,
+		    const string& next_hop = "", int outbound_interface = -1,
+		    unsigned int flags = 0, msg_logger* logger = NULL);
 
     /**
      * Sends a SIP reply. 
@@ -100,26 +114,27 @@ public:
      * @param rep The reply to be sent. 'rep.tt' should be set to transaction 
      *            ticket included in the SIP request.
      */
-    static int send(const AmSipReply &rep,
-		    const string& next_hop_ip = "", unsigned short next_hop_port = 5060,
-		    int outbound_interface = -1);
+    static int send(const AmSipReply &rep, const string& dialog_id,
+		    msg_logger* logger = NULL);
 
     /**
      * CANCELs an INVITE transaction.
      *
      * @param tt transaction ticket of the request to cancel.
      */
-    static int cancel(trans_ticket* tt);
+    static int cancel(trans_ticket* tt, const string& dialog_id,
+		      unsigned int inv_cseq, const string& hdrs);
 
     /**
      * From sip_ua
      */
     void handle_sip_request(const trans_ticket& tt, sip_msg* msg);
-    void handle_sip_reply(sip_msg* msg);
+    void handle_sip_reply(const string& dialog_id, sip_msg* msg);
     void handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
         sip_trans *tr, trans_bucket *buk=0);
 };
 
+typedef singleton<_SipCtrlInterface> SipCtrlInterface;
 
 #endif
 

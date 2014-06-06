@@ -31,8 +31,10 @@
 #define _wheeltimer_h_
 
 #include "../AmThread.h"
-
+#include <sys/types.h>
 #include <deque>
+
+#include "atomic_types.h"
 
 #define BITS_PER_WHEEL 8
 #define ELMTS_PER_WHEEL (1 << BITS_PER_WHEEL)
@@ -42,9 +44,6 @@
 
 // do not change
 #define WHEELS 4
-
-class timer;
-typedef void (*timer_cb)(timer*,unsigned int /*data1*/,void* /*data2*/);
 
 class base_timer
 {
@@ -61,26 +60,19 @@ public:
     base_timer*  prev;
     u_int32_t    expires;
 
-    unsigned int type;
-    timer_cb     cb;
-    unsigned int data1;
-    void*        data2;
-    
-
     timer() 
-	: base_timer(),type(0),
-	  prev(0), expires(0),cb(0),
-	  data1(0),data2(0) 
+	: base_timer(),
+	  prev(0), expires(0) 
     {}
 
-    timer(unsigned int timer_type, unsigned int expires, timer_cb cb, int data1, void* data2)
-	: base_timer(),type(timer_type),
-	  prev(0), expires(expires), cb(cb), 
-	  data1(data1),data2(data2)
+    timer(unsigned int expires)
+        : base_timer(),
+	  prev(0), expires(expires)
     {}
 
     ~timer(); 
-    
+
+    virtual void fire()=0;
 };
 
 #include "singleton.h"
@@ -127,8 +119,8 @@ protected:
 public:
     //clock reference
     volatile u_int32_t wall_clock; // 32 bits
+    atomic_int64 unix_clock; // 64 bits
 
-    void clock_work();
     void insert_timer(timer* t);
     void remove_timer(timer* t);
 };

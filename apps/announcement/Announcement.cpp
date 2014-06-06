@@ -27,6 +27,7 @@
 #include "AmConfig.h"
 #include "AmUtils.h"
 #include "AmPlugIn.h"
+#include "AmUACAuth.h"
 
 #include "sems.h"
 #include "log.h"
@@ -92,37 +93,22 @@ string AnnouncementFactory::getAnnounceFile(const AmSipRequest& req) {
   return announce_file;
 }
 
-AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req)
+AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					 const map<string,string>& app_params)
 {
   return new AnnouncementDialog(getAnnounceFile(req), NULL);
 }
 
-AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req,
+AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req, const string& app_name,
 					 AmArg& session_params)
 {
-  UACAuthCred* cred = NULL;
-  if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
-    if (cred_obj)
-      cred = dynamic_cast<UACAuthCred*>(cred_obj);
-  }
-
-  AmSession* s = new AnnouncementDialog(getAnnounceFile(req), cred); 
+  UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
+  AmSession* s = new AnnouncementDialog(getAnnounceFile(req), cred);
   
   if (NULL == cred) {
     WARN("discarding unknown session parameters.\n");
   } else {
-    AmSessionEventHandlerFactory* uac_auth_f = 
-      AmPlugIn::instance()->getFactory4Seh("uac_auth");
-    if (uac_auth_f != NULL) {
-      DBG("UAC Auth enabled for new announcement session.\n");
-      AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-      if (h != NULL )
-	s->addHandler(h);
-    } else {
-      ERROR("uac_auth interface not accessible. "
-	    "Load uac_auth for authenticated dialout.\n");
-    }		
+    AmUACAuth::enable(s);
   }
 
   return s;
@@ -132,28 +118,17 @@ AnnouncementDialog::AnnouncementDialog(const string& filename,
 				       UACAuthCred* credentials)
   : filename(filename), cred(credentials)
 {
+  // we can drop all received packets
+  // this disables DTMF detection as well
+  setReceiving(false);
 }
 
 AnnouncementDialog::~AnnouncementDialog()
 {
 }
 
-void AnnouncementDialog::onSessionStart(const AmSipRequest& req)
-{
-  DBG("AnnouncementDialog::onSessionStart\n");
-  startSession();
-}
-
-void AnnouncementDialog::onSessionStart(const AmSipReply& rep)
-{
-  DBG("AnnouncementDialog::onSessionStart (SEMS originator mode)\n");
-  startSession();
-}
-
-void AnnouncementDialog::startSession(){
-  // we can drop all received packets
-  // this disables DTMF detection as well
-  setReceiving(false);
+void AnnouncementDialog::onSessionStart() {
+  DBG("AnnouncementDialog::onSessionStart()...\n");
 
   if(wav_file.open(filename,AmAudioFile::Read)) {
     ERROR("Couldn't open file %s.\n", filename.c_str());
@@ -164,12 +139,14 @@ void AnnouncementDialog::startSession(){
     wav_file.loop.set(true);
 
   setOutput(&wav_file);
+
+  AmSession::onSessionStart();
 }
 
 void AnnouncementDialog::onBye(const AmSipRequest& req)
 {
   DBG("onBye: stopSession\n");
-  setStopped();
+  AmSession::onBye(req);
 }
 
 
@@ -178,7 +155,7 @@ void AnnouncementDialog::process(AmEvent* event)
 
   AmAudioEvent* audio_event = dynamic_cast<AmAudioEvent*>(event);
   if(audio_event && (audio_event->event_id == AmAudioEvent::cleared)){
-    dlg.bye();
+    dlg->bye();
     setStopped();
     return;
   }

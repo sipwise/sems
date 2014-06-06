@@ -45,7 +45,7 @@ static PyObject* IvrDialogBase_new(PyTypeObject *type, PyObject *args, PyObject 
     self->p_dlg = (IvrDialog*)PyCObject_AsVoidPtr(o_dlg);
 	
     // initialize self.dialog
-    self->dialog = IvrSipDialog_FromPtr(&self->p_dlg->dlg);
+    self->dialog = IvrSipDialog_FromPtr(self->p_dlg->dlg);
     if(!self->dialog){
       PyErr_Print();
       ERROR("IvrDialogBase: while creating IvrSipDialog instance\n");
@@ -94,73 +94,6 @@ static PyObject* IvrDialogBase_onRtpTimeout(IvrDialogBase* self, PyObject*)
   return Py_None;
 }
 
-// static PyObject* IvrDialogBase_onSessionStart(IvrDialogBase* self, PyObject*)
-// {
-//     DBG("no script implementation for onSessionStart(self,hdrs) !!!\n");
-
-//     PyErr_SetNone(PyExc_NotImplementedError);
-//     return NULL; // no return value
-// }
-
-// static PyObject* IvrDialogBase_onBye(IvrDialogBase* self, PyObject*)
-// {
-//     DBG("no script implementation for onBye(self) !!!\n");
-
-//     PyErr_SetNone(PyExc_NotImplementedError);
-//     return NULL; // no return value
-// }
-
-// static PyObject* IvrDialogBase_onEmptyQueue(IvrDialogBase* self, PyObject*)
-// {
-//     DBG("no script implementation for onEmptyQueue(self) !!!\n");
-
-//     PyErr_SetNone(PyExc_NotImplementedError);
-//     return NULL; // no return value
-// }
-
-// static PyObject* IvrDialogBase_onDtmf(IvrDialogBase* self, PyObject* args)
-// {
-//     int key, duration;
-//     if(!PyArg_ParseTuple(args,"ii",&key,&duration))
-// 	return NULL;
-
-//     DBG("IvrDialogBase_onDtmf(%i,%i)\n",key,duration);
-
-//     Py_INCREF(Py_None);
-//     return Py_None;
-// }
-
-// static PyObject* IvrDialogBase_onTimer(IvrDialogBase* self, PyObject* args)
-// {
-//     DBG("IvrDialog::onTimer: no script implementation!!!\n");
-
-//     PyErr_SetNone(PyExc_NotImplementedError);
-//     return NULL; // no return value
-// }
-
-// static PyObject* IvrDialogBase_onOtherBye(IvrDialogBase* self, PyObject*)
-// {
-//     DBG("IvrDialogBase_onOtherBye()\n");
-
-//     Py_INCREF(Py_None);
-//     return Py_None;
-// }
-
-// static PyObject* IvrDialogBase_onOtherReply(IvrDialogBase* self, PyObject* args)
-// {
-//     DBG("IvrDialogBase_onOtherReply()\n");
-
-//     int code;
-//     char* reason;
-
-//     if(!PyArg_ParseTuple(args,"is",&code,&reason))
-// 	return NULL;
-    
-
-//     Py_INCREF(Py_None);
-//     return Py_None;
-// }
-
 //
 // Call control
 //
@@ -191,7 +124,7 @@ static PyObject* IvrDialogBase_bye(IvrDialogBase* self, PyObject* args)
   if(!PyArg_ParseTuple(args,"|s", &hdrs))
     return NULL;
 
-  self->p_dlg->dlg.bye(hdrs);
+  self->p_dlg->dlg->bye(hdrs);
   Py_INCREF(Py_None);
   return Py_None;
 }
@@ -248,7 +181,7 @@ static PyObject* IvrDialogBase_flush(IvrDialogBase* self, PyObject* args)
 {
   assert(self->p_dlg);
 
-  self->p_dlg->playlist.close();
+  self->p_dlg->playlist.flush();
     
   Py_INCREF(Py_None);
   return Py_None;
@@ -277,6 +210,46 @@ static PyObject* IvrDialogBase_unmute(IvrDialogBase* self, PyObject* args)
 
   self->p_dlg->setMute(false);
     
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject* IvrDialogBase_enableReceiving(IvrDialogBase* self, PyObject* args)
+{
+  assert(self->p_dlg);
+
+  self->p_dlg->setReceiving(true);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject* IvrDialogBase_disableReceiving(IvrDialogBase* self, PyObject* args)
+{
+  assert(self->p_dlg);
+
+  self->p_dlg->setReceiving(false);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject* IvrDialogBase_enableDTMFReceiving(IvrDialogBase* self, PyObject* args)
+{
+  assert(self->p_dlg);
+
+  self->p_dlg->setForceDtmfReceiving(true);
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject* IvrDialogBase_disableDTMFReceiving(IvrDialogBase* self, PyObject* args)
+{
+  assert(self->p_dlg);
+
+  self->p_dlg->setForceDtmfReceiving(false);
+
   Py_INCREF(Py_None);
   return Py_None;
 }
@@ -500,6 +473,18 @@ IvrDialogBase_refer(IvrDialogBase *self, PyObject* args)
     
 }
 
+static PyObject* 
+IvrDialogBase_getAppParam(IvrDialogBase *self, PyObject* args)
+{
+  const char* param_name;
+  if(!PyArg_ParseTuple(args,"s",&param_name))
+    return NULL;
+
+  string app_param = self->p_dlg->getAppParam(param_name);
+  return PyString_FromString(app_param.c_str());
+}
+
+
 static PyMethodDef IvrDialogBase_methods[] = {
     
 
@@ -557,6 +542,18 @@ static PyMethodDef IvrDialogBase_methods[] = {
   {"unmute", (PyCFunction)IvrDialogBase_unmute, METH_NOARGS,
    "unmute the RTP stream (send packets)"
   },
+  {"enableReceiving", (PyCFunction)IvrDialogBase_enableReceiving, METH_NOARGS,
+   "enable receiving of RTP packets"
+  },
+  {"disableReceiving", (PyCFunction)IvrDialogBase_disableReceiving, METH_NOARGS,
+   "disable receiving of RTP packets"
+  },
+  {"enableDTMFReceiving", (PyCFunction)IvrDialogBase_enableDTMFReceiving, METH_NOARGS,
+   "enable receiving of RFC-2833 DTMF packets even if RTP receiving is disabled"
+  },
+  {"disableDTMFReceiving", (PyCFunction)IvrDialogBase_disableDTMFReceiving, METH_NOARGS,
+   "disable receiving of RFC-2833 DTMF packets when RTP receiving is disabled"
+  },
   {"connectMedia", (PyCFunction)IvrDialogBase_add_mediaprocessor, METH_NOARGS,
    "enable the processing of audio and RTP"
   },
@@ -598,6 +595,10 @@ static PyMethodDef IvrDialogBase_methods[] = {
   {"removeTimers", (PyCFunction)IvrDialogBase_removeTimers, METH_NOARGS,
    "remove all timers"
   },    
+  // App params
+  {"getAppParam", (PyCFunction)IvrDialogBase_getAppParam, METH_VARARGS,
+   "retrieves an application parameter"
+  },
 
   {NULL}  /* Sentinel */
 };

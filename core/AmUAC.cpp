@@ -42,8 +42,8 @@ string AmUAC::dialout(const string& user,
 		      AmArg*  session_params) {
  
   AmSipRequest req;
+  string m_app_name = app_name;
 
-  req.cmd      = app_name;
   req.user     = user;
   req.method   = "INVITE";
   req.r_uri    = r_uri;
@@ -58,6 +58,6 @@ string AmUAC::dialout(const string& user,
   req.callid   = AmSession::getNewId();
   req.hdrs     = hdrs;
     
-  return AmSessionContainer::instance()->startSessionUAC(req, session_params);
+  return AmSessionContainer::instance()->startSessionUAC(req, m_app_name, session_params);
 }
 

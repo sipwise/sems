@@ -31,9 +31,9 @@
 #include "AmThread.h"
 #include "AmConfig.h"
 #include "log.h"
-//#include "AmServer.h"
 #include "AmSipMsg.h"
 #include "sip/resolver.h"
+#include "sip/ip_util.h"
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -72,15 +72,16 @@ string int2str(unsigned int val)
   return string((char*)(buffer+i+1));
 }
 
-string int2str(int val)
+template<class T, class DT>
+string signed2str(T val, T (*abs_func) (T), DT (*div_func) (T, T))
 {
   char buffer[64] = {0,0};
   int i=62;
-  div_t d;
+  DT d;
 
-  d.quot = abs(val);
+  d.quot = abs_func(val);
   do{
-    d = div(d.quot,10);
+    d = div_func(d.quot,10);
     buffer[i] = _int2str_lookup[d.rem];
   }while(--i && d.quot);
 
@@ -92,25 +93,9 @@ string int2str(int val)
   return string((char*)(buffer+i+1));
 }
 
-string long2str(long int val)
-{
-  char buffer[64] = {0,0};
-  int i=62;
-  ldiv_t d;
-
-  d.quot = abs(val);
-  do{
-    d = ldiv(d.quot,10);
-    buffer[i] = _int2str_lookup[d.rem];
-  }while(--i && d.quot);
-
-  if (i && (val<0)) {
-    buffer[i]='-';
-    i--;
-  }
-
-  return string((char*)(buffer+i+1));
-}
+string int2str(int val) { return signed2str<int, div_t>(val, abs, div); }
+string long2str(long int val) { return signed2str<long, ldiv_t>(val, labs, ldiv); }
+string longlong2str(long long int val) { return signed2str<long long, lldiv_t>(val, llabs, lldiv); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };
 static char _int2hex_lookup_l[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','a','b','c','d','e','f' };
@@ -382,6 +367,110 @@ bool str2long(char*& str, long& result, char sep)
   return false;
 }
 
+bool str2bool(const string &s, bool &dst)
+{
+  // TODO: optimize
+  if ((s == "yes") || (s == "true") || (s == "1")) {
+    dst = true;
+    return true;
+  }
+  if ((s == "no") || (s == "false") || (s == "0")) {
+    dst = false;
+    return true;
+  }
+  return false;
+}
+
+std::string URL_decode(const std::string& s) {
+  enum {
+    uSNormal=       0, // start
+    uSH1,
+    uSH2
+  };
+
+  int st = uSNormal;
+  string res;
+  for (size_t pos = 0; pos < s.length(); pos++) {
+    switch (st) {
+    case uSNormal: {
+      if (s[pos] == '%')
+	st = uSH1;
+      else
+	res+=s[pos];
+
+    }; break;
+
+    case uSH1: {
+      if (s[pos] == '%') {
+	res+='%';
+	st = uSNormal;
+      } else {
+      st = uSH2;
+      }
+    }; break;
+
+    case uSH2: {
+      char c = 0;
+
+      if ( s[pos] >='0' && s[pos] <='9')
+	c += s[pos] -'0';
+      else if (s[pos] >='a' && s[pos] <='f')
+	c += s[pos] -'a'+10;
+      else if (s[pos]  >='A' && s[pos] <='F')
+	c += s[pos] -'A'+10;
+      else {
+	st = uSNormal;
+	DBG("error in escaped string: %%%c%c\n", s[pos-1], s[pos]);
+	continue;
+      }
+
+      if ( s[pos-1] >='0' && s[pos-1] <='9')
+	c += (s[pos-1] -'0') << 4;
+      else if (s[pos-1] >='a' && s[pos-1] <='f')
+	c += (s[pos-1] -'a'+10) << 4;
+      else if (s[pos-1]  >='A' && s[pos-1] <='F')
+	c += (s[pos-1] -'A'+10 ) << 4;
+      else {
+	st = uSNormal;
+	DBG("error in escaped string: %%%c%c\n", s[pos-1], s[pos]);
+	continue;
+      }
+      res +=c;
+      st = uSNormal;
+    } break;
+    }
+  }
+
+  return res;
+}
+
+std::string URL_encode(const std::string &s)
+{
+    const std::string unreserved = "-_.~";
+
+    std::string escaped="";
+    for(size_t i=0; i<s.length(); i++)
+    {
+
+      //RFC 3986 section 2.3 Unreserved Characters (January 2005)
+      if ((s[i] >= 'A' && s[i] <= 'Z')
+	  || (s[i] >= 'a' && s[i] <= 'z')
+	  || (s[i] >= '0' && s[i] <= '9')
+	  || (s[i] == '-') || (s[i] == '_') || (s[i] == '.') || (s[i] == '~') )
+        {
+            escaped.push_back(s[i]);
+        }
+        else
+        {
+            escaped.append("%");
+            char buf[3];
+            sprintf(buf, "%.2X", s[i]);
+            escaped.append(buf);
+        }
+    }
+    return escaped;
+}
+
 int parse_return_code(const char* lbuf, unsigned int& res_code, string& res_msg )
 {
   char res_code_str[4] = {'\0'};
@@ -436,73 +525,17 @@ string filename_from_fullpath(const string& path)
   return "";
 }
 
-string get_addr_str(struct in_addr in)
+string get_addr_str(const sockaddr_storage* addr)
 {
-  char res[INET_ADDRSTRLEN];
-  if (inet_ntop(AF_INET, &in, res, INET_ADDRSTRLEN))
-    return string(res);
-  else return "";
+  char host[NI_MAXHOST] = "";
+  return am_inet_ntop(addr,host,NI_MAXHOST);
 }
 
-#ifdef SUPPORT_IPV6
-#include <netdb.h>
-
-int inet_aton_v6(const char* name, struct sockaddr_storage* ss)
+string get_addr_str_sip(const sockaddr_storage* addr)
 {
-  int error;
-  //struct sockaddr *sa;
-  struct addrinfo hints;
-  struct addrinfo *res;
-
-  memset(&hints, 0, sizeof(hints));
-  /* set-up hints structure */
-  hints.ai_family = PF_UNSPEC;
-  error = getaddrinfo(name, NULL, &hints, &res);
-  if (error)
-    ERROR("%s\n",gai_strerror(error));
-  else if (res) {
-    assert( (res->ai_family == PF_INET) || 
-	    (res->ai_family == PF_INET6) );
-    memset(ss,0,sizeof(struct sockaddr_storage));
-    memcpy(ss,res->ai_addr,res->ai_addrlen);
-    freeaddrinfo(res);
-    return 1;
-  }
-
-  return 0;
+  char host[NI_MAXHOST] = "";
+  return am_inet_ntop_sip(addr,host,NI_MAXHOST);
 }
-
-void set_port_v6(struct sockaddr_storage* ss, short port)
-{
-  switch(ss->ss_family){
-  case PF_INET:
-    ((struct sockaddr_in*)ss)->sin_port = htons(port);
-    break;
-  case PF_INET6:
-    ((struct sockaddr_in6*)ss)->sin6_port = htons(port);
-    break;
-  default:
-    ERROR("unknown address family\n");
-    assert(0);
-    break;
-  }
-}
-
-short get_port_v6(struct sockaddr_storage* ss)
-{
-  switch(ss->ss_family){
-  case PF_INET:
-    return ntohs(((struct sockaddr_in*)ss)->sin_port);
-  case PF_INET6:
-    return ntohs(((struct sockaddr_in6*)ss)->sin6_port);
-  default:
-    ERROR("unknown address family\n");
-    assert(0);
-    break;
-  }
-}
-
-#endif
 
 string file_extension(const string& path)
 {
@@ -596,7 +629,7 @@ int get_local_addr_for_dest(const string& remote_ip, string& local)
   }
 
   if(err == -1){
-    ERROR("While converting address: %s",strerror(errno));
+    ERROR("While converting address: '%s'",remote_ip.c_str());
     return -1;
   }
 
@@ -618,30 +651,13 @@ int get_local_addr_for_dest(const string& remote_ip, string& local)
     return -1;
   }
 
-  return ip_addr_to_str(&local_ss,local);
-}
-
-int ip_addr_to_str(sockaddr_storage* ss, string& addr)
-{
-  char ntop_buffer[INET6_ADDRSTRLEN];
-
-  if(ss->ss_family == AF_INET) {
-    if(!inet_ntop(AF_INET, &((sockaddr_in*)ss)->sin_addr,
-		  ntop_buffer,INET6_ADDRSTRLEN)) {
-      ERROR("Could not convert IPv4 address to string: %s",strerror(errno));
-      return -1;
-    }
+  char tmp_addr[NI_MAXHOST];
+  if(am_inet_ntop(&local_ss,tmp_addr,NI_MAXHOST) != NULL){
+    local = tmp_addr;
+    return 0;
   }
-  else {
-    if(!inet_ntop(AF_INET6, &((sockaddr_in6*)ss)->sin6_addr,
-		  ntop_buffer,INET6_ADDRSTRLEN)) {
-      ERROR("Could not convert IPv4 address to string: %s",strerror(errno));
-      return -1;
-    }
-  }
-
-  addr = string(ntop_buffer);
-  return 0;
+  
+  return -1;
 }
 
 string extract_tag(const string& addr)
@@ -810,21 +826,24 @@ string get_header_keyvalue_single(const string& param_hdr, const string& name) {
       switch (curr) {
       case ' ': // spaces before the key
       case '\t':
+      case ';': // semicolons before the key
 	break;
       default:
-	if (curr==name[0]) {
+	if (curr==tolower(name[0]) || curr==toupper(name[0])) {
 	  if (name.length() == 1)
 	    st = ST_FINDEQ;
 	  else
 	    st = ST_CMPKEY;
 	  k_begin = p;
 	  corr = 1;
+	} else {
+	  st = ST_FINDBGN;
 	}
       }
     } break;
 
     case ST_CMPKEY: {
-	if (curr==name[corr]) {
+	if (curr==tolower(name[corr]) || curr==toupper(name[corr])) {
 	  corr++;
 	  if (corr == name.length()) {
 	    st = ST_FINDEQ;
@@ -919,6 +938,23 @@ string get_session_param(const string& hdrs, const string& name) {
   }
 
   return get_header_keyvalue(iptel_app_param, name);
+}
+
+void parse_app_params(const string& hdrs, map<string,string>& app_params)
+{
+  // TODO: use real parser with quoting and optimize
+  vector<string> items = explode(getHeader(hdrs, PARAM_HDR, true), ";");
+  for (vector<string>::iterator it=items.begin(); 
+       it != items.end(); it++) {
+    vector<string> kv = explode(*it, "=");
+    if (kv.size() == 2) {
+      app_params.insert(make_pair(kv[0], kv[1]));
+    } else {
+      if (kv.size() == 1) {
+	app_params.insert(make_pair(*it, string()));
+      }
+    }
+  }
 }
 
 
@@ -1058,7 +1094,7 @@ bool read_regex_mapping(const string& fname, const char* sep,
 	return false;
       }
       regex_t app_re;
-      if (regcomp(&app_re, re_v[0].c_str(), REG_EXTENDED | REG_NOSUB)) {
+      if (regcomp(&app_re, re_v[0].c_str(), REG_EXTENDED)) {
 	ERROR("compiling regex '%s' in %s.\n", 
 	      re_v[0].c_str(), fname.c_str());
 	return false;
@@ -1071,15 +1107,81 @@ bool read_regex_mapping(const string& fname, const char* sep,
   return true;
 }
 
+void ReplaceStringInPlace(std::string& subject, const std::string& search,
+                          const std::string& replace) {
+  size_t pos = 0;
+  while ((pos = subject.find(search, pos)) != std::string::npos) {
+    subject.replace(pos, search.length(), replace);
+    pos += replace.length();
+  }
+}
+
+#define MAX_GROUPS 9
+
 bool run_regex_mapping(const RegexMappingVector& mapping, const char* test_s,
-		       string& result) {
+                       string& result) {
+  regmatch_t groups[MAX_GROUPS];
   for (RegexMappingVector::const_iterator it = mapping.begin();
        it != mapping.end(); it++) {
-    if (!regexec(&it->first, test_s, 0, NULL, 0)) {
-      DBG("match of '%s' to %s\n", test_s, it->second.c_str());
+    if (!regexec(&it->first, test_s, MAX_GROUPS, groups, 0)) {
       result = it->second;
+      string soh(1, char(1));
+      ReplaceStringInPlace(result, "\\\\", soh);
+      unsigned int g = 0;
+      for (g = 1; g < MAX_GROUPS; g++) {
+        if (groups[g].rm_so == (int)(size_t)-1) break;
+        DBG("group %u: [%2u-%2u]: %.*s\n",
+            g, groups[g].rm_so, groups[g].rm_eo,
+            groups[g].rm_eo - groups[g].rm_so, test_s + groups[g].rm_so);
+	std::string match(test_s + groups[g].rm_so,
+			  groups[g].rm_eo - groups[g].rm_so);
+        ReplaceStringInPlace(result, "\\" + int2str(g), match);
+      }
+      ReplaceStringInPlace(result, soh, "\\");
       return true;
     }
   }
   return false;
+}
+
+// These function comes basically from ser's uac module 
+void cvt_hex(HASH bin, HASHHEX hex)
+{
+  unsigned short i;
+  unsigned char j;
+
+  for (i = 0; i<HASHLEN; i++)
+    {
+      j = (bin[i] >> 4) & 0xf;
+      if (j <= 9)
+	{
+	  hex[i * 2] = (j + '0');
+	} else {
+	  hex[i * 2] = (j + 'a' - 10);
+	}
+
+      j = bin[i] & 0xf;
+
+      if (j <= 9)
+	{
+	  hex[i * 2 + 1] = (j + '0');
+	} else {
+	  hex[i * 2 + 1] = (j + 'a' - 10);
+	}
+    };
+
+  hex[HASHHEXLEN] = '\0';
+}
+
+/** get an MD5 hash of a string */
+string calculateMD5(const string& input) {
+  MD5_CTX Md5Ctx;
+  HASH H;
+  HASHHEX HH;
+
+  MD5Init(&Md5Ctx);
+  MD5Update(&Md5Ctx, (unsigned char*)input.c_str(), input.length());
+  MD5Final(H, &Md5Ctx);
+  cvt_hex(H, HH);
+  return string((const char*)HH);
 }

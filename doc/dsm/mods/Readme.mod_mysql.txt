@@ -10,7 +10,6 @@ Actions:
 =======
 -- connect connection
  
-
  mysql.connect([db_url])
   - sets $errno if error occured (arg,) and
    $db.ereason
@@ -91,6 +90,16 @@ Actions:
 
   filename is there to detect file type
 
+-- play a file from DB, looped 
+  mysql.playDBAudioLooped(string query, string filename)
+
+  filename is there to detect file type
+
+-- play a file from DB, at the front in the playlist 
+  mysql.playDBAudioFront(string query, string filename)
+
+  filename is there to detect file type
+
 -- get a file from DB to local fs
   mysql.getFileFromDB(string query, string filename)
 
@@ -100,6 +109,17 @@ Actions:
   __FILE__ in query is replaced with the contents of the file at 'filename'
 
   sets $db.rows, $db.info, $db.insert_id
+
+ -- escape:
+ mysql.escape($dstvar=$src);
+
+  save SQL-escaped version of $src in $dstvar, taking into account default
+  character set of connected DB server. A connection to MySQL server must be
+  established!
+
+  examples:
+     mysql.escape($safe_user=@user);
+
 
 Conditions
 ==========

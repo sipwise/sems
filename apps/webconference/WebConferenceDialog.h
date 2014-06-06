@@ -32,7 +32,7 @@
 #include "AmConferenceChannel.h"
 #include "AmPlaylist.h"
 #include "AmPromptCollection.h"
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 #include "AmRingTone.h"
 
 class WebConferenceFactory;
@@ -43,7 +43,7 @@ class WebConferenceDialog
 {
 public:
   enum WebConferenceState {
-    None,
+    None = 0,
     EnteringPin,
     EnteringConference,
     InConference,
@@ -86,6 +86,12 @@ private:
   // ID from X-ParticipantID header
   string participant_id;
 
+  AmAudio *local_input;
+  void setLocalInput(AmAudio* in);
+
+  /** flag to indicate whether user was joined by anyone in the room */
+  bool lonely_user;
+
 public:
   WebConferenceDialog(AmPromptCollection& prompts,
 		      WebConferenceFactory* my_f, 
@@ -96,10 +102,14 @@ public:
   ~WebConferenceDialog();
 
   void process(AmEvent* ev);
-  void onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method);
-  void onSessionStart(const AmSipRequest& req);
-  void onSessionStart(const AmSipReply& rep);
-  void onEarlySessionStart(const AmSipReply& rep);
+  void onSipReply(const AmSipRequest& req,
+		  const AmSipReply& reply, 
+		  AmBasicSipDialog::Status old_dlg_status);
+
+  void onInvite(const AmSipRequest& req);
+
+  void onSessionStart();
+  void onEarlySessionStart();
   void onRinging(const AmSipReply& rep);
 
   void onDtmf(int event, int duration);
@@ -110,6 +120,10 @@ public:
 
   UACAuthCred* getCredentials() { return cred; }
 
+  // overriden media processing (local_input)
+  virtual int readStreams(unsigned long long ts, unsigned char *buffer);
+  virtual bool isAudioSet();
+  virtual void clearAudio();
 };
 
 #endif

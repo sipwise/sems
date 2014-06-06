@@ -58,6 +58,13 @@ using std::map;
 #define DSM_ENABLE_REQUEST_EVENTS  "enable_request_events"
 #define DSM_ENABLE_REPLY_EVENTS    "enable_reply_events"
 
+#define DSM_B2B_RELAYED_INVITE     "b2b_relayed_invite"
+#define DSM_B2B_LOCAL_PARTY  "b2b_local_party" // From in outgoing call
+#define DSM_B2B_LOCAL_URI    "b2b_local_uri"
+#define DSM_B2B_AUTH_USER    "b2b_auth_user"
+#define DSM_B2B_AUTH_PWD     "b2b_auth_pwd"
+
+#define DSM_B2B_CALLID       "b2b_callid"
 
 #define DSM_AVAR_REQUEST "request"
 #define DSM_AVAR_REPLY   "reply"
@@ -65,6 +72,8 @@ using std::map;
 #define DSM_AVAR_JSONRPCREQUESTDATA "JsonRpcRequestParameters"
 #define DSM_AVAR_JSONRPCRESPONSEDATA "JsonRpcResponseParameters"
 #define DSM_AVAR_JSONRPCRESPONSEUDATA "JsonRpcResponseUData"
+
+#define DSM_AVAR_SIPSUBSCRIPTION_BODY "SipSubscriptionBody"
 
 #define DSM_ERRNO_FILE        "file"
 #define DSM_ERRNO_UNKNOWN_ARG "arg"
@@ -100,8 +109,9 @@ class DSMSession {
   DSMSession();
   virtual ~DSMSession();
 
-  virtual void playPrompt(const string& name, bool loop = false) = 0;
+  virtual void playPrompt(const string& name, bool loop = false, bool front = false) = 0;
   virtual void playFile(const string& name, bool loop, bool front = false) = 0;
+  virtual void playSilence(unsigned int length, bool front = false) = 0;
   virtual void recordFile(const string& name) = 0;
   virtual unsigned int getRecordLength() = 0;
   virtual unsigned int getRecordDataSize() = 0;
@@ -110,8 +120,8 @@ class DSMSession {
   virtual void setInputPlaylist() = 0;
   virtual void setOutputPlaylist() = 0;
 
-  virtual void addToPlaylist(AmPlaylistItem* item) = 0;
-  virtual void closePlaylist(bool notify) = 0;
+  virtual void addToPlaylist(AmPlaylistItem* item, bool front = false) = 0;
+  virtual void flushPlaylist() = 0;
   virtual void setPromptSet(const string& name) = 0;
   virtual void addSeparator(const string& name, bool front = false) = 0;
   virtual void connectMedia() = 0;
@@ -128,14 +138,20 @@ class DSMSession {
   /** insert request in list of received ones */
   virtual void B2BaddReceivedRequest(const AmSipRequest& req) = 0;
 
+  /** enable early media relay as reinvite */
+  virtual void B2BsetRelayEarlyMediaSDP(bool enabled) = 0;
+
   /** set headers of outgoing INVITE */
   virtual void B2BsetHeaders(const string& hdr, bool replaceCRLF) = 0;
 
   /** set headers of outgoing INVITE */
   virtual void B2BclearHeaders() = 0;
 
-  /** add a header to the headers of outgoing INVITE */
+  /** add a header to the headers of the outgoing INVITE */
   virtual void B2BaddHeader(const string& hdr) = 0;
+
+  /** remove a header to the headers of the outgoing INVITE */
+  virtual void B2BremoveHeader(const string& hdr) = 0;
 
   /** transfer ownership of object to this session instance */
   virtual void transferOwnership(DSMDisposable* d) = 0;
@@ -182,7 +198,7 @@ class DSMDisposableAudioFile
 };
 
 class DSMSipRequest
-: public ArgObject {
+: public AmObject {
  public: 
   const AmSipRequest* req;
 
@@ -191,8 +207,18 @@ class DSMSipRequest
   ~DSMSipRequest() { }
 };
 
+class DSMMutableSipRequest
+: public DSMSipRequest {
+ public:
+  AmSipRequest* mutable_req;
+
+  DSMMutableSipRequest(AmSipRequest* req)
+    : DSMSipRequest(req), mutable_req(req) { }
+  ~DSMMutableSipRequest() { }
+};
+
 class DSMSipReply
-: public ArgObject {
+: public AmObject {
  public: 
   const AmSipReply* reply;
 
@@ -201,6 +227,15 @@ class DSMSipReply
   ~DSMSipReply() { }
 };
 
+class DSMMutableSipReply
+: public DSMSipReply {
+ public:
+  AmSipReply* mutable_reply;
+
+  DSMMutableSipReply(AmSipReply* reply)
+    : DSMSipReply(reply), mutable_reply(reply) { }
+  ~DSMMutableSipReply() { }
+};
 
 #define DSM_EVENT_ID -10
 /**  generic event for passing events between DSM sessions */

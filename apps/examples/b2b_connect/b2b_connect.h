@@ -29,7 +29,7 @@
 #define _B2B_CONNECT_H
 
 #include "AmB2ABSession.h"
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 
 using std::string;
 
@@ -40,7 +40,8 @@ class b2b_connectFactory: public AmSessionFactory
   b2b_connectFactory(const string& _app_name);
   
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
 
   static bool TransparentHeaders; // default
   static bool TransparentDestination; // default
@@ -62,13 +63,13 @@ class b2b_connectDialog : public AmB2ABCallerSession
   b2b_connectDialog();
   ~b2b_connectDialog();
   
-  void onSessionStart(const AmSipRequest& req);
+  void onSessionStart();
   void onB2ABEvent(B2ABEvent* ev);
   void process(AmEvent* ev);
   void onDtmf(int event, int duration);
   void onBye(const AmSipRequest& req);
   void onInvite(const AmSipRequest& req);
-  void onCancel();
+  void onCancel(const AmSipRequest& req);
   
 
  protected:
@@ -83,8 +84,7 @@ class b2b_connectCalleeSession
   AmSipRequest invite_req;
 
  protected:
-  void onSipReply(const AmSipReply& reply, int old_dlg_status,
-		  const string& trans_method);
+  void onSipReply(const AmSipReply& reply, AmSipDialog::Status old_dlg_status);
  
 public:
   b2b_connectCalleeSession(const string& other_tag, 

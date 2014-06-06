@@ -35,8 +35,10 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <list>
 using std::string;
 using std::vector;
+using std::list;
 
 class AmPluginFactory;
 class AmSessionFactory;
@@ -44,6 +46,7 @@ class AmSessionEventHandlerFactory;
 class AmDynInvokeFactory;
 class AmLoggingFacility;
 class AmSipRequest;
+struct SdpPayload;
 
 struct amci_exports_t;
 struct amci_codec_t;
@@ -52,45 +55,45 @@ struct amci_inoutfmt_t;
 struct amci_subtype_t;
 
 /** Interface that a payload provider needs to implement */
-class AmPayloadProviderInterface {
+class AmPayloadProvider {
  public: 
-  AmPayloadProviderInterface() { }
-  virtual ~AmPayloadProviderInterface() { }
+  AmPayloadProvider() { }
+  virtual ~AmPayloadProvider() { }
   
   /** 
    * Payload lookup function.
    * @param payload_id Payload ID.
    * @return NULL if failed .
    */
-  virtual amci_payload_t*  payload(int payload_id) = 0;
+  virtual amci_payload_t*  payload(int payload_id) const = 0;
 
   /** 
    * Payload lookup function by name & rate
    * @param name Payload ID.
    * @return -1 if failed, else the internal payload id.
    */
-  virtual int getDynPayload(const string& name, int rate, int encoding_param) = 0;
+  virtual int getDynPayload(const string& name, int rate, int encoding_param) const = 0;
+  
+  /**
+   * List all the payloads available for a media type
+   */
+  virtual void getPayloads(vector<SdpPayload>& pl_vec) const = 0;
 };
 
 /**
  * \brief Container for loaded Plug-ins.
  */
-class AmPlugIn : public AmPayloadProviderInterface
+class AmPlugIn : public AmPayloadProvider
 {
- public:
-  //     enum PlugInType {
-  //       Audio,
-  //       App
-  //     };
-
  private:
   static AmPlugIn* _instance;
 
+  std::set<string>                  rtld_global_plugins;
   vector<void*> dlls;
 
   std::map<int,amci_codec_t*>       codecs;
   std::map<int,amci_payload_t*>     payloads;
-  std::map<int,int>                 payload_order;
+  std::multimap<int,int>            payload_order;
   std::map<string,amci_inoutfmt_t*> file_formats;
 
   std::map<string,AmSessionFactory*>             name2app;
@@ -101,6 +104,8 @@ class AmPlugIn : public AmPayloadProviderInterface
   std::map<string,AmDynInvokeFactory*>           name2di;
   std::map<string,AmLoggingFacility*>            name2logfac;
 
+  std::map<string,AmPluginFactory*>             module_objects;
+
   //AmCtrlInterfaceFactory *ctrlIface;
 
   int dynamic_pl; // range: 96->127, see RFC 1890
@@ -110,7 +115,7 @@ class AmPlugIn : public AmPayloadProviderInterface
   virtual ~AmPlugIn();
 
   /** @return -1 if failed, else 0. */
-  int loadPlugIn(const string& file);
+  int loadPlugIn(const string& file, const string& plugin_name, vector<AmPluginFactory*>& plugins);
 
   int loadAudioPlugIn(amci_exports_t* exports);
   int loadAppPlugIn(AmPluginFactory* cb);
@@ -119,11 +124,14 @@ class AmPlugIn : public AmPayloadProviderInterface
   int loadDiPlugIn(AmPluginFactory* cb);
   int loadLogFacPlugIn(AmPluginFactory* f);
 
+  int initLoggingModules();
  public:
 
   int addCodec(amci_codec_t* c);
   int addPayload(amci_payload_t* p);
   int addFileFormat(amci_inoutfmt_t* f);
+
+  void set_load_rtld_global(const string& plugin_name);
 
   static AmPlugIn* instance();
   static void dispose();
@@ -136,25 +144,29 @@ class AmPlugIn : public AmPayloadProviderInterface
    */
   int load(const string& directory, const string& plugins);
 
+  /** register logging plugins to receive logging messages */
+  void registerLoggingPlugins();
+
   /** 
    * Payload lookup function.
    * @param payload_id Payload ID.
    * @return NULL if failed .
    */
-  amci_payload_t*  payload(int payload_id);
+  amci_payload_t*  payload(int payload_id) const;
 
   /** 
    * Payload lookup function by name & rate
    * @param name Payload ID.
    * @return -1 if failed, else the internal payload id.
    */
-  int getDynPayload(const string& name, int rate, int encoding_param);
+  int getDynPayload(const string& name, int rate, int encoding_param) const;
+
+  /** return 0, or -1 in case of error. */
+  void getPayloads(vector<SdpPayload>& pl_vec) const;
 
   /** @return the suported payloads. */
-  const std::map<int,amci_payload_t*>& getPayloads() { return payloads; }
 
   /** @return the order of payloads. */
-  const std::map<int,int>& getPayloadOrder() { return payload_order; }
 
   /** 
    * File format lookup according to the 
@@ -224,7 +236,7 @@ class AmPlugIn : public AmPayloadProviderInterface
    * Find the proper SessionFactory
    * for the given request.
    */
-  AmSessionFactory* findSessionFactory(AmSipRequest& req);
+  AmSessionFactory* findSessionFactory(const AmSipRequest& req, string& app_name);
 
   /**
    * Session event handler lookup function

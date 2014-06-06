@@ -55,9 +55,9 @@ void AmDtmfEventQueue::processEvents()
   AmEventQueue::processEvents();
 }
 
-void AmDtmfEventQueue::putDtmfAudio(const unsigned char *buf, int size, int user_ts)
+void AmDtmfEventQueue::putDtmfAudio(const unsigned char *buf, int size, unsigned long long system_ts)
 {
-  m_detector->putDtmfAudio(buf, size, user_ts);
+  m_detector->putDtmfAudio(buf, size, system_ts);
 }
 
 //
@@ -176,8 +176,8 @@ void AmSipDtmfDetector::process(AmSipDtmfEvent *evt)
 //
 // AmDtmfDetector methods
 //
-AmDtmfDetector::AmDtmfDetector(AmSession *session)
-  : m_session(session), m_rtpDetector(this),
+AmDtmfDetector::AmDtmfDetector(AmDtmfSink *dtmf_sink)
+  : m_dtmfSink(dtmf_sink), m_rtpDetector(this),
     m_sipDetector(this),
     m_eventPending(false), m_sipEventReceived(false),
     m_inbandEventReceived(false), m_rtpEventReceived(false),
@@ -185,21 +185,21 @@ AmDtmfDetector::AmDtmfDetector(AmSession *session)
     m_currentEvent(-1),
     m_current_eventid_i(false)
 {
-#ifndef USE_SPANDSP
-  setInbandDetector(Dtmf::SEMSInternal);
-#else
-  setInbandDetector(AmConfig::DefaultDTMFDetector);
-#endif
+  //#ifndef USE_SPANDSP
+  //  setInbandDetector(Dtmf::SEMSInternal, m_session->RTPStream()->getSampleRate());
+  //#else
+  //  setInbandDetector(AmConfig::DefaultDTMFDetector, m_session->RTPStream()->getSampleRate());
+  //#endif
 }
 
-void AmDtmfDetector::setInbandDetector(Dtmf::InbandDetectorType t) {
+void AmDtmfDetector::setInbandDetector(Dtmf::InbandDetectorType t, int sample_rate) {
 #ifndef USE_SPANDSP
   if (t == Dtmf::SpanDSP) {
     ERROR("trying to use spandsp DTMF detector without support for it"
 	  "recompile with -D USE_SPANDSP\n");
   }
   if (!m_inbandDetector.get())
-    m_inbandDetector.reset(new AmSemsInbandDtmfDetector(this));
+    m_inbandDetector.reset(new AmSemsInbandDtmfDetector(this, sample_rate));
 
   return;
 #else
@@ -207,10 +207,10 @@ void AmDtmfDetector::setInbandDetector(Dtmf::InbandDetectorType t) {
   if ((t != m_inband_type) || (!m_inbandDetector.get())) {
     if (t == Dtmf::SEMSInternal) {
       DBG("Setting internal DTMF detector\n");
-      m_inbandDetector.reset(new AmSemsInbandDtmfDetector(this));
+      m_inbandDetector.reset(new AmSemsInbandDtmfDetector(this, sample_rate));
     } else { // if t == SpanDSP
       DBG("Setting spandsp DTMF detector\n");
-      m_inbandDetector.reset(new AmSpanDSPInbandDtmfDetector(this));
+      m_inbandDetector.reset(new AmSpanDSPInbandDtmfDetector(this, sample_rate));
     }
     m_inband_type = t;
   }
@@ -273,8 +273,14 @@ void AmDtmfDetector::registerKeyReleased(int event, Dtmf::EventSource source,
     m_current_eventid = event_id;
   }
 
-  memcpy(&m_startTime, &start, sizeof(struct timeval));
-  memcpy(&m_lastReportTime, &stop, sizeof(struct timeval));
+  if(timercmp(&start,&stop,<)){
+    memcpy(&m_startTime, &start, sizeof(struct timeval));
+    memcpy(&m_lastReportTime, &stop, sizeof(struct timeval));
+  }
+  else {
+    memcpy(&m_startTime, &stop, sizeof(struct timeval));
+    memcpy(&m_lastReportTime, &start, sizeof(struct timeval));
+  }
   switch (source)
     {
     case Dtmf::SOURCE_SIP:
@@ -366,7 +372,7 @@ void AmDtmfDetector::reportEvent()
 
   long duration = (m_lastReportTime.tv_sec - m_startTime.tv_sec) * 1000 +
     (m_lastReportTime.tv_usec - m_startTime.tv_usec) / 1000;
-  m_session->postDtmfEvent(new AmDtmfEvent(m_currentEvent, duration));
+  m_dtmfSink->postDtmfEvent(new AmDtmfEvent(m_currentEvent, duration));
   m_eventPending = false;
   m_sipEventReceived = false;
   m_rtpEventReceived = false;
@@ -376,9 +382,13 @@ void AmDtmfDetector::reportEvent()
   m_reportLock.unlock();
 }
 
-void AmDtmfDetector::putDtmfAudio(const unsigned char *buf, int size, int user_ts)
+void AmDtmfDetector::putDtmfAudio(const unsigned char *buf, int size, unsigned long long system_ts)
 {
-  m_inbandDetector->streamPut(buf, size, user_ts);
+  if (m_inbandDetector.get()) {
+    m_inbandDetector->streamPut(buf, size, system_ts);
+  } else {
+    DBG("warning: trying to put DTMF into non-initialized DTMF detector\n");
+  }
 }
 
 // AmRtpDtmfDetector methods
@@ -539,12 +549,12 @@ static char dtmf_matrix[4][4] =
     {'*', '0', '#', 'D'}
   };
 
-AmSemsInbandDtmfDetector::AmSemsInbandDtmfDetector(AmKeyPressSink *keysink)
+AmSemsInbandDtmfDetector::AmSemsInbandDtmfDetector(AmKeyPressSink *keysink, int sample_rate)
   : AmInbandDtmfDetector(keysink),
     m_last(' '),
     m_idx(0),
     m_count(0),
-    SAMPLERATE(SYSTEM_SAMPLERATE)
+    SAMPLERATE(sample_rate)
 {
   /* precalculate 2 * cos (2 PI k / N) */
   for(unsigned i = 0; i < NELEMSOF(rel_cos2pik); i++) {
@@ -653,7 +663,8 @@ void AmSemsInbandDtmfDetector::isdn_audio_eval_dtmf_relative()
 	if (what != m_last)
 	  {
 	    m_startTime.tv_sec = m_last_ts / SAMPLERATE;
-	    m_startTime.tv_usec = (m_last_ts * 1000 / SAMPLERATE) % 1000;
+	    m_startTime.tv_usec = ((m_last_ts * 10000) / (SAMPLERATE/100)) 
+	      % 1000000;
 	  }
       } else
 	what = '.';
@@ -674,7 +685,7 @@ void AmSemsInbandDtmfDetector::isdn_audio_eval_dtmf_relative()
         {
 	  struct timeval stop;
 	  stop.tv_sec = m_last_ts / SAMPLERATE;
-	  stop.tv_usec = (m_last_ts * 1000 / SAMPLERATE) % 1000;
+	  stop.tv_usec = ((m_last_ts * 10000) / (SAMPLERATE/100)) % 1000000;
 	  m_keysink->registerKeyReleased(m_lastCode, Dtmf::SOURCE_INBAND, m_startTime, stop);
         }
       m_count = 0;
@@ -710,15 +721,19 @@ void AmSemsInbandDtmfDetector::isdn_audio_calc_dtmf(const signed short* buf, int
   }
 }
 
-int AmSemsInbandDtmfDetector::streamPut(const unsigned char* samples, unsigned int size, unsigned int user_ts)
+int AmSemsInbandDtmfDetector::streamPut(const unsigned char* samples, unsigned int size, unsigned long long system_ts)
 {
-  isdn_audio_calc_dtmf((const signed short *)samples, size / 2, user_ts);
+  unsigned long long user_ts =
+    system_ts * ((unsigned long long)SAMPLERATE / 100)
+    / (WALLCLOCK_RATE / 100);
+
+  isdn_audio_calc_dtmf((const signed short *)samples, size / 2, (unsigned int)user_ts);
   return size;
 }
 
 #ifdef USE_SPANDSP
 
-AmSpanDSPInbandDtmfDetector::AmSpanDSPInbandDtmfDetector(AmKeyPressSink *keysink)
+AmSpanDSPInbandDtmfDetector::AmSpanDSPInbandDtmfDetector(AmKeyPressSink *keysink, int sample_rate)
   : AmInbandDtmfDetector(keysink) 
 {
 #ifdef HAVE_OLD_SPANDSP_CALLBACK
@@ -747,7 +762,7 @@ AmSpanDSPInbandDtmfDetector::~AmSpanDSPInbandDtmfDetector() {
 #endif
 }
 
-int AmSpanDSPInbandDtmfDetector::streamPut(const unsigned char* samples, unsigned int size, unsigned int user_ts) {
+int AmSpanDSPInbandDtmfDetector::streamPut(const unsigned char* samples, unsigned int size, unsigned long long system_ts) {
   dtmf_rx(rx_state, (const int16_t*) samples, size/2);
   return size;
 }

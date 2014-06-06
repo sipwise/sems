@@ -33,6 +33,7 @@
 #include "AmUtils.h"
 #include "AmEventDispatcher.h"
 #include "DSM.h"
+#include "AmB2BSession.h"
 
 #include "jsonArg.h"
 
@@ -55,18 +56,29 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("stop", SCStopAction);
 
   DEF_CMD("playPrompt", SCPlayPromptAction);
+  DEF_CMD("playPromptFront", SCPlayPromptFrontAction);
   DEF_CMD("playPromptLooped", SCPlayPromptLoopedAction);
   DEF_CMD("playFile", SCPlayFileAction);
   DEF_CMD("playFileFront", SCPlayFileFrontAction);
+  DEF_CMD("playSilence", SCPlaySilenceAction);
+  DEF_CMD("playSilenceFront", SCPlaySilenceFrontAction);
   DEF_CMD("recordFile", SCRecordFileAction);
   DEF_CMD("stopRecord", SCStopRecordAction);
   DEF_CMD("getRecordLength", SCGetRecordLengthAction);
   DEF_CMD("getRecordDataSize", SCGetRecordDataSizeAction);
-  DEF_CMD("closePlaylist", SCClosePlaylistAction);
+  DEF_CMD("flushPlaylist", SCFlushPlaylistAction);
+  DEF_CMD("closePlaylist", SCClosePlaylistAction); // deprecated
   DEF_CMD("setInOutPlaylist", SCSetInOutPlaylistAction);
+  DEF_CMD("setInputPlaylist", SCSetInputPlaylistAction);
+  DEF_CMD("setOutputPlaylist", SCSetOutputPlaylistAction);
   DEF_CMD("addSeparator", SCAddSeparatorAction);
   DEF_CMD("connectMedia", SCConnectMediaAction);
   DEF_CMD("disconnectMedia", SCDisconnectMediaAction);
+  DEF_CMD("enableReceiving", SCEnableReceivingAction);
+  DEF_CMD("disableReceiving", SCDisableReceivingAction);
+  DEF_CMD("enableForceDTMFReceiving", SCEnableForceDTMFReceiving);
+  DEF_CMD("disableForceDTMFReceiving", SCDisableForceDTMFReceiving);
+  DEF_CMD("monitorRTPTimeout", SCMonitorRTPTimeoutAction);
   DEF_CMD("mute", SCMuteAction);
   DEF_CMD("unmute", SCUnmuteAction);
   DEF_CMD("enableDTMFDetection", SCEnableDTMFDetection);
@@ -119,9 +131,16 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("B2B.connectCallee", SCB2BConnectCalleeAction);
   DEF_CMD("B2B.terminateOtherLeg", SCB2BTerminateOtherLegAction);
   DEF_CMD("B2B.sendReinvite", SCB2BReinviteAction);
+  DEF_CMD("B2B.enableEarlyMediaRelay", SCB2BEnableEarlyMediaRelayAction);
   DEF_CMD("B2B.addHeader", SCB2BAddHeaderAction);
+  DEF_CMD("B2B.removeHeader", SCB2BRemoveHeaderAction);
   DEF_CMD("B2B.clearHeaders", SCB2BClearHeadersAction);
   DEF_CMD("B2B.setHeaders", SCB2BSetHeadersAction);
+  DEF_CMD("B2B.relayEvent", SCRelayB2BEventAction);
+
+  DEF_CMD("trackObject", SCTrackObjectAction);
+  DEF_CMD("releaseObject", SCReleaseObjectAction);
+  DEF_CMD("freeObject", SCFreeObjectAction);
 
   return NULL;
 }
@@ -160,8 +179,14 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
   if ((cmd == "eventTest") || (cmd == "event"))
     return new TestDSMCondition(params, DSMCondition::DSMEvent);  
 
+  if (cmd == "B2Bevent")
+    return new TestDSMCondition(params, DSMCondition::B2BEvent);
+
   if (cmd == "invite") 
     return new TestDSMCondition(params, DSMCondition::Invite);  
+
+  if (cmd == "earlySession")
+    return new TestDSMCondition(params, DSMCondition::EarlySession);
 
   if (cmd == "sessionStart") 
     return new TestDSMCondition(params, DSMCondition::SessionStart);  
@@ -175,6 +200,9 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
   if (cmd == "failed") 
     return new TestDSMCondition(params, DSMCondition::FailedCall);  
 
+  if (cmd == "B2B.otherRequest")
+    return new TestDSMCondition(params, DSMCondition::B2BOtherRequest);
+
   if (cmd == "B2B.otherReply") 
     return new TestDSMCondition(params, DSMCondition::B2BOtherReply);  
 
@@ -187,14 +215,29 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
   if (cmd == "sipReply") 
     return new TestDSMCondition(params, DSMCondition::SipReply);  
 
+  if (cmd == "remoteDisappeared") 
+    return new TestDSMCondition(params, DSMCondition::RemoteDisappeared);  
+
+  if (cmd == "sessionTimeout")
+    return new TestDSMCondition(params, DSMCondition::SessionTimeout);
+
+  if (cmd == "rtpTimeout")
+    return new TestDSMCondition(params, DSMCondition::RtpTimeout);
+
   if (cmd == "jsonRpcRequest") 
     return new TestDSMCondition(params, DSMCondition::JsonRpcRequest);  
 
   if (cmd == "jsonRpcResponse") 
     return new TestDSMCondition(params, DSMCondition::JsonRpcResponse);  
 
+  if (cmd == "subscription")
+    return new TestDSMCondition(params, DSMCondition::SIPSubscription);
+
   if (cmd == "startup")
     return new TestDSMCondition(params, DSMCondition::Startup);
+
+  if (cmd == "start")
+    return new TestDSMCondition(params, DSMCondition::Start);
 
   if (cmd == "reload")
     return new TestDSMCondition(params, DSMCondition::Reload);
@@ -202,11 +245,18 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
   if (cmd == "system")
     return new TestDSMCondition(params, DSMCondition::System);
 
+  if (cmd == "rtpTimeout")
+    return new TestDSMCondition(params, DSMCondition::RTPTimeout);
+
   return NULL;
 }
 
 EXEC_ACTION_START(SCPlayPromptAction) {
   sc_sess->playPrompt(resolveVars(arg, sess, sc_sess, event_params));
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCPlayPromptFrontAction) {
+  sc_sess->playPrompt(resolveVars(arg, sess, sc_sess, event_params), false, true);
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCSetPromptsAction) {
@@ -223,39 +273,46 @@ EXEC_ACTION_START(SCPlayPromptLoopedAction){
   sc_sess->playPrompt(resolveVars(arg, sess, sc_sess, event_params), true);
 } EXEC_ACTION_END;
 
+void setEventParameters(const DSMSession* sc_sess, const string& var, VarMapT& params) {
+  if (var.empty())
+    return;
+
+  if (var == "var") {
+    params = sc_sess->var;
+  } else {
+    vector<string> vars = explode(var, ";");
+    for (vector<string>::iterator it = vars.begin(); it != vars.end(); it++) {
+      string varname = *it;
+
+      if (varname.length() && varname[varname.length()-1]=='.') {
+	DBG("adding postEvent param %s (struct)\n", varname.c_str());
+	
+	map<string, string>::const_iterator lb = sc_sess->var.lower_bound(varname);
+	while (lb != sc_sess->var.end()) {
+	  if ((lb->first.length() < varname.length()) ||
+	      strncmp(lb->first.c_str(), varname.c_str(), varname.length()))
+	    break;
+	  params[lb->first] = lb->second;
+	  lb++;
+	}
+      } else {
+	VarMapT::const_iterator v_it = sc_sess->var.find(varname);
+	if (v_it != sc_sess->var.end()) {
+	  DBG("adding postEvent param %s=%s\n",
+	      it->c_str(), v_it->second.c_str());
+	  params[varname] = v_it->second;
+	}
+      }
+    }
+  }
+}
+
 CONST_ACTION_2P(SCPostEventAction, ',', true);
 EXEC_ACTION_START(SCPostEventAction){
   string sess_id = resolveVars(par1, sess, sc_sess, event_params);
   string var = resolveVars(par2, sess, sc_sess, event_params);
   DSMEvent* ev = new DSMEvent();
-  if (!var.empty()) {
-    if (var == "var")
-      ev->params = sc_sess->var;
-    else {
-      vector<string> vars = explode(var, ";");
-      for (vector<string>::iterator it =
-	     vars.begin(); it != vars.end(); it++) {
-	string varname = *it;
-
-	if (varname.length() && varname[varname.length()-1]=='.') {
-	  DBG("adding postEvent param %s (struct)\n", varname.c_str());
-	
-	  map<string, string>::iterator lb = sc_sess->var.lower_bound(varname);
-	  while (lb != sc_sess->var.end()) {
-	    if ((lb->first.length() < varname.length()) ||
-		strncmp(lb->first.c_str(), varname.c_str(), varname.length()))
-	      break;
-	    ev->params[lb->first] = lb->second;
-	    lb++;
-	  }
-	} else {
-	  DBG("adding postEvent param %s=%s\n",
-	      it->c_str(), sc_sess->var[*it].c_str());
-	  ev->params[*it] = sc_sess->var[*it];
-	}
-      }
-    }
-  }
+  setEventParameters(sc_sess, var, ev->params);
 
   DBG("posting event to session '%s'\n", sess_id.c_str());
   if (!AmSessionContainer::instance()->postEvent(sess_id, ev)) {
@@ -264,6 +321,20 @@ EXEC_ACTION_START(SCPostEventAction){
   } else {
     sc_sess->CLR_ERRNO;
   }
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCRelayB2BEventAction) {
+  AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
+  if (NULL == b2b_sess) {
+    throw DSMException("script", "cause", "relayEvent used without B2B call");
+  }
+
+  string var = resolveVars(arg, sess, sc_sess, event_params);
+  B2BEvent* ev = new B2BEvent(E_B2B_APP, B2BEvent::B2BApplication);
+  setEventParameters(sc_sess, var, ev->params);
+
+  b2b_sess->relayEvent(ev);
+
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCPlayFileAction, ',', true);
@@ -282,6 +353,24 @@ EXEC_ACTION_START(SCPlayFileFrontAction) {
   DBG("par1 = '%s', par2 = %s\n", par1.c_str(), par2.c_str());
   sc_sess->playFile(resolveVars(par1, sess, sc_sess, event_params), 
 		    loop, true);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCPlaySilenceAction) {
+  int length;
+  string length_str = resolveVars(arg, sess, sc_sess, event_params);
+  if (!str2int(length_str, length)) {
+    throw DSMException("core", "cause", "cannot parse number");
+  }
+  sc_sess->playSilence(length);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCPlaySilenceFrontAction) {
+  int length;
+  string length_str = resolveVars(arg, sess, sc_sess, event_params);
+  if (!str2int(length_str, length)) {
+    throw DSMException("core", "cause", "cannot parse number");
+  }
+  sc_sess->playSilence(length, true);
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCRecordFileAction) {
@@ -306,15 +395,26 @@ EXEC_ACTION_START(SCGetRecordDataSizeAction) {
   sc_sess->var[varname]=int2str(sc_sess->getRecordDataSize());
 } EXEC_ACTION_END;
 
+EXEC_ACTION_START(SCFlushPlaylistAction) {
+  sc_sess->flushPlaylist();
+} EXEC_ACTION_END;
+
 EXEC_ACTION_START(SCClosePlaylistAction) {
-  bool notify = 
-    resolveVars(arg, sess, sc_sess, event_params) == "true";
-  sc_sess->closePlaylist(notify);
+  WARN("closePlaylist() is deprecated - please use flushPlaylist() instead\n");
+  sc_sess->flushPlaylist();
 } EXEC_ACTION_END;
 
 
 EXEC_ACTION_START(SCSetInOutPlaylistAction) {
   sc_sess->setInOutPlaylist();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCSetInputPlaylistAction) {
+  sc_sess->setInputPlaylist();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCSetOutputPlaylistAction) {
+  sc_sess->setOutputPlaylist();
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCConnectMediaAction) {
@@ -323,6 +423,32 @@ EXEC_ACTION_START(SCConnectMediaAction) {
 
 EXEC_ACTION_START(SCDisconnectMediaAction) {
   sc_sess->disconnectMedia();
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCEnableReceivingAction) {
+  DBG("enabling RTP receving in session\nb");
+  sess->setReceiving(true);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCDisableReceivingAction) {
+  DBG("disabling RTP receving in session\nb");
+  sess->setReceiving(false);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCEnableForceDTMFReceiving) {
+  DBG("enabling forced DTMF RTP receving in session\nb");
+  sess->setForceDtmfReceiving(true);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCDisableForceDTMFReceiving) {
+  DBG("disabling forced DTMF RTP receving in session\nb");
+  sess->setForceDtmfReceiving(false);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCMonitorRTPTimeoutAction) {
+  string e = resolveVars(arg, sess, sc_sess, event_params);
+  DBG("setting RTP stream to %smonitor RTP timeout\n", e=="true"?"":"not");
+  sess->RTPStream()->setMonitorRTPTimeout(e=="true");
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMuteAction) {
@@ -382,7 +508,7 @@ EXEC_ACTION_START(SCThrowOnErrorAction) {
 EXEC_ACTION_START(SCStopAction) {
   if (resolveVars(arg, sess, sc_sess, event_params) == "true") {
     DBG("sending bye\n");
-    sess->dlg.bye();
+    sess->dlg->bye();
   }
   sess->setStopped();
 } EXEC_ACTION_END;
@@ -509,7 +635,9 @@ void log_selects(const string& l_arg, AmSession* sess,
   SELECT_LOG("remote_tag");
   SELECT_LOG("callid");
   SELECT_LOG("local_uri");
+  SELECT_LOG("local_party");
   SELECT_LOG("remote_uri");
+  SELECT_LOG("remote_party");
 #undef SELECT_LOG
   _LOG((int)lvl, "FSM: selects end ---\n");
 }
@@ -1201,7 +1329,13 @@ CONST_ACTION_2P(SCB2BConnectCalleeAction,',', false);
 EXEC_ACTION_START(SCB2BConnectCalleeAction) {  
   string remote_party = resolveVars(par1, sess, sc_sess, event_params);
   string remote_uri = resolveVars(par2, sess, sc_sess, event_params);
-  sc_sess->B2BconnectCallee(remote_party, remote_uri);
+  bool relayed_invite = false;
+  VarMapT::iterator it = sc_sess->var.find(DSM_B2B_RELAYED_INVITE);
+  if (it != sc_sess->var.end() && it->second == "true")
+    relayed_invite = true;
+  DBG("B2B connecting callee '%s', URI '%s', relayed: %s\n",
+      remote_party.c_str(), remote_uri.c_str(), relayed_invite?"yes":"no");
+  sc_sess->B2BconnectCallee(remote_party, remote_uri, relayed_invite);
 } EXEC_ACTION_END;
  
 EXEC_ACTION_START(SCB2BTerminateOtherLegAction) {
@@ -1214,10 +1348,22 @@ EXEC_ACTION_START(SCB2BReinviteAction) {
   sess->sendReinvite(updateSDP, par2);
 } EXEC_ACTION_END;
 
+EXEC_ACTION_START(SCB2BEnableEarlyMediaRelayAction) {
+  string val = resolveVars(arg, sess, sc_sess, event_params);
+  DBG("B2B: %sabling early media SDP relay as re-Invite\n", (val=="true")?"En":"Dis");
+  sc_sess->B2BsetRelayEarlyMediaSDP(val=="true");
+} EXEC_ACTION_END;
+
 EXEC_ACTION_START(SCB2BAddHeaderAction) {
   string val = resolveVars(arg, sess, sc_sess, event_params);
   DBG("adding B2B header '%s'\n", val.c_str());
   sc_sess->B2BaddHeader(val);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCB2BRemoveHeaderAction) {
+  string val = resolveVars(arg, sess, sc_sess, event_params);
+  DBG("removing B2B header '%s'\n", val.c_str());
+  sc_sess->B2BremoveHeader(val);
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCB2BSetHeadersAction,',', true);
@@ -1333,3 +1479,49 @@ EXEC_ACTION_START(SCCreateSystemDSMAction) {
   
 } EXEC_ACTION_END;
 
+DSMDisposable* getObjectFromVariable(DSMSession* sc_sess, const string& var_name) {
+  AVarMapT::iterator it = sc_sess->avar.find(var_name);
+  if (it == sc_sess->avar.end()) {
+    DBG("object '%s' not found\n", var_name.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("object '"+var_name+"' not found\n");
+    return NULL;
+  }
+
+  DSMDisposable* disp = dynamic_cast<DSMDisposable*>(it->second.asObject());
+  if (NULL == disp) {
+    DBG("object '%s' is not a DSMDisposable\n", var_name.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("object '"+var_name+"' is not a DSMDisposable\n");
+    return NULL;
+  }
+  return disp;
+}
+
+EXEC_ACTION_START(SCTrackObjectAction) {
+  string var_name = resolveVars(arg, sess, sc_sess, event_params);
+  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
+  if (NULL == disp) {
+    EXEC_ACTION_STOP;
+  }
+  sc_sess->transferOwnership(disp);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCReleaseObjectAction) {
+  string var_name = resolveVars(arg, sess, sc_sess, event_params);
+  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
+  if (NULL == disp) {
+    EXEC_ACTION_STOP;
+  }
+  sc_sess->releaseOwnership(disp);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCFreeObjectAction) {
+  string var_name = resolveVars(arg, sess, sc_sess, event_params);
+  DSMDisposable* disp = getObjectFromVariable(sc_sess, var_name);
+  if (NULL == disp) {
+    EXEC_ACTION_STOP;
+  }
+  delete disp;
+  sc_sess->avar.erase(var_name);
+} EXEC_ACTION_END;

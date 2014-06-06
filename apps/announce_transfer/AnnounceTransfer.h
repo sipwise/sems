@@ -44,7 +44,8 @@ public:
   AnnounceTransferFactory(const string& _app_name);
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
 };
 
 /** \brief session logic implementation for announce_transfer sessions */
@@ -66,11 +67,13 @@ public:
   AnnounceTransferDialog(const string& filename);
   ~AnnounceTransferDialog();
 
-  void onSessionStart(const AmSipRequest& req);
+  void onInvite(const AmSipRequest& req);
+  void onSessionStart();
   void startSession();
   void onBye(const AmSipRequest& req);
   void onSipRequest(const AmSipRequest& req);
-  void onSipReply(const AmSipReply& rep, int old_dlg_status, const string& trans_method);
+  void onSipReply(const AmSipRequest& req, const AmSipReply& rep, 
+		  AmBasicSipDialog::Status old_dlg_status);
   void onDtmf(int event, int duration_msec) {}
 
   void process(AmEvent* event);

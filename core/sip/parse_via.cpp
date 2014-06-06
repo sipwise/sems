@@ -66,11 +66,7 @@ sip_via_parm::sip_via_parm(const sip_via_parm& p)
 
 sip_via_parm::~sip_via_parm()
 {
-    list<sip_avp*>::iterator it = params.begin();
-    for(;it != params.end(); ++it) {
-
-	delete *it;
-    }
+    free_gen_params(&params);
 }
 
 sip_via::~sip_via()
@@ -95,7 +91,7 @@ static int parse_transport(sip_transport* t, const char** c, int len)
 	TR_OTHER
     };
 
-    if(len < SIPVER_len + 2){ // at least "SIP/2.0/?"
+    if(len < (int)SIPVER_len + 2){ // at least "SIP/2.0/?"
 	DBG("Transport protocol is too small\n");
 	return MALFORMED_SIP_MSG;
     }
@@ -431,7 +427,7 @@ inline int parse_via_params(sip_via_parm* parm, const char** c, int len)
 	VP_OTHER
     };
 
-    int ret = parse_gen_params(&parm->params,c,len,',');
+    int ret = parse_gen_params_sc(&parm->params,c,len,',');
     if(ret) return ret;
 
     list<sip_avp*>::iterator it = parm->params.begin();

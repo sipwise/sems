@@ -1,5 +1,7 @@
 #ifndef __AMSIPMSG_H__
 #define __AMSIPMSG_H__
+#include "AmArg.h"
+#include "AmMimeBody.h"
 
 #include <string>
 using std::string;
@@ -8,20 +10,28 @@ using std::string;
 
 /* enforce common naming in Req&Rpl */
 class _AmSipMsgInDlg
+  : public AmObject
 {
  public:
-  string       method;
-  string       route;
+  string from;
+  string from_tag;
 
-  string       contact;
-  string       content_type;
+  string to;
+  string to_tag;
 
-  string       via1;
-  string       hdrs;
-  string       body;
+  string callid;
+
   unsigned int cseq;
+  string cseq_method;
+
   unsigned int rseq;
-  string       callid;
+
+  string route;
+  string contact;
+
+  string hdrs;
+
+  AmMimeBody body;
 
   // transaction ticket from sip stack
   trans_ticket tt;
@@ -30,6 +40,7 @@ class _AmSipMsgInDlg
   unsigned short remote_port;
   string         local_ip;
   unsigned short local_port;
+  string         trsp;
 
   _AmSipMsgInDlg() : cseq(0), rseq(0) { }
   virtual ~_AmSipMsgInDlg() { };
@@ -37,18 +48,28 @@ class _AmSipMsgInDlg
   virtual string print() const = 0;
 };
 
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+
+struct AmSipHeader
+{
+  string name, value;
+  AmSipHeader() { }
+  AmSipHeader(const string &_name, const string &_value): name(_name), value(_value) { }
+  AmSipHeader(const cstring &_name, const cstring &_value): name(_name.s, _name.len), value(_value.s, _value.len) { }
+};
+
+#endif
+
 /** \brief represents a SIP reply */
 class AmSipReply : public _AmSipMsgInDlg
 {
  public:
   unsigned int code;
   string       reason;
-  string       next_request_uri;
-
-  /*TODO: this should be merged with request's from_/to_tag and moved above*/
-  string       remote_tag;
-  string       local_tag;
-
+  string       to_uri;
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+  list<AmSipHeader> unparsed_headers;
+#endif
 
  AmSipReply() : code(0), _AmSipMsgInDlg() { }
   ~AmSipReply() { }
@@ -60,24 +81,30 @@ class AmSipReply : public _AmSipMsgInDlg
 class AmSipRequest : public _AmSipMsgInDlg
 {
  public:
-  string cmd;
+  string method;
 
   string user;
   string domain;
   string r_uri;
   string from_uri;
-  string from;
-  string to;
-  string from_tag;
-  string to_tag;
 
   string rack_method;
   unsigned int rack_cseq;
 
- AmSipRequest() : _AmSipMsgInDlg() { }
+  string vias;
+  string via1;
+  string via_branch;
+  bool   first_hop;
+
+  int max_forwards;
+
+  unsigned short local_if;
+
+  AmSipRequest();
   ~AmSipRequest() { }
   
   string print() const;
+  void log(msg_logger *logger) const;
 };
 
 string getHeader(const string& hdrs,const string& hdr_name, bool single = false);

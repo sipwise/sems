@@ -33,7 +33,7 @@ state COLLECTING
 -- digit key pressed
 transition "key press" COLLECTING - key(#key<10) / {
     -- break any possibly playing prompt
-    closePlaylist();
+    flushPlaylist();
     -- add key to extension
     append($extension, #key);
 } -> COLLECTING;
@@ -60,7 +60,7 @@ transition "connect key, but empty extension" COLLECTING - key(#key>9); test(len
 -- connect (# or *) pressed
 transition "connect key press" COLLECTING - key(#key>9) / {
     -- break any possibly playing prompt
-    closePlaylist();
+    flushPlaylist();
 
     -- 'now connecting'
     sets($prompt_name=$(prompts_dir)connecting.wav);
@@ -101,6 +101,7 @@ transition "positive reply" CONNECTING - B2B.otherReply(#code < 300)  / {
    log(3, received positive reply)
    log(3, #code)
    log(3, #reason)
+   disconnectMedia();
 } -> CONNECTED;
 
 -- negative reply in callee leg, try again
@@ -122,7 +123,7 @@ transition "negative reply" CONNECTING - B2B.otherReply()  / {
 } -> COLLECTING;
 
 state CONNECTED;
-transition "bye recvd" CONNECTED - hangup / B2B.terminateOtherLeg(); stop(false) -> END;
+transition "bye recvd" CONNECTED - hangup / stop(false) -> END;
 transition "bye on other leg" CONNECTED - B2B.otherBye() / stop(true) -> END;
 
 state PLAY_AND_BYE;

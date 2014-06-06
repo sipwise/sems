@@ -30,6 +30,7 @@
 
 #include "AmUtils.h"
 #include "AmSipMsg.h"
+#include "AmMimeBody.h"
 #include "AmSipHeaders.h"
 
 #include "sip/trans_layer.h"
@@ -37,7 +38,6 @@
 #include "sip/parse_header.h"
 #include "sip/parse_from_to.h"
 #include "sip/parse_cseq.h"
-#include "sip/parse_extensions.h"
 #include "sip/parse_100rel.h"
 #include "sip/parse_route.h"
 #include "sip/trans_table.h"
@@ -45,6 +45,8 @@
 #include "sip/wheeltimer.h"
 #include "sip/msg_hdrs.h"
 #include "sip/udp_trsp.h"
+#include "sip/ip_util.h"
+#include "sip/tcp_trsp.h"
 
 #include "log.h"
 
@@ -56,11 +58,112 @@
 #include "AmEventDispatcher.h"
 #include "AmSipEvent.h"
 
-int SipCtrlInterface::log_raw_messages = 3;
-bool SipCtrlInterface::log_parsed_messages = true;
-int SipCtrlInterface::udp_rcvbuf = -1;
+bool _SipCtrlInterface::log_parsed_messages = true;
+int _SipCtrlInterface::udp_rcvbuf = -1;
 
-int SipCtrlInterface::load()
+int _SipCtrlInterface::alloc_udp_structs()
+{
+    udp_sockets = new udp_trsp_socket*[ AmConfig::SIP_Ifs.size() ];
+    udp_servers = new udp_trsp* [ AmConfig::SIPServerThreads
+				  * AmConfig::SIP_Ifs.size() ];
+
+    if(udp_sockets && udp_servers)
+	return 0;
+
+    return -1;
+}
+
+int _SipCtrlInterface::init_udp_servers(int if_num)
+{
+    udp_trsp_socket* udp_socket = 
+	new udp_trsp_socket(if_num,AmConfig::SIP_Ifs[if_num].SigSockOpts
+			    | (AmConfig::ForceOutboundIf ? 
+			       trsp_socket::force_outbound_if : 0)
+			    | (AmConfig::UseRawSockets ?
+			       trsp_socket::use_raw_sockets : 0),
+			    AmConfig::SIP_Ifs[if_num].NetIfIdx);
+	
+    if(!AmConfig::SIP_Ifs[if_num].PublicIP.empty()) {
+	udp_socket->set_public_ip(AmConfig::SIP_Ifs[if_num].PublicIP);
+    }
+
+    if(udp_socket->bind(AmConfig::SIP_Ifs[if_num].LocalIP,
+			AmConfig::SIP_Ifs[if_num].LocalPort) < 0){
+
+	ERROR("Could not bind SIP/UDP socket to %s:%i",
+	      AmConfig::SIP_Ifs[if_num].LocalIP.c_str(),
+	      AmConfig::SIP_Ifs[if_num].LocalPort);
+
+	delete udp_socket;
+	return -1;
+    }
+
+    if(udp_rcvbuf > 0) {
+	udp_socket->set_recvbuf_size(udp_rcvbuf);
+    }
+
+    trans_layer::instance()->register_transport(udp_socket);
+    udp_sockets[if_num] = udp_socket;
+    inc_ref(udp_socket);
+    nr_udp_sockets++;
+
+    for(int j=0; j<AmConfig::SIPServerThreads;j++){
+	udp_servers[if_num * AmConfig::SIPServerThreads + j] = 
+	    new udp_trsp(udp_socket);
+	nr_udp_servers++;
+    }
+
+    return 0;
+}
+
+int _SipCtrlInterface::alloc_tcp_structs()
+{
+    tcp_sockets = new tcp_server_socket*[ AmConfig::SIP_Ifs.size() ];
+    tcp_servers = new tcp_trsp* [ AmConfig::SIP_Ifs.size() ];
+
+    if(tcp_sockets && tcp_servers)
+	return 0;
+
+    return -1;
+}
+
+int _SipCtrlInterface::init_tcp_servers(int if_num)
+{
+    tcp_server_socket* tcp_socket = new tcp_server_socket(if_num);
+
+    if(!AmConfig::SIP_Ifs[if_num].PublicIP.empty()) {
+     	tcp_socket->set_public_ip(AmConfig::SIP_Ifs[if_num].PublicIP);
+    }
+
+    tcp_socket->set_connect_timeout(AmConfig::SIP_Ifs[if_num].tcp_connect_timeout);
+    tcp_socket->set_idle_timeout(AmConfig::SIP_Ifs[if_num].tcp_idle_timeout);
+
+    if(tcp_socket->bind(AmConfig::SIP_Ifs[if_num].LocalIP,
+			AmConfig::SIP_Ifs[if_num].LocalPort) < 0){
+
+	ERROR("Could not bind SIP/TCP socket to %s:%i",
+	      AmConfig::SIP_Ifs[if_num].LocalIP.c_str(),
+	      AmConfig::SIP_Ifs[if_num].LocalPort);
+
+	delete tcp_socket;
+	return -1;
+    }
+
+    //TODO: add some more threads
+    tcp_socket->add_threads(AmConfig::SIPServerThreads);
+
+    trans_layer::instance()->register_transport(tcp_socket);
+    tcp_sockets[if_num] = tcp_socket;
+    inc_ref(tcp_socket);
+    nr_tcp_sockets++;
+
+    tcp_servers[if_num] = new tcp_trsp(tcp_socket);
+    nr_tcp_servers++;
+
+    return 0;
+}
+
+int _SipCtrlInterface::load()
 {
     if (!AmConfig::OutboundProxy.empty()) {
 	sip_uri parsed_uri;
@@ -81,16 +184,23 @@ int SipCtrlInterface::load()
 	DBG("accept_fr_without_totag = %s\n", 
 	    trans_layer::accept_fr_without_totag?"yes":"no");
 
+	if (cfg.hasParameter("default_bl_ttl")) {
+	    trans_layer::default_bl_ttl = 
+		cfg.getParameterInt("default_bl_ttl",
+				    trans_layer::default_bl_ttl);
+	}
+	DBG("default_bl_ttl = %u\n",trans_layer::default_bl_ttl);
+
 	if (cfg.hasParameter("log_raw_messages")) {
 	    string msglog = cfg.getParameter("log_raw_messages");
-	    if (msglog == "no") log_raw_messages = -1;
-	    else if (msglog == "error") log_raw_messages = 0;
-	    else if (msglog == "warn")  log_raw_messages = 1;
-	    else if (msglog == "info")  log_raw_messages = 2;
-	    else if (msglog == "debug") log_raw_messages = 3;
+	    if (msglog == "no") trsp_socket::log_level_raw_msgs = -1;
+	    else if (msglog == "error") trsp_socket::log_level_raw_msgs = L_ERR;
+	    else if (msglog == "warn")  trsp_socket::log_level_raw_msgs = L_WARN;
+	    else if (msglog == "info")  trsp_socket::log_level_raw_msgs = L_INFO;
+	    else if (msglog == "debug") trsp_socket::log_level_raw_msgs = L_DBG;
 	}
 	DBG("log_raw_messages level = %d\n", 
-	    log_raw_messages);
+	    trsp_socket::log_level_raw_msgs);
 
 	if (cfg.hasParameter("log_parsed_messages")) {
 	    log_parsed_messages = cfg.getParameter("log_parsed_messages")=="yes";
@@ -112,28 +222,56 @@ int SipCtrlInterface::load()
 	DBG("assuming SIP default settings.\n");
     }
 
-    return 0;
-    
+    if(alloc_udp_structs() < 0) {
+	ERROR("no enough memory to alloc UDP structs");
+	return -1;
+    }
+
+    // Init UDP transport instances
+    for(unsigned int i=0; i<AmConfig::SIP_Ifs.size();i++) {
+	if(init_udp_servers(i) < 0) {
+	    return -1;
+	}
+    }
+
+    if(alloc_tcp_structs() < 0) {
+	ERROR("no enough memory to alloc TCP structs");
+	return -1;
+    }
+
+    // Init TCP transport instances
+    for(unsigned int i=0; i<AmConfig::SIP_Ifs.size();i++) {
+	if(init_tcp_servers(i) < 0) {
+	    return -1;
+	}
+    }
+
+    return 0;    
 }
 
-SipCtrlInterface::SipCtrlInterface()
-    : stopped(false), udp_servers(NULL), udp_sockets(NULL),
-      nr_udp_sockets(0), nr_udp_servers(0)
+_SipCtrlInterface::_SipCtrlInterface()
+    : stopped(false),
+      udp_servers(NULL), udp_sockets(NULL),
+      nr_udp_sockets(0), nr_udp_servers(0),
+      tcp_servers(NULL), tcp_sockets(NULL),
+      nr_tcp_sockets(0), nr_tcp_servers(0)
 {
     trans_layer::instance()->register_ua(this);
 }
 
-int SipCtrlInterface::cancel(trans_ticket* tt)
+int _SipCtrlInterface::cancel(trans_ticket* tt, const string& dialog_id,
+			      unsigned int inv_cseq, const string& hdrs)
 {
-    return trans_layer::instance()->cancel(tt);
+    return trans_layer::instance()->cancel(tt,stl2cstr(dialog_id),
+					   inv_cseq,stl2cstr(hdrs));
 }
 
-int SipCtrlInterface::send(AmSipRequest &req,
-			   const string& next_hop_ip, unsigned short next_hop_port,
-			   int out_interface)
+int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
+			    const string& next_hop, int out_interface,
+			    unsigned int flags, msg_logger* logger)
 {
     if(req.method == "CANCEL")
-	return cancel(&req.tt);
+	return cancel(&req.tt, dialog_id, req.cseq, req.hdrs);
 
     sip_msg* msg = new sip_msg();
     
@@ -151,10 +289,10 @@ int SipCtrlInterface::send(AmSipRequest &req,
     // Max-Forwards
     
     char* c = (char*)req.from.c_str();
-    int err = parse_headers(msg,&c);
+    int err = parse_headers(msg,&c,c+req.from.length());
 
     c = (char*)req.to.c_str();
-    err = err || parse_headers(msg,&c);
+    err = err || parse_headers(msg,&c,c+req.to.length());
 
     if(err){
 	ERROR("Malformed To or From header\n");
@@ -165,16 +303,16 @@ int SipCtrlInterface::send(AmSipRequest &req,
     string cseq = int2str(req.cseq)
 	+ " " + req.method;
 
-    msg->cseq = new sip_header(0,"CSeq",stl2cstr(cseq));
+    msg->cseq = new sip_header(0,SIP_HDR_CSEQ,stl2cstr(cseq));
     msg->hdrs.push_back(msg->cseq);
 
-    msg->callid = new sip_header(0,"Call-ID",stl2cstr(req.callid));
+    msg->callid = new sip_header(0,SIP_HDR_CALL_ID,stl2cstr(req.callid));
     msg->hdrs.push_back(msg->callid);
 
     if(!req.contact.empty()){
 
 	c = (char*)req.contact.c_str();
-	err = parse_headers(msg,&c);
+	err = parse_headers(msg,&c,c+req.contact.length());
 	if(err){
 	    ERROR("Malformed Contact header\n");
 	    delete msg;
@@ -185,7 +323,7 @@ int SipCtrlInterface::send(AmSipRequest &req,
     if(!req.route.empty()){
 	
  	c = (char*)req.route.c_str();
-	err = parse_headers(msg,&c);
+	err = parse_headers(msg,&c,c+req.route.length());
 	
 	if(err){
 	    ERROR("Route headers parsing failed\n");
@@ -195,11 +333,18 @@ int SipCtrlInterface::send(AmSipRequest &req,
 	}
     }
 
+    if(req.max_forwards < 0) {
+	req.max_forwards = AmConfig::MaxForwards;
+    }
+
+    string mf = int2str(req.max_forwards);
+    msg->hdrs.push_back(new sip_header(0,SIP_HDR_MAX_FORWARDS,stl2cstr(mf)));
+
     if(!req.hdrs.empty()) {
 	
  	c = (char*)req.hdrs.c_str();
 	
- 	err = parse_headers(msg,&c);
+ 	err = parse_headers(msg,&c,c+req.hdrs.length());
 	
 	if(err){
 	    ERROR("Additional headers parsing failed\n");
@@ -209,60 +354,42 @@ int SipCtrlInterface::send(AmSipRequest &req,
 	}
     }
 
+    string body;
+    string content_type;
+
     if(!req.body.empty()){
-
-	if(req.content_type.empty()){
-	    ERROR("Body in request without content type\n");
-	}
-	else {
-	    msg->content_type = new sip_header(0,"Content-Type",stl2cstr(req.content_type));
-	    msg->hdrs.push_back(msg->content_type);
-
-	    msg->body = stl2cstr(req.body);
-	}
+	content_type = req.body.getCTHdr();
+	msg->content_type = new sip_header(0,SIP_HDR_CONTENT_TYPE,
+					   stl2cstr(content_type));
+	msg->hdrs.push_back(msg->content_type);
+	req.body.print(body);
+	msg->body = stl2cstr(body);
     }
 
     int res = trans_layer::instance()->send_request(msg,&req.tt,
-						    stl2cstr(next_hop_ip),next_hop_port,
-						    out_interface);
+						    stl2cstr(dialog_id),
+						    stl2cstr(next_hop),
+						    out_interface,
+						    flags,logger);
     delete msg;
 
     return res;
 }
 
-int SipCtrlInterface::run()
+int _SipCtrlInterface::run()
 {
     DBG("Starting SIP control interface\n");
-
-    udp_sockets = new udp_trsp_socket*[AmConfig::Ifs.size()];
-    udp_servers = new udp_trsp*[AmConfig::SIPServerThreads * AmConfig::Ifs.size()];
-
     wheeltimer::instance()->start();
 
-    // Init transport instances
-    for(unsigned int i=0; i<AmConfig::Ifs.size();i++) {
-
-	udp_trsp_socket* udp_socket = new udp_trsp_socket;
-
-	if(udp_socket->bind(AmConfig::Ifs[i].LocalSIPIP,
-			    AmConfig::Ifs[i].LocalSIPPort) < 0){
-
-	    ERROR("Could not bind SIP/UDP socket to %s:%i",
-		  AmConfig::Ifs[i].LocalSIPIP.c_str(),
-		  AmConfig::Ifs[i].LocalSIPPort);
-
-	    delete udp_socket;
-	    return -1;
+    if (NULL != udp_servers) {
+	for(int i=0; i<nr_udp_servers;i++){
+	    udp_servers[i]->start();
 	}
+    }
 
-	trans_layer::instance()->register_transport(udp_socket);
-	udp_sockets[i] = udp_socket;
-	nr_udp_sockets++;
-
-	for(int j=0; j<AmConfig::SIPServerThreads;j++){
-	    udp_servers[i*AmConfig::SIPServerThreads + j] = new udp_trsp(udp_socket);
-	    udp_servers[i*AmConfig::SIPServerThreads + j]->start();
-	    nr_udp_servers++;
+    if (NULL != tcp_servers) {
+	for(int i=0; i<nr_tcp_servers;i++){
+	    tcp_servers[i]->start();
 	}
     }
 
@@ -270,16 +397,16 @@ int SipCtrlInterface::run()
         stopped.wait_for();
     }
 
-    DBG("SIP control interface ending\n");    
+    DBG("SIP control interface ending\n");
     return 0;
 }
 
-void SipCtrlInterface::stop()
+void _SipCtrlInterface::stop()
 {
     stopped.set(true);
 }
 
-void SipCtrlInterface::cleanup()
+void _SipCtrlInterface::cleanup()
 {
     DBG("Stopping SIP control interface threads\n");
 
@@ -295,29 +422,52 @@ void SipCtrlInterface::cleanup()
 	nr_udp_servers = 0;
     }
 
+    if (NULL != tcp_servers) {
+	for(int i=0; i<nr_tcp_servers;i++){
+	    tcp_servers[i]->stop();
+	    tcp_servers[i]->join();
+	    delete tcp_servers[i];
+	}
+
+	delete [] tcp_servers;
+	tcp_servers = NULL;
+	nr_tcp_servers = 0;
+    }
+
     trans_layer::instance()->clear_transports();
 
     if (NULL != udp_sockets) {
 	for(int i=0; i<nr_udp_sockets;i++){
-	    delete udp_sockets[i];
+	    DBG("dec_ref(%p)",udp_sockets[i]);
+	    dec_ref(udp_sockets[i]);
 	}
 
 	delete [] udp_sockets;
 	udp_sockets = NULL;
 	nr_udp_sockets = 0;
     }
+
+    if (NULL != tcp_sockets) {
+	for(int i=0; i<nr_tcp_sockets;i++){
+	    DBG("dec_ref(%p)",tcp_sockets[i]);
+	    dec_ref(tcp_sockets[i]);
+	}
+
+	delete [] tcp_sockets;
+	tcp_sockets = NULL;
+	nr_tcp_sockets = 0;
+    }
 }
 
-int SipCtrlInterface::send(const AmSipReply &rep,
-			   const string& next_hop_ip, unsigned short next_hop_port,
-			   int out_interface)
+int _SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
+			   msg_logger* logger)
 {
     sip_msg msg;
 
     if(!rep.hdrs.empty()) {
 
 	char* c = (char*)rep.hdrs.c_str();
-	int err = parse_headers(&msg,&c);
+	int err = parse_headers(&msg,&c,c+rep.hdrs.length());
 	if(err){
 	    ERROR("Malformed additional header\n");
 	    return -1;
@@ -327,132 +477,97 @@ int SipCtrlInterface::send(const AmSipReply &rep,
     if(!rep.contact.empty()){
 
 	char* c = (char*)rep.contact.c_str();
-	int err = parse_headers(&msg,&c);
+	int err = parse_headers(&msg,&c,c+rep.contact.length());
 	if(err){
 	    ERROR("Malformed Contact header\n");
 	    return -1;
 	}
     }
 
+    string body;
+    string content_type;
     if(!rep.body.empty()) {
-	if(rep.content_type.empty()){
-	    ERROR("Reply does not contain a Content-Type whereby body is not empty\n");
-	    return -1;
-	}
+	content_type = rep.body.getCTHdr();
+	rep.body.print(body);
+    	if(content_type.empty()){
+    	    ERROR("Reply does not contain a Content-Type whereby body is not empty\n");
+    	    return -1;
+    	}
+	msg.body = stl2cstr(body);
+	msg.hdrs.push_back(new sip_header(sip_header::H_CONTENT_TYPE,
+					  SIP_HDR_CONTENT_TYPE,
+					  stl2cstr(content_type)));
     }
 
+    msg.type = SIP_REPLY;
+    msg.u.reply = new sip_reply(rep.code,stl2cstr(rep.reason));
 
-    /* check if we need to store RSeq. */
-    // FIXME: shouldn't the global "100rel==on?" check be present here??
-    if(100 < rep.code && rep.code < 200 && rep.method == SIP_METH_INVITE) {
-        unsigned ext = 0;
-        unsigned rseq = 0;
-        for(list<sip_header*>::iterator it = msg.hdrs.begin();
-                !(ext && rseq) && it != msg.hdrs.end(); ++it) {
-            // check if there's a Require field containing 100rel; if there
-            // is, look for RSeq and store it's value in transaction;
-            DBG("HT:%d, ext:%d, rseq:%d.\n", (*it)->type, ext, rseq);
-            switch ((*it)->type) {
-            case sip_header::H_REQUIRE:
-                if (ext)
-                    // there was alrady a(nother?) Require HF
-                    continue;
-                if(!parse_extensions(&ext, (*it)->value.s, (*it)->value.len)) {
-                    ERROR("failed to parse(own?)'" SIP_HDR_REQUIRE "' hdr.\n");
-                    continue;
-                }
-                if (rseq) { // our RSeq's are never 0
-                    rep.tt._t->last_rseq = rseq;
-                    continue; // the end.
-                }
-                break;
-
-            case sip_header::H_RSEQ:
-                if (rseq) {
-                    ERROR("multiple '" SIP_HDR_RSEQ "' headers in reply.\n");
-                    continue;
-                }
-                if (! parse_rseq(&rseq, (*it)->value.s, (*it)->value.len)) {
-                    ERROR("failed to parse (own?) '" SIP_HDR_RSEQ "' hdr.\n");
-                    continue;
-                }
-                if (ext) {
-                    rep.tt._t->last_rseq = rseq;
-                    continue; // the end.
-                }
-            }
-        }
-    }
-
-
-    unsigned int hdrs_len = copy_hdrs_len(msg.hdrs);
-
-    if(!rep.body.empty()) {
-	hdrs_len += content_type_len(stl2cstr(rep.content_type));
-    }
-
-    char* hdrs_buf = NULL;
-    char* c = hdrs_buf;
-
-    if (hdrs_len) {
-	
-	c = hdrs_buf = new char[hdrs_len];
-	
-	copy_hdrs_wr(&c,msg.hdrs);
-		
-	if(!rep.body.empty()) {
-	    content_type_wr(&c,stl2cstr(rep.content_type));
-	}
-    }
-
-    int ret =
-	trans_layer::instance()->send_reply((trans_ticket*)&rep.tt,
-					    rep.code,stl2cstr(rep.reason),
-					    stl2cstr(rep.local_tag),
-					    cstring(hdrs_buf,hdrs_len), stl2cstr(rep.body),
-					    stl2cstr(next_hop_ip),next_hop_port,
-					    out_interface);
-
-    delete [] hdrs_buf;
-
-    return ret;
+    return
+	trans_layer::instance()->send_reply(&msg,(trans_ticket*)&rep.tt,
+					    stl2cstr(dialog_id),
+					    stl2cstr(rep.to_tag),logger);
 }
 
 
-inline void SipCtrlInterface::sip_msg2am_request(const sip_msg *msg, 
-    AmSipRequest &req)
+inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg, 
+						 const trans_ticket& tt,
+						 AmSipRequest &req)
 {
-    req.cmd      = "sems";
+    assert(msg);
+    assert(msg->from && msg->from->p);
+    assert(msg->to && msg->to->p);
+    
     req.method   = c2stlstr(msg->u.request->method_str);
     req.user     = c2stlstr(msg->u.request->ruri.user);
     req.domain   = c2stlstr(msg->u.request->ruri.host);
     req.r_uri    = c2stlstr(msg->u.request->ruri_str);
+    req.tt       = tt;
 
-    if(get_contact(msg)){
+    if(get_contact(msg) && get_contact(msg)->value.len){
 
 	sip_nameaddr na;
-	const char* c = get_contact(msg)->value.s;
-	if(parse_nameaddr(&na,&c,get_contact(msg)->value.len) < 0){
+	cstring contact = get_contact(msg)->value;
+	if(parse_first_nameaddr(&na,contact.s,contact.len) < 0) {
 	    WARN("Contact parsing failed\n");
-	    WARN("\tcontact = '%.*s'\n",get_contact(msg)->value.len,get_contact(msg)->value.s);
+	    WARN("\tcontact = '%.*s'\n",contact.len,contact.s);
 	    WARN("\trequest = '%.*s'\n",msg->len,msg->buf);
+
+	    trans_layer::instance()->send_sf_error_reply(&tt, msg, 400, 
+							 "Bad Contact");
+	    return false;
 	}
-	else {
+
+	const char* c = na.addr.s;
+	if((na.addr.len != 1) || (*c != '*')) {
 	    sip_uri u;
 	    if(parse_uri(&u,na.addr.s,na.addr.len)){
-		WARN("'Contact' in new request contains a malformed URI\n");
-		WARN("\tcontact uri = '%.*s'\n",na.addr.len,na.addr.s);
-		WARN("\trequest = '%.*s'\n",msg->len,msg->buf);
+		DBG("'Contact' in new request contains a malformed URI\n");
+		DBG("\tcontact uri = '%.*s'\n",na.addr.len,na.addr.s);
+		DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
+
+		trans_layer::instance()->
+		    send_sf_error_reply(&tt, msg, 400, "Malformed Contact URI");
+		return false;
 	    }
 
 	    req.from_uri = c2stlstr(na.addr);
-	    req.contact  = c2stlstr(get_contact(msg)->value);
+	}
+
+	list<sip_header*>::const_iterator c_it = msg->contacts.begin();
+	req.contact = c2stlstr((*c_it)->value);
+	++c_it;
+
+	for(;c_it!=msg->contacts.end(); ++c_it){
+	    req.contact += ", " + c2stlstr((*c_it)->value);
 	}
     }
     else {
 	if (req.method == SIP_METH_INVITE) {
-	    WARN("Request has no contact header\n");
-	    WARN("\trequest = '%.*s'\n",msg->len,msg->buf);
+	    DBG("Request has no contact header\n");
+	    DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
+	    trans_layer::instance()->
+		send_sf_error_reply(&tt, msg, 400, "Missing Contact-HF");
+	    return false;
 	}
     }
     
@@ -471,7 +586,8 @@ inline void SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     req.from_tag = c2stlstr(((sip_from_to*)msg->from->p)->tag);
     req.to_tag   = c2stlstr(((sip_from_to*)msg->to->p)->tag);
     req.cseq     = get_cseq(msg)->num;
-    req.body     = c2stlstr(msg->body);
+    req.cseq_method = c2stlstr(get_cseq(msg)->method_str);
+    req.via_branch = c2stlstr(msg->via_p1->branch);
 
     if (msg->rack) {
         req.rseq = get_rack(msg)->rseq;
@@ -479,55 +595,106 @@ inline void SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	req.rack_cseq = get_rack(msg)->cseq;
     }
 
-    if (msg->content_type)
- 	req.content_type = c2stlstr(msg->content_type->value);
+    if (msg->content_type) {
+
+	if(req.body.parse(c2stlstr(msg->content_type->value),
+			  (unsigned char*)msg->body.s,
+			  msg->body.len) < 0) {
+	    DBG("could not parse MIME body\n");
+	}
+	else {
+	    DBG("MIME body successfully parsed\n");
+	    // some debug infos?
+	}
+    }
 
     prepare_routes_uas(msg->record_route, req.route);
 	
     for (list<sip_header *>::const_iterator it = msg->hdrs.begin(); 
 	 it != msg->hdrs.end(); ++it) {
-	if((*it)->type == sip_header::H_OTHER || 
-                (*it)->type == sip_header::H_REQUIRE){
+
+	switch((*it)->type) {
+	case sip_header::H_OTHER:
+	case sip_header::H_REQUIRE:
 	    req.hdrs += c2stlstr((*it)->name) + ": " 
 		+ c2stlstr((*it)->value) + CRLF;
+	    break;
+	case sip_header::H_VIA:
+	    req.vias += c2stlstr((*it)->name) + ": " 
+		+ c2stlstr((*it)->value) + CRLF;
+	    break;
+	case sip_header::H_MAX_FORWARDS:
+	    if(!str2int(c2stlstr((*it)->value),req.max_forwards) ||
+	       (req.max_forwards < 0) ||
+	       (req.max_forwards > 255)) {
+		trans_layer::instance()->
+		    send_sf_error_reply(&tt, msg, 400, "Incorrect Max-Forwards");
+		return false;
+	    }
+	    break;
 	}
     }
 
-    req.via1 = c2stlstr(msg->via1->value);
+    if(req.max_forwards < 0)
+	req.max_forwards = AmConfig::MaxForwards;
 
-    req.remote_ip = get_addr_str(((sockaddr_in*)&msg->remote_ip)->sin_addr).c_str();
-    req.remote_port = htons(((sockaddr_in*)&msg->remote_ip)->sin_port);
-    req.local_ip = get_addr_str(((sockaddr_in*)&msg->local_ip)->sin_addr).c_str();
-    req.local_port = htons(((sockaddr_in*)&msg->local_ip)->sin_port);
+    req.remote_ip = get_addr_str(&msg->remote_ip);
+    req.remote_port = am_get_port(&msg->remote_ip);
+
+    req.local_ip = get_addr_str(&msg->local_ip);
+    req.local_port = am_get_port(&msg->local_ip);
+
+    req.trsp = msg->local_socket->get_transport();
+    req.local_if = msg->local_socket->get_if();
+
+    req.via1 = c2stlstr(msg->via1->value);
+    if(msg->vias.size() > 1) {
+	req.first_hop = false;
+    } 
+    else {
+	sip_via* via1 = (sip_via*)msg->via1->p;
+	assert(via1); // gets parsed in parse_sip_msg()
+	req.first_hop = (via1->parms.size() == 1);
+    }
+
+    return true;
 }
 
-inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
+inline bool _SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
 {
-    reply.content_type = msg->content_type ? c2stlstr(msg->content_type->value): "";
+    if (msg->content_type) {
 
-    reply.body = msg->body.len ? c2stlstr(msg->body) : "";
+	if(reply.body.parse(c2stlstr(msg->content_type->value),
+			    (unsigned char*)msg->body.s,
+			    msg->body.len) < 0) {
+	    DBG("could not parse MIME body\n");
+	}
+	else {
+	    DBG("MIME body successfully parsed\n");
+	    // some debug infos?
+	}
+    }
+
     reply.cseq = get_cseq(msg)->num;
-    reply.method = c2stlstr(get_cseq(msg)->method_str);
+    reply.cseq_method = c2stlstr(get_cseq(msg)->method_str);
 
     reply.code   = msg->u.reply->code;
     reply.reason = c2stlstr(msg->u.reply->reason);
 
-    if(get_contact(msg)){
+    if(get_contact(msg) && get_contact(msg)->value.len){
 
 	// parse the first contact
-	const char* c = get_contact(msg)->value.s;
 	sip_nameaddr na;
-	
-	int err = parse_nameaddr(&na,&c,get_contact(msg)->value.len);
-	if(err < 0) {
+	cstring contact = get_contact(msg)->value;
+	if(parse_first_nameaddr(&na,contact.s,contact.len) < 0) {
 	    
-	    ERROR("Contact nameaddr parsing failed\n");
-	    return false;
+	    ERROR("Contact nameaddr parsing failed ('%.*s')\n",
+		  contact.len,contact.s);
 	}
-	
-	// 'Contact' header?
-	reply.next_request_uri = c2stlstr(na.addr);
-	
+	else {
+	    reply.to_uri = c2stlstr(na.addr);
+	}
+
 	list<sip_header*>::iterator c_it = msg->contacts.begin();
 	reply.contact = c2stlstr((*c_it)->value);
 	++c_it;
@@ -539,8 +706,8 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
 
     reply.callid = c2stlstr(msg->callid->value);
     
-    reply.remote_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
-    reply.local_tag  = c2stlstr(((sip_from_to*)msg->from->p)->tag);
+    reply.to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
+    reply.from_tag  = c2stlstr(((sip_from_to*)msg->from->p)->tag);
 
 
     prepare_routes_uac(msg->record_route, reply.route);
@@ -548,6 +715,9 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     unsigned rseq;
     for (list<sip_header*>::iterator it = msg->hdrs.begin(); 
 	 it != msg->hdrs.end(); ++it) {
+#ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
+        reply.unparsed_headers.push_back(AmSipHeader((*it)->name, (*it)->value));
+#endif
         switch ((*it)->type) {
           case sip_header::H_OTHER:
           case sip_header::H_REQUIRE:
@@ -564,10 +734,14 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
         }
     }
 
-    reply.remote_ip = get_addr_str(((sockaddr_in*)&msg->remote_ip)->sin_addr).c_str();
-    reply.remote_port = htons(((sockaddr_in*)&msg->remote_ip)->sin_port);
-    reply.local_ip = get_addr_str(((sockaddr_in*)&msg->local_ip)->sin_addr).c_str();
-    reply.local_port = htons(((sockaddr_in*)&msg->local_ip)->sin_port);
+    reply.remote_ip = get_addr_str(&msg->remote_ip);
+    reply.remote_port = am_get_port(&msg->remote_ip);
+
+    reply.local_ip = get_addr_str(&msg->local_ip);
+    reply.local_port = am_get_port(&msg->local_ip);
+
+    if(msg->local_socket)
+	reply.trsp = msg->local_socket->get_transport();
 
     return true;
 }
@@ -576,7 +750,7 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
 #define DBG_PARAM(p)\
     DBG("%s = <%s>\n",#p,p.c_str());
 
-void SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
+void _SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
 {
     assert(msg);
     assert(msg->from && msg->from->p);
@@ -584,12 +758,13 @@ void SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
     
     AmSipRequest req;
 
-    sip_msg2am_request(msg, req);
+    if(!sip_msg2am_request(msg, tt, req))
+	return;
 
-    req.tt = tt;
+    DBG("Received new request from <%s:%i/%s> on intf #%i\n",
+	req.remote_ip.c_str(),req.remote_port,req.trsp.c_str(),req.local_if);
 
-    DBG("Received new request\n");
-    if (SipCtrlInterface::log_parsed_messages) {
+    if (_SipCtrlInterface::log_parsed_messages) {
 	//     DBG_PARAM(req.cmd);
 	DBG_PARAM(req.method);
 	//     DBG_PARAM(req.user);
@@ -604,7 +779,7 @@ void SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
 	DBG("cseq = <%i>\n",req.cseq);
 	DBG_PARAM(req.route);
 	DBG("hdrs = <%s>\n",req.hdrs.c_str());
-	DBG("body = <%s>\n",req.body.c_str());
+	DBG("body-ct = <%s>\n",req.body.getCTStr().c_str());
     }
 
     AmSipDispatcher::instance()->handleSipMsg(req);
@@ -613,30 +788,47 @@ void SipCtrlInterface::handle_sip_request(const trans_ticket& tt, sip_msg* msg)
 	req.callid.c_str(), req.to_tag.c_str(), req.method.c_str());
 }
 
-void SipCtrlInterface::handle_sip_reply(sip_msg* msg)
+void _SipCtrlInterface::handle_sip_reply(const string& dialog_id, sip_msg* msg)
 {
     assert(msg->from && msg->from->p);
     assert(msg->to && msg->to->p);
     
     AmSipReply   reply;
 
-    if (! sip_msg2am_reply(msg, reply))
+
+    if (! sip_msg2am_reply(msg, reply)) {
+      ERROR("failed to convert sip_msg to AmSipReply\n");
+      // trans_bucket::match_reply only uses via_branch & cseq
+      reply.cseq = get_cseq(msg)->num;
+      reply.cseq_method = c2stlstr(get_cseq(msg)->method_str);
+      reply.code = 500;
+      reply.reason = "Internal Server Error";
+      reply.callid = c2stlstr(msg->callid->value);
+      reply.to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
+      reply.from_tag  = c2stlstr(((sip_from_to*)msg->from->p)->tag);
+      AmSipDispatcher::instance()->handleSipMsg(dialog_id, reply);
       return;
+    }
     
     DBG("Received reply: %i %s\n",reply.code,reply.reason.c_str());
     DBG_PARAM(reply.callid);
-    DBG_PARAM(reply.local_tag);
-    DBG_PARAM(reply.remote_tag);
+    DBG_PARAM(reply.from_tag);
+    DBG_PARAM(reply.to_tag);
+    DBG_PARAM(reply.contact);
+    DBG_PARAM(reply.to_uri);
     DBG("cseq = <%i>\n",reply.cseq);
+    DBG_PARAM(reply.route);
+    DBG("hdrs = <%s>\n",reply.hdrs.c_str());
+    DBG("body-ct = <%s>\n",reply.body.getCTStr().c_str());
 
-    AmSipDispatcher::instance()->handleSipMsg(reply);
+    AmSipDispatcher::instance()->handleSipMsg(dialog_id, reply);
 
     DBG("^^ M [%s|%s] ru SIP reply %u %s handled ^^\n",
-	reply.callid.c_str(), reply.local_tag.c_str(),
+	reply.callid.c_str(), reply.from_tag.c_str(),
 	reply.code, reply.reason.c_str());
 }
 
-void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
+void _SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
     sip_trans *tr, trans_bucket *buk)
 {
   AmSipTimeoutEvent *tmo_evt;
@@ -671,13 +863,12 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
       }
 
       AmSipRequest request;
-      sip_msg2am_request(tr->msg, request);
-      request.tt = trans_ticket(tr, buk);
+      sip_msg2am_request(tr->msg, trans_ticket(tr, buk), request);
 
       DBG("Reply timed out: %i %s\n",reply.code,reply.reason.c_str());
       DBG_PARAM(reply.callid);
-      DBG_PARAM(reply.local_tag);
-      DBG_PARAM(reply.remote_tag);
+      DBG_PARAM(reply.to_tag);
+      DBG_PARAM(reply.from_tag);
       DBG("cseq = <%i>\n",reply.cseq);
 
       tmo_evt = new AmSipTimeoutEvent(evt, request, reply);
@@ -689,15 +880,20 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
     return;
   }
 
-  if(!AmEventDispatcher::instance()->post(c2stlstr(tr->to_tag), tmo_evt)){
-      DBG("Could not post timeout event (sess. id: %.*s)\n",tr->to_tag.len,tr->to_tag.s);
+  cstring dlg_id = tr->to_tag;
+  if(tr->dialog_id.len) {
+      dlg_id = tr->dialog_id;
+  }
+
+  if(!AmEventDispatcher::instance()->post(c2stlstr(dlg_id), tmo_evt)){
+      DBG("Could not post timeout event (sess. id: %.*s)\n",dlg_id.len,dlg_id.s);
       delete tmo_evt;
   }
 }
 
 #undef DBG_PARAM
 
-void SipCtrlInterface::prepare_routes_uac(const list<sip_header*>& routes, string& route_field)
+void _SipCtrlInterface::prepare_routes_uac(const list<sip_header*>& routes, string& route_field)
 {
     if(routes.empty())
 	return;
@@ -715,7 +911,7 @@ void SipCtrlInterface::prepare_routes_uac(const list<sip_header*>& routes, strin
     
     while(true) {
 	
-	if(++it_re == route->elmts.rend()){
+	if(++it_re == route->elmts.rend()) {
 	    if(++it_rh == routes.rend()){
 		DBG("route_field = [%s]\n",route_field.c_str());
 		return;
@@ -737,7 +933,7 @@ void SipCtrlInterface::prepare_routes_uac(const list<sip_header*>& routes, strin
 
 }
 
-void SipCtrlInterface::prepare_routes_uas(const list<sip_header*>& routes, string& route_field)
+void _SipCtrlInterface::prepare_routes_uas(const list<sip_header*>& routes, string& route_field)
 {
     if(!routes.empty()){
 	
