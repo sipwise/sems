@@ -77,9 +77,11 @@ set -e
 
 case "$1" in
   start)
-	if ! /usr/sbin/ngcp-check_active -q; then
-	  echo "Ignored start action in inactive node"
-	  exit 0
+	if [ -x /usr/sbin/ngcp-check_active ]; then
+		if ! /usr/sbin/ngcp-check_active -q; then
+			echo "Ignored start action in inactive node"
+			exit 0
+		fi
 	fi
 	echo "Starting $DESC: $NAME"
 	start-stop-daemon --start --quiet --oknodo --pidfile $SEMS_PIDFILE \
@@ -96,9 +98,11 @@ case "$1" in
 	echo "Restarting $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --quiet --pidfile \
 		$SEMS_PIDFILE --exec $DAEMON
-	if ! /usr/sbin/ngcp-check_active -q; then
-	  echo "Ignored start action in inactive node"
-	  exit 0
+	if [ -x /usr/sbin/ngcp-check_active ]; then
+		if ! /usr/sbin/ngcp-check_active -q; then
+		  echo "Ignored start action in inactive node"
+		  exit 0
+		fi
 	fi
 	sleep 5
 	start-stop-daemon --start --quiet --pidfile \

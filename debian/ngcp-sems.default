@@ -10,12 +10,12 @@ SEMS_RUN="no"
 
 # ser configuration file
 #DEBCONF-CFG_FILE-START
-SEMS_CFG_FILE="/etc/sems/sems.conf"
+SEMS_CFG_FILE="/etc/ngcp-sems/sems.conf"
 #DEBCONF-CFG_FILE-END
 
 # user to run ser as
 #DEBCONF-USER-START
-SEMS_USER="sems-pbx"
+SEMS_USER="sems"
 #DEBCONF-USER-END
 
 # group to run ser as
@@ -23,10 +23,10 @@ SEMS_USER="sems-pbx"
 SEMS_GROUP="sems-pbx"
 #DEBCONF-GROUP-END
 
-SEMS_RUNDIR="/var/run/sems"
+SEMS_RUNDIR="/var/run/ngcp-sems"
 
 # sems pidfile
-SEMS_PIDFILE="$SEMS_RUNDIR/sems.pid"
+SEMS_PIDFILE="$SEMS_RUNDIR/ngcp-sems.pid"
 
 # set if you want to create core files
 #DEBCONF-CREATE_CORE-START

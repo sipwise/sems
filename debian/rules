@@ -6,7 +6,7 @@ export DH_VERBOSE=1
 
 PYTHON_MODULES=ivr conf_auth mailbox pin_collect
 
-EXCLUDED_MODULES=gateway examples mp3 twit
+EXCLUDED_MODULES=gateway mp3 twit
 
 EXCLUDED_DSM_MODULES=mod_aws
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
@@ -14,6 +14,8 @@ EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
 CPPFLAGS += -DHAVE_XMLRPCPP_SSL
 
 export USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)"
+
+export APP_NAME=ngcp-sems
 
 %:
 	dh $@
