@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.4.0.0) unstable; urgency=medium
+
+  * [df99926] Imported Upstream version 1.6.0~20140516~eaa616
+  * [fa0796c] remove all 1.4 stuff. use ngcp-sems name properly.
+
+ -- Victor Seva <vseva@sipwise.com>  Fri, 06 Jun 2014 09:58:24 +0200
+
 ngcp-sems (1:1.4.3-1+0~mr3.4.0.0) unstable; urgency=low
 
   [ Victor Seva ]
