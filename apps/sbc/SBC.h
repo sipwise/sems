@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Stefan Sayer
+ * Copyright (C) 2010-2011 Stefan Sayer
  *
  * This file is part of SEMS, a free SIP media server.
  *
@@ -33,14 +33,34 @@
 #include "HeaderFilter.h"
 #include "SBCCallProfile.h"
 #include "RegexMapper.h"
+#include "AmEventQueueProcessor.h"
+
+#include "CallLeg.h"
+class SBCCallLeg;
 
 #include <map>
 
 using std::string;
 
-#define SBC_TIMER_ID_CALL_TIMER         1
-#define SBC_TIMER_ID_PREPAID_TIMEOUT    2
+#define SBC_TIMER_ID_CALL_TIMERS_START   10
+#define SBC_TIMER_ID_CALL_TIMERS_END     99
 
+struct CallLegCreator {
+  virtual SBCCallLeg* create(const SBCCallProfile& call_profile);
+  virtual SBCCallLeg* create(SBCCallLeg* caller);
+};
+
+class SimpleRelayDialog;
+
+struct SimpleRelayCreator {
+  typedef pair<SimpleRelayDialog*,SimpleRelayDialog*> Relay;
+  virtual Relay createRegisterRelay(SBCCallProfile& call_profile,
+				    vector<AmDynInvoke*> &cc_modules);
+  virtual Relay createSubscriptionRelay(SBCCallProfile& call_profile,
+					vector<AmDynInvoke*> &cc_modules);
+  virtual Relay createGenericRelay(SBCCallProfile& call_profile,
+				   vector<AmDynInvoke*> &cc_modules);
+};
 
 class SBCFactory: public AmSessionFactory,
     public AmDynInvoke,
@@ -52,6 +72,11 @@ class SBCFactory: public AmSessionFactory,
   vector<string> active_profile;
   AmMutex profiles_mut;
 
+  bool core_options_handling;
+
+  auto_ptr<CallLegCreator> callLegCreator;
+  auto_ptr<SimpleRelayCreator> simpleRelayCreator;
+
   void listProfiles(const AmArg& args, AmArg& ret);
   void reloadProfiles(const AmArg& args, AmArg& ret);
   void reloadProfile(const AmArg& args, AmArg& ret);
@@ -60,10 +85,15 @@ class SBCFactory: public AmSessionFactory,
   void setActiveProfile(const AmArg& args, AmArg& ret);
   void getRegexMapNames(const AmArg& args, AmArg& ret);
   void setRegexMap(const AmArg& args, AmArg& ret);
+  void loadCallcontrolModules(const AmArg& args, AmArg& ret);
+  void postControlCmd(const AmArg& args, AmArg& ret);
 
-  string getActiveProfileMatch(string& profile_rule, const AmSipRequest& req,
-			       const string& app_param, AmUriParser& ruri_parser,
-			       AmUriParser& from_parser, AmUriParser& to_parser);
+  SBCCallProfile* getActiveProfileMatch(const AmSipRequest& req, 
+					ParamReplacerCtx& ctx);
+  
+  bool CCRoute(const AmSipRequest& req,
+	       vector<AmDynInvoke*>& cc_modules,
+	       SBCCallProfile& call_profile);
 
  public:
   DECLARE_MODULE_INSTANCE(SBCFactory);
@@ -72,112 +102,41 @@ class SBCFactory: public AmSessionFactory,
   ~SBCFactory();
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
 
-  static AmConfigReader cfg;
-  static AmSessionEventHandlerFactory* session_timer_fact;
+  void setCallLegCreator(CallLegCreator* clc) { callLegCreator.reset(clc); }
+  CallLegCreator* getCallLegCreator() { return callLegCreator.get(); }
 
-  static RegexMapper regex_mappings;
+  void setSimpleRelayCreator(SimpleRelayCreator* src) { 
+    simpleRelayCreator.reset(src); 
+  }
+  SimpleRelayCreator* getSimpleRelayCreator() { return simpleRelayCreator.get(); }
+
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
+
+  void onOoDRequest(const AmSipRequest& req);
+
+  AmConfigReader cfg;
+  AmSessionEventHandlerFactory* session_timer_fact;
+
+  // hack for routing of OoD (e.g. REGISTER) messages
+  AmDynInvokeFactory* gui_fact;
+
+  RegexMapper regex_mappings;
+
+  AmEventQueueProcessor subnot_processor;
 
   // DI
   // DI factory
-  AmDynInvoke* getInstance() { return instance(); }
+  AmDynInvoke* getInstance() { return this; }
   // DI API
   void invoke(const string& method, 
 	      const AmArg& args, AmArg& ret);
 
 };
 
-class SBCDialog : public AmB2BCallerSession
-{
-  enum {
-    BB_Init = 0,
-    BB_Dialing,
-    BB_Connected,
-    BB_Teardown
-  } CallerState;
-
-  int m_state;
-
-  string ruri;
-  string from;
-  string to;
-  string callid;
-
-  unsigned int call_timer;
-
-  int outbound_interface;
-
-  // prepaid
-  AmDynInvoke* prepaid_acc;
-  time_t prepaid_starttime;
-  struct timeval prepaid_acc_start;
-  int prepaid_credit;
-
-  SBCCallProfile call_profile;
-
-  void stopCall();
-  bool startCallTimer();
-  void stopCallTimer();
-  void startPrepaidAccounting();
-  void stopPrepaidAccounting();
-
-  bool getPrepaidInterface();
-
- public:
-
-  SBCDialog(const SBCCallProfile& call_profile);
-  ~SBCDialog();
-  
-  void process(AmEvent* ev);
-  void onBye(const AmSipRequest& req);
-  void onInvite(const AmSipRequest& req);
-  void onCancel();
-
- protected:
-  int relayEvent(AmEvent* ev);
-
-  void onSipReply(const AmSipReply& reply, int old_dlg_status,
-		  const string& trans_method);
-  void onSipRequest(const AmSipRequest& req);  
-
-  bool onOtherReply(const AmSipReply& reply);
-  void onOtherBye(const AmSipRequest& req);
-
-  int filterBody(AmSdp& sdp, bool is_a2b);
-
-  void createCalleeSession();
-};
-
-class SBCCalleeSession 
-: public AmB2BCalleeSession, public CredentialHolder
-{
-  AmSessionEventHandler* auth;
-  SBCCallProfile call_profile;
-
- protected:
-  int relayEvent(AmEvent* ev);
-
-  void onSipRequest(const AmSipRequest& req);
-  void onSipReply(const AmSipReply& reply, int old_dlg_status,
-		  const string& trans_method);
-  void onSendRequest(const string& method, const string& content_type,
-		     const string& body, string& hdrs, int flags, unsigned int cseq);
-
-  /* bool onOtherReply(const AmSipReply& reply); */
-
-  int filterBody(AmSdp& sdp, bool is_a2b);
-
- public:
-  SBCCalleeSession(const AmB2BCallerSession* caller,
-		   const SBCCallProfile& call_profile); 
-  ~SBCCalleeSession();
-
-  inline UACAuthCred* getCredentials();
-  
-  void setAuthHandler(AmSessionEventHandler* h) { auth = h; }
-};
-
 extern void assertEndCRLF(string& s);
+extern bool getCCInterfaces(CCInterfaceListT& cc_interfaces, vector<AmDynInvoke*>& cc_modules);
+extern void oodHandlingTerminated(const AmSipRequest &req, vector<AmDynInvoke*>& cc_modules, SBCCallProfile& call_profile);
 
-#endif                           
+#endif

@@ -23,7 +23,7 @@ else
  ifneq ($(local_exclude_app_modules),)
    exclude_app_modules = $(local_exclude_app_modules)
  else
-   exclude_app_modules += mp3 examples py_sems xmlrpc2di gateway jsonrpc twit
+   exclude_app_modules += mp3 examples py_sems gateway jsonrpc twit db_reg_agent
 
    ifneq ($(USE_MONITORING), yes)
    exclude_app_modules += monitoring
@@ -51,6 +51,7 @@ clean:
 	-@for r in $(app_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
+			echo "Cleaning $$r" ; \
 			echo "" ; \
 			COREPATH=../$(COREPATH) $(MAKE) -C $$r clean ; \
 		fi ; \
@@ -61,6 +62,7 @@ modules:
 	-@for r in $(app_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo  "" ; \
+			echo "Making $$r" ; \
 			echo  "" ; \
 			COREPATH=../$(COREPATH) $(MAKE) -C $$r all; \
 		fi ; \
@@ -74,6 +76,7 @@ install-bin:
 	-@for r in $(app_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
+			echo "Installing $$r binaries" ; \
 			echo "" ; \
 			COREPATH=../$(COREPATH) $(MAKE) -C $$r install; \
 		fi ; \
@@ -84,6 +87,7 @@ install-cfg: $(DESTDIR)$(cfg-target)
 	-@for r in $(app_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
+			echo "Installing $$r configuration" ; \
 			echo "" ; \
 			COREPATH=../$(COREPATH) $(MAKE) -C $$r install-cfg; \
 		fi ; \

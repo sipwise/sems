@@ -44,10 +44,6 @@ int MyCCFactory::onLoad()
   EnterNumber         = cfg.getParameter("enter_number", "/tmp/enter_number.wav"); 
   ConnectSuffix       = cfg.getParameter("connect_suffix", "@127.0.0.1"); 
 
-  if (!AmSession::timersSupported()) {
-    ERROR("load session_timer plug-in for timers\n");
-    return -1;
-  }
   cc_acc_fact = AmPlugIn::instance()->getFactory4Di("cc_acc");
   if(!cc_acc_fact){
     ERROR("could not load cc_acc accounting, please provide a module\n");
@@ -57,7 +53,8 @@ int MyCCFactory::onLoad()
   return 0;
 }
 
-AmSession* MyCCFactory::onInvite(const AmSipRequest& req)
+AmSession* MyCCFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				 const map<string,string>& app_params)
 {
 
     AmDynInvoke* cc_acc = cc_acc_fact->getInstance();
@@ -97,16 +94,18 @@ void MyCCDialog::addToPlaylist(string fname) {
   }
 }
 
-void MyCCDialog::onSessionStart(const AmSipRequest& req)
+void MyCCDialog::onSessionStart()
 {
     DBG("MyCCDialog::onSessionStart");
     
-    AmB2BCallerSession::onSessionStart(req);
+    AmB2BCallerSession::onSessionStart();
 
     setInOut(&playlist, &playlist);
     addToPlaylist(MyCCFactory::InitialAnnouncement);
 
     setDtmfDetectionEnabled(true);
+
+    AmB2BCallerSession::onSessionStart();
 }
 
 void MyCCDialog::onDtmf(int event, int duration) {
@@ -116,7 +115,7 @@ void MyCCDialog::onDtmf(int event, int duration) {
   case CC_Collecting_PIN: {
     // flush the playlist (stop playing) 
     // if a key is entered
-    playlist.close(); 
+    playlist.flush(); 
     
     if(event <10) {
       pin +=int2str(event);
@@ -142,7 +141,7 @@ void MyCCDialog::onDtmf(int event, int duration) {
   case CC_Collecting_Number: {
     // flush the playlist (stop playing) 
     // if a key is entered
-    playlist.close(); 
+    playlist.flush(); 
     if(event <10) {
       number +=int2str(event);
       DBG("number is now '%s'\n", number.c_str());

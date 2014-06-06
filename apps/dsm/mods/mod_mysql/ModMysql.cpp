@@ -61,9 +61,11 @@ DSMAction* SCMysqlModule::getAction(const string& from_str) {
   DEF_CMD("mysql.saveResult",         SCMySaveResultAction);
   DEF_CMD("mysql.useResult",          SCMyUseResultAction);
   DEF_CMD("mysql.playDBAudio",        SCMyPlayDBAudioAction);
+  DEF_CMD("mysql.playDBAudioFront",   SCMyPlayDBAudioFrontAction);
+  DEF_CMD("mysql.playDBAudioLooped",  SCMyPlayDBAudioLoopedAction);
   DEF_CMD("mysql.getFileFromDB",      SCMyGetFileFromDBAction);
   DEF_CMD("mysql.putFileToDB",        SCMyPutFileToDBAction);
-
+  DEF_CMD("mysql.escape",             SCMyEscapeAction);
   return NULL;
 }
 
@@ -89,17 +91,17 @@ mysqlpp::Connection* getMyDSMSessionConnection(DSMSession* sc_sess) {
     sc_sess->SET_STRERROR("No connection to database");
     return NULL;
   }
-  ArgObject* ao = NULL; mysqlpp::Connection* res = NULL;
+  AmObject* ao = NULL; mysqlpp::Connection* res = NULL;
   try {
     if (!isArgAObject(sc_sess->avar[MY_AKEY_CONNECTION])) {
       sc_sess->SET_ERRNO(DSM_ERRNO_MY_CONNECTION);
-      sc_sess->SET_STRERROR("No connection to database (not ArgObject)");
+      sc_sess->SET_STRERROR("No connection to database (not AmObject)");
       return NULL;
     }
     ao = sc_sess->avar[MY_AKEY_CONNECTION].asObject();
   } catch (...){
     sc_sess->SET_ERRNO(DSM_ERRNO_MY_CONNECTION);
-    sc_sess->SET_STRERROR("No connection to database (not ArgObject)");
+    sc_sess->SET_STRERROR("No connection to database (not AmObject)");
     return NULL;
   }
 
@@ -117,7 +119,7 @@ mysqlpp::StoreQueryResult* getMyDSMQueryResult(DSMSession* sc_sess) {
     sc_sess->SET_STRERROR("No result available");
     return NULL;
   }
-  ArgObject* ao = NULL; mysqlpp::StoreQueryResult* res = NULL;
+  AmObject* ao = NULL; mysqlpp::StoreQueryResult* res = NULL;
   try {
     assertArgAObject(sc_sess->avar[MY_AKEY_RESULT]);
     ao = sc_sess->avar[MY_AKEY_RESULT].asObject();
@@ -178,7 +180,8 @@ string str_between(const string s, char b, char e) {
 }
 
 EXEC_ACTION_START(SCMyConnectAction) {
-  string db_url = arg.length()?arg:sc_sess->var["config.db_url"];
+  string f_arg = resolveVars(arg, sess, sc_sess, event_params);
+  string db_url = f_arg.length()?f_arg:sc_sess->var["config.db_url"];
   if (db_url.empty() || db_url.length() < 11 || db_url.substr(0, 8) != "mysql://") {
     ERROR("missing correct db_url config or connect parameter\n");
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
@@ -450,12 +453,14 @@ EXEC_ACTION_START(SCMyUseResultAction) {
 } EXEC_ACTION_END;
 
 
-CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
-EXEC_ACTION_START(SCMyPlayDBAudioAction) {
+bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
+		 map<string,string>* event_params, const string& par1, const string& par2,
+		 bool looped, bool front) {
   mysqlpp::Connection* conn = 
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn) 
-    return false;
+  if (NULL == conn)
+    EXEC_ACTION_STOP;
+
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
 
   try {
@@ -466,14 +471,14 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
       mysqlpp::Row row = res.fetch_row();
       if (!row) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
-	sc_sess->SET_STRERROR("result does not have row"); 
-	return false;
+	sc_sess->SET_STRERROR("result does not have row");
+	EXEC_ACTION_STOP;
       }
       FILE *t_file = tmpfile();
       if (NULL == t_file) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
 	sc_sess->SET_STRERROR("tmpfile() failed: "+string(strerror(errno)));
-	return false;
+	EXEC_ACTION_STOP;
       }
 
       fwrite(row.at(0).data(), 1, row.at(0).size(), t_file);
@@ -483,10 +488,12 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
       if (a_file->fpopen(par2, AmAudioFile::Read, t_file)) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
 	sc_sess->SET_STRERROR("fpopen failed!");
-	return false;
+	EXEC_ACTION_STOP;
       }
 
-      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL));
+      a_file->loop.set(looped);
+
+      sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL), front);
       sc_sess->transferOwnership(a_file);
 
       sc_sess->CLR_ERRNO;    
@@ -501,6 +508,25 @@ EXEC_ACTION_START(SCMyPlayDBAudioAction) {
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
+  return false;
+}
+
+CONST_ACTION_2P(SCMyPlayDBAudioAction, ',', true);
+EXEC_ACTION_START(SCMyPlayDBAudioAction) {
+  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
+	      /*looped = */ false, /*front = */ false);
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCMyPlayDBAudioFrontAction, ',', true);
+EXEC_ACTION_START(SCMyPlayDBAudioFrontAction) {
+  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
+	      /*looped = */ false, /*front = */ true);
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCMyPlayDBAudioLoopedAction, ',', true);
+EXEC_ACTION_START(SCMyPlayDBAudioLoopedAction) {
+  playDBAudio(sess, sc_sess, event, event_params, par1, par2,
+	      /*looped = */ true, /*front = */ false);
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCMyGetFileFromDBAction, ',', true);
@@ -510,6 +536,7 @@ EXEC_ACTION_START(SCMyGetFileFromDBAction) {
   if (NULL == conn) 
     return false;
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
+  string fname = resolveVars(par2, sess, sc_sess, event_params);
 
   try {
     mysqlpp::Query query = conn->query(qstr.c_str());
@@ -521,10 +548,10 @@ EXEC_ACTION_START(SCMyGetFileFromDBAction) {
 	sc_sess->SET_STRERROR("result does not have row"); 
 	return false;
       }
-      FILE *t_file = fopen(par2.c_str(), "wb");
+      FILE *t_file = fopen(fname.c_str(), "wb");
       if (NULL == t_file) {
 	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
-	sc_sess->SET_STRERROR("fopen() failed: "+string(strerror(errno)));
+	sc_sess->SET_STRERROR("fopen() failed for file '"+fname+"': "+string(strerror(errno)));
 	return false;
       }
 
@@ -607,4 +634,27 @@ EXEC_ACTION_START(SCMyPutFileToDBAction) {
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCMyEscapeAction, '=', false);
+EXEC_ACTION_START(SCMyEscapeAction) {
+  mysqlpp::Connection* conn =
+    getMyDSMSessionConnection(sc_sess);
+
+  if (NULL == conn)
+    return false;
+
+  mysqlpp::Query query = conn->query();
+
+  string val = resolveVars(par2, sess, sc_sess, event_params);
+
+  string dstvar = par1;
+  if (dstvar.size() && dstvar[0] == '$') {
+    dstvar = dstvar.substr(1);
+  }
+  string res;
+  query.escape_string(&res, val.c_str(), val.length());
+  sc_sess->var[dstvar] = res;
+  DBG("escaped: $%s = escape(%s) = %s\n",
+      dstvar.c_str(), val.c_str(), res.c_str());
 } EXEC_ACTION_END;

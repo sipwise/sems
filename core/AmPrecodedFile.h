@@ -33,6 +33,7 @@
 #include "amci/amci.h"
 #include "AmAudioFile.h"
 #include "AmAudio.h"
+#include "AmRtpAudio.h"
 
 #include <string>
 #include <map>
@@ -55,37 +56,38 @@ class AmPrecodedFileFormat : public AmAudioFileFormat {
   precoded_payload_t& precoded_payload;
   amci_subtype_t subtype;
 
+  /* encoded frame size in bytes */
+  int frame_encoded_size;
+
  public:
   AmPrecodedFileFormat(precoded_payload_t& precoded_payload);
   ~AmPrecodedFileFormat();
   amci_subtype_t*  getSubtype() { return &subtype; }
-
- protected:
-  virtual int getCodecId();
+  int getFrameEncodedSize() { return frame_encoded_size; }
 };
 
-class AmPrecodedRtpFormat : public AmAudioRtpFormat {
+class AmPrecodedRtpFormat : public AmAudioRtpFormat 
+{
   precoded_payload_t& precoded_payload;
+
+  /* encoded frame size in bytes */
+  int frame_encoded_size;
   
  public:
-  AmPrecodedRtpFormat(precoded_payload_t& precoded_payload,
-		      const vector<SdpPayload *>& payloads);
+  AmPrecodedRtpFormat(precoded_payload_t& precoded_payload);
   ~AmPrecodedRtpFormat();
 
- protected:
-  int getCodecId();
+  int getFrameEncodedSize() { return frame_encoded_size; }
 };
 
 class AmPrecodedFileInstance
 : public AmAudioFile {
  
   precoded_payload_t& precoded_payload;
-  const vector<SdpPayload*>&  payloads;
   amci_inoutfmt_t m_iofmt;
 
  public:
- AmPrecodedFileInstance(precoded_payload_t& precoded_payload, 
-			const vector<SdpPayload*>&  payloads);
+ AmPrecodedFileInstance(precoded_payload_t& precoded_payload);
  ~AmPrecodedFileInstance();
 
  AmPrecodedRtpFormat* getRtpFormat();
@@ -97,7 +99,7 @@ class AmPrecodedFileInstance
 };
 
 class AmPrecodedFile 
-: public AmPayloadProviderInterface {
+: public AmPayloadProvider {
 
   std::map<int,precoded_payload_t>  payloads;
 
@@ -105,15 +107,18 @@ class AmPrecodedFile
   AmPrecodedFile();
   ~AmPrecodedFile();
 
+  /** Open the file */
+  int open(const std::string& filename);
+
   /** need to call after open() */
   void initPlugin();
 
-  int open(const std::string& filename);
+  AmPrecodedFileInstance* getFileInstance(int payload_id);
 
-  amci_payload_t*  payload(int payload_id);
-  int getDynPayload(const string& name, int rate, int encoding_param);
-
-  AmPrecodedFileInstance* getFileInstance(int payload_id, const vector<SdpPayload*>&  m_payloads);
+  /** from @AmPayloadProvider */
+  amci_payload_t*  payload(int payload_id) const;
+  int getDynPayload(const string& name, int rate, int encoding_param) const;
+  void getPayloads(vector<SdpPayload>& pl_vec) const;
 };
 
 #endif

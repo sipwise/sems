@@ -33,6 +33,7 @@ const char* AmArg::t2str(int type) {
   switch (type) {
   case AmArg::Undef:   return "Undef";
   case AmArg::Int:     return "Int";
+  case AmArg::LongLong: return "LongLong";
   case AmArg::Bool:    return "Bool";
   case AmArg::Double:  return "Double";
   case AmArg::CStr:    return "CStr";
@@ -59,6 +60,7 @@ AmArg& AmArg::operator=(const AmArg& v) {
     type = v.type;
     switch(type){
     case Int:    { v_int = v.v_int; } break;
+    case LongLong: { v_long = v.v_long; } break;
     case Bool:   { v_bool = v.v_bool; } break;
     case Double: { v_double = v.v_double; } break;
     case CStr:   { v_cstr = strdup(v.v_cstr); } break;
@@ -220,7 +222,7 @@ void AmArg::concat(const AmArg& a) {
   }
 }
 
-const size_t AmArg::size() const {
+size_t AmArg::size() const {
   if (Array == type)
     return v_array->size(); 
 
@@ -230,8 +232,24 @@ const size_t AmArg::size() const {
   throw TypeMismatchException();
 }
 
-AmArg& AmArg::get(size_t idx) {
+AmArg& AmArg::back() {
   assertArray();  
+  if (!v_array->size())
+    throw OutOfBoundsException();
+
+  return (*v_array)[v_array->size()-1];
+}
+
+AmArg& AmArg::back() const {
+  assertArray();
+  if (!v_array->size())
+    throw OutOfBoundsException();
+
+  return (*v_array)[v_array->size()-1];
+}
+
+AmArg& AmArg::get(size_t idx) {
+  assertArray();
   if (idx >= v_array->size())
     throw OutOfBoundsException();
     
@@ -239,7 +257,7 @@ AmArg& AmArg::get(size_t idx) {
 }
 
 AmArg& AmArg::get(size_t idx) const {
-  assertArray();  
+  assertArray();
   if (idx >= v_array->size())
     throw OutOfBoundsException();
     
@@ -304,6 +322,7 @@ bool operator==(const AmArg& lhs, const AmArg& rhs) {
 
   switch(lhs.type){
   case AmArg::Int:    { return lhs.v_int == rhs.v_int; } break;
+  case AmArg::LongLong: { return lhs.v_long == rhs.v_long; } break;
   case AmArg::Bool:   { return lhs.v_bool == rhs.v_bool; } break;
   case AmArg::Double: { return lhs.v_double == rhs.v_double; } break;
   case AmArg::CStr:   { return !strcmp(lhs.v_cstr,rhs.v_cstr); } break;
@@ -362,6 +381,7 @@ void AmArg::assertArrayFmt(const char* format) const {
     for (size_t i=0;i<fmt_len;i++) {
       switch (format[i]) {
       case 'i': assertArgInt(get(i)); got+='i';  break;
+      case 'l': assertArgLongLong(get(i)); got+='l';  break;
       case 't': assertArgBool(get(i)); got+='t';  break;
       case 'f': assertArgDouble(get(i)); got+='f'; break;
       case 's': assertArgCStr(get(i)); got+='s'; break;
@@ -392,7 +412,7 @@ VECTOR_GETTER(string, asStringVector, asCStr)
 VECTOR_GETTER(int, asIntVector, asInt)
 VECTOR_GETTER(bool, asBoolVector, asBool)
 VECTOR_GETTER(double, asDoubleVector, asDouble)
-VECTOR_GETTER(ArgObject*, asArgObjectVector, asObject)
+VECTOR_GETTER(AmObject*, asAmObjectVector, asObject)
 #undef  VECTOR_GETTER
 
 vector<ArgBlob> AmArg::asArgBlobVector() const {		
@@ -410,9 +430,11 @@ string AmArg::print(const AmArg &a) {
   string s;
   switch (a.getType()) {
     case Undef:
-      return "<UNDEFINED>";
+      return "";
     case Int:
       return a.asInt()<0?"-"+int2str(abs(a.asInt())):int2str(abs(a.asInt()));
+    case LongLong:
+      return longlong2str(a.asLongLong());
     case Bool:
       return a.asBool()?"true":"false";
     case Double:
@@ -423,6 +445,8 @@ string AmArg::print(const AmArg &a) {
       return "<Object>";
     case ADynInv:
       return "<DynInv>";
+    case Blob:
+      s = "<Blob of size:" + int2str(a.asBlob()->len) + ">";
     case Array:
       s = "[";
       for (size_t i = 0; i < a.size(); i ++)

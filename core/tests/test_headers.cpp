@@ -34,8 +34,8 @@ FCTMF_SUITE_BGN(test_headers) {
     } FCT_TEST_END();
 
     FCT_TEST_BGN(getHeader_keyvalue) {
-      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myval", "mykey") == "myval");
-      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myval", "myotherkey") == "myval");
+      fct_chk(get_header_keyvalue("mykey=myval;myotherkey=myotherval", "mykey") == "myval");
+      fct_chk(get_header_keyvalue("mykey=myval1;myotherkey=myval", "myotherkey") == "myval");
       fct_chk(get_header_keyvalue("mykey=myval;myotherkey=", "myotherkey") == "");
       fct_chk(get_header_keyvalue(getHeader("P-My-Test: mykey=myval;myotherfunkykey=myval" CRLF, "P-My-Test", true), "mykey") == "myval" );
 
@@ -45,6 +45,8 @@ FCTMF_SUITE_BGN(test_headers) {
 
       fct_chk(get_header_keyvalue(getHeader("P-App-Param: product_id=1;productid=1;bla=blub ", "P-App-Param"), "product_id") == "1");
       fct_chk(get_header_keyvalue(getHeader("P-App-Param: product_id=11;productid=1;bla=blub ", "P-App-Param"), "product_id") == "11");
+      fct_chk(get_header_keyvalue(getHeader("P-App-Param: ;u=user;d=domain", "P-App-Param"), "u") == "user");
+      fct_chk(get_header_keyvalue(getHeader("P-App-Param: ;u=user", "P-App-Param"), "u") == "user");
 
 
       fct_chk(get_header_keyvalue(getHeader("P-My-Test: mykey=myval; myotherfunkykey=myval;andsomemore", "P-My-Test", true), "mykey") == "myval" );
@@ -57,7 +59,13 @@ FCTMF_SUITE_BGN(test_headers) {
       fct_chk(get_header_keyvalue(getHeader("P-My-Test: mykey=myval; myotherfunkykey= 'test \\' escaped';andsomemore", "P-My-Test", true), "test \\' escaped") == "");
       fct_chk(get_header_keyvalue("u=sayer;d=iptel.org;p=abcdef", "u") == "sayer");
       fct_chk(get_header_keyvalue("u=sayer;d=iptel.org;p=abcdef", "d") == "iptel.org");
-    } FCT_TEST_END();
+
+      fct_chk(get_header_keyvalue("prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
+      fct_chk(get_header_keyvalue("some=other;prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
+      fct_chk(get_header_keyvalue("some=\"mykey\";prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
+      fct_chk(get_header_keyvalue("some=\"mykey=valx\";prefixmykey=myprefixval;mykey=myval", "mykey") == "myval");
+
+   } FCT_TEST_END();
 
 
     FCT_TEST_BGN(getHeader_allow) {

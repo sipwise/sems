@@ -1,29 +1,30 @@
-NAME=sems
-LIBNAME=sems.so
+APP_NAME ?= sems
+NAME=$(APP_NAME)
+LIBNAME=$(APP_NAME).so
+
+COREPATH=.
 
 PLUGIN_DIR=plug-in
 SIP_STACK_DIR=sip
+RESAMPLE_DIR=resample
 
-SRCS=$(filter-out $(NAME).cpp, $(wildcard *.cpp))
+SRCS=$(wildcard *.cpp)
 HDRS=$(SRCS:.cpp=.h)
-OBJS=$(SRCS:.cpp=.o) sip/sip_stack.a
+OBJS=$(SRCS:.cpp=.o)
 DEPS=$(SRCS:.cpp=.d) $(NAME).d
 AUDIO_FILES=$(notdir $(wildcard wav/*.wav))
 TEST_DIR=tests
 
 .PHONY: all
-all: ../Makefile.defs
-	-@$(MAKE) sip_stack && \
-	  $(MAKE) deps    && \
-	  $(MAKE) $(NAME) && \
-	  $(MAKE) modules 
+all: ../Makefile.defs $(NAME) modules
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(DEPS) $(NAME) $(NAME).o
-	rm -f lib/*.so compat/getos compat/getarch
-	$(MAKE) -C $(SIP_STACK_DIR) clean
-	$(MAKE) -C $(PLUGIN_DIR) clean
+	-@rm -f $(OBJS) $(DEPS) $(NAME)
+	-@rm -f lib/*.so compat/getos compat/getarch
+	-@$(MAKE) -C $(SIP_STACK_DIR) clean
+	-@$(MAKE) -C $(RESAMPLE_DIR) clean
+	-@$(MAKE) -C $(PLUGIN_DIR) clean
 
 .PHONY: sip_stack
 sip_stack:
@@ -43,30 +44,76 @@ test:
 	-@echo "making tests"
 	-@cd $(TEST_DIR); $(MAKE)
 
-.PHONY: deps
-deps: $(DEPS)
-
-COREPATH=.
+.PHONY: core
+core: $(OBJS) ../Makefile.defs
 
 include ../Makefile.defs
 
-CPPFLAGS += -I$(COREPATH)
+CPPFLAGS += -I$(COREPATH) -fno-strict-aliasing
+LDFLAGS += -levent -levent_pthreads
+
+ifdef USE_LIBSAMPLERATE
+CPPFLAGS += -DUSE_LIBSAMPLERATE
+LDFLAGS +=-lsamplerate
+endif
+
+# This allows symbols defined in the SIP stack but not used
+# by the core itself to be included in the executable and
+# thus be available for modules
+ifneq ($(LD), clang)
+EXTRA_LDFLAGS += -Wl,--whole-archive $(SIP_STACK_DIR)/sip_stack.a -Wl,--no-whole-archive
+else
+EXTRA_LDFLAGS += -force_load $(SIP_STACK_DIR)/sip_stack.a
+endif
 
 ifneq ($(OS), freebsd)
 	EXTRA_LDFLAGS += -lresolv
 endif
 
+
+ifdef USE_INTERNAL_RESAMPLER
+
+CPPFLAGS += -DUSE_INTERNAL_RESAMPLER
+OBJS += $(RESAMPLE_DIR)/libresample.a
+
+.PHONY: resample_lib
+resample_lib:
+	-@echo ""
+	-@echo "making internal resampler"
+	-@cd $(RESAMPLE_DIR); $(MAKE) all
+
+else
+
+.PHONY: resample_lib
+resample_lib:
+
+endif
+
+ifeq ($(USE_GPERFTOOLS),yes)
+LDFLAGS += -ltcmalloc -lprofiler
+endif
+
+ifdef USE_SPANDSP
+CPPFLAGS += -DUSE_SPANDSP -D__STDC_LIMIT_MACROS
+
+ifdef LIBSPANDSP_STATIC
+LDFLAGS += $(LIBSPANDSP_LDIR)libspandsp.a
+else
+LDFLAGS += -lspandsp
+endif
+endif
+
+-include $(DEPS)
+
 # implicit rules
-%.o : %.cpp %.d ../Makefile.defs
-	$(CXX) -c -o $@ $< $(CPPFLAGS) $(CXXFLAGS)
+%.o : %.cpp ../Makefile.defs
+	$(CXX) -MMD -c -o $@ $< $(CPPFLAGS) $(CXXFLAGS)
 
-%.d : %.cpp %.h ../Makefile.defs
-	$(CXX) -MM $< $(CPPFLAGS) $(CXXFLAGS) > $@
-
-$(NAME): $(NAME).o $(OBJS) ../Makefile.defs
+$(NAME): sip_stack resample_lib core ../Makefile.defs
 	-@echo ""
 	-@echo "making $(NAME) executable"
-	$(LD) -o $(NAME) $(NAME).o $(OBJS) $(LDFLAGS) $(EXTRA_LDFLAGS)
+	$(LD) -o $(NAME) $(OBJS) $(LDFLAGS) $(EXTRA_LDFLAGS)
+
 
 install: all mk-install-dirs \
 	install-audio \
@@ -138,9 +185,5 @@ tar:
 			                    -zcf ../../"$(NAME)-$(notdir $(CURDIR))-$(RELEASE)".tar.gz \
 			                               "$(NAME)-$(RELEASE)" ) ; \
 			    rm -rf tmp/_tar1; rm -rf tmp/_tar2
-
-ifeq '$(NAME)' '$(MAKECMDGOALS)'
-include $(DEPS)
-endif
 
 

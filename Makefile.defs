@@ -1,39 +1,36 @@
-ifeq ($(makefile_defs),1)
+ifeq ($(makefile_defs),"1")
 else
-makefile_defs=1
+makefile_defs="1"
 export makefile_defs
 
-#GIT = $(shell which git)
-#SVNVERSION = $(shell which svnversion)
-#
-#ifneq ($(GIT),)
-#   SCM_REV = $(shell if git --help describe |grep dirty 2>&1 >/dev/null ; \
-#        then git describe --always --dirty 2>/dev/null; \
-#        else git describe --always 2>/dev/null; fi)
-#endif
-#
-#ifeq ($(SCM_REV),)
-#ifneq ($(SVNVERSION),)
-#   SCM_REV = r$(shell svnversion -n .)
-#endif
-#endif
+GIT := $(shell which git)
+
+ifneq ($(GIT),)
+   SCM_REV := $(shell if git --help describe |grep dirty 2>&1 >/dev/null ; \
+        then git describe --always --dirty 2>/dev/null; \
+        else git describe --always 2>/dev/null; fi)
+endif
 
 #version number
 VERSION = 1
-PATCHLEVEL = 4
-SUBLEVEL = 3
+PATCHLEVEL = 6
+SUBLEVEL = 0
 
 ifneq ($(SCM_REV),)
-RELEASE = $(SCM_REV)
+RELEASE := $(SCM_REV)
 else
-REL_VERSION=$(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
-RELEASE=$(REL_VERSION)$(EXTRAVERSION)
+REL_VERSION := $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
+RELEASE := $(REL_VERSION)$(EXTRAVERSION)
 endif
+
+APP_NAME ?= sems
 
 CPPFLAGS += -D_DEBUG \
 	  -D_THREAD_SAFE -D_REENTRANT \
 	  -DSEMS_VERSION='"$(RELEASE)"' -DARCH='"$(ARCH)"'\
 	  -DOS='"$(OS)"' 	\
+	  -DSYSTEM_SAMPLECLOCK_RATE=32000LL \
+          -DSEMS_APP_NAME='"$(APP_NAME)"'
 #         -DMAX_RTP_SESSIONS=8192 \
 #	  -DSUPPORT_IPV6 \
 #	  -DNO_THREADID_LOG \
@@ -68,6 +65,11 @@ CPPFLAGS += -D_DEBUG \
 #
 #USE_LIBSAMPLERATE = yes
 
+# compile with internal resampler?
+#
+#
+USE_INTERNAL_RESAMPLER = yes
+
 #
 # ZRTP support? (see zfoneproject.com)
 #WITH_ZRTP = yes
@@ -76,7 +78,7 @@ CPPFLAGS += -D_DEBUG \
 # exclude some modules from compilation?
 # e.g. python modules:
 
-exclude_core_modules = sipctrl g729
+exclude_core_modules = g729 silk
 #exclude_apps_modules = py_sems ivr mailbox pin_collect conf_auth mp3 examples
 
 # build in support for monitoring?
@@ -92,6 +94,11 @@ LONG_DEBUG_MESSAGE=yes
 # Is this a debug build or not?
 debug=no
 
+# Propagate all unparsed SIP headers into AmSipReply. Disabled by default
+# because only special applications might need this and it brings higher memory
+# demands and affects performance.
+#PROPAGATE_UNPARSED_REPLY_HEADERS=no
+
 
 ################### end of configuration section #######################
 
@@ -100,39 +107,29 @@ LDFLAGS += -lm
 GETOS=$(COREPATH)/compat/getos
 GETARCH=$(COREPATH)/compat/getarch
 
-OS   := $(shell $(CC) $(EXTRA_CFLAGS) -o $(GETOS) $(GETOS).c && $(GETOS))
-ARCH := $(shell $(CC) $(EXTRA_CFLAGS) -o $(GETARCH) $(GETARCH).c && $(GETARCH))
+
+OS   := $(shell if [ -f $(GETOS) ] ; then $(GETOS); else  $(CC) $(EXTRA_CFLAGS) -o $(GETOS) $(GETOS).c && $(GETOS); fi)
+ARCH := $(shell if [ -f $(GETARCH) ] ; then $(GETARCH); else $(CC) $(EXTRA_CFLAGS) -o $(GETARCH) $(GETARCH).c && $(GETARCH); fi)
 
 ifdef USE_THREADPOOL
 CPPFLAGS += -DSESSION_THREADPOOL
 endif
 
-ifdef USE_SPANDSP
-ifneq ($(spandsp_defs), 1)
-spandsp_defs=1
-export spandsp_defs
-CPPFLAGS += -DUSE_SPANDSP -D__STDC_LIMIT_MACROS
-endif
-else
+ifndef USE_SPANDSP
 exclude_core_modules += g722
-endif
-
-ifdef USE_LIBSAMPLERATE
-ifneq ($(libsrc_defs), 1)
-libsrc_defs=1
-export libsrc_defs
-CPPFLAGS += -DUSE_LIBSAMPLERATE
-endif
 endif
 
 ifdef USE_MONITORING
 CPPFLAGS += -DUSE_MONITORING
 endif
 
-ifdef LONG_DEBUG_MESSAGE
+ifndef LONG_DEBUG_MESSAGE
 CPPFLAGS += -DLOG_BUFFER_LEN=2048
 endif
 
+ifeq ($(PROPAGATE_UNPARSED_REPLY_HEADERS),yes)
+CPPFLAGS += -DPROPAGATE_UNPARSED_REPLY_HEADERS
+endif
 
 # Additions for Solaris support.
 ifeq ($(OS),solaris)
@@ -163,7 +160,7 @@ CXX = g++
 CC = gcc
 LD = $(CC)
 
-CXXFLAGS += -Wall -Wno-reorder -fPIC -g $(EXTRA_CXXFLAGS)
+CXXFLAGS += -Wall -Wno-reorder -Wno-unused -fPIC -g $(EXTRA_CXXFLAGS) 
 CFLAGS   += -Wall -fPIC -g $(EXTRA_CFLAGS)
 
 # only optimize if releasing, as it slows down the build process
@@ -186,20 +183,29 @@ endif
 TARGET=
 LIB_LDFLAGS = -shared
 
+ifeq ($(LD), clang)
+LDFLAG_DYN=
+LDFLAG_PTHREAD=
+else
+LDFLAG_DYN = -rdynamic
+LDFLAG_PTHREAD = -lpthread
+endif
+
 ifeq ($(OS), linux)
-	LDFLAGS +=  -ldl -rdynamic -lpthread
+	LDFLAGS +=  -ldl $(LDFLAG_DYN) $(LDFLAG_PTHREAD)
+	CPPFLAGS += -DPROPAGATE_COREDUMP_SETTINGS
 else
 ifeq ($(OS), freebsd)
-	LDFLAGS += -rdynamic -pthread
+	LDFLAGS += $(LDFLAG_DYN) $(LDFLAG_PTHREAD)
 else
 ifeq ($(OS), openbsd)
-	LDFLAGS += -rdynamic -pthread
+	LDFLAGS += $(LDFLAG_DYN) $(LDFLAG_PTHREAD)
 else
 ifeq ($(OS), netbsd)
-	LDFLAGS += -rdynamic -pthread
+	LDFLAGS += $(LDFLAG_DYN) $(LDFLAG_PTHREAD)
 else
 ifeq ($(OS), macosx)
-	LDFLAGS += -rdynamic -pthread
+	LDFLAGS += $(LDFLAG_DYN) $(LDFLAG_PTHREAD)
 	LIB_LDFLAGS = -flat_namespace -undefined suppress -bundle
 	CXXFLAGS += -fno-common
 	CFLAGS += -fno-common
@@ -216,7 +222,7 @@ ifeq ($(OS), macosx)
 	endif	      
 else
 ifeq ($(OS), solaris)
-       	LDFLAGS+= -fPIC -ldl -lsocket -lnsl -lpthread
+       	LDFLAGS+= -fPIC -ldl -lsocket -lnsl $(LDFLAG_PTHREAD)
 	TARGET=solaris
 	# These don't build on Solaris because of missing Python, invalid make args, or other.
 	exclude_app_modules += py_sems py_comp pin_collect mailbox ivr diameter_client conf_auth mp3 cc_acc_xmlrpc xmlrpc2di
@@ -232,18 +238,6 @@ LDFLAGS += -lstdc++
 
 ifeq ($(ARCH),iphone)
 LDFLAGS += -lgcc_eh
-endif
-
-ifdef USE_SPANDSP
-ifdef LIBSPANDSP_STATIC
-LDFLAGS += $(LIBSPANDSP_LDIR)libspandsp.a
-else
-LDFLAGS += -lspandsp
-endif
-endif
-
-ifdef USE_LIBSAMPLERATE
-LDFLAGS +=-lsamplerate
 endif
 
 ifdef WITH_ZRTP
@@ -278,30 +272,30 @@ audio-prefix = $(basedir)$(prefix)
 lib-prefix = $(basedir)$(prefix)
 
 # dirs
-cfg-dir = etc/sems/
+cfg-dir = etc/$(APP_NAME)/
 
 bin-dir = sbin/
-modules-dir = lib/sems/plug-in/
-audio-dir = lib/sems/audio/
-lib-dir = lib/sems/
+modules-dir = lib/$(APP_NAME)/plug-in/
+audio-dir = lib/$(APP_NAME)/audio/
+lib-dir = lib/$(APP_NAME)/
 
 ifeq ($(OS), linux)
-	doc-dir = share/doc/sems/
+	doc-dir = share/doc/$(APP_NAME)/
 	man-dir = share/man/
 else
 ifeq ($(OS), freebsd)
-	doc-dir = share/doc/sems/
+	doc-dir = share/doc/$(APP_NAME)/
 	man-dir = man/
 else
 ifeq ($(OS), openbsd)
-	doc-dir = share/doc/sems/
+	doc-dir = share/doc/$(APP_NAME)/
 	man-dir = man/
 else
 ifeq ($(OS), netbsd)
-	doc-dir = share/doc/sems
+	doc-dir = share/doc/$(APP_NAME)
 	man-dir = man/
 else
-	doc-dir = doc/sems/
+	doc-dir = doc/$(APP_NAME)/
 	man-dir = man/
 endif
 endif
@@ -343,9 +337,10 @@ export cfg-prefix bin-prefix modules-prefix doc-prefix audio-prefix lib-prefix
 export cfg-dir bin-dir modules-dir audio-dir lib-dir doc-dir man-dir
 export bin-target cfg-target app-cfg-target modules-target audio-target lib-target
 export INSTALL TAR INSTALL-TOUCH INSTALL-CFG INSTALL-BIN INSTALL-MODULES INSTALL-DOC INSTALL-AUDIO
+export APP_NAME
 
 export USE_SPANDSP LIBSPANDSP_STATIC LIBSPANDSP_LDIR 
-export USE_LIBSAMPLERATE
+export USE_LIBSAMPLERATE USE_INTERNAL_RESAMPLER
 export WITH_ZRTP
 export USE_MONITORING
 export exclude_core_modules exclude_app_modules

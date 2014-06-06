@@ -136,8 +136,9 @@ public:
 
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
-  AmSession* onInvite(const AmSipRequest& req,
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 		      AmArg& session_params);
   // DI
   // DI factory
@@ -149,6 +150,15 @@ public:
   void postEvent(AmEvent* e);
 
   bool createSystemDSM(const string& config_name, const string& start_diag, bool reload, string& status);
+
+  /**
+     add script diags from config set to DSM engine
+     @return true on success (config set found) 
+  */
+  bool addScriptDiagsToEngine(const string& config_set,
+			      DSMStateEngine* engine,
+			      map<string,string>& config_vars,
+			      bool& SetParamVariables);
 
 };
 

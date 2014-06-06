@@ -120,7 +120,6 @@ def_IvrSipRequest_GETTER(IvrSipRequest_getcallid,       callid)
 def_IvrSipRequest_GETTER(IvrSipRequest_getfrom_tag,     from_tag)
 def_IvrSipRequest_GETTER(IvrSipRequest_getto_tag,       to_tag)
 def_IvrSipRequest_GETTER(IvrSipRequest_getroute,        route)
-def_IvrSipRequest_GETTER(IvrSipRequest_getbody,         body)
 def_IvrSipRequest_GETTER(IvrSipRequest_gethdrs,         hdrs)
 
 #undef def_IvrSipRequest_GETTER
@@ -134,6 +133,18 @@ static PyObject*
 IvrSipRequest_getcseq(IvrSipRequest *self, void *closure)
 {
   return PyInt_FromLong(self->p_req->cseq);
+}
+
+static PyObject*
+IvrSipRequest_getbody(IvrSipRequest *self, void *closure)
+{
+  if(self->p_req->body.getLen())
+  {
+    string body;
+    self->p_req->body.print(body);
+    return PyString_FromString(body.c_str());
+  }
+  return PyString_FromString("");
 }
 
 #define def_IvrSipRequest_SETTER(setter_name, attr)			\

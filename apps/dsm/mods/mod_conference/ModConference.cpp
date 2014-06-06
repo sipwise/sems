@@ -130,7 +130,7 @@ static bool ConferenceJoinChannel(DSMConfChannel** dsm_chan,
       connect_record?"true":"false");
   
   AmConferenceChannel* chan = AmConferenceStatus::getChannel(channel_id, 
-							     sess->getLocalTag());
+							     sess->getLocalTag(), sess->RTPStream()->getSampleRate());
   if (NULL == chan) {
     ERROR("obtaining conference channel\n");
     throw DSMException("conference");
@@ -181,7 +181,7 @@ static T* getDSMConfChannel(DSMSession* sc_sess, const char* key_name) {
   if (sc_sess->avar.find(key_name) == sc_sess->avar.end()) {
     return NULL;
   }
-  ArgObject* ao = NULL; T* res = NULL;
+  AmObject* ao = NULL; T* res = NULL;
   try {
     if (!isArgAObject(sc_sess->avar[key_name])) {
       return NULL;
@@ -255,7 +255,7 @@ EXEC_ACTION_START(ConfTeeJoinAction) {
   if (NULL == chan) {
     DBG("not previously in tee-channel, creating new\n");
     AmConferenceChannel* conf_channel = AmConferenceStatus::getChannel(channel_id, 
-								       sess->getLocalTag());
+								       sess->getLocalTag(), sess->RTPStream()->getSampleRate());
     if (NULL == conf_channel) {
       ERROR("obtaining conference channel\n");
       throw DSMException("conference");
@@ -287,7 +287,7 @@ EXEC_ACTION_START(ConfTeeJoinAction) {
     sc_sess->setInputPlaylist();
 
     AmConferenceChannel* conf_channel = AmConferenceStatus::getChannel(channel_id, 
-								       sess->getLocalTag());
+								       sess->getLocalTag(), sess->RTPStream()->getSampleRate());
     if (NULL == conf_channel) {
       ERROR("obtaining conference channel\n");
       throw DSMException("conference");

@@ -62,8 +62,16 @@ DSMAction* MonitoringModule::getAction(const string& from_str) {
   }
 
   DEF_CMD("monitoring.log", MonLogAction);
+  DEF_CMD("monitoring.set", MonLogAction);
+  DEF_CMD("monitoring.add", MonLogAddAction);
   DEF_CMD("monitoring.logAdd", MonLogAddAction);
   DEF_CMD("monitoring.logVars", MonLogVarsAction);
+
+  DEF_CMD("monitoring.setGlobal", MonLogGlobalAction);
+  DEF_CMD("monitoring.addGlobal", MonLogAddGlobalAction);
+
+  DEF_CMD("monitoring.inc", MonLogIncAction);
+  DEF_CMD("monitoring.dec", MonLogDecAction);
 
   return NULL;
 }
@@ -115,4 +123,59 @@ bool MonLogVarsAction::execute(AmSession* sess,   DSMSession* sc_sess,
 }
 
 
+CONST_ACTION_2P(MonLogGlobalAction, ',', true);
+EXEC_ACTION_START(MonLogGlobalAction) {
+  string id = resolveVars(par1, sess, sc_sess, event_params);
+  string prop;
+  string val;
 
+  size_t c = par2.find(',');
+  if (c != string::npos) {
+    prop = resolveVars(par2.substr(0, c), sess, sc_sess, event_params);
+    val = resolveVars(par2.substr(c+1), sess, sc_sess, event_params);
+  } else {
+    prop = resolveVars(par2, sess, sc_sess, event_params);
+  }
+
+  MONITORING_LOG(id.c_str(), prop.c_str(), val.c_str());
+
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(MonLogAddGlobalAction, ',', true);
+EXEC_ACTION_START(MonLogAddGlobalAction) {
+  string id = resolveVars(par1, sess, sc_sess, event_params);
+  string prop;
+  string val;
+
+  size_t c = par2.find(',');
+  if (c != string::npos) {
+    prop = resolveVars(par2.substr(0, c), sess, sc_sess, event_params);
+    val = resolveVars(par2.substr(c+1), sess, sc_sess, event_params);
+  } else {
+    prop = resolveVars(par2, sess, sc_sess, event_params);
+  }
+
+  MONITORING_LOG_ADD(id.c_str(), prop.c_str(), val.c_str());
+
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(MonLogIncAction, ',', true);
+bool MonLogIncAction::execute(AmSession* sess,  DSMSession* sc_sess,
+			   DSMCondition::EventType event,
+			   map<string,string>* event_params) {
+  string type = resolveVars(par1, sess, sc_sess, event_params);
+  string name  = resolveVars(par2, sess, sc_sess, event_params);
+  MONITORING_INC(type.c_str(), name.c_str());
+  return false;
+}
+
+CONST_ACTION_2P(MonLogDecAction, ',', true);
+bool MonLogDecAction::execute(AmSession* sess,  DSMSession* sc_sess,
+			   DSMCondition::EventType event,
+			   map<string,string>* event_params) {
+  string type = resolveVars(par1, sess, sc_sess, event_params);
+  string name  = resolveVars(par2, sess, sc_sess, event_params);
+  MONITORING_DEC(type.c_str(), name.c_str());
+  return false;
+}

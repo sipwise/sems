@@ -3,7 +3,12 @@
 * set connect_session to 0 with set(connect_session=0)
   if you want to reply with other than the standard 200 OK 
   to initial INVITE received.
-* for processing of other requests, use enable_request_events and replyRequest
+* for processing of other requests, use set($enable_request_events="true") and replyRequest
+* for processing of other requests, use set($enable_reply_events="true") and replyRequest
+
+* Request/Reply body handling with 
+ dlg.requestHasContentType condition and dlg.getRequestBody action
+ dlg.replyHasContentType condition and dlg.getReplyBody action
 
 dlg.reply(code,reason);
  reply to the request in DSMSession::last_req 
@@ -13,16 +18,24 @@ dlg.reply(code,reason);
 dlg.replyRequest(code,reason);
  request processing in script; use with set($enable_request_events="true");
  reply to any request (in avar[DSM_AVAR_REQUEST]) with code and reason
+
+ headers can be added by setting $dlg.reply.hdrs, e.g.
+    set($dlg.reply.hdrs="P-Prompt-Type: Charging-info\\r\\nP-Prompt-Content: 5\\r\\n");
+    dlg.acceptInvite(183, "progress");
+
  * sets $errno (arg,general)
  * throws exception if request not found (i.e. called from other event than
    sipRequest)
 
 dlg.acceptInvite([code, reason]);
  e.g. dlg.acceptInvite(183, progress);
+  headers can be added by setting $dlg.reply.hdrs, e.g.
+    set($dlg.reply.hdrs="P-Prompt-Type: Charging-info\r\nP-Prompt-Content: 5\r\n");
+    dlg.acceptInvite(183, "progress");
  * sets $errno (arg,general)
  
  accept audio stream from last_req (INVITE), and reply with 200 OK (default)
- or code, reason
+ or code, reason. sets "dlg" type errno if negotiation fails.
  
 dlg.bye([headers])
  send BYE. useful for example for continuing processing after call has ended.
@@ -55,7 +68,43 @@ dlg.dialout(string arrayname)
                        arrayname_var.somevar will be set as $somevar
 
   returns $arrayname_ltag (if successful) and sets ERRNO.
+
    
+dlg.getOtherId(varname)
+   get other related dlg id in $varname
 
+dlg.getRtpRelayMode(varname)
+   get RTP relay mode (RTP_Direct, RTP_Relay, RTP_Transcoding) in $varname
 
+dlg.refer(string refer_to [, int expires=0])
+   refer to refer_to, optionally with expires
 
+dlg.info(content_type, body)
+   send INFO request; use \r\n for crlf in body
+
+dlg.relayError(code,reason);  -  relay reply (>=200) to B2B request (sbc)
+  reply to B2B request (in avar[DSM_AVAR_REQUEST]) with code and reason
+  sbc: set(#StopProcessing="true") to prevent B2B request to be relayed
+       after replying from DSM script
+
+Request/Reply Body handling in sipRequest/sipReply events:
+----------------------------------------------------------
+actions (applicable only in sipRequest/sipReply event handling blocks):
+dlg.getRequestBody(content_type, dstvar)  - get body of content_type in $dstvar
+dlg.getReplyBody(content_type, dstvar)    - get body of content_type in $dstvar
+dlg.addReplyBodyPart(content_type, payload) - add new body part possibly
+  converting the resulting body to multipart
+dlg.deleteReplyBodyPart(content_type) - delete body part from multipart
+  body possibly converting the resulting body to singlepart
+
+conditions: 
+  dlg.replyHasContentType(content_type) and dlg.requestHasContentType(content_type)
+
+  checks whether request/reply has a certain content type
+
+ example: 
+
+transition "msg recvd" A - sipRequest; dlg.requestHasContentType(application/ISUP) / {
+  dlg.getRequestBody(application/ISUP, isup_body);
+  ... do sth with $isup_body ...
+} -> B;

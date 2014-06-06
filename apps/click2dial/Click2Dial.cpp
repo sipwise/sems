@@ -102,7 +102,7 @@ string Click2DialFactory::getAnnounceFile(const AmSipRequest& req)
 }
 
 
-AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, AmArg& session_params)
+AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& app_name, AmArg& session_params)
 {
   UACAuthCred* cred = NULL;
   string callee_uri, a_realm, a_user, a_pwd;
@@ -155,24 +155,9 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, AmArg& session_p
     return NULL;
   }
 
-  AmSessionEventHandlerFactory* uac_auth_f =
-    AmPlugIn::instance()->getFactory4Seh("uac_auth");
-  if(uac_auth_f != NULL) {
-    DBG("UAC Auth enabled for new announcement session.\n");
-    AmSessionEventHandler *h = uac_auth_f->getHandler(s);
-    if (h != NULL) {
-      s->addHandler(h);
-    }
-    else {
-      ERROR("Failed to get authentication event handler");
-      delete s;
-      return NULL;
-    }
-  }
-  else {
-    ERROR("uac_auth interface not accessible. "
-      "Load uac_auth for authenticated dialout.\n");
-
+  if (!AmUACAuth::enable(s)) {
+    ERROR("Failed to get authentication event handler");
+    delete s;
     return NULL;
   }
 
@@ -180,7 +165,8 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, AmArg& session_p
 }
 
 
-AmSession* Click2DialFactory::onInvite(const AmSipRequest& req)
+AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				       const map<string,string>& app_params)
 {
   return new C2DCallerDialog(req, getAnnounceFile(req), "", NULL);
 }
@@ -195,24 +181,41 @@ AmB2BCallerSession()
   set_sip_relay_early_media_sdp(Click2DialFactory::relay_early_media_sdp);
 }
 
+void C2DCallerDialog::onInvite(const AmSipRequest& req)
+{
+  ERROR("incoming calls not supported in click2dial app!\n");
+  dlg->reply(req,606,"Not Acceptable");
+  setStopped();
+}
 
-void C2DCallerDialog::onSessionStart(const AmSipReply& rep)
+void C2DCallerDialog::onInvite2xx(const AmSipReply& reply)
+{
+  invite_req.body = reply.body;
+  invite_req.cseq = reply.cseq;
+  est_invite_cseq = reply.cseq;
+}
+
+void C2DCallerDialog::onSessionStart()
 {
   setReceiving(false);
-  invite_req.body = rep.body;
-  invite_req.content_type = rep.content_type;
-  invite_req.cseq = rep.cseq;
-
   if(wav_file.open(filename,AmAudioFile::Read))
     throw string("AnnouncementDialog::onSessionStart: Cannot open file\n");
   setOutput(&wav_file);
+
+  AmB2BCallerSession::onSessionStart();
 }
 
+void C2DCallerDialog::updateUACTransCSeq(unsigned int old_cseq, unsigned int new_cseq) {
+  if (old_cseq == invite_req.cseq) {
+    DBG("updating invite_req.cseq %u -> %u\n", old_cseq, new_cseq);
+    invite_req.cseq = new_cseq;
+  }
+  if (old_cseq == est_invite_cseq) {
+    DBG("updating est_invite_cseq %u -> %u\n", old_cseq, new_cseq);
+    est_invite_cseq = new_cseq;
+  }
 
-void C2DCallerDialog::onSessionStart(const AmSipRequest& req)
-{
 }
-
 
 void C2DCallerDialog::process(AmEvent* event)
 {
@@ -242,20 +245,20 @@ void C2DCallerDialog::createCalleeSession()
   }
 
   AmB2BCalleeSession* callee_session = new C2DCalleeDialog(this, c);
-  AmSipDialog& callee_dlg = callee_session->dlg;
+  AmSipDialog* callee_dlg = callee_session->dlg;
 
-  other_id = AmSession::getNewId();
+  AmB2BSession::setOtherId(AmSession::getNewId());
 
-  callee_dlg.local_tag    = other_id;
-  callee_dlg.callid       = AmSession::getNewId();
-  callee_dlg.local_party  = dlg.local_party;
-  callee_dlg.remote_party = dlg.remote_party;
-  callee_dlg.remote_uri   = dlg.remote_uri;
+  callee_dlg->setLocalTag(AmB2BSession::getOtherId());
+  callee_dlg->setCallid(AmSession::getNewId());
+  callee_dlg->setLocalParty(dlg->getLocalParty());
+  callee_dlg->setRemoteParty(dlg->getRemoteParty());
+  callee_dlg->setRemoteUri(dlg->getRemoteUri());
 
   callee_session->start();
 
   AmSessionContainer* sess_cont = AmSessionContainer::instance();
-  sess_cont->addSession(other_id,callee_session);
+  sess_cont->addSession(AmB2BSession::getOtherId(),callee_session);
 }
 
 

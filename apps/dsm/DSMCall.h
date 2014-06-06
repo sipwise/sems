@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 iptego GmbH
+ * Copyright (C) 2012 Stefan Sayer
  *
  * This file is part of SEMS, a free SIP media server.
  *
@@ -28,8 +29,7 @@
 #define _DSM_CALL_H
 #include "AmB2BSession.h"
 #include "AmPromptCollection.h"
-
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 
 #include "DSMSession.h"
 #include "DSMStateEngine.h"
@@ -63,6 +63,8 @@ class DSMCall : public AmB2BCallerSession,
   std::set<DSMDisposable*> gc_trash;
   
   bool checkVar(const string& var_name, const string& var_val);
+  string getVar(const string& var_name);
+
 public:
   DSMCall(const DSMScriptConfig& config,
 	  AmPromptCollection* prompts,
@@ -71,21 +73,32 @@ public:
 	  UACAuthCred* credentials = NULL);
   ~DSMCall();
 
+  void onStart();
   void onInvite(const AmSipRequest& req);
   void onOutgoingInvite(const string& headers);
   void onRinging(const AmSipReply& reply);
-  void onEarlySessionStart(const AmSipReply& reply);
-  void onSessionStart(const AmSipRequest& req);
-  void onSessionStart(const AmSipReply& rep);
+  void onEarlySessionStart();
+  void onSessionStart();
+  int  onSdpCompleted(const AmSdp& offer, const AmSdp& answer);
   void startSession();
-  void onCancel();
+  void onCancel(const AmSipRequest& cancel);
   void onBye(const AmSipRequest& req);
-  void onOutboundCallFailed(const AmSipReply& reply);
   void onDtmf(int event, int duration_msec);
   void onBeforeDestroy();
 
+  void onSessionTimeout();
+  void onRtpTimeout();
+  void onRemoteDisappeared(const AmSipReply& reply);
+
   void onSipRequest(const AmSipRequest& req);
-  void onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method);
+  void onSipReply(const AmSipRequest& req,
+		  const AmSipReply& reply, 
+		  AmBasicSipDialog::Status old_dlg_status);
+
+  bool getSdpOffer(AmSdp& offer);
+  bool getSdpAnswer(const AmSdp& offer, AmSdp& answer);
+
+  virtual void onNoAck(unsigned int cseq);
 
   void onSystemEvent(AmSystemEvent* ev);
 
@@ -97,10 +110,11 @@ public:
   void setPromptSets(map<string, AmPromptCollection*>& new_prompt_sets);
 
   // DSMSession interface
-  void playPrompt(const string& name, bool loop = false);
-  void closePlaylist(bool notify);
-  void addToPlaylist(AmPlaylistItem* item);
+  void playPrompt(const string& name, bool loop = false, bool front = false);
+  void flushPlaylist();
+  void addToPlaylist(AmPlaylistItem* item, bool front = false);
   void playFile(const string& name, bool loop, bool front=false);
+  void playSilence(unsigned int length, bool front=false);
   void recordFile(const string& name);
   unsigned int getRecordLength();
   unsigned int getRecordDataSize();
@@ -124,15 +138,42 @@ protected:
   void onOtherBye(const AmSipRequest& req);
   bool onOtherReply(const AmSipReply& reply);
 public:
+  AmB2BCalleeSession* newCalleeSession();
+
   void B2BterminateOtherLeg();
   void B2BconnectCallee(const string& remote_party,
 			const string& remote_uri,
 			bool relayed_invite = false);
 
   void B2BaddReceivedRequest(const AmSipRequest& req);
+  void B2BsetRelayEarlyMediaSDP(bool enabled);
   void B2BsetHeaders(const string& hdr, bool replaceCRLF);
   void B2BclearHeaders();
   void B2BaddHeader(const string& hdr);
+  void B2BremoveHeader(const string& hdr);
+};
+
+class DSMCallCalleeSession : public AmB2BCalleeSession,
+			     public CredentialHolder
+{
+  std::auto_ptr<UACAuthCred> cred;
+  std::auto_ptr<AmSessionEventHandler> auth;
+
+
+protected:
+
+  void onSendRequest(AmSipRequest& req, int& flags);
+  void onSipReply(const AmSipRequest& req, const AmSipReply& reply,
+		  AmBasicSipDialog::Status old_dlg_status);
+
+public:
+  DSMCallCalleeSession(const string& other_local_tag);
+  DSMCallCalleeSession(const AmB2BCallerSession* caller);
+
+  void setCredentials(const string& realm, const string& user, const string& pwd);
+  UACAuthCred* getCredentials();
+  void setAuthHandler(AmSessionEventHandler* h);
+
 };
 
 #endif

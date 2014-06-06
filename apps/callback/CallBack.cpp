@@ -125,7 +125,8 @@ int CallBackFactory::onLoad()
 }
 
 // incoming calls 
-AmSession* CallBackFactory::onInvite(const AmSipRequest& req)
+AmSession* CallBackFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				     const map<string,string>& app_params)
 {
   // or req.from -> with display name ? 
   DBG("received INVITE from '%s'\n", req.from_uri.c_str());
@@ -156,22 +157,23 @@ AmSession* CallBackFactory::onInvite(const AmSipRequest& req)
 }
 
 // outgoing calls 
-AmSession* CallBackFactory::onInvite(const AmSipRequest& req,
+AmSession* CallBackFactory::onInvite(const AmSipRequest& req, const string& app_name,
 				     AmArg& session_params)
 {
   UACAuthCred* cred = NULL;
   if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
+    AmObject* cred_obj = session_params.asObject();
     if (cred_obj)
       cred = dynamic_cast<UACAuthCred*>(cred_obj);
   }
 
-  AmSession* s = new CallBackDialog(prompts, cred); 
-  addAuthHandler(s);
+  AmSession* s = new CallBackDialog(prompts, cred);
+  AmUACAuth::enable(s);
+  
   return s;
 }
 
-// this could have been made easier with a user_timer. 
+// this could have been made easier with a timer... 
 void CallBackFactory::run() {
   DBG("running CallBack thread.\n");
   while (true) {
@@ -209,9 +211,10 @@ void CallBackFactory::createCall(const string& number) {
   string luser = "cb";
   string to = "sip:"+ number + "@" + gw_domain;
   string from = "sip:"+ gw_user + "@" + gw_domain;
+  string app_name = string(MOD_NAME);
 
   AmUAC::dialout(luser, 
-		 MOD_NAME,  
+		 app_name,  
 		 to,  
 		 "<" + from +  ">", from, 
 		 "<" + to + ">", 
@@ -232,27 +235,30 @@ CallBackDialog::CallBackDialog(AmPromptCollection& prompts,
 CallBackDialog::~CallBackDialog()
 {
   prompts.cleanup((long)this);
-  play_list.close(false);
 }
 
 
-void CallBackDialog::onSessionStart(const AmSipRequest& req) { 
+void CallBackDialog::onInvite(const AmSipRequest& req) 
+{ 
   if (state != CBNone) {
     // reinvite
-    AmB2ABCallerSession::onSessionStart(req);
+    AmB2ABCallerSession::onInvite(req);
     return;
   }
 
   ERROR("incoming calls not supported!\n");
   setStopped();
-  dlg.bye();
+  dlg->bye();
 }
 
-void CallBackDialog::onSessionStart(const AmSipReply& rep) { 
+void CallBackDialog::onSessionStart() 
+{ 
   state = CBEnteringNumber;    
   prompts.addToPlaylist(WELCOME_PROMPT,  (long)this, play_list);
   // set the playlist as input and output
   setInOut(&play_list,&play_list);
+
+  AmB2ABCallerSession::onSessionStart();
 }
  
 void CallBackDialog::onDtmf(int event, int duration)
@@ -273,7 +279,7 @@ void CallBackDialog::onDtmf(int event, int duration)
 	prompts.addToPlaylist(WELCOME_PROMPT,  (long)this, play_list);
       } else {
 	state = CBTellingNumber;
-	play_list.close();
+	play_list.flush();
 	for (size_t i=0;i<call_number.length();i++) {
 	  string num = "";
 	  num[0] = call_number[i]; // this works? 
@@ -309,7 +315,7 @@ void CallBackDialog::process(AmEvent* ev)
 // need this to pass credentials...
 AmB2ABCalleeSession* CallBackDialog::createCalleeSession() {
   CallBackCalleeDialog* sess = new CallBackCalleeDialog(getLocalTag(), connector, cred);
-  addAuthHandler(sess);
+  AmUACAuth::enable(sess);
   return sess;
 }
 
@@ -326,17 +332,3 @@ CallBackCalleeDialog::CallBackCalleeDialog(const string& other_tag,
 CallBackCalleeDialog::~CallBackCalleeDialog() {
 }
 
-
-void addAuthHandler(AmSession* s) {
-  AmSessionEventHandlerFactory* uac_auth_f = 
-    AmPlugIn::instance()->getFactory4Seh("uac_auth");
-  if (uac_auth_f != NULL) {
-    DBG("UAC Auth enabled for new session.\n");
-    AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-    if (h != NULL )
-      s->addHandler(h);
-  } else {
-    ERROR("uac_auth interface not accessible. "
-	  "Load uac_auth for authenticated calls.\n");
-  }		
-}

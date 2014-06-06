@@ -68,7 +68,8 @@ int AnnounceTransferFactory::onLoad()
   return 0;
 }
 
-AmSession* AnnounceTransferFactory::onInvite(const AmSipRequest& req)
+AmSession* AnnounceTransferFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					     const map<string,string>& app_params)
 {
   string announce_path = AnnouncePath;
   string announce_file = announce_path + req.domain 
@@ -99,15 +100,8 @@ AnnounceTransferDialog::~AnnounceTransferDialog()
 {
 }
 
-void AnnounceTransferDialog::onSessionStart(const AmSipRequest& req)
-{
-  // we can drop all received packets
-  // this disables DTMF detection as well
-  setReceiving(false);
-
-  DBG("AnnounceTransferDialog::onSessionStart\n");
+void AnnounceTransferDialog::onInvite(const AmSipRequest& req) {
   if (status == Disconnected) {
-    status = Announcing;
     callee_uri = get_session_param(req.hdrs, "Refer-To");
     if (!callee_uri.length()) {
       callee_uri = getHeader(req.hdrs, "P-Refer-To", true);
@@ -119,11 +113,27 @@ void AnnounceTransferDialog::onSessionStart(const AmSipRequest& req)
     if (!callee_uri.length())
       callee_uri = req.r_uri;
     DBG("transfer uri set to '%s'\n", callee_uri.c_str());
-    startSession();
   }
+
+  AmSession::onInvite(req);
 }
 
-void AnnounceTransferDialog::startSession(){
+void AnnounceTransferDialog::onSessionStart()
+{
+  // we can drop all received packets
+  // this disables DTMF detection as well
+  setReceiving(false);
+
+  DBG("AnnounceTransferDialog::onSessionStart\n");
+  if (status == Disconnected) {
+    status = Announcing;
+    startSession();
+  }
+
+  AmSession::onSessionStart();
+}
+
+void AnnounceTransferDialog::startSession() {
   if(wav_file.open(filename,AmAudioFile::Read))
     throw string("AnnounceTransferDialog::onSessionStart: Cannot open file\n");
     
@@ -132,8 +142,6 @@ void AnnounceTransferDialog::startSession(){
 
 void AnnounceTransferDialog::onSipRequest(const AmSipRequest& req)
 {
-  AmSession::onSipRequest(req);
-
   if((status == Transfering || status == Hangup) && 
      (req.method == "NOTIFY")) {
     try {
@@ -141,19 +149,21 @@ void AnnounceTransferDialog::onSipRequest(const AmSipRequest& req)
       if (strip_header_params(getHeader(req.hdrs,"Event", "o", true)) != "refer") 
 	throw AmSession::Exception(481, "Subscription does not exist");
 
-      if ((strip_header_params(req.content_type) != "message/sipfrag"))
+      if (!req.body.isContentType("message/sipfrag"))
 	throw AmSession::Exception(415, "Unsupported Media Type");
 
-      if (req.body.length()<8)
+      string body((const char*)req.body.getPayload(),
+		  req.body.getLen());
+
+      if (body.length()<8)
 	throw AmSession::Exception(400, "Short Body");
 			
-      string sipfrag_sline = req.body.substr(8, req.body.find("\n") - 8);
+      string sipfrag_sline = body.substr(8, body.find("\n") - 8);
       DBG("extracted start line from sipfrag '%s'\n", sipfrag_sline.c_str());
       unsigned int code;
       string res_msg;
-
 			
-      if ((req.body.length() < 11)
+      if ((body.length() < 11)
 	  || (parse_return_code(sipfrag_sline.c_str(), code, res_msg))) {
 	throw AmSession::Exception(400, "Bad Request");				
       }
@@ -161,35 +171,39 @@ void AnnounceTransferDialog::onSipRequest(const AmSipRequest& req)
       if ((code >= 200)&&(code < 300)) {
 	if (status != Hangup) {
 	  status = Hangup;
-	  dlg.bye();
+	  dlg->bye();
 	}
 	DBG("refer succeeded... stop session\n");
 	setStopped();
       } else if (code > 300) {
 	DBG("refer failed...\n");
 	if (status != Hangup) 
-	  dlg.bye();
+	  dlg->bye();
 	setStopped();
       }
-      dlg.reply(req, 200, "OK", "", "");
+      dlg->reply(req, 200, "OK", NULL);
     } catch (const AmSession::Exception& e) {
-      dlg.reply(req, e.code, e.reason, "", "");
+      dlg->reply(req, e.code, e.reason, NULL);
     }
+  } else {
+    AmSession::onSipRequest(req);
   }
-
 }
 
-void AnnounceTransferDialog::onSipReply(const AmSipReply& rep, int old_dlg_status, const string& trans_method) {
+void AnnounceTransferDialog::onSipReply(const AmSipRequest& req, 
+					const AmSipReply& rep, 
+					AmBasicSipDialog::Status old_dlg_status)
+{
   if ((status==Transfering ||status==Hangup)  && 
-      dlg.get_uac_trans_method(rep.cseq) == "REFER") {
+      req.method == SIP_METH_REFER) {
     if (rep.code >= 300) {
       DBG("refer not accepted, stop session.\n");
-      dlg.bye();
+      dlg->bye();
       setStopped();
     }
   }
 
-  AmSession::onSipReply(rep, old_dlg_status, trans_method);
+  AmSession::onSipReply(req, rep, old_dlg_status);
 }
 
 void AnnounceTransferDialog::onBye(const AmSipRequest& req)
@@ -211,7 +225,7 @@ void AnnounceTransferDialog::process(AmEvent* event)
 	
   if(audio_event && (audio_event->event_id == AmAudioEvent::cleared) 
      && (status == Announcing)){
-    dlg.refer(callee_uri);
+    dlg->refer(callee_uri);
     status = Transfering;
     return;
   }

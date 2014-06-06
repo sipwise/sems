@@ -32,6 +32,7 @@
 #include "AmDtmfDetector.h"
 #include "AmSipDialog.h"
 #include "AmUtils.h"
+#include "AmAudio.h"
 
 #include <string>
 using std::string;
@@ -82,24 +83,50 @@ struct AmConfig
 
     string name;
 
-    /** local IP for SDP media advertising */
-    string LocalIP;
-    
-    /** public IP for SDP media advertising; we actually
-     *  bind to local IP, but advertise public IP. */ 
+    /** Used for binding socket */
+    string       LocalIP;
+        
+    /** Used in Contact-HF */
     string PublicIP;
-    
+
+    /** Network interface name and index */
+    string       NetIf;
+    unsigned int NetIfIdx;
+
+    IP_interface();
+
+    string getIP() {
+      return PublicIP.empty() ?	LocalIP : PublicIP;
+    }
+  };
+
+  struct SIP_interface : public IP_interface {
+
+    /** Used for binding SIP socket */
+    unsigned int LocalPort;
+        
+    /** options for the signaling socket 
+     * (@see trsp_socket::socket_options) 
+     */
+    unsigned int SigSockOpts;
+
+    unsigned int tcp_connect_timeout;
+    unsigned int tcp_idle_timeout;
+
+    /** RTP interface index */
+    int RtpInterface;
+
+    SIP_interface();
+  };
+
+  struct RTP_interface : public IP_interface {
+
     /** Lowest local RTP port */
     int RtpLowPort;
     /** Highest local RTP port */
     int RtpHighPort;
-    
-    /** the interface SIP requests are sent from - needed for registrar_client */
-    string LocalSIPIP;
-    /** the port SIP requests are sent from - optional (default 5060) */
-    int LocalSIPPort;
 
-    IP_interface();
+    RTP_interface();
 
     int getNextRtpPort();
 
@@ -108,10 +135,35 @@ struct AmConfig
     AmMutex next_rtp_port_mut;
   };
 
-  static vector<IP_interface>            Ifs;
-  static map<string,unsigned short>      If_names;
-  static multimap<string,unsigned short> LocalSIPIP2If;
+  static vector<SIP_interface>      SIP_Ifs;
+  static vector<RTP_interface>      RTP_Ifs;
+  static map<string,unsigned short> SIP_If_names;
+  static map<string,unsigned short> RTP_If_names;
+  static map<string,unsigned short> LocalSIPIP2If;
 
+  struct IPAddr {
+    string addr;
+    short  family;
+    
+    IPAddr(const string& addr, const short family)
+      : addr(addr), family(family) {}
+
+    IPAddr(const IPAddr& ip)
+      : addr(ip.addr), family(ip.family) {}
+  };
+
+  struct SysIntf {
+    string       name;
+    list<IPAddr> addrs;
+    // identical to those returned by SIOCGIFFLAGS
+    unsigned int flags;
+    unsigned int mtu;
+  };
+
+  static vector<SysIntf> SysIfs;
+
+  static int insert_SIP_interface(const SIP_interface& intf);
+  static int insert_RTP_interface(const RTP_interface& intf);
   static int finalizeIPConfig();
 
   static void dump_Ifs();
@@ -120,22 +172,30 @@ struct AmConfig
   static int SessionProcessorThreads;
   /** number of media processor threads */
   static int MediaProcessorThreads;
+  /** number of RTP receiver threads */
+  static int RTPReceiverThreads;
   /** number of SIP server threads */
   static int SIPServerThreads;
   /** Outbound Proxy (optional, outgoing calls only) */
   static string OutboundProxy;
   /** force Outbound Proxy to be used for in dialog requests */
   static bool ForceOutboundProxy;
-  /** force next hop IP */
-  static string NextHopIP;
-  /** force next hop port */
-  static unsigned int NextHopPort;
-  /** force next hop for replies, too */
-  static bool NextHopForReplies;
+  /** force next hop IP[:port] */
+  static string NextHop;
+  /** use next hop only on 1st request within a dialog */
+  static bool NextHop1stReq;
   /** update ruri-host to previously resolved IP:port on SIP auth */
   static bool ProxyStickyAuth;
-  /** skip DNS SRV lookup for resolving destination address*/
-  static bool DisableDNSSRV;
+  /** force the outbound network interface / short-circuit the routing table */
+  static bool ForceOutboundIf;
+  /** force comedia style remote address learning */
+  static bool ForceSymmetricRtp;
+  /** turn on SIP NAT handling (remote signaling address learning) */
+  static bool SipNATHandling;
+  /** use raw socket to send UDP packets (root permission required) */
+  static bool UseRawSockets;
+  /** Ignore Low CSeq on NOTIFY  - for RFC 3265 instead of 5057 */
+  static bool IgnoreNotifyLowerCSeq;
   /** Server/User-Agent header (optional) */
   static string Signature;
   /** Value of Max-Forward header field for new requests */
@@ -144,8 +204,6 @@ struct AmConfig
   static bool SingleCodecInOK;
   static vector <string> CodecOrder;
 
-  static bool WaitForByeTransaction;
-  
   enum ApplicationSelector {
     App_RURIUSER,
     App_RURIPARAM,
@@ -170,11 +228,29 @@ struct AmConfig
   static unsigned int OptionsSessionLimitErrCode;
   static string OptionsSessionLimitErrReason;
 
+  static unsigned int CPSLimitErrCode;
+  static string CPSLimitErrReason;
+
+  static bool AcceptForkedDialogs;
+
   static bool ShutdownMode;
   static unsigned int ShutdownModeErrCode;
   static string ShutdownModeErrReason;
 
-  static AmSipDialog::provisional_100rel rel100;
+  /** header containing the transcoder's outgoing codec statistics which should
+   * be present in replies to OPTIONS requests */
+  static string OptionsTranscoderOutStatsHdr;
+  /** header containing the transcoder's incoming codec statistics which should
+   * be present in replies to OPTIONS requests */
+  static string OptionsTranscoderInStatsHdr;
+  /** header containing the transcoder's outgoing codec statistics which should
+   * be present in every message leaving server */
+  static string TranscoderOutStatsHdr;
+  /** header containing the transcoder's incoming codec statistics which should
+   * be present in every message leaving server */
+  static string TranscoderInStatsHdr;
+
+  static Am100rel::State rel100;
 
   /** Time of no RTP after which Session is regarded as dead, 0 for no Timeout */
   static unsigned int DeadRtpTime;
@@ -193,6 +269,8 @@ struct AmConfig
   static bool LogEvents;
 
   static int UnhandledReplyLoglevel;
+
+  static AmAudio::ResamplingImplementationType ResamplingImplementationType;
 
   /** Read global configuration file and insert values. Maybe overwritten by
    * command line arguments */
@@ -222,12 +300,17 @@ struct AmConfig
   static int setSessionProcessorThreads(const string& th);
   /** Setter for parameter MediaProcessorThreads, returns 0 on invalid value */
   static int setMediaProcessorThreads(const string& th);
+  /** Setter for parameter RTPReceiverThreads, returns 0 on invalid value */
+  static int setRTPReceiverThreads(const string& th);
   /** Setter for parameter SIPServerThreads, returns 0 on invalid value */
   static int setSIPServerThreads(const string& th);
   /** Setter for parameter DeadRtpTime, returns 0 on invalid value */
   static int setDeadRtpTime(const string& drt);
 
 };
+
+/** Get the PF_INET address associated with the network interface */
+string fixIface2IP(const string& dev_name, bool v6_for_sip);
 
 #endif
 

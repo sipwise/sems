@@ -1,74 +1,49 @@
 Changelog for SEMS 
 
-Version 1.4.2
-   - auth'ed BYE (wait_for_bye_transaction)
-   - fixes SIP auth for qop header format
-   - xmlrpc: fix busyloop with keep-alive
-   - a few minor SST issues
-   - builds on Ubuntu 11.4 (build-deps)
-   - ivr: release GIL on blocking file I/O
-   - SBC: fix codec filter for unnamed payloads<96
-   - fixed DSM variables to outgoing call
-   - some examples and documentation added
+Version 1.6.0
+- IVR
+    - Calling stopSession() is now all that needs to be done when BYE
+      is received from caller or callee leg.
+    - It is not anymore possible to prevent callee leg from being
+      disconnected when caller leg is disconnected.
 
-Version 1.4.1
+Version 1.5.0
+ - Core
+    - configurable SIP timers (global)
+    - timer C support (mainly for SBC)
+    - SUBSCRIBE/NOTIFY support
+    - multi-mime bodies
+    - wideband / multiple sample frequency support
+    - multiple destinations (faked SRV record)
+    - DNS SRV: support for 503 replies
+    - multi-threaded RTP receiver
+    - complete rework of offer/answer mechanisms
 
-make system:
-   - shortened dev build version
-   - removed py_sems from sems-python-modules packet.
+ - Codecs:
+    - iSAC
+    - SILK
+    - SPEEX 16kHz, 32kHz
+    - G722
+    - L16
 
-docs:
-   - included monitoring mod documentation
-   - clarified use of multiple interface support
+ - SBC
+    - audio & dtmf transcoder
+    - call-control modules
+    - lots of small improvements
 
-event dispatcher:
-   - fixed minor memory leak in error case.
+ - Monitoring
+    - munin plugin
 
-session management:
-   - fixed several bugs in session creation.
+ - DSM
+    - mod_xml: XML handling
+    - mod_curl: HTTP requests
+    - mod_subscription: SUBSCRIBE/NOTIFY
+    - mod_regex: regular expressions
+    - lots of small improvements
 
-sip:
-   - return 481 on CANCEL if the transaction cannot be found.
-   - reply properly with 482 if the UAS dialog already exists.
-   - pass only 200-ACK request to the UA layer.
-   - do not update route or remote_uri on failure reply.
-   - "ACK for non-existing dialog" logged as DEBUG
-   - do not mandate to-tag for anything else but 2xx replies.
-   - do not pass orphan replies to UA (no matching transaction).
-   - improved AmSipDialog::bye()
-   - next_hop core option added.
-
-sdp parser:
-   - process properly on short SDP
-   - allow unsupported transport types.
-
-B2BUA:
-   - fixed manipulation of short/empty SDP.
-   - treat CANCEL hop-by-hop (not waiting for 200 from other side).
-   - avoid relaying events if the session is stopped.
-   - bind the relay stream to the local RTP IP.
-
-RTP relay:
-   - fixed sequence number & SSRC of relayed RTP packets.
-
-sbc:
-    - handle correctly onNoAck event.
-
-authentication:
-   - adds support for "qop" as described in rfc2617.
-   - resend authenticated request as VERBATIM (fixes dup. Max-Forward
-   & User-Agent HF)
-
-xmlrpc2di:
-   - added clean shutdown procedure.
-   - fixed issue related to select() and file descriptors >= 1024
-
-monitoring
-   - monitoring: run garbage collector by default (avoid filling up RAM
-   with monitoring data).
-
-g729:
-   - fix mem leak in g729 wrapper.
+ - App Plug-ins
+    - db_reg_agent: register SIP accounts from a DB
+    - rtmp: RTMP gateway
 
 Version 1.4.0
  - SBC

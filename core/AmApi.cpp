@@ -29,6 +29,7 @@
 #include "AmApi.h"
 #include "log.h"
 #include "AmSession.h"
+#include "AmB2BMedia.h" // just because of statistics in reply to OPTIONS
 
 AmDynInvoke::AmDynInvoke() {}
 AmDynInvoke::~AmDynInvoke() {}
@@ -48,22 +49,24 @@ AmSessionFactory::AmSessionFactory(const string& name)
 {
 }
 
-AmSession* AmSessionFactory::onInvite(const AmSipRequest& req, 
+AmSession* AmSessionFactory::onInvite(const AmSipRequest& req, const string& app_name,
 				      AmArg& session_params) {
   WARN(" discarding session parameters to new session.\n");
-  return onInvite(req);
+  map<string,string> app_params;
+  return onInvite(req,app_name,app_params);
 }
 
-AmSession* AmSessionFactory::onRefer(const AmSipRequest& req)
+AmSession* AmSessionFactory::onRefer(const AmSipRequest& req, const string& app_name, const map<string,string>& app_params)
 {
   throw AmSession::Exception(488,"Not accepted here");
 }
 
-AmSession* AmSessionFactory::onRefer(const AmSipRequest& req, 
+AmSession* AmSessionFactory::onRefer(const AmSipRequest& req, const string& app_name,
 				     AmArg& session_params)
 {
   WARN(" discarding session parameters to new session.\n");
-  return onRefer(req);
+  map<string,string> app_params;
+  return onRefer(req,app_name,app_params);
 }
 
 int AmSessionFactory::configureModule(AmConfigReader& cfg) {
@@ -77,34 +80,59 @@ void AmSessionFactory::configureSession(AmSession* sess) {
 void AmSessionFactory::onOoDRequest(const AmSipRequest& req)
 {
 
-  if (req.method == "OPTIONS") {
+  if (req.method == SIP_METH_OPTIONS) {
+    replyOptions(req);
+    return;
+  }
+
+  INFO("sorry, we don't support beginning a new session with "
+       "a '%s' message\n", req.method.c_str());
+
+  AmSipDialog::reply_error(req,501,"Not Implemented");
+  return;
+}
+
+void AmSessionFactory::replyOptions(const AmSipRequest& req) {
+    string hdrs;
+    if (!AmConfig::OptionsTranscoderInStatsHdr.empty()) {
+      string usage;
+      B2BMediaStatistics::instance()->reportCodecReadUsage(usage);
+
+      hdrs += AmConfig::OptionsTranscoderInStatsHdr + ": ";
+      hdrs += usage;
+      hdrs += CRLF;
+    }
+    if (!AmConfig::OptionsTranscoderOutStatsHdr.empty()) {
+      string usage;
+      B2BMediaStatistics::instance()->reportCodecWriteUsage(usage);
+
+      hdrs += AmConfig::OptionsTranscoderOutStatsHdr + ": ";
+      hdrs += usage;
+      hdrs += CRLF;
+    }
+
     // Basic OPTIONS support
     if (AmConfig::OptionsSessionLimit &&
 	(AmSession::getSessionNum() >= AmConfig::OptionsSessionLimit)) {
       // return error code if near to overload
       AmSipDialog::reply_error(req,
-			       AmConfig::OptionsSessionLimitErrCode, 
-			       AmConfig::OptionsSessionLimitErrReason);
+          AmConfig::OptionsSessionLimitErrCode, 
+          AmConfig::OptionsSessionLimitErrReason,
+          hdrs);
       return;
     }
 
     if (AmConfig::ShutdownMode) {
       // return error code if in shutdown mode
       AmSipDialog::reply_error(req,
-			       AmConfig::ShutdownModeErrCode,
-			       AmConfig::ShutdownModeErrReason);
+          AmConfig::ShutdownModeErrCode,
+          AmConfig::ShutdownModeErrReason,
+          hdrs);
       return;
     }
 
-    AmSipDialog::reply_error(req, 200, "OK");
-    return;
-  }
+    AmSipDialog::reply_error(req, 200, "OK", hdrs);
 
-  INFO("sorry, we don't support beginning a new session with "
-       "a '%s' message\n", req.method.c_str());
-    
-  AmSipDialog::reply_error(req,501,"Not Implemented");
-  return;
 }
 
 // void AmSessionFactory::postEvent(AmEvent* ev) {

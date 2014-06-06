@@ -58,15 +58,13 @@ sip_msg::sip_msg(const char* msg_buf, int msg_len)
       content_type(NULL),
       content_length(NULL),
       body(),
-      local_socket(NULL)
+      local_socket(NULL),
+      type(SIP_UNKNOWN)
 {
     u.request = 0;
     u.reply   = 0;
 
-    buf = new char[msg_len+1];
-    memcpy(buf,msg_buf,msg_len);
-    buf[msg_len] = '\0';
-    len = msg_len;
+    copy_msg_buf(msg_buf,msg_len);
 
     memset(&local_ip,0,sizeof(sockaddr_storage));
     memset(&remote_ip,0,sizeof(sockaddr_storage));
@@ -87,7 +85,8 @@ sip_msg::sip_msg()
       content_type(NULL),
       content_length(NULL),
       body(),
-      local_socket(NULL)
+      local_socket(NULL),
+      type(SIP_UNKNOWN)
 {
     u.request = 0;
     u.reply   = 0;
@@ -98,8 +97,6 @@ sip_msg::sip_msg()
 
 sip_msg::~sip_msg()
 {
-    // DBG("~sip_msg()\n");
-
     delete [] buf;
 
     list<sip_header*>::iterator it;
@@ -111,19 +108,38 @@ sip_msg::~sip_msg()
     }
 
     if(u.request){
-	if(type == SIP_REQUEST){
+	if(type == SIP_REQUEST && u.request){
 	    delete u.request;
 	}
-	else {
+	else if(type == SIP_REPLY && u.reply) {
 	    delete u.reply;
 	}
     }
+    
+    if(local_socket)
+	dec_ref(local_socket);
 }
 
-int sip_msg::send()
+void sip_msg::copy_msg_buf(const char* msg_buf, int msg_len)
+{
+    buf = new char[msg_len+1];
+    memcpy(buf,msg_buf,msg_len);
+    buf[msg_len] = '\0';
+    len = msg_len;
+}
+
+void sip_msg::release()
+{
+    buf = NULL;
+    hdrs.clear();
+    u.request = NULL;
+    local_socket = NULL;
+}
+
+int sip_msg::send(unsigned int flags)
 {
     assert(local_socket);
-    return local_socket->send(&remote_ip,buf,len);
+    return local_socket->send(&remote_ip,buf,len,flags);
 }
 
 
@@ -228,7 +244,7 @@ int parse_method(int* method, const char* beg, int len)
 }
 
 
-static int parse_first_line(sip_msg* msg, char** c)
+static int parse_first_line(sip_msg* msg, char** c, char* end)
 {
     enum {
 	FL_METH=0,
@@ -260,23 +276,31 @@ static int parse_first_line(sip_msg* msg, char** c)
 
     bool is_request=false;
 
-    for(;**c;(*c)++){
+    for(;(*c < end) && **c;(*c)++){
 
 	switch(st){
 
-#define case_SIPVER(ch,st1,st2,else_st) \
-	case st1:\
-	    if(**c == (ch)){\
-		st = st2;\
-	    }\
-	    else {\
-		st = else_st;\
-	    }\
-	    break
-            
-	case_SIPVER('S',FL_SIPVER1,FL_SIPVER2,FL_METH;(*c)--);
-	case_SIPVER('I',FL_SIPVER2,FL_SIPVER3,FL_METH;(*c)--);
-	case_SIPVER('P',FL_SIPVER3,FL_SIPVER4,FL_METH;(*c)--);
+#define case_SIPVER(ch1,ch2,st1,st2)		\
+	    case st1:				\
+		switch(**c){			\
+		case ch1:			\
+		case ch2:			\
+		    st = st2;			\
+		    break;			\
+		default:			\
+		    if(!is_request){		\
+			st = FL_METH;		\
+			(*c)--;			\
+		    }				\
+		    else {			\
+			st = FL_ERR;		\
+		    }				\
+		}				\
+		break
+
+	case_SIPVER('S','s',FL_SIPVER1,FL_SIPVER2);
+	case_SIPVER('I','i',FL_SIPVER2,FL_SIPVER3);
+	case_SIPVER('P','p',FL_SIPVER3,FL_SIPVER4);
 
 	case FL_SIPVER4:     // '/'
 	    if(**c == '/'){
@@ -291,10 +315,21 @@ static int parse_first_line(sip_msg* msg, char** c)
 	    }
 	    break;
 
-	case_SIPVER('2',FL_SIPVER_DIG1,FL_SIPVER_SEP,FL_ERR);
-	case_SIPVER('.',FL_SIPVER_SEP,FL_SIPVER_DIG2,FL_ERR);
-
 #undef case_SIPVER
+#define case_SIPVER(ch1,st1,st2)		\
+	    case st1:				\
+		switch(**c){			\
+		case ch1:			\
+		    st = st2;			\
+		    break;			\
+		default:			\
+		    st = FL_ERR;		\
+		    break;			\
+		}				\
+		break
+
+	case_SIPVER('2',FL_SIPVER_DIG1,FL_SIPVER_SEP);
+	case_SIPVER('.',FL_SIPVER_SEP,FL_SIPVER_DIG2);
 
 	case FL_SIPVER_DIG2:
 	    if(**c == '0'){
@@ -305,6 +340,9 @@ static int parse_first_line(sip_msg* msg, char** c)
 		    msg->u.reply = new sip_reply;
 		    st = FL_SIPVER_SP;
 		}
+	    }
+	    else {
+	      st = FL_ERR;
 	    }
 	    break;
 
@@ -419,19 +457,91 @@ static int parse_first_line(sip_msg* msg, char** c)
     return UNEXPECTED_EOT;
 }
 
+int parse_headers(sip_msg* msg, char** c, char* end)
+{
+    list<sip_header*> hdrs;
+    int err = parse_headers(hdrs,c,end);
+    if(!err) {
+	for(list<sip_header*>::iterator it = hdrs.begin();
+	    it != hdrs.end(); ++it) {
+
+	    sip_header* hdr = *it;
+	    switch(hdr->type) {
+
+	    case sip_header::H_CALL_ID:  
+		msg->callid = hdr; 
+		break;
+
+	    case sip_header::H_CONTACT:
+		msg->contacts.push_back(hdr);
+		break;
+
+	    case sip_header::H_CONTENT_LENGTH:
+		msg->content_length = hdr;
+		break;
+
+	    case sip_header::H_CONTENT_TYPE:
+		msg->content_type = hdr;
+		break;
+
+	    case sip_header::H_FROM:
+		msg->from = hdr;
+		break;
+
+	    case sip_header::H_TO:
+		msg->to = hdr;
+		break;
+
+	    case sip_header::H_VIA:
+		if(!msg->via1)
+		    msg->via1 = hdr;
+		msg->vias.push_back(hdr);
+		break;
+
+	    // case sip_header::H_RSEQ:
+	    // 	msg->rseq = hdr;
+	    // 	break;
+
+	    case sip_header::H_RACK:
+		if(msg->type == SIP_REQUEST && 
+		   msg->u.request->method == sip_request::PRACK) {
+		    
+		    msg->rack = hdr;
+		}
+		break;
+
+	    case sip_header::H_CSEQ:
+		msg->cseq = hdr;
+		break;
+
+	    case sip_header::H_ROUTE:
+		msg->route.push_back(hdr);
+		break;
+
+	    case sip_header::H_RECORD_ROUTE:
+		msg->record_route.push_back(hdr);
+		break;
+	    }
+	    msg->hdrs.push_back(hdr);
+	}
+    }
+
+    return err;
+}
 
 int parse_sip_msg(sip_msg* msg, char*& err_msg)
 {
     char* c = msg->buf;
+    char* end = msg->buf + msg->len;
 
-    int err = parse_first_line(msg,&c);
+    int err = parse_first_line(msg,&c,end);
 
     if(err) {
 	err_msg = (char*)"Could not parse first line";
 	return MALFORMED_FLINE;
     }
 
-    err = parse_headers(msg,&c);
+    err = parse_headers(msg,&c,end);
 
     if(!err){
 	msg->body.set(c,msg->len - (c - msg->buf));
@@ -491,16 +601,15 @@ int parse_sip_msg(sip_msg* msg, char*& err_msg)
     }
 
     auto_ptr<sip_from_to> from(new sip_from_to());
-    if(!parse_from_to(from.get(),
-		      msg->from->value.s,
-		      msg->from->value.len)) {
-
-	msg->from->p = from.release();
-    }
-    else {
+    if(parse_from_to(from.get(), msg->from->value.s, msg->from->value.len) != 0) {
 	err_msg = (char*)"could not parse From hf";
 	return MALFORMED_SIP_MSG;
     }
+    if(!from->tag.len) {
+	err_msg = (char*)"missing From-tag";
+	return MALFORMED_SIP_MSG;
+    }
+    msg->from->p = from.release();
 
     auto_ptr<sip_from_to> to(new sip_from_to());
     if(!parse_from_to(to.get(),

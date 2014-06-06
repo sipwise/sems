@@ -32,7 +32,7 @@
 #include "AmAudioFile.h"
 #include "AmB2BSession.h"
 
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 
 #include <string>
 using std::string;
@@ -52,8 +52,9 @@ class Click2DialFactory: public AmSessionFactory
     Click2DialFactory(const string& _app_name);
 
     int onLoad();
-    AmSession* onInvite(const AmSipRequest& req);
-    AmSession* onInvite(const AmSipRequest& req, AmArg& session_params);
+    AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+			const map<string,string>& app_params);
+    AmSession* onInvite(const AmSipRequest& req, const string& app_name, AmArg& session_params);
 };
 
 class C2DCallerDialog: public AmB2BCallerSession, public CredentialHolder
@@ -69,11 +70,13 @@ class C2DCallerDialog: public AmB2BCallerSession, public CredentialHolder
       const string& callee_uri, UACAuthCred* credentials = NULL);
 
     void process(AmEvent* event);
-    void onSessionStart(const AmSipRequest& req);
-    void onSessionStart(const AmSipReply& rep);
+    void onInvite(const AmSipRequest& req);
+    void onInvite2xx(const AmSipReply& reply);
+    void onSessionStart();
     void createCalleeSession();
     inline UACAuthCred* getCredentials() { return cred.get(); }
     void onB2BEvent(B2BEvent*);
+    void updateUACTransCSeq(unsigned int old_cseq, unsigned int new_cseq);
 };
 
 class C2DCalleeDialog : public AmB2BCalleeSession, public CredentialHolder

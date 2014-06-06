@@ -24,7 +24,7 @@
 prog=sems
 sems=/usr/sbin/$prog
 
-pidfile=/var/run/$prog.pid
+pidfile=/var/run/$prog/$prog.pid
 lockfile=/var/lock/subsys/$prog
 conffile=/etc/$prog/$prog.conf
 
@@ -34,7 +34,16 @@ OPTIONS=""
 # should go there:
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
+# try to source Debian-like default settings
+[ -e /etc/default/$prog ] && . /etc/default/$prog
+
 RETVAL=0
+
+if test "$SEMS_CREATE_CORE" = "yes" ; then
+        ulimit -c unlimited
+        DAEMON_COREFILE_LIMIT="unlimited"
+fi
+
 
 start() {
         echo -n $"Starting $prog: "
@@ -98,7 +107,7 @@ case "$1" in
 	stop
 	;;
   status)
-        status -p $pidfile $prog
+        status $prog
 	RETVAL=$?
 	;;
   restart|force-reload)

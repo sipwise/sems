@@ -30,6 +30,7 @@
 #include "AmArg.h"
 #include "AmSipMsg.h"
 #include "AmSipEvent.h"
+#include "AmSipDialog.h"
 #include <string>
 using std::string;
 
@@ -46,7 +47,7 @@ class AmConfigReader;
  *  Signaling plugins must inherit from this class.
  */
 class AmSessionEventHandler
-  : public ArgObject
+  : public AmObject
 {
 public:
   bool destroy;
@@ -57,34 +58,39 @@ public:
   virtual ~AmSessionEventHandler() {}
 
   /** Returns -1 on error, 0 else. */
-  virtual int configure(AmConfigReader& conf);
+  virtual int configure(AmConfigReader& conf)
+  { return 0; }
 
   /* 
    * All the methods return true if the event processing 
    * shall be stopped after them.
    */
-  virtual bool process(AmEvent*);
+  virtual bool process(AmEvent*)
+  { return false; }
 
-  virtual bool onSipRequest(const AmSipRequest&);
-  virtual bool onSipReply(const AmSipReply&, int old_dlg_status,
-			  const string& trans_method);
-  virtual bool onSipReqTimeout(const AmSipRequest &);
-  virtual bool onSipRplTimeout(const AmSipRequest &, const AmSipReply &);
+  virtual bool onSipRequest(const AmSipRequest& req)
+  { return false; }
 
-  virtual bool onSendRequest(const string& method, 
-			     const string& content_type,
-			     const string& body,
-			     string& hdrs,
-			     int flags,
-			     unsigned int cseq);
+  virtual bool onSipReply(const AmSipRequest& req, 
+  			  const AmSipReply& reply, 
+  			  AmBasicSipDialog::Status old_dlg_status)
+  { return false; }
 
-  virtual bool onSendReply(const AmSipRequest& req,
-			   unsigned int  code,
-			   const string& reason,
-			   const string& content_type,
-			   const string& body,
-			   string& hdrs,
-			   int flags);
+  virtual bool onSendRequest(AmSipRequest& req, int& flags)
+  { return false; }
+
+  virtual bool onSendReply(const AmSipRequest& req, AmSipReply& reply, int& flags)
+  { return false; }
+
+  virtual void onRequestSent(const AmSipRequest& req) {}
+
+  virtual void onReplySent(const AmSipRequest& req, const AmSipReply& reply) {}
+
+  virtual void onRemoteDisappeared(const AmSipReply& reply) {}
+
+  virtual void onLocalTerminate(const AmSipReply& reply) {}
+
+  virtual void onFailure() {}
 };
 
 

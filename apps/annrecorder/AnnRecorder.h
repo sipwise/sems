@@ -30,7 +30,7 @@
 #include "AmAudioFile.h"
 #include "AmConfigReader.h"
 
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 
 #include "AmPromptCollection.h"
 
@@ -74,8 +74,9 @@ public:
   AnnRecorderFactory(const string& _app_name);
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
-  AmSession* onInvite(const AmSipRequest& req,
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 		      AmArg& session_params);
 
 };
@@ -120,9 +121,7 @@ public:
 		    UACAuthCred* credentials = NULL);
   ~AnnRecorderDialog();
 
-  void onSessionStart(const AmSipRequest& req);
-  void onSessionStart(const AmSipReply& rep);
-  void startSession();
+  void onSessionStart();
   void onBye(const AmSipRequest& req);
   void onDtmf(int event, int duration_msec);
 

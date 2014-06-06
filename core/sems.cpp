@@ -34,12 +34,14 @@
 #include "AmRtpReceiver.h"
 #include "AmEventDispatcher.h"
 #include "AmSessionProcessor.h"
+#include "AmAppTimer.h"
 
 #ifdef WITH_ZRTP
 # include "AmZRTP.h"
 #endif
 
 #include "SipCtrlInterface.h"
+#include "sip/trans_table.h"
 
 #include "log.h"
 
@@ -51,21 +53,29 @@
 #include <grp.h>
 #include <pwd.h>
 
-//#include <sys/wait.h>
-//#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <event2/thread.h>
+
+#ifdef PROPAGATE_COREDUMP_SETTINGS
+#include <sys/resource.h>
+#include <sys/prctl.h>
+#endif
+
 #include <string>
 using std::string;
 
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
 
 const char* progname = NULL;    /**< Program name (actually argv[0])*/
 int main_pid = 0;               /**< Main process PID */
 
 /** SIP stack (controller interface) */
-static SipCtrlInterface sip_ctrl;
+#define sip_ctrl (*SipCtrlInterface::instance())
 
 
 static void print_usage(bool short_=false)
@@ -130,6 +140,36 @@ static bool parse_args(int argc, char* argv[], std::map<char,string>& args)
     }
 }
 
+static void set_default_interface(const string& iface_name)
+{
+  unsigned int idx=0;
+  map<string,unsigned short>::iterator if_it = AmConfig::SIP_If_names.find("default");
+  if(if_it == AmConfig::SIP_If_names.end()) {
+    AmConfig::SIP_interface intf;
+    intf.name = "default";
+    AmConfig::SIP_Ifs.push_back(intf);
+    AmConfig::SIP_If_names["default"] = AmConfig::SIP_Ifs.size()-1;
+    idx = AmConfig::SIP_Ifs.size()-1;
+  }
+  else {
+    idx = if_it->second;
+  }
+  AmConfig::SIP_Ifs[if_it->second].LocalIP = iface_name;
+
+  if_it = AmConfig::RTP_If_names.find("default");
+  if(if_it == AmConfig::RTP_If_names.end()) {
+    AmConfig::RTP_interface intf;
+    intf.name = "default";
+    AmConfig::RTP_Ifs.push_back(intf);
+    AmConfig::RTP_If_names["default"] = AmConfig::RTP_Ifs.size()-1;
+    idx = AmConfig::RTP_Ifs.size()-1;
+  }
+  else {
+    idx = if_it->second;
+  }
+  AmConfig::RTP_Ifs[if_it->second].LocalIP = iface_name;
+}
+
 /* Note: The function should not use logging because it is called before
    the logging is initialized. */
 static bool apply_args(std::map<char,string>& args)
@@ -139,7 +179,7 @@ static bool apply_args(std::map<char,string>& args)
 
     switch( it->first ){
     case 'd':
-      AmConfig::Ifs[0].LocalIP = it->second;
+      set_default_interface(it->second);
       break;
 
     case 'D':
@@ -285,6 +325,9 @@ int main(int argc, char* argv[])
 {
   int success = false;
   std::map<char,string> args;
+  #ifndef DISABLE_DAEMON_MODE
+  int fd[2] = {0,0};
+  #endif
 
   progname = strrchr(argv[0], '/');
   progname = (progname == NULL ? argv[0] : progname + 1);
@@ -305,7 +348,7 @@ int main(int argc, char* argv[])
   }
 
   // Init default interface
-  AmConfig::Ifs.push_back(AmConfig::IP_interface());
+  //AmConfig::Ifs.push_back(AmConfig::IP_interface());
 
   /* apply command-line options */
   if(!apply_args(args)){
@@ -364,6 +407,13 @@ int main(int argc, char* argv[])
 #ifndef DISABLE_DAEMON_MODE
 
   if(AmConfig::DaemonMode){
+#ifdef PROPAGATE_COREDUMP_SETTINGS
+    struct rlimit lim;
+    bool have_limit = false;
+    if (getrlimit(RLIMIT_CORE, &lim) == 0) have_limit = true;
+    int dumpable = prctl(PR_GET_DUMPABLE, 0, 0, 0, 0);
+#endif
+
     if(!AmConfig::DaemonGid.empty()){
       unsigned int gid;
       if(str2i(AmConfig::DaemonGid, gid)){
@@ -406,14 +456,45 @@ int main(int argc, char* argv[])
       }
     }
 
+#if defined(__linux__)
+    if(!AmConfig::DaemonUid.empty() || !AmConfig::DaemonGid.empty()){
+      if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) < 0) {
+	WARN("unable to set daemon to dump core after setuid/setgid\n");
+      }
+    }
+#endif
+
     /* fork to become!= group leader*/
+    if (pipe(fd) == -1) { /* Create a pipe */
+        ERROR("Cannot create pipe.\n");
+        goto error;
+    }
     int pid;
     if ((pid=fork())<0){
       ERROR("Cannot fork: %s.\n", strerror(errno));
       goto error;
     }else if (pid!=0){
-      /* parent process => exit*/
+      close(fd[1]);
+      /* parent process => wait for result from child*/
+      for(int i=0;i<2;i++){
+        DBG("waiting for child[%d] response\n", i);
+        (void)read(fd[0], &pid, sizeof(int));
+        if(pid<0){
+          ERROR("Child [%d] return an error: %d\n", i, pid);
+          close(fd[0]);
+          goto error;
+        }
+        DBG("child [%d] pid:%d\n", i, pid);
+      }
+      DBG("all children return OK. bye world!\n");
+      close(fd[0]);
       return 0;
+    }else {
+      /* child */
+      close(fd[0]);
+      main_pid = getpid();
+      DBG("hi world! I'm child [%d]\n", main_pid);
+      (void)write(fd[1], &main_pid, sizeof(int));
     }
     /* become session leader to drop the ctrl. terminal */
     if (setsid()<0){
@@ -425,12 +506,22 @@ int main(int argc, char* argv[])
       goto error;
     }else if (pid!=0){
       /*parent process => exit */
+      close(fd[1]);
+      main_pid = getpid();
+      DBG("I'm out. pid: %d", main_pid);
       return 0;
     }
 	
     if(write_pid_file()<0) {
       goto error;
     }
+
+#ifdef PROPAGATE_COREDUMP_SETTINGS
+    if (have_limit) {
+      if (setrlimit(RLIMIT_CORE, &lim) < 0) ERROR("failed to set RLIMIT_CORE\n");
+      if (prctl(PR_SET_DUMPABLE, dumpable, 0, 0, 0)<0) ERROR("cannot re-set core dumping to %d!\n", dumpable);
+    }
+#endif
 
     /* try to replace stdin, stdout & stderr with /dev/null */
     if (freopen("/dev/null", "r", stdin)==0){
@@ -460,17 +551,15 @@ int main(int argc, char* argv[])
   if(set_sighandler(signal_handler))
     goto error;
     
-  INFO("Loading plug-ins\n");
-  AmPlugIn::instance()->init();
-  if(AmPlugIn::instance()->load(AmConfig::PlugInPath, AmConfig::LoadPlugins))
-    goto error;
-
 #ifdef WITH_ZRTP
   if (AmZRTP::init()) {
     ERROR("Cannot initialize ZRTP\n");
     goto error;
   }
 #endif
+
+  INFO("Starting application timer scheduler\n");
+  AmAppTimer::instance()->start();
 
   INFO("Starting session container\n");
   AmSessionContainer::instance()->start();
@@ -483,18 +572,49 @@ int main(int argc, char* argv[])
   INFO("Starting media processor\n");
   AmMediaProcessor::instance()->init();
 
+  // init thread usage with libevent
+  // before it's too late
+  if(evthread_use_pthreads() != 0) {
+    ERROR("cannot init thread usage with libevent");
+    goto error;
+  }
+
   INFO("Starting RTP receiver\n");
   AmRtpReceiver::instance()->start();
 
   INFO("Starting SIP stack (control interface)\n");
-  sip_ctrl.load();
+  if(sip_ctrl.load()) {
+    goto error;
+  }
   
+  INFO("Loading plug-ins\n");
+  AmPlugIn::instance()->init();
+  if(AmPlugIn::instance()->load(AmConfig::PlugInPath, AmConfig::LoadPlugins))
+    goto error;
+
+  AmPlugIn::instance()->registerLoggingPlugins();
+
+  AmSessionContainer::instance()->initMonitoring();
+
+  #ifndef DISABLE_DAEMON_MODE
+  if(fd[1]) {
+    DBG("hi world! I'm main child [%d]\n", main_pid);
+    (void)write(fd[1], &main_pid, sizeof(int));
+    close(fd[1]); fd[1] = 0;
+  }
+  #endif
+
+  // running the server
   if(sip_ctrl.run() != -1)
     success = true;
 
   // session container stops active sessions
   INFO("Disposing session container\n");
   AmSessionContainer::dispose();
+
+  DBG("** Transaction table dump: **\n");
+  dumps_transactions();
+  DBG("*****************************\n");
 
   INFO("Disposing RTP receiver\n");
   AmRtpReceiver::dispose();
@@ -512,6 +632,12 @@ int main(int argc, char* argv[])
 #ifndef DISABLE_DAEMON_MODE
   if (AmConfig::DaemonMode) {
     unlink(AmConfig::DaemonPidFile.c_str());
+  }
+  if(fd[1]){
+     main_pid = -1;
+     DBG("send -1 to parent\n");
+     (void)write(fd[1], &main_pid, sizeof(int));
+     close(fd[1]);
   }
 #endif
 

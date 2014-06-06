@@ -41,7 +41,11 @@ SC_EXPORT(MOD_CLS_NAME);
 MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
 
   DEF_CMD("uri.parse", URIParseAction);
+  DEF_CMD("uri.parseNameaddr", URIParseNameaddrAction);
   DEF_CMD("uri.getHeader", URIGetHeaderAction);
+
+  DEF_CMD("uri.encode", URIEncodeAction);
+  DEF_CMD("uri.decode", URIDecodeAction);
 
 } MOD_ACTIONEXPORT_END;
 
@@ -67,10 +71,40 @@ EXEC_ACTION_START(URIParseAction) {
     return false;
   }
   
+  sc_sess->var[prefix+"user"]         = p.uri_user;
+  sc_sess->var[prefix+"host"]         = p.uri_host;
+  sc_sess->var[prefix+"port"]         = p.uri_port;
+  sc_sess->var[prefix+"headers"]      = p.uri_headers;
+  sc_sess->var[prefix+"param"]        = p.uri_param;
+
+  sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(URIParseNameaddrAction, ',', true);
+EXEC_ACTION_START(URIParseNameaddrAction) {
+
+  string uri = resolveVars(par1, sess, sc_sess, event_params);
+  string prefix = resolveVars(par2, sess, sc_sess, event_params);
+
+  AmUriParser p;
+  if (!p.parse_nameaddr(uri)) {
+    DBG("parsing nameaddr '%s' failed\n", uri.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_GENERAL);
+    sc_sess->SET_STRERROR("parsing nameaddr '"+uri+"%s' failed");
+    return false;
+  }
+  
   sc_sess->var[prefix+"display_name"] = p.display_name;
   sc_sess->var[prefix+"user"]         = p.uri_user;
   sc_sess->var[prefix+"host"]         = p.uri_host;
+  sc_sess->var[prefix+"port"]         = p.uri_port;
+  sc_sess->var[prefix+"headers"]      = p.uri_headers;
   sc_sess->var[prefix+"param"]        = p.uri_param;
+
+  for (map<string, string>::iterator it=p.params.begin(); it != p.params.end(); it++) {
+    sc_sess->var[prefix+"uri_param."+it->first] = it->second;
+  }
+
 
   sc_sess->CLR_ERRNO;
 } EXEC_ACTION_END;
@@ -85,4 +119,29 @@ EXEC_ACTION_START(URIGetHeaderAction) {
   DBG("got header '%s' value '%s' as $%s\n", 
       hname.c_str(), sc_sess->var[dstname].c_str(), dstname.c_str());
 
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(URIEncodeAction, '=', false);
+EXEC_ACTION_START(URIEncodeAction) {
+
+  string varname  = par1;
+  if (varname.size() && varname[0]=='$')
+    varname.erase(0,1);
+  string str = resolveVars(par2, sess, sc_sess, event_params);
+
+  sc_sess->var[varname] = URL_encode(str);
+  DBG("URL-encoded: $%s=\"%s\"\n", varname.c_str(), sc_sess->var[varname].c_str());
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(URIDecodeAction, '=', false);
+EXEC_ACTION_START(URIDecodeAction) {
+
+  string varname  = par1;
+  if (varname.size() && varname[0]=='$')
+    varname.erase(0,1);
+  string str = resolveVars(par2, sess, sc_sess, event_params);
+
+  sc_sess->var[varname] = URL_decode(str);
+  DBG("URL-decoded: $%s=\"%s\"\n", varname.c_str(), sc_sess->var[varname].c_str());
 } EXEC_ACTION_END;

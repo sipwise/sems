@@ -31,7 +31,8 @@ int MyJukeboxFactory::onLoad()
     return 0;
 }
 
-AmSession* MyJukeboxFactory::onInvite(const AmSipRequest& req)
+AmSession* MyJukeboxFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				      const map<string,string>& app_params)
 {
     return new MyJukeboxDialog();
 }
@@ -44,14 +45,14 @@ MyJukeboxDialog::MyJukeboxDialog()
 MyJukeboxDialog::~MyJukeboxDialog()
 {
   // clean playlist items
-  playlist.close(false);
+  playlist.flush();
   // clean used AmAudioFile objects
   for (vector<AmAudioFile*>::iterator it=
 	 used_audio_files.begin(); it != used_audio_files.end();it++)
     delete *it;
 }
 
-void MyJukeboxDialog::onSessionStart(const AmSipRequest& req)
+void MyJukeboxDialog::onSessionStart()
 {
     DBG("MyJukeboxDialog::onSessionStart - jukedir is '%s'\n", 
 	MyJukeboxFactory::JukeboxDir.c_str());

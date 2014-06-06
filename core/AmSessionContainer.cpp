@@ -44,8 +44,8 @@ AmSessionContainer* AmSessionContainer::_instance=NULL;
 _MONITORING_DECLARE_INTERFACE(AmSessionContainer);
 
 AmSessionContainer::AmSessionContainer()
-  : _run_cond(false), _container_closed(false), enable_unclean_shutdown(false)
-      
+  : _run_cond(false), _container_closed(false), enable_unclean_shutdown(false),
+    CPSLimit(0), CPSHardLimit(0), max_cps(0)
 {
 }
 
@@ -86,7 +86,7 @@ bool AmSessionContainer::clean_sessions() {
       
       ds_mut.unlock();
       
-      if(cur_session->is_stopped() && cur_session->detached.get()){
+      if(cur_session->is_stopped() && !cur_session->isProcessingMedia()){
 	
 	MONITORING_MARK_FINISHED(cur_session->getLocalTag().c_str());
 
@@ -115,10 +115,12 @@ bool AmSessionContainer::clean_sessions() {
   return more;
 }
 
+void AmSessionContainer::initMonitoring() {
+  _MONITORING_INIT;
+}
+
 void AmSessionContainer::run()
 {
-  _MONITORING_INIT;
-
   while(!_container_closed.get()){
 
     _run_cond.wait_for();
@@ -193,11 +195,9 @@ void AmSessionContainer::stopAndQueue(AmSession* s)
 void AmSessionContainer::destroySession(AmSession* s)
 {
     AmEventQueueInterface* q = AmEventDispatcher::instance()->
-	delEventQueue(s->getLocalTag(),
-		      s->getCallID(),
-		      s->getRemoteTag());
+      delEventQueue(s->getLocalTag());
     
-    if(q) {	
+    if(q) {
 	stopAndQueue(s);
     }
     else {
@@ -205,18 +205,15 @@ void AmSessionContainer::destroySession(AmSession* s)
     }
 }
 
-string AmSessionContainer::startSessionUAC(AmSipRequest& req, AmArg* session_params) {
+string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_name, AmArg* session_params) {
 
   auto_ptr<AmSession> session;
   try {
-    session.reset(createSession(req, session_params));
+    session.reset(createSession(req, app_name, session_params));
     if(session.get() != 0) {
-
-      session->dlg.updateStatusFromLocalRequest(req);
+      session->dlg->initFromLocalRequest(req);
       session->setCallgroup(req.from_tag);
-
-      session->setNegotiateOnReply(true);
-
+      
       switch(addSession(req.from_tag,session.get())) {
 	
       case AmSessionContainer::Inserted:
@@ -237,7 +234,7 @@ string AmSessionContainer::startSessionUAC(AmSipRequest& req, AmArg* session_par
       }
       
       MONITORING_LOG5(req.from_tag, 
-		      "app", req.cmd.c_str(),
+		      "app", app_name.c_str(),
 		      "dir", "out",
 		      "from", req.from.c_str(),
 		      "to", req.to.c_str(),
@@ -252,7 +249,7 @@ string AmSessionContainer::startSessionUAC(AmSipRequest& req, AmArg* session_par
       
       if (AmConfig::LogSessions) {      
 	INFO("Starting UAC session %s app %s\n",
-	     req.from_tag.c_str(), req.cmd.c_str());
+	     req.from_tag.c_str(), app_name.c_str());
       }
       try {
 	session->start();
@@ -284,8 +281,9 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
   try {
       // Call-ID and From-Tag are unknown: it's a new session
       auto_ptr<AmSession> session;
+      string app_name;
 
-      session.reset(createSession(req));
+      session.reset(createSession(req,app_name));
       if(session.get() != 0){
 
 	// update session's local tag (ID) if not already set
@@ -295,12 +293,12 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
 	session->setCallgroup(local_tag);
 
 	if (AmConfig::LogSessions) {
-	  INFO("Starting UAS session %s app %s\n",
-	       local_tag.c_str(), req.cmd.c_str());
+	  INFO("Starting UAS session %s\n",
+	       local_tag.c_str());
 	}
 
 	switch(addSession(req.callid,req.from_tag,local_tag,
-			  session.get())) {
+			  req.via_branch,session.get())) {
 
 	case AmSessionContainer::Inserted:
 	  // successful case
@@ -319,8 +317,7 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
 	  throw string(SIP_REPLY_SERVER_INTERNAL_ERROR);
 	}
 
-	MONITORING_LOG5(local_tag.c_str(), 
-			"app", req.cmd.c_str(),
+	MONITORING_LOG4(local_tag.c_str(), 
 			"dir", "in",
 			"from", req.from.c_str(),
 			"to", req.to.c_str(),
@@ -330,7 +327,7 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
 	  session->start();
 	} catch (...) {
 	  AmEventDispatcher::instance()->
-	    delEventQueue(req.callid,req.from_tag,local_tag);
+	    delEventQueue(local_tag);
 	  throw;
 	}
 
@@ -355,11 +352,12 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
 
 bool AmSessionContainer::postEvent(const string& callid, 
 				   const string& remote_tag,
+				   const string& via_branch,
 				   AmEvent* event)
 {
     bool posted =
-	AmEventDispatcher::instance()->
-	post(callid,remote_tag,event);
+      AmEventDispatcher::instance()->
+        post(callid,remote_tag,via_branch,event);
 
     if(!posted)
 	delete event;
@@ -381,7 +379,105 @@ bool AmSessionContainer::postEvent(const string& local_tag,
 
 }
 
-AmSession* AmSessionContainer::createSession(AmSipRequest& req, 
+void AmSessionContainer::setCPSLimit(unsigned int limit)
+{
+  AmLock lock(cps_mut);
+  CPSLimit = CPSHardLimit = limit;
+}
+
+void AmSessionContainer::setCPSSoftLimit(unsigned int percent)
+{
+  if(!percent) {
+    CPSLimit = CPSHardLimit;
+    return;
+  }
+
+  struct timeval tv, res;
+  gettimeofday(&tv,0);
+
+  AmLock lock(cps_mut);
+
+  while (cps_queue.size()) {
+    timersub(&tv, &cps_queue.front(), &res);
+    if (res.tv_sec >= CPS_SAMPLERATE) {
+      cps_queue.pop();
+    }   
+    else {
+      break;
+    }
+  }
+  CPSLimit = ((float)percent / 100) * ((float)cps_queue.size() / CPS_SAMPLERATE);
+  if(0 == CPSLimit) CPSLimit = 1;
+}
+
+pair<unsigned int, unsigned int> AmSessionContainer::getCPSLimit()
+{
+  AmLock lock(cps_mut);
+  return pair<unsigned int, unsigned int>(CPSHardLimit, CPSLimit);
+}
+
+unsigned int AmSessionContainer::getAvgCPS()
+{
+  struct timeval tv, res;
+  gettimeofday(&tv,0);
+
+  AmLock lock(cps_mut);
+
+  while (cps_queue.size()) {
+    timersub(&tv, &cps_queue.front(), &res);
+    if (res.tv_sec >= CPS_SAMPLERATE) {
+      cps_queue.pop();
+    }   
+    else {
+      break;
+    }
+  }
+
+  return (float)cps_queue.size() / CPS_SAMPLERATE;
+}
+
+unsigned int AmSessionContainer::getMaxCPS()
+{
+  AmLock lock(cps_mut);
+  unsigned int res = max_cps;
+  max_cps = 0;
+  return res;
+}
+
+bool AmSessionContainer::check_and_add_cps()
+{
+  struct timeval tv, res;
+  gettimeofday(&tv,0);
+
+  AmLock lock(cps_mut);
+
+  while (cps_queue.size()) {
+    timersub(&tv, &cps_queue.front(), &res);
+    if (res.tv_sec >= CPS_SAMPLERATE) {
+      cps_queue.pop();
+    }   
+    else {
+      break;
+    }
+  }
+
+  unsigned int cps = (float)cps_queue.size() / CPS_SAMPLERATE;
+  if (cps > max_cps) {
+    max_cps = cps;
+  }
+
+  if( CPSLimit && cps > CPSLimit ){
+    DBG("cps_limit %d reached. Not creating session.\n", CPSLimit);
+    return true;
+  }
+  else {
+    cps_queue.push(tv);
+    return false;
+  }
+}
+
+AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
+					     string& app_name,
 					     AmArg* session_params)
 {
   if (AmConfig::ShutdownMode) {
@@ -404,8 +500,17 @@ AmSession* AmSessionContainer::createSession(AmSipRequest& req,
       return NULL;
   }
 
-  AmSessionFactory* session_factory = 
-      AmPlugIn::instance()->findSessionFactory(req);
+  if (check_and_add_cps()) {
+      AmSipDialog::reply_error(req,AmConfig::CPSLimitErrCode, 
+			       AmConfig::CPSLimitErrReason);
+      return NULL;
+  }
+
+  AmSessionFactory* session_factory = NULL;
+  if(!app_name.empty())
+      session_factory = AmPlugIn::instance()->getFactory4App(app_name);
+  else
+      session_factory = AmPlugIn::instance()->findSessionFactory(req,app_name);
 
   if(!session_factory) {
 
@@ -415,17 +520,22 @@ AmSession* AmSessionContainer::createSession(AmSipRequest& req,
       return NULL;
   }
 
+  map<string,string> app_params;
+  parse_app_params(req.hdrs,app_params);
+
   AmSession* session = NULL;
   if (req.method == "INVITE") {
-    if (NULL != session_params) 
-      session = session_factory->onInvite(req, *session_params);
-    else 
-      session = session_factory->onInvite(req);
+    if (NULL != session_params) {
+      session = session_factory->onInvite(req, app_name, *session_params);
+    }
+    else {
+      session = session_factory->onInvite(req, app_name, app_params);
+    }
   } else if (req.method == "REFER") {
     if (NULL != session_params) 
-      session = session_factory->onRefer(req, *session_params);
+      session = session_factory->onRefer(req, app_name, *session_params);
     else 
-      session = session_factory->onRefer(req);
+      session = session_factory->onRefer(req, app_name, app_params);
   }
 
   if(!session) {
@@ -438,6 +548,10 @@ AmSession* AmSessionContainer::createSession(AmSipRequest& req,
 
     DBG("onInvite/onRefer returned NULL\n");
   }
+  else {
+    // save session parameters
+    session->app_params = app_params;
+  }
 
   return session;
 }
@@ -446,6 +560,7 @@ AmSessionContainer::AddSessionStatus
 AmSessionContainer::addSession(const string& callid,
 			       const string& remote_tag,
 			       const string& local_tag,
+			       const string& via_branch,
 			       AmSession* session)
 {
   if(_container_closed.get())
@@ -453,7 +568,7 @@ AmSessionContainer::addSession(const string& callid,
   
   if(AmEventDispatcher::instance()->
      addEventQueue(local_tag,(AmEventQueue*)session,
-		   callid,remote_tag)) {
+		   callid,remote_tag,via_branch)) {
     return Inserted;
   }
 

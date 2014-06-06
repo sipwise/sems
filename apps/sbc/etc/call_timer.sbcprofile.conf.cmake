@@ -19,8 +19,7 @@
 # force outbound proxy (in-dialog requests)?
 #force_outbound_proxy=yes
 # destination IP[:port] for outgoing requests
-#next_hop_ip=192.168.5.106
-#next_hop_port=5060
+#next_hop=192.168.5.106
 
 ## filters: 
 #header_filter=blacklist
@@ -29,11 +28,15 @@
 #message_list=
 
 ## call timer
-enable_call_timer=yes
+call_control=call_timer
+
+# module cc_call_timer
+call_timer_module=cc_call_timer
 # maximum call time in seconds.
 # take the timer value from "t" parameter of P-App-Param,
 # e.g. P-App-Param: t=120
-call_timer=$P(t)
+call_timer_timer=$P(t)
+
 #
 # Kamailio/sip-router script: 
 #  remove_hf("P-App-Param");
@@ -42,24 +45,3 @@ call_timer=$P(t)
 #
 #For a static value, set it like this
 #call_timer=120
-
-## prepaid
-#enable_prepaid=yes
-#prepaid_accmodule=cc_acc
-#prepaid_uuid=$H(P-Caller-Uuid)
-#prepaid_acc_dest=$H(P-Acc-Dest)
-
-## authentication:
-#enable_auth=yes
-#auth_user=$P(u)
-#auth_pwd=$P(p)
-
-## session timer:
-#enable_session_timer=yes
-# if session_expires is not configured here,
-# the values from sbc.conf are used, or the
-# default values
-#session_expires=120
-#minimum_timer=90
-#session_refresh_method=UPDATE_FALLBACK_INVITE
-#accept_501_reply=yes

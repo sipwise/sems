@@ -27,15 +27,19 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #include "transport.h"
-#include "../SipCtrlInterface.h"
 #include "../log.h"
 
 #include <assert.h>
 #include <netinet/in.h>
 #include <string.h> // memset, strerror, ...
 
-trsp_socket::trsp_socket()
-    : sd(0), ip(), port(0)
+int trsp_socket::log_level_raw_msgs = L_DBG;
+
+trsp_socket::trsp_socket(unsigned short if_num, unsigned int opts,
+			 unsigned int sys_if_idx, int sd)
+    : sd(sd), ip(), port(0), 
+      if_num(if_num), sys_if_idx(sys_if_idx),
+      socket_options(opts)
 {
     memset(&addr,0,sizeof(sockaddr_storage));
 }
@@ -44,17 +48,36 @@ trsp_socket::~trsp_socket()
 {
 }
 
-const char* trsp_socket::get_ip()
+const char* trsp_socket::get_ip() const
 {
     return ip.c_str();
 }
 
-unsigned short trsp_socket::get_port()
+unsigned short trsp_socket::get_port() const
 {
     return port;
 }
 
-void trsp_socket::copy_addr_to(sockaddr_storage* sa)
+void trsp_socket::set_public_ip(const string& ip)
+{
+    public_ip = ip;
+}
+    
+const char* trsp_socket::get_advertised_ip() const
+{
+    if(!public_ip.empty())
+	return public_ip.c_str();
+
+    return get_ip();
+}
+
+bool trsp_socket::is_opt_set(unsigned int mask) const
+{
+    DBG("trsp_socket::socket_options = 0x%x\n",socket_options);
+    return (socket_options & mask) == mask;
+}
+
+void trsp_socket::copy_addr_to(sockaddr_storage* sa) const
 {
     memcpy(sa,&addr,sizeof(sockaddr_storage));
 }
@@ -63,7 +86,7 @@ void trsp_socket::copy_addr_to(sockaddr_storage* sa)
  * Match with the given address
  * @return true if address matches
  */
-bool trsp_socket::match_addr(sockaddr_storage* other_addr)
+bool trsp_socket::match_addr(sockaddr_storage* other_addr) const
 {
     
     if(addr.ss_family != other_addr->ss_family)
@@ -85,41 +108,14 @@ bool trsp_socket::match_addr(sockaddr_storage* other_addr)
     return false;
 }
 
-int trsp_socket::get_sd()
+int trsp_socket::get_sd() const
 {
     return sd;
 }
 
-int trsp_socket::send(const sockaddr_storage* sa, const char* msg, const int msg_len)
+unsigned short trsp_socket::get_if() const
 {
-    if ((SipCtrlInterface::log_raw_messages >= 0)
-	&& (SipCtrlInterface::log_raw_messages <= log_level)) {
-	_LOG(SipCtrlInterface::log_raw_messages, 
-	     "send  msg\n--++--\n%.*s--++--\n", msg_len, msg);
-    }
-
-  int err;
-#ifdef SUPPORT_IPV6
-  if (sa->ss_family == AF_INET6) {
-    err = sendto(sd, msg, msg_len, 0, (const struct sockaddr*)sa, sizeof(sockaddr_in6));
-  }
-  else {
-#endif
-    err = sendto(sd, msg, msg_len, 0, (const struct sockaddr*)sa, sizeof(sockaddr_in));
-#ifdef SUPPORT_IPV6
-  }
-#endif
-
-  if (err < 0) {
-    ERROR("sendto: %s\n",strerror(errno));
-    return err;
-  }
-  else if (err != msg_len) {
-    ERROR("sendto: sent %i instead of %i bytes\n", err, msg_len);
-    return -1;
-  }
-
-  return 0;
+    return if_num;
 }
 
 transport::~transport()

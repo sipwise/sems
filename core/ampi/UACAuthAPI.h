@@ -34,23 +34,22 @@
 using std::string;
 
 class DialogControl 
-: public ArgObject 
+: public AmObject 
 {
  public:
-  virtual AmSipDialog* getDlg()=0;
+  virtual AmBasicSipDialog* getDlg()=0;
 };
 
 class UACAuthCred 
-: public ArgObject {
+: public AmObject {
  public:
   string realm;
   string user;
   string pwd;
-  UACAuthCred() { }
+  UACAuthCred();
   UACAuthCred(const string& realm,
 	      const string& user,
-	      const string& pwd)
-    : realm(realm), user(user), pwd(pwd) { }
+	      const string& pwd);
 };
 
 class CredentialHolder {

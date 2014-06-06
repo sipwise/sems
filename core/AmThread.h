@@ -112,13 +112,14 @@ class AmCondition
   pthread_mutex_t m;
   pthread_cond_t  cond;
 
-public:
-  AmCondition(const T& _t) 
-    : t(_t)
-  {
+  void init_cond() {
     pthread_mutex_init(&m,NULL);
     pthread_cond_init(&cond,NULL);
   }
+
+public:
+  AmCondition() : t() { init_cond(); }
+  AmCondition(const T& _t) : t(_t) { init_cond(); }
     
   ~AmCondition()
   {
@@ -156,7 +157,7 @@ public:
   }
   
   /** Waits for the condition to be true or a timeout. */
-  bool wait_for_to(unsigned long usec)
+  bool wait_for_to(unsigned long msec)
   {
     struct timeval now;
     struct timespec timeout;
@@ -164,9 +165,8 @@ public:
     bool ret = false;
 
     gettimeofday(&now, NULL);
-    timeout.tv_sec = now.tv_sec + (usec / 1000000);
-    timeout.tv_nsec = (now.tv_usec + (usec % 1000000)) * 1000;
-
+    timeout.tv_sec = now.tv_sec + (msec / 1000);
+    timeout.tv_nsec = (now.tv_usec + (msec % 1000)*1000)*1000;
     if(timeout.tv_nsec >= 1000000000){
       timeout.tv_sec++;
       timeout.tv_nsec -= 1000000000;
@@ -208,7 +208,7 @@ public:
   virtual void onIdle() {}
 
   /** Start it ! */
-  void start(bool realtime = false);
+  void start();
   /** Stop it ! */
   void stop();
   /** @return true if this thread doesn't run. */
@@ -248,6 +248,33 @@ class AmThreadWatcher: public AmThread
 public:
   static AmThreadWatcher* instance();
   void add(AmThread*);
+};
+
+template<class T>
+class AmThreadLocalStorage
+{
+  pthread_key_t key;
+  
+  static void __del_tls_obj(void* obj) {
+    delete static_cast<T*>(obj);
+  }
+
+public:
+  AmThreadLocalStorage() {
+    pthread_key_create(&key,__del_tls_obj);
+  }
+
+  ~AmThreadLocalStorage() {
+    pthread_key_delete(key);
+  }
+
+  T* get() {
+    return static_cast<T*>(pthread_getspecific(key));
+  }
+
+  void set(T* p) {
+    pthread_setspecific(key,(void*)p);
+  }
 };
 
 #endif

@@ -49,6 +49,10 @@ Variables, event parameters, selects
 $varname uses the variable varname (from session's variable)
 @selectname uses the "select" 'selectname' (from the session's dialog)
 
+ use ## for #  (e.g. set($hash=##); )
+     $$ for $  (e.g. set($dol=$$); )
+     @@ for @  (e.g. set($at=@@); )
+
 Variable arrays:
  $myarray[0]
  $myarray[1]
@@ -67,7 +71,7 @@ DSM flow
 
  -- call/jump/return sub-FSM
  jumpFSM(name)
- callFSM(name)
+ callFSM(name)   - note that actions after callFSM may have the event & event params of the sub-FSM  
  returnFSM()
 
  stop(<send bye>)
@@ -82,7 +86,7 @@ DSM flow
  set($var=value)
   e.g.  set($var="text"); set($var=$var2); set($var=#key)
  sets($var=value)
-  e.g.  set($var="text and some $variable and some #param");
+  e.g.  sets($var="text and some $variable and some #param");
  var($dstvar=srcvarname)
   e.g.  var($dstvar=$var_counter)
  param($dstvar=srcparamname)
@@ -113,7 +117,7 @@ Playing prompts and file I/O
    if $prompts.default_fallback=yes, default prompt set is tried if
    prompt not found in current prompt set
    Throws "prompt" exeption with #name if prompt not found.
-
+ playPromptFront(param) - play a prompt at first item in the playlist
  playPromptLooped(param)
 
  setPromptSet(name)
@@ -129,27 +133,41 @@ Playing prompts and file I/O
    position in the playlist, and looped.
    Throws "file" exeption with #path if file can not be opened
 
+ playSilence(millisec)      - play silence for millisec ms
+ playSilenceFront(millisec) - play silence for millisec ms at first position in playlist
+
  recordFile(filename)
    Throws "file" exeption with #path if file can not be opened for recording
 
  stopRecord()
  getRecordLength([dst_varname])   -- only while recording! default dst var: record_length
  getRecordDataSize([dst_varname]) -- only while recording! default dst var: record_data_size
- closePlaylist(notify=true)
-   if notify=true, send an event
+ flushPlaylist()
  setInOutPlaylist() 
    set playlist as input and output
+ setInputPlaylist() 
+   set playlist as input (output untouched)
+ setOutputPlaylist() 
+   set playlist as output (input untouched)
  addSeparator(id [, bool front])
    fires event when playlist hits it ; front=[true|false]
- connectMedia() 
-   set playlist as input and output of session, and connect to mediaprocessor 
- disconnectMedia() 
-   disconnect from mediaprocessor
+ connectMedia()     - set playlist as input and output of session,
+                      and start processing of RTP and audio 
+                     (connect to mediaprocessor)
+ disconnectMedia()  - stop processing of RTP and audio (disconnect from mediaprocessor)
 
- mute() 
-   set RTP stream to muted (don't send and receive RTP packets)
- unmute() 
-   set RTP stream to unmuted (send and receive RTP packets)
+ enableReceiving()  - enable processing of received RTP
+ disableReceiving() - disable processing of received RTP
+
+ enableForceDTMFReceiving()  - enable/disable RTP DTMF packets processing even 
+ disableForceDTMFReceiving()   if received RTP is not processed, e.g. after
+                               disableReceiving() or in passive mode
+                               (only for RFC2833/4733 DTMF, *no* in-band)
+ monitorRTPTimeout(enabled=false)
+   set call to monitor RTP timeout (enabled="true" or "false")
+
+ mute()             - set RTP stream to muted (don't send RTP packets)
+ unmute()           - set RTP stream to unmuted (do send RTP packets)
 
 DTMF
 ----
@@ -169,9 +187,18 @@ B2B call control
 ----------------
  B2B.connectCallee(remote_party, remote_uri)
    connect second leg of B2B session (see AmB2BSession)
+    R-URI = remote_uri
+    To = remote_party 
+    From = $b2b_local_party
+    auth = ($b2b_auth_user, $b2b_auth_pwd)
+    Call-ID = $b2b_callid
+    $b2b_relayed_invite=[true|false] : use relayed INVITE mode
 
  B2B.terminateOtherLeg
-   disconnect second leg of B2B session (see AmB2BSession)
+   disconnect second leg of B2B session (see AmB2BSession),
+   e.g. to connect to a new destination
+   note: don't use this when receiving BYE in an established
+         B2BUA call, as the BYE is sent end-to-end
 
  B2B.sendReinvite(generate_sdp [, string extra_headers])
    send a reinvite in caller leg (first leg), e.g. to 
@@ -182,14 +209,27 @@ B2B call control
  B2B.clearHeaders()
    clear the headers used for outgoing INVITE on B leg
 
+ B2B.enableEarlyMediaRelay(enable=[true|false])
+   enable or disable relaying of early media SDP (180-183) as re-Invite in the first leg
+
  B2B.addHeader(string header)
   add a header for outgoing INVITE on B leg
+ 
+ B2B.removeHeader(string header_name)
+  remove a header for outgoing INVITE on B leg
  
  B2B.setHeaders(string headers [, replace_crlf=true|false])
   set headers for outgoing INVITE on B leg
   replace_crlf=true for replacing \r\n with CRLF
   e.g. 
   B2B.setHeaders("P-One: value\r\nP-Two: anothervalue", true)
+
+ B2B.relayEvent(variable_name;variable_name;...)
+   relay B2Bevent to related B2B session; variables copied as event parameters
+   e.g. B2B.relayEvent(var1;var2;var3)     relay event with var1, var2, var3
+
+ B2B.relayEvent("var")
+   relay B2Bevent to related B2B session with all variables of current DSM session
 
  Logging
  -------
@@ -221,7 +261,7 @@ B2B call control
   DI(factory, function [, params...])
     execute DI function
     e.g. DI(factory, function, $var_param, (int)int_param, "str param", @select_par, (array)arrayname, (struct)structname, (json)json_object...)
-       DI(user_timer, setTimer, (int)1, (int)5, @local_tag);
+       DI(monitoring, set, "mytable", @local_tag, (int)1);
 
        set($sweets.candy="nice");
        set($sweets.fruit="superb");
@@ -267,6 +307,12 @@ B2B call control
   unregisterEventQueue(queue_name)
     unregister events queue queue_name
 
+ Object memory management/Garbage collector:
+  freeObject(varname)     - free object referenced with varname immediately
+  trackObject(varname)    - track object referenced with varname, i.e. enable garbage
+                            collection with the current call/systemDSM
+  releaseObject(varname)  - release object referenced with varname from garbage collector
+  
 Conditions
 ==========
  
@@ -290,6 +336,9 @@ Generic conditions (regardless of the type of the event):
 
 Other conditions only match on the type of event and when the expression expr in the
 brackets match.
+
+ start
+   start of a session (onStart). This event is processed before any other.
 
  hangup
    bye/cancel received
@@ -318,22 +367,46 @@ brackets match.
   generic event, e.g. passed from DI or another call with postEvent
   parameters depend on the DI call/the ones passed with postEvent
 
+B2Bevent(expr)
+  generic event from B2B related call leg
+  parameters depend on the ones passed with B2B.relayEvent
+
  keyPress(key)
   alias to key(#key==key)
+
+ remoteDisappeared(expr)
+   remote end in an established call is unreachable (408/481 received)
+   parameters: see sipReply (below), except #old_dlg_status
+
+   set #processed="true" if you don't want default behaviour (clear call)
+
+ sessionTimeout(expr)
+   session expired (SST)
+   parameters: none
+
+   set #processed="true" if you don't want default behaviour (clear call)
+
+ rtpTimeout(expr)
+   RTP timeout detected
+
+   #type           - "rtp_timeout"
+   #timeout_value  - RTP timeout value (as configured)
+
+   set #processed="true" if you don't want default behaviour (clear call)
 
  invite
    invite received/sent (only with run_invite_event):
    parameters: none
 
  ringing
-   ringing reply, 180 (only with run_invite_event):
+   outgoing call: ringing reply, 180 (only with run_invite_event):
    parameters:
       #code     - SIP response code, e.g. 180
       #reason   - SIP reason string, e.g. "Ringing"
       #has_body - "true" or "false" 
 
  early
-   early session, 183 (only with run_invite_event):
+   outgoing call: early session, 183 (only with run_invite_event):
    parameters: none
 
  failed
@@ -358,12 +431,18 @@ brackets match.
    parameters:
       #type     - system event type, e.g. ServerShutdown, User1, User2
 
+ B2B.otherRequest (only sbc)
+   Request on other B2B leg received
+   parameters:
+    #method, #r_uri, #from, #to, #hdrs  - from request
+
  B2B.otherReply
    Reply on other B2B leg received
    parameters:
     #code    - reply code
     #reason  - reply reason
     #hdrs    - headers
+    #trans_method - transaction method (only sbc)
      
  B2B.otherBye
    BYE on other leg received
@@ -404,6 +483,12 @@ brackets match.
 
    #params.*  - parameters array
 
+subscription - SIP subscription status
+   #status   - status: "active", "pending", "failed", "terminated", "timeout"
+   #code     - SIP response code (if failed)
+   #reason   - SIP response reason (if failed)
+   NOTIFY body in avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] (if #status=="active")
+
  jsonRpcResponse - json-rpc response received
    #ev_type  - JsonRpcResponse
    #id       - response ID
@@ -411,6 +496,11 @@ brackets match.
    #udata    - user data that was saved when sending the request
 
    #result.* or #error.* - response data array (or error data)
+
+conference events:
+  generic events with 
+   #type     - "conference_event"
+   #id       - event ID
 
 Selects
 =======
@@ -420,8 +510,10 @@ selects :
  @domain
  @remote_tag
  @callid
+ @local_party
  @local_uri
  @remote_uri
+ @remote_party
 
 Importing modules
 =================
@@ -444,6 +536,11 @@ special variables:
    enable_request_events  "true"  - run events on receiving a request
                           "false" - don't run events on receiveing request 
 
+
+   b2b_local_party                - From in outgoing B2B call
+   b2b_local_uri                  - URI of From for B2B call, for application internal use
+   b2b_auth_user                  - SIP auth user for 2nd leg of B2B call  
+   b2b_auth_pwd                   - SIP auth pwd for 2nd leg of B2B call
     
 =============================
 errors:

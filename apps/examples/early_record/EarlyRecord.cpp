@@ -22,38 +22,24 @@ int EarlyRecordFactory::onLoad()
     return 0;
 }
 
-AmSession* EarlyRecordFactory::onInvite(const AmSipRequest& req)
+AmSession* EarlyRecordFactory::onInvite(const AmSipRequest& req, const string& app_name,
+					const map<string,string>& app_params)
 {
   return new EarlyRecordDialog(NULL);
 }
 
 // auth with di_dial
-AmSession* EarlyRecordFactory::onInvite(const AmSipRequest& req,
+AmSession* EarlyRecordFactory::onInvite(const AmSipRequest& req, const string& app_name,
 					AmArg& session_params)
 {
-  UACAuthCred* cred = NULL;
-  if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
-    if (cred_obj)
-      cred = dynamic_cast<UACAuthCred*>(cred_obj);
-  }
+  UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
   
   AmSession* s = new EarlyRecordDialog(cred); 
   
   if (NULL == cred) {
     WARN("discarding unknown session parameters.\n");
   } else {
-    AmSessionEventHandlerFactory* uac_auth_f = 
-      AmPlugIn::instance()->getFactory4Seh("uac_auth");
-    if (uac_auth_f != NULL) {
-      DBG("UAC Auth enabled for new announcement session.\n");
-      AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-      if (h != NULL )
-	s->addHandler(h);
-    } else {
-      ERROR("uac_auth interface not accessible. "
-	    "Load uac_auth for authenticated dialout.\n");
-    }		
+    AmUACAuth::enable(s);
   }
 
   return s;
@@ -70,7 +56,7 @@ EarlyRecordDialog::~EarlyRecordDialog()
 {
 }
 
-void EarlyRecordDialog::onEarlySessionStart(const AmSipReply& req) {
+void EarlyRecordDialog::onEarlySessionStart() {
   DBG("Early Session Start\n");
   msg_filename = "/tmp/" + getLocalTag() + ".wav";
   
@@ -80,9 +66,11 @@ void EarlyRecordDialog::onEarlySessionStart(const AmSipReply& req) {
   
   setInput(&a_msg);
   setMute(true);
+
+  AmSession::onEarlySessionStart();
 }
 
-void EarlyRecordDialog::onSessionStart(const AmSipReply& req)
+void EarlyRecordDialog::onSessionStart()
 {
   setInOut(NULL, NULL);
 
@@ -96,6 +84,8 @@ void EarlyRecordDialog::onSessionStart(const AmSipReply& req)
       msg_filename + string(" for writing");
 
   setOutput(&a_msg);
+
+  AmSession::onSessionStart();
 }
 
 void EarlyRecordDialog::onBye(const AmSipRequest& req)
@@ -109,7 +99,7 @@ void EarlyRecordDialog::process(AmEvent* event)
 
   AmAudioEvent* audio_event = dynamic_cast<AmAudioEvent*>(event);
   if(audio_event && (audio_event->event_id == AmAudioEvent::cleared)){
-    dlg.bye();
+    dlg->bye();
     setStopped();
     return;
   }

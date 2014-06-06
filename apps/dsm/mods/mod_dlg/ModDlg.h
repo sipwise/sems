@@ -30,6 +30,8 @@
 
 #define MOD_CLS_NAME DLGModule 
 
+#define DSM_ERRNO_DLG "dlg"
+
 DECLARE_MODULE_BEGIN(MOD_CLS_NAME);
 bool onInvite(const AmSipRequest& req, DSMSession* sess);
 DECLARE_MODULE_END;
@@ -40,4 +42,19 @@ DEF_ACTION_2P(DLGAcceptInviteAction);
 DEF_ACTION_2P(DLGConnectCalleeRelayedAction);
 DEF_ACTION_1P(DLGByeAction);
 DEF_ACTION_1P(DLGDialoutAction);
+
+DEF_SCCondition(DLGReplyHasContentTypeCondition);
+DEF_SCCondition(DLGRequestHasContentTypeCondition);
+DEF_ACTION_2P(DLGGetRequestBodyAction);
+DEF_ACTION_2P(DLGGetReplyBodyAction);
+
+DEF_ACTION_1P(DLGGetOtherIdAction);
+DEF_ACTION_1P(DLGGetRtpRelayModeAction);
+
+DEF_ACTION_2P(DLGReferAction);
+DEF_ACTION_2P(DLGB2BRelayErrorAction);
+
+DEF_ACTION_2P(DLGAddReplyBodyPartAction);
+DEF_ACTION_1P(DLGDeleteReplyBodyPartAction);
+
 #endif

@@ -1,8 +1,14 @@
 import(mod_conference)
 
-initial state lobby 
-  enter { playFile(wav/default_en.wav) };
+initial state start;
 
+state lobby;
+
+transition "start to lobby" start - sessionStart / { 
+    set($is_spkonly=0);
+    set($is_listenonly=0);
+    playFile(wav//default_en.wav) 
+} -> lobby;
 
 state room;
 
@@ -11,35 +17,36 @@ transition "lobby to room" lobby - noAudioTest /  {
    conference.join(myroom);
 } -> room;
 
-
-transition "key 1 pressed" room - keyPress(1); test($is_spkonly == "") / {
+transition "key 1 pressed" room - keyPress(1); test($is_spkonly == 0) / {
  set($is_spkonly=1);
- closePlaylist(false);
+ flushPlaylist();
  conference.rejoin(myroom, speakonly);
 } -> room;
 
-transition "key 1 pressed - spkonly" room - keyPress(1); test($is_spkonly == "1") / {
- set($is_spkonly="");
- closePlaylist(false);
+transition "key 1 pressed - spkonly" room - keyPress(1); test($is_spkonly == 1) / {
+ set($is_spkonly=0);
+ flushPlaylist();
  conference.rejoin(myroom);
 } -> room;
 
-transition "key 2 pressed" room - keyPress(2); test($is_listenonly == "") / {
+transition "key 2 pressed" room - keyPress(2); test($is_listenonly == 0) / {
  set($is_listenonly=1);
- closePlaylist(false);
+ flushPlaylist();
  conference.rejoin(myroom, listenonly);
 } -> room;
 
-transition "key 2 pressed - listenonly" room - keyPress(2); test($is_listenonly == "1") / {
- set($is_listenonly="");
- closePlaylist(false);
+transition "key 2 pressed - listenonly" room - keyPress(2); test($is_listenonly == 1) / {
+ set($is_listenonly=0);
+ flushPlaylist();
  conference.rejoin(myroom);
 } -> room;
 
-transition "kick event" room - eventTest(#action==kick) / closePlaylist(false); conference.leave(); stop(true) -> end;
+state end;
+
+transition "kick event" room - eventTest(#action==kick) / flushPlaylist(); conference.leave(); stop(true) -> end;
 
 transition "leave event" room - eventTest(#action==leave) /  {
-   closePlaylist(false); 
+   flushPlaylist(); 
   conference.leave() 
 } -> outside;
 
@@ -47,10 +54,8 @@ state outside
    enter { 
      log(2, now outside); 
    };
+
 transition "join event" outside - eventTest(#action==join) / conference.join(myroom) -> room;
 transition "join event" outside - eventTest(#action==joinroom) / conference.join(#room) -> room;
 
-
-transition "bye recvd" (lobby, room) - hangup / closePlaylist(false); conference.leave();  stop(false); -> end;
-
-state end;
+transition "bye recvd" (start, lobby, room, outside, end) - hangup / flushPlaylist(); conference.leave();  stop(false); -> end;

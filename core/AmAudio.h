@@ -30,6 +30,7 @@
 
 #include "AmThread.h"
 #include "amci/amci.h"
+#include "amci/codecs.h"
 #include "AmEventQueue.h"
 
 #include <stdio.h>
@@ -40,17 +41,43 @@ using std::auto_ptr;
 using std::string;
 #include <map>
 
-#ifdef USE_LIBSAMPLERATE 
+#ifdef USE_LIBSAMPLERATE
 #include <samplerate.h>
+#endif
+
+#ifdef USE_INTERNAL_RESAMPLER
+#include "resample/resample.h"
 #endif
 
 #define PCM16_B2S(b) ((b) >> 1)
 #define PCM16_S2B(s) ((s) << 1)
 
-#define SYSTEM_SAMPLERATE 8000 // fixme: sr per session
+//#define SYSTEM_SAMPLERATE 8000 // fixme: sr per session
+#ifndef SYSTEM_SAMPLECLOCK_RATE
+#define SYSTEM_SAMPLECLOCK_RATE 32000
+#endif
+
+// Wallclock definitions:
+//
+// The wallclock is defined such that:
+//  - it is the highest clock rate is the system
+//  - any supported sample rate must be smaller
+//  - the difference between scaled down timers
+//    is always consistent with respect to overflows.
+//  - supported sample rates are multiples of 100
+//    (44100 is supported, 44110 is not)
+#define WALLCLOCK_RATE 102400LL
+//
+// Wallclock overflow mask
+#define WALLCLOCK_MASK 0xFFFFFFFFFFFFLL // 48 bit mask
+//
+// Wallclock increments
+#define WC_INC_MS 10LL /* 10 ms */
+#define WC_INC ((WALLCLOCK_RATE*WC_INC_MS)/1000LL)
 
 struct SdpPayload;
 struct CodecContainer;
+struct Payload;
 
 /** \brief Audio Event */
 class AmAudioEvent: public AmEvent
@@ -110,23 +137,23 @@ class AmAudioFormat
 public:
   /** Number of channels. */
   int channels;
-  /** Sampling rate. */
-  int rate;
-  /* frame length in ms (frame based codecs) - unused */
-  int frame_length;
-  /* frame size in samples */
-  int frame_size;
-  /* encoded frame size in bytes - unused */
-  int frame_encoded_size;
 
   string sdp_format_parameters;
     
-  AmAudioFormat();
+  AmAudioFormat(int codec_id = CODEC_PCM16,
+		unsigned int rate = SYSTEM_SAMPLECLOCK_RATE);
+
   virtual ~AmAudioFormat();
 
   /** @return The format's codec pointer. */
-  virtual amci_codec_t*    getCodec();
+  virtual amci_codec_t* getCodec();
   void resetCodec();
+
+  /** return the sampling rate */
+  unsigned int getRate() { return rate; }
+
+  /** set the sampling rate */
+  void setRate(unsigned int sample_rate);
 
   /** @return Handler returned by the codec's init function.*/
   long             getHCodec();
@@ -141,7 +168,11 @@ public:
   bool operator != (const AmAudioFormat& r) const;
 
 protected:
-  virtual int getCodecId()=0;
+  /** Codec id: @see amci/codecs.h */
+  int codec_id;
+
+  /** Sampling rate. */
+  unsigned int rate;
 
   /** ==0 if not yet initialized. */
   amci_codec_t*   codec;
@@ -151,54 +182,52 @@ protected:
   /** Calls amci_codec_t::destroy() */
   void destroyCodec();
   /** Calls amci_codec_t::init() */
-  void initCodec();
+  virtual void initCodec();
 
 private:
   void operator = (const AmAudioFormat& r);
 };
 
-/** \brief simple \ref AmAudioFormat audio format */
-class AmAudioSimpleFormat: public AmAudioFormat
+/**
+ * \brief keeps the resampling state for one direction (input or output)
+ */
+class AmResamplingState
 {
-  int codec_id;
-
-protected:
-  virtual int getCodecId() { return codec_id; }
-
 public:
-  AmAudioSimpleFormat(int codec_id);
+  virtual unsigned int resample(unsigned char* samples, unsigned int size, double ratio) = 0;
+  virtual ~AmResamplingState() {}
 };
 
-
-/** \brief RTP audio format */
-class AmAudioRtpFormat: public AmAudioFormat
+#ifdef USE_LIBSAMPLERATE
+class AmLibSamplerateResamplingState: public AmResamplingState
 {
-  vector<SdpPayload *> m_payloads;
-  int m_currentPayload;
-  amci_payload_t *m_currentPayloadP;
-  std::map<int, SdpPayload *> m_sdpPayloadByPayload;
-  std::map<int, amci_payload_t *> m_payloadPByPayload;
-  std::map<int, CodecContainer *> m_codecContainerByPayload;
+private:
+  SRC_STATE* resample_state;
+  float resample_in[PCM16_B2S(AUDIO_BUFFER_SIZE)*2];
+  float resample_out[PCM16_B2S(AUDIO_BUFFER_SIZE)];
+  size_t resample_buf_samples;
+  size_t resample_out_buf_samples;
+public:
+  AmLibSamplerateResamplingState();
+  virtual ~AmLibSamplerateResamplingState();
 
-protected:
-  virtual int getCodecId();
+  virtual unsigned int resample(unsigned char* samples, unsigned int size, double ratio);
+};
+#endif
+
+#ifdef USE_INTERNAL_RESAMPLER
+class AmInternalResamplerState: public AmResamplingState
+{
+private:
+  Resample *rstate;
 
 public:
-  /**
-   * Constructor for payload based formats.
-   * All the information are taken from the 
-   * payload description in the originating plug-in.
-   */
-  AmAudioRtpFormat(const vector<SdpPayload *>& payloads);
-  ~AmAudioRtpFormat();
+  AmInternalResamplerState();
+  virtual ~AmInternalResamplerState();
 
-  /**
-   * changes payload. returns != 0 on error.
-   */
-  int setCurrentPayload(int payload);
-
-  int getCurrentPayload() { return m_currentPayload; };
+  virtual unsigned int resample(unsigned char* samples, unsigned int size, double ratio);
 };
+#endif
 
 /**
  * \brief base for classes that input or output audio.
@@ -208,17 +237,18 @@ public:
  */
 
 class AmAudio
+  : public AmObject
 {
 private:
   int rec_time; // in samples
   int max_rec_time;
 
-#ifdef USE_LIBSAMPLERATE 
-  SRC_STATE* resample_state;
-  float resample_in[PCM16_B2S(AUDIO_BUFFER_SIZE)*2];
-  float resample_out[PCM16_B2S(AUDIO_BUFFER_SIZE)];
-  size_t resample_buf_samples;
-#endif
+public:
+  enum ResamplingImplementationType {
+	LIBSAMPLERATE,
+	INTERNAL_RESAMPLER,
+	UNAVAILABLE
+  };
 
 protected:
   /** Sample buffer. */
@@ -226,10 +256,13 @@ protected:
   
   /** Audio format. @see AmAudioFormat */
   auto_ptr<AmAudioFormat> fmt;
+  
+  /** Resampling states. @see AmResamplingState */
+  auto_ptr<AmResamplingState> input_resampling_state;
+  auto_ptr<AmResamplingState> output_resampling_state;
 
   AmAudio();
   AmAudio(AmAudioFormat *);
-
 
   /** Gets 'size' bytes directly from stream (Read,Pull). */
   virtual int read(unsigned int user_ts, unsigned int size) = 0;
@@ -265,6 +298,33 @@ protected:
   unsigned int downMix(unsigned int size);
 
   /**
+   * Resamples from the given input sample rate to the given output sample rate
+   * using the input resampling state. The input resampling state is created if
+   * it does not exist.
+   *
+   */
+  unsigned int resampleInput(unsigned char *buffer, unsigned int size, int input_sample_rate, int output_sample_rate);
+
+  /**
+   * Resamples from the given input sample rate to the given output sample rate
+   * using the output resampling state. The output resampling state is created if
+   * it does not exist.
+   *
+   */
+  unsigned int resampleOutput(unsigned char *buffer, unsigned int size, int input_sample_rate, int output_sample_rate);
+
+  /**
+   * Resamples from the given input sample rate to the given output sample rate using
+   * the given resampling state.
+   * <ul><li>input = front buffer</li><li>output = back buffer</li></ul>
+   * @param rstate resampling state to be used
+   * @param size [in] size in bytes
+   * @param output_sample_rate desired output sample rate
+   * @return new size in bytes
+   */
+  unsigned int resample(AmResamplingState& rstate, unsigned char *buffer, unsigned int size, int input_sample_rate, int output_sample_rate);
+   
+  /**
    * Get the number of bytes to read from encoded, depending on the format.
    */
   unsigned int calcBytesToRead(unsigned int needed_samples) const;
@@ -274,9 +334,13 @@ protected:
    */
   unsigned int bytes2samples(unsigned int bytes) const;
 
-public:
-  //bool begin_talk;
+  /**
+   * Scale a system timestamp down dependent on the sample rate.
+   */
+  unsigned int scaleSystemTS(unsigned long long system_ts);
 
+public:
+  /** Destructor */
   virtual ~AmAudio();
 
   /** Closes the audio pipe. */
@@ -289,7 +353,8 @@ public:
    * </pre>           whereby the format with/from which the codec works is the reference one.
    * @return # bytes read, else -1 if error (0 is OK) 
    */
-  virtual int get(unsigned int user_ts, unsigned char* buffer, unsigned int nb_samples);
+  virtual int get(unsigned long long system_ts, unsigned char* buffer, 
+		  int output_sample_rate, unsigned int nb_samples);
 
   /** 
    * Put some samples to the output stream.
@@ -298,9 +363,10 @@ public:
    * </pre>           whereby the format with/from which the codec works is the reference one.
    * @return # bytes written, else -1 if error (0 is OK) 
    */
-  virtual int put(unsigned int user_ts, unsigned char* buffer, unsigned int size);
+  virtual int put(unsigned long long system_ts, unsigned char* buffer, 
+		  int input_sample_rate, unsigned int size);
   
-  unsigned int getFrameSize();
+  int  getSampleRate();
 
   void setRecordTime(unsigned int ms);
   int  incRecordTime(unsigned int samples);

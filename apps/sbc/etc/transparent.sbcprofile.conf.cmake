@@ -7,6 +7,8 @@
 #From=$f
 #To=$t
 
+#Contact=<sip:$Ri>
+
 #Call-ID
 #Call-ID=$ci_leg2
 
@@ -16,10 +18,9 @@
 # force outbound proxy (in-dialog requests)?
 #force_outbound_proxy=yes
 # destination IP[:port] for outgoing requests
-#next_hop_ip=192.168.5.106
-#next_hop_port=5060
-# use next_hop for replies, too?
-#next_hop_for_replies=yes
+#next_hop=192.168.5.106:5060
+# set RURI as calculated next_hop
+#patch_ruri_next_hop=yes
 # outbound interface to use (interface ID)
 #outbound_interface=extern
 
@@ -30,6 +31,14 @@
 #rtprelay_force_symmetric_rtp=yes
 # use symmetric RTP indication from P-MsgFlags flag 2
 #rtprelay_msgflags_symmetric_rtp=yes
+# RTP interface to use for A leg
+#aleg_rtprelay_interface=intern
+# RTP interface to use for B leg
+#rtprelay_interface=default
+# use transparent RTP seqno? [yes]
+#rtprelay_transparent_seqno=no
+# use transparent RTP SSRC? [yes]
+#rtprelay_transparent_ssrc=no
 
 ## filters: 
 #header_filter=blacklist
@@ -38,6 +47,11 @@
 #message_list=
 #sdp_filter=whitelist
 #sdpfilter_list=g729,g723,ilbc,speex,gsm,amr
+# Filter A-Lines: Either black or whitelist
+#sdp_alines_filter=whitelist
+# Lines to be filtered, separated by ","
+#sdp_alinesfilter_list=crypto,x-cap
+#sdp_anonymize=yes
 
 ## append extra headers
 #append_headers="P-Source-IP: $si\r\nP-Source-Port: $sp\r\n"
@@ -50,6 +64,11 @@
 #enable_auth=yes
 #auth_user=$P(u)
 #auth_pwd=$P(p)
+
+## authentication for A (caller) leg:
+#enable_aleg_auth=yes
+#auth_aleg_user=$P(au)
+#auth_aleg_pwd=$P(ap)
 
 ## call timer
 #enable_call_timer=yes
@@ -71,6 +90,14 @@
 #minimum_timer=90
 #session_refresh_method=UPDATE_FALLBACK_INVITE
 #accept_501_reply=yes
+
+##separate SST configuration for A (caller) leg, optional:
+#enable_aleg_session_timer=yes
+#aleg_session_expires=120
+#aleg_minimum_timer=90
+#aleg_maximum_timer=900
+#aleg_session_refresh_method=UPDATE_FALLBACK_INVITE
+#aleg_accept_501_reply=yes
 
 ## refuse call
 # refuse all calls with <code> <reason>

@@ -136,7 +136,10 @@ public:
   static bool ignore_pin;
 
   static bool PrivateRoomsMode;
-  
+  static bool LoopFirstParticipantPrompt;
+
+  static unsigned int LonelyUserTimer;
+
   // P-App-Param parameter to get participant ID from 
   static string participant_id_paramname;
   // if participant_id_paramname not configured:
@@ -145,8 +148,9 @@ public:
 
 
   WebConferenceFactory(const string& _app_name);
-  AmSession* onInvite(const AmSipRequest&);
-  AmSession* onInvite(const AmSipRequest& req,
+  AmSession* onInvite(const AmSipRequest&, const string& app_name,
+		      const map<string,string>& app_params);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 		      AmArg& session_params);
   int onLoad();
 

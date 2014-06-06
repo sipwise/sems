@@ -30,6 +30,7 @@
 #include "DSMElemContainer.h"
 #include "AmSipMsg.h"
 #include "AmArg.h"
+#include "AmSdp.h"
 
 class AmSession;
 class DSMSession;
@@ -59,6 +60,7 @@ class DSMCondition
   enum EventType {
     Any,
 
+    Start,
     Invite,
     SessionStart,
     Ringing,
@@ -71,8 +73,13 @@ class DSMCondition
     Hold,
     UnHold,
 
+    B2BOtherRequest,
     B2BOtherReply,
     B2BOtherBye,
+
+    SessionTimeout,
+    RtpTimeout,
+    RemoteDisappeared,
 
     Key,
     Timer,
@@ -81,6 +88,7 @@ class DSMCondition
     PlaylistSeparator,
 
     DSMEvent,    
+    B2BEvent,
     DSMException,
 
     XmlrpcResponse,
@@ -90,7 +98,29 @@ class DSMCondition
 
     Startup,
     Reload,
-    System
+    System,
+
+    SIPSubscription,
+
+    RTPTimeout,
+
+    // SBC related
+    LegStateChange,
+    BLegRefused,
+
+    PutOnHold,
+    ResumeHeld,
+    CreateHoldRequest,
+    HandleHoldReply,
+
+    RelayInit,
+    RelayInitUAC,
+    RelayInitUAS,
+    RelayFinalize,
+    RelayOnSipRequest,
+    RelayOnSipReply,
+    RelayOnB2BRequest,
+    RelayOnB2BReply
   };
 
   bool invert; 
@@ -124,7 +154,8 @@ class DSMAction
   virtual ~DSMAction() { /* DBG("dest action\n"); */ }
 
   /** @return whether state engine is to be modified (via getSEAction) */
-  virtual bool execute(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event, \
+  virtual bool execute(AmSession* sess, DSMSession* sc_sess, 
+		       DSMCondition::EventType event,
 		       map<string,string>* event_params) = 0;
 
   /** @return state engine modification */
@@ -244,20 +275,35 @@ class DSMException {
   map<string, string> params;    
 };
 
+struct DSMStackElement {
+  DSMStateDiagram* diag;
+  State* state;
+  vector<DSMElement*> actions;
+
+  DSMStackElement(DSMStateDiagram* diag, State* state)
+  : diag(diag), state(state) { }
+
+  DSMStackElement(DSMStateDiagram* diag, State* state, const vector<DSMElement*>& actions)
+  : diag(diag), state(state), actions(actions) { }
+
+};
+
 class DSMStateEngine {
   State* current;
   DSMStateDiagram* current_diag;
   vector<DSMStateDiagram*> diags;
 
-  vector<pair<DSMStateDiagram*, State*> > stack;
+  //  vector<pair<DSMStateDiagram*, State*> > stack;
+  vector<DSMStackElement> stack;
 
   bool callDiag(const string& diag_name, AmSession* sess, DSMSession* sc_sess, 
 		DSMCondition::EventType event,
-		map<string,string>* event_params);
+		map<string,string>* event_params,
+		vector<DSMElement*>::iterator actions_from, vector<DSMElement*>::iterator actions_to);
   bool jumpDiag(const string& diag_name, AmSession* sess, DSMSession* sc_sess,
 		DSMCondition::EventType event,
 		map<string,string>* event_params);
-  bool returnDiag(AmSession* sess, DSMSession* sc_sess);
+  bool returnDiag(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event, map<string,string>* event_params);
   bool runactions(vector<DSMElement*>::iterator from, 
 		  vector<DSMElement*>::iterator to, 
 		  AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
@@ -284,6 +330,9 @@ class DSMStateEngine {
   /** @return whether call should be accepted */
   bool onInvite(const AmSipRequest& req, DSMSession* sess);
   void onBeforeDestroy(DSMSession* sc_sess, AmSession* sess);
+
+  void processSdpOffer(AmSdp& offer);
+  void processSdpAnswer(const AmSdp& offer, AmSdp& answer);
 };
 
 extern void varPrintArg(const AmArg& a, map<string, string>& dst, const string& name);

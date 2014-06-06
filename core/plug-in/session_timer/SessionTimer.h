@@ -31,7 +31,9 @@
 #include "AmApi.h"
 #include "AmSession.h"
 
+#ifndef MOD_NAME
 #define MOD_NAME "session_timer"
+#endif
 
 #define TIMER_OPTION_TAG  "timer"
 
@@ -39,6 +41,9 @@
 class AmTimeoutEvent;
 // these are the timer IDs for session timer
 // Caution: do not use these for other purposes
+#define ID_SESSION_TIMER_TIMERS_START -2
+#define ID_SESSION_TIMER_TIMERS_END -1
+
 #define ID_SESSION_INTERVAL_TIMER -1
 #define ID_SESSION_REFRESH_TIMER  -2
 
@@ -92,10 +97,15 @@ public:
       returns 0 on invalid value */
   int setMinimumTimer(const string& minse);
 
-  bool getEnableSessionTimer() { return EnableSessionTimer; }
-  unsigned int getSessionExpires() { return SessionExpires; }
-  unsigned int getMinimumTimer() { return MinimumTimer; }
-  unsigned int getMaximumTimer() { return MaximumTimer; }
+  void setEnableSessionTimer(bool enable)  { EnableSessionTimer = enable; }
+  void setSessionExpires(unsigned int se)  { SessionExpires = se; }
+  void setMinimumTimer(unsigned int minse) { MinimumTimer = minse; }
+  void setMaximumTimer(unsigned int maxse) { MaximumTimer = maxse; }
+
+  bool getEnableSessionTimer() const { return EnableSessionTimer; }
+  unsigned int getSessionExpires() const { return SessionExpires; }
+  unsigned int getMinimumTimer() const { return MinimumTimer; }
+  unsigned int getMaximumTimer() const { return MaximumTimer; }
 
   int readFromConfig(AmConfigReader& cfg);
 };
@@ -105,11 +115,12 @@ struct SIPRequestInfo;
 /** \brief SessionEventHandler for implementing session timer logic for a session */
 class SessionTimer: public AmSessionEventHandler
 {
+protected:
   AmSessionTimerConfig session_timer_conf;
   AmSession* s;
 
   // map to save sent requests, so we can resent in case of 422
-  std::map<unsigned int, SIPRequestInfo> sent_requests;
+  //std::map<unsigned int, SIPRequestInfo> sent_requests;
 
   enum SessionRefresher {
     refresh_local,
@@ -130,7 +141,7 @@ class SessionTimer: public AmSessionEventHandler
   void updateTimer(AmSession* s,const AmSipRequest& req);
   void updateTimer(AmSession* s,const AmSipReply& reply);
     
-  void setTimers(AmSession* s);
+  virtual void setTimers(AmSession* s);
   void retryRefreshTimer(AmSession* s);
   void removeTimers(AmSession* s);
 
@@ -152,39 +163,27 @@ class SessionTimer: public AmSessionEventHandler
   virtual bool process(AmEvent*);
 
   virtual bool onSipRequest(const AmSipRequest&);
-  virtual bool onSipReply(const AmSipReply&, int old_dlg_status,
-			  const string& trans_method);
+  virtual bool onSipReply(const AmSipRequest&, const AmSipReply&, 
+			  AmBasicSipDialog::Status old_dlg_status);
 
-  virtual bool onSendRequest(const string& method, 
-			     const string& content_type,
-			     const string& body,
-			     string& hdrs,
-			     int flags,
-			     unsigned int cseq);
-
-  virtual bool onSendReply(const AmSipRequest& req,
-			   unsigned int  code,
-			   const string& reason,
-			   const string& content_type,
-			   const string& body,
-			   string& hdrs,
-			   int flags);
+  virtual bool onSendRequest(AmSipRequest& req, int& flags);
+  virtual bool onSendReply(const AmSipRequest& req, AmSipReply& reply, int& flags);
 };
 
 
 /** \brief contains necessary information for UAC auth of a SIP request */
 struct SIPRequestInfo {
   string method;
-  string content_type;
-  string body;
+  AmMimeBody body;
   string hdrs;
 
   SIPRequestInfo(const string& method,
-		 const string& content_type,
-		 const string& body,
+		 const AmMimeBody* body,
 		 const string& hdrs)
-    : method(method), content_type(content_type),
-       body(body), hdrs(hdrs) { }
+    : method(method), hdrs(hdrs) 
+  { 
+    if(body) this->body = *body;
+  }
 
   SIPRequestInfo() {}
 

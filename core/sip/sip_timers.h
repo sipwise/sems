@@ -34,10 +34,8 @@
  */
 enum sip_timer_type {
 
-    STIMER_INVALID=0,
-
     // INVITE client transaction
-    STIMER_A,  // Calling: (re-)send INV
+    STIMER_A=0,// Calling: (re-)send INV
     STIMER_B,  // Calling -> Terminated
     STIMER_D,  // Completed -> Terminated
 
@@ -64,7 +62,15 @@ enum sip_timer_type {
     // Transport address failover timer:
     // - used to cycle throught multiple addresses
     //   in case the R-URI resolves to multiple addresses
-    STIMER_M
+    STIMER_M,
+
+    // INVITE client transaction
+    STIMER_C,  // Proceeding -> Terminated
+
+    // Blacklist grace timer
+    STIMER_BL,
+
+    __STIMER_MAX
 };
 
 
@@ -73,37 +79,41 @@ enum sip_timer_type {
  */
 
 #define T1_TIMER  500 /* 500 ms */
-#define T2_TIMER 4000 /*   4 s  */
+#define DEFAULT_T2_TIMER 4000 /*   4 s  */
 #define T4_TIMER 5000 /*   5 s  */
 
 //type 0x01
-#define A_TIMER  T1_TIMER
+#define DEFAULT_A_TIMER  T1_TIMER
+
 //type 0x02
-#define B_TIMER  64*T1_TIMER
+#define DEFAULT_B_TIMER  64*T1_TIMER
+
+//type 0x0d
+#define DEFAULT_C_TIMER  (3*60*1000)
 
 //type 0x03
-#define D_TIMER  64*T1_TIMER
+#define DEFAULT_D_TIMER  64*T1_TIMER
 
 //type 0x04
-#define E_TIMER  T1_TIMER
+#define DEFAULT_E_TIMER  T1_TIMER
+
 //type 0x05
-#define F_TIMER  64*T1_TIMER
+#define DEFAULT_F_TIMER  64*T1_TIMER
 
 //type 0x06
-#define K_TIMER  T4_TIMER
-
+#define DEFAULT_K_TIMER  T4_TIMER
 
 //type 0x07
-#define G_TIMER  T1_TIMER
+#define DEFAULT_G_TIMER  T1_TIMER
+
 //type 0x08
-#define H_TIMER  64*T1_TIMER
+#define DEFAULT_H_TIMER  64*T1_TIMER
 
 //type 0x09
-#define I_TIMER  T4_TIMER
+#define DEFAULT_I_TIMER  T4_TIMER
 
 //type 0x0a
-#define J_TIMER  64*T1_TIMER
-
+#define DEFAULT_J_TIMER  64*T1_TIMER
 
 // Following timer values are not defined by
 // RFC 3261.
@@ -111,15 +121,47 @@ enum sip_timer_type {
 // Used to handle 200 ACKs automatically
 // in INVITE client transactions.
 //type 0x0b
-#define L_TIMER  64*T1_TIMER
+#define DEFAULT_L_TIMER  64*T1_TIMER
 
 // Transport address failover timer:
 // - used to cycle throught multiple addresses
 //   in case the R-URI resolves to multiple addresses
-#define M_TIMER  (B_TIMER/4)
+//type 0x0c
+#define DEFAULT_M_TIMER  (DEFAULT_B_TIMER/4)
+
+// Blacklist grace timer (client transaction only)
+// - set after locally generated 408
+//   to wait for downstream 408
+#define DEFAULT_BL_TIMER DEFAULT_B_TIMER
+
+#define A_TIMER sip_timers[STIMER_A]
+#define B_TIMER sip_timers[STIMER_B]
+#define D_TIMER sip_timers[STIMER_D]
+
+#define E_TIMER sip_timers[STIMER_E]
+#define F_TIMER sip_timers[STIMER_F]
+#define K_TIMER sip_timers[STIMER_K]
+
+#define G_TIMER sip_timers[STIMER_G]
+#define H_TIMER sip_timers[STIMER_H]
+#define I_TIMER sip_timers[STIMER_I]
+
+#define J_TIMER sip_timers[STIMER_J]
+
+#define L_TIMER sip_timers[STIMER_L]
+#define M_TIMER sip_timers[STIMER_M]
+#define C_TIMER sip_timers[STIMER_C]
+
+#define BL_TIMER sip_timers[STIMER_BL]
+
+extern unsigned int sip_timers[__STIMER_MAX];
+
+#define T2_TIMER sip_timer_t2
+extern unsigned int sip_timer_t2;
+
+const char* timer_name(unsigned int type);
 
 #endif
-
 
 /** EMACS **
  * Local variables:

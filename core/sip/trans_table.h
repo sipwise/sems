@@ -3,6 +3,7 @@
 
 #include "hash_table.h"
 #include "cstring.h"
+#include "sip_trans.h"
 
 #define H_TABLE_POWER   10
 #define H_TABLE_ENTRIES (1<<H_TABLE_POWER)
@@ -32,7 +33,14 @@ public:
     // in this bucket
     sip_trans* match_reply(sip_msg* msg);
 
+    // Find the latest UAC transaction matching dialog_id
+    sip_trans* find_uac_trans(const cstring& dialog_id, unsigned int inv_cseq);
+
+    // Add a new transaction using provided message and type
     sip_trans* add_trans(sip_msg* msg, unsigned int ttype);
+
+    // Append the provided transaction to this bucket
+    void append(sip_trans* t);
 
 private:
     sip_trans* match_200_ack(sip_trans* t,sip_msg* msg);
@@ -51,7 +59,7 @@ void compute_branch(char* branch/*[BRANCH_BUF_LEN]*/,
 
 #define SL_TOTAG_LEN BRANCH_BUF_LEN
 
-void compute_sl_to_tag(char* to_tag/*[SL_TOTAG_LEN]*/, sip_msg* msg);
+void compute_sl_to_tag(char* to_tag/*[SL_TOTAG_LEN]*/, const sip_msg* msg);
 
 void dumps_transactions();
 

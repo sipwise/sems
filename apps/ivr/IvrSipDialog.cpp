@@ -52,17 +52,17 @@ static PyObject* IvrSipDialog_new(PyTypeObject *type, PyObject *args, PyObject *
     return PyString_FromString(self->p_dlg->attr.c_str());	\
   }								\
 								
-def_IvrSipDialog_GETTER(IvrSipDialog_getuser,         user)
-def_IvrSipDialog_GETTER(IvrSipDialog_getdomain,       domain)
-def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_uri,    local_uri)
-def_IvrSipDialog_GETTER(IvrSipDialog_getremote_uri,   remote_uri)
-def_IvrSipDialog_GETTER(IvrSipDialog_getcontact_uri,  contact_uri)
-def_IvrSipDialog_GETTER(IvrSipDialog_getcallid,       callid)
-def_IvrSipDialog_GETTER(IvrSipDialog_getremote_tag,   remote_tag)
-def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_tag,    local_tag)
-def_IvrSipDialog_GETTER(IvrSipDialog_getremote_party, remote_party)
-def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_party,  local_party)
-def_IvrSipDialog_GETTER(IvrSipDialog_getroute,        route)
+def_IvrSipDialog_GETTER(IvrSipDialog_getuser,         getUser())
+def_IvrSipDialog_GETTER(IvrSipDialog_getdomain,       getDomain())
+def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_uri,    getLocalUri())
+def_IvrSipDialog_GETTER(IvrSipDialog_getremote_uri,   getRemoteUri())
+//def_IvrSipDialog_GETTER(IvrSipDialog_getcontact_uri,  contact_uri)
+def_IvrSipDialog_GETTER(IvrSipDialog_getcallid,       getCallid())
+def_IvrSipDialog_GETTER(IvrSipDialog_getremote_tag,   getRemoteTag())
+def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_tag,    getLocalTag())
+def_IvrSipDialog_GETTER(IvrSipDialog_getremote_party, getRemoteParty())
+def_IvrSipDialog_GETTER(IvrSipDialog_getlocal_party,  getLocalParty())
+def_IvrSipDialog_GETTER(IvrSipDialog_getroute,        getRoute())
 def_IvrSipDialog_GETTER(IvrSipDialog_getoutbound_proxy, outbound_proxy)
 
 #define def_IvrSipDialog_SETTER(setter_name, attr)			\
@@ -73,17 +73,11 @@ def_IvrSipDialog_GETTER(IvrSipDialog_getoutbound_proxy, outbound_proxy)
     if(!PyArg_Parse(value,"s",&text))					\
       return -1;							\
 									\
-    self->p_dlg->attr = text;						\
+    self->p_dlg->attr(text);						\
     return 0;								\
   } 
 
-def_IvrSipDialog_SETTER(IvrSipDialog_setremote_uri,   remote_uri)
-
-// static PyObject*
-// IvrSipDialog_getuser(IvrSipDialog *self, void *closure)
-// {
-//   return PyString_FromString(self->p_dlg->user.c_str());
-// }
+def_IvrSipDialog_SETTER(IvrSipDialog_setremote_uri,   setRemoteUri)
 
 static PyObject*
 IvrSipDialog_getcseq(IvrSipDialog *self, void *closure)
@@ -91,12 +85,24 @@ IvrSipDialog_getcseq(IvrSipDialog *self, void *closure)
   return PyInt_FromLong(self->p_dlg->cseq);
 }
 
+static PyObject*
+IvrSipDialog_getstatus(IvrSipDialog *self, void *closure)
+{
+  return PyInt_FromLong((int)self->p_dlg->getStatus());
+}
+
+static PyObject*
+IvrSipDialog_getstatusstr(IvrSipDialog *self, void *closure)
+{
+  return PyString_FromString((char*)self->p_dlg->getStatusStr());
+}
+
 static PyGetSetDef IvrSipDialog_getset[] = {
   {(char*)"user",        (getter)IvrSipDialog_getuser, NULL, (char*)"local user", NULL},
   {(char*)"domain",      (getter)IvrSipDialog_getdomain, NULL, (char*)"local domain", NULL},
   {(char*)"local_uri",   (getter)IvrSipDialog_getlocal_uri, NULL, (char*)"local uri", NULL},
   {(char*)"remote_uri",  (getter)IvrSipDialog_getremote_uri, (setter)IvrSipDialog_setremote_uri, (char*)"remote uri", NULL},
-  {(char*)"contact_uri", (getter)IvrSipDialog_getcontact_uri, NULL, (char*)"pre-calculated contact uri", NULL},
+  //{(char*)"contact_uri", (getter)IvrSipDialog_getcontact_uri, NULL, (char*)"pre-calculated contact uri", NULL},
   {(char*)"callid",      (getter)IvrSipDialog_getcallid, NULL, (char*)"call id", NULL},
   {(char*)"remote_tag",  (getter)IvrSipDialog_getremote_tag, NULL, (char*)"remote tag", NULL},
   {(char*)"local_tag",   (getter)IvrSipDialog_getlocal_tag, NULL, (char*)"local tag", NULL},
@@ -105,6 +111,11 @@ static PyGetSetDef IvrSipDialog_getset[] = {
   {(char*)"route",       (getter)IvrSipDialog_getroute, NULL, (char*)"record routing", NULL},
   {(char*)"outbound_proxy", (getter)IvrSipDialog_getoutbound_proxy, NULL, (char*)"outbound proxy", NULL},
   {(char*)"cseq",    (getter)IvrSipDialog_getcseq, NULL, (char*)"CSeq for next request", NULL},
+
+  {(char*)"status_str",    (getter)IvrSipDialog_getstatusstr, NULL, (char*)"Dialog status "
+   "(Disconnected, Trying, Proceeding, Cancelling, Early, Connected, Disconnecting)", NULL},
+  {(char*)"status",    (getter)IvrSipDialog_getstatus, NULL, (char*)"Dialog status (0..6)", NULL},
+
   {NULL}  /* Sentinel */
 };
 

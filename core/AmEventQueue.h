@@ -30,6 +30,7 @@
 
 #include "AmThread.h"
 #include "AmEvent.h"
+#include "atomic_types.h"
 
 #include <queue>
 
@@ -58,14 +59,19 @@ class AmEventNotificationSink
  * thread, which are then processed by the registered event
  *  handler.
  */
-class AmEventQueue: public AmEventQueueInterface
+class AmEventQueue
+  : public AmEventQueueInterface,
+    public atomic_ref_cnt
 {
 protected:
-  AmEventHandler*   handler;
-  AmEventNotificationSink* wakeup_handler;
-  std::queue<AmEvent*>   ev_queue;
-  AmMutex           m_queue;
-  AmCondition<bool> ev_pending;
+  AmEventHandler*           handler;
+  AmEventNotificationSink*  wakeup_handler;
+
+  std::queue<AmEvent*>      ev_queue;
+  AmMutex                   m_queue;
+  AmCondition<bool>         ev_pending;
+
+  bool finalized;
 
 public:
   AmEventQueue(AmEventHandler* handler);
@@ -74,11 +80,17 @@ public:
   void postEvent(AmEvent*);
   void processEvents();
   void waitForEvent();
-  void wakeup();
   void processSingleEvent();
   bool eventPending();
 
   void setEventNotificationSink(AmEventNotificationSink* _wakeup_handler);
+
+  bool is_finalized() { return finalized; }
+
+  // return true to continue processing
+  virtual bool startup() { return true; }
+  virtual bool processingCycle() { processEvents(); return true; }
+  virtual void finalize() { finalized = true; }
 };
 
 #endif

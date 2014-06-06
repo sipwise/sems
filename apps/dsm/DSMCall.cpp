@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 iptego GmbH
+ * Copyright (C) 2012 Stefan Sayer
  *
  * This file is part of SEMS, a free SIP media server.
  *
@@ -29,6 +30,9 @@
 #include "AmUtils.h"
 #include "AmMediaProcessor.h"
 #include "DSM.h"
+#include "AmConferenceStatus.h"
+#include "AmAdvancedAudio.h"
+#include "AmSipSubscription.h"
 
 #include "../apps/jsonrpc/JsonRPCEvents.h" // todo!
 
@@ -70,6 +74,13 @@ bool DSMCall::checkVar(const string& var_name, const string& var_val) {
   return (it != var.end()) && (it->second == var_val);
 }
 
+string DSMCall::getVar(const string& var_name) {
+  map<string, string>::iterator it = var.find(var_name);
+  if (it != var.end())
+    return it->second;
+  return "";
+}
+
 /** returns whether params, param exists && param==value*/
 bool checkParam(const string& par_name, const string& par_val, map<string, string>* params) {
   if (NULL == params)
@@ -77,6 +88,11 @@ bool checkParam(const string& par_name, const string& par_val, map<string, strin
 
   map<string, string>::iterator it = params->find(par_name);
   return (it != params->end()) && (it->second == par_val);
+}
+
+void DSMCall::onStart()
+{
+  engine.init(this, this, startDiagName, DSMCondition::Start);
 }
 
 void DSMCall::onInvite(const AmSipRequest& req) {
@@ -92,16 +108,19 @@ void DSMCall::onInvite(const AmSipRequest& req) {
     
   bool run_session_invite = engine.onInvite(req, this);
 
-  if (run_invite_event) {
-    if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
-      run_session_invite =false;
+  avar[DSM_AVAR_REQUEST] = AmArg(&req);
 
-    if (checkVar(DSM_CONNECT_SESSION, DSM_CONNECT_SESSION_FALSE)) {
-      DBG("session choose to not connect media\n");
-      run_session_invite = false;     // don't accept audio 
-    }    
+  DBG("before runEvent(this, this, DSMCondition::Invite);\n");
+  AmSipDialog::Status old_st = dlg->getStatus();
+  engine.runEvent(this, this, DSMCondition::Invite, NULL);
+  avar.erase(DSM_AVAR_REQUEST);
 
-  }
+  if ( old_st != dlg->getStatus()
+       //checkVar(DSM_CONNECT_SESSION, DSM_CONNECT_SESSION_FALSE)
+      ) {
+    DBG("session choose to not connect media\n");
+    run_session_invite = false;     // don't accept audio 
+  }    
 
   if (run_session_invite) 
     AmB2BCallerSession::onInvite(req);
@@ -117,30 +136,24 @@ void DSMCall::onOutgoingInvite(const string& headers) {
   // TODO: construct correct request of outgoing INVITE
   AmSipRequest req;
   req.hdrs = headers;
+
   bool run_session_invite = engine.onInvite(req, this);
-
-  if (run_invite_event) {
-    if (!engine.init(this, this, startDiagName, DSMCondition::Invite))
-      run_session_invite =false;
-
-    if (checkVar(DSM_CONNECT_SESSION, DSM_CONNECT_SESSION_FALSE)) {
-      DBG("session choose to not connect media\n");
-      // TODO: set flag to not connect RTP on session start
-      run_session_invite = false;     // don't accept audio 
-    }    
-
-    if (checkVar(DSM_ACCEPT_EARLY_SESSION, DSM_ACCEPT_EARLY_SESSION_FALSE)) {
-      DBG("session choose to not accept early session\n");
-      accept_early_session = false;
-    } else {
-      DBG("session choose to accept early session\n");
-      accept_early_session = true;
-    }
-
+  if (checkVar(DSM_CONNECT_SESSION, DSM_CONNECT_SESSION_FALSE)) {
+    DBG("session choose to not connect media\n");
+    // TODO: set flag to not connect RTP on session start
+    run_session_invite = false;     // don't accept audio 
+  }    
+  
+  if (checkVar(DSM_ACCEPT_EARLY_SESSION, DSM_ACCEPT_EARLY_SESSION_FALSE)) {
+    DBG("session choose to not accept early session\n");
+    accept_early_session = false;
+  } else {
+    DBG("session choose to accept early session\n");
+    accept_early_session = true;
   }
 }
 
- void DSMCall::onRinging(const AmSipReply& reply) {
+void DSMCall::onRinging(const AmSipReply& reply) {
   map<string, string> params;
   params["code"] = int2str(reply.code);
   params["reason"] = reply.reason;
@@ -150,13 +163,8 @@ void DSMCall::onOutgoingInvite(const string& headers) {
   // todo: local ringbacktone
 }
 
-void DSMCall::onEarlySessionStart(const AmSipReply& reply) {
-  map<string, string> params;
-  params["code"] = int2str(reply.code);
-  params["reason"] = reply.reason;
-  params["has_body"] = reply.body.empty() ?
-    "false" : "true";
-  engine.runEvent(this, this, DSMCondition::EarlySession, &params);
+void DSMCall::onEarlySessionStart() {
+  engine.runEvent(this, this, DSMCondition::EarlySession, NULL);
 
   if (checkVar(DSM_CONNECT_EARLY_SESSION, DSM_CONNECT_EARLY_SESSION_FALSE)) {
     DBG("call does not connect early session\n");
@@ -165,35 +173,64 @@ void DSMCall::onEarlySessionStart(const AmSipReply& reply) {
       setInput(&playlist);
 
     if (!getOutput())
-      setOutput(&playlist);    
+      setOutput(&playlist);
+
+    AmB2BCallerSession::onEarlySessionStart();
   }
 }
 
-void DSMCall::onSessionStart(const AmSipRequest& req)
+void DSMCall::onSessionStart()
 {
   if (process_sessionstart) {
     process_sessionstart = false;
-    AmB2BCallerSession::onSessionStart(req);
 
     DBG("DSMCall::onSessionStart\n");
     startSession();
   }
+
+  AmB2BCallerSession::onSessionStart();
 }
 
-void DSMCall::onSessionStart(const AmSipReply& rep)
+int DSMCall::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
 {
-  if (process_sessionstart) {
-    process_sessionstart = false;
-    DBG("DSMCall::onSessionStart (SEMS originator mode)\n");
-    invite_req.body = rep.body;
- 
-    startSession();    
+  AmMimeBody* sdp_body = invite_req.body.hasContentType(SIP_APPLICATION_SDP);
+  if(!sdp_body) {
+    sdp_body = invite_req.body.addPart(SIP_APPLICATION_SDP);
   }
+
+  if(sdp_body) {
+    string sdp_buf;
+    answer.print(sdp_buf);
+    sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+			 sdp_buf.length());
+  }
+
+  return AmB2BCallerSession::onSdpCompleted(offer,answer);
+}
+
+bool DSMCall::getSdpOffer(AmSdp& offer)
+{
+  if (!AmB2BCallerSession::getSdpOffer(offer)) {
+    return false;
+  }
+
+  engine.processSdpOffer(offer);
+  return true;
+}
+
+bool DSMCall::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
+{
+  if (!AmB2BCallerSession::getSdpAnswer(offer, answer)) {
+    return false;
+  }
+
+  engine.processSdpAnswer(offer, answer);
+  return true;
 }
 
 void DSMCall::startSession(){
-  engine.init(this, this, startDiagName, DSMCondition::SessionStart);
 
+  engine.runEvent(this, this, DSMCondition::SessionStart, NULL);
   setReceiving(true);
 
   if (!checkVar(DSM_CONNECT_SESSION, DSM_CONNECT_SESSION_FALSE)) {
@@ -242,12 +279,19 @@ void DSMCall::onBye(const AmSipRequest& req)
   params["headers"] = req.hdrs;
  
   engine.runEvent(this, this, DSMCondition::Hangup, &params);
+
+  clearRtpReceiverRelay();
 }
 
-void DSMCall::onCancel() {
+void DSMCall::onCancel(const AmSipRequest& cancel) {
   DBG("onCancel\n");
-  if (dlg.getStatus() < AmSipDialog::Connected) 
-    engine.runEvent(this, this, DSMCondition::Hangup, NULL);
+  if (dlg->getStatus() < AmSipDialog::Connected) {
+    //TODO: pass the cancel request as a parameter?
+    DBG("hangup event!!!\n");
+    map<string, string> params;
+    params["headers"] = cancel.hdrs;
+    engine.runEvent(this, this, DSMCondition::Hangup, &params);
+  }
   else {
     DBG("ignoring onCancel event in established dialog\n");
   }
@@ -262,10 +306,6 @@ void DSMCall::onSipRequest(const AmSipRequest& req) {
     params["from"] = req.from;
     params["to"] = req.to;
     params["hdrs"] = req.hdrs;
-
-    params["content_type"] = req.content_type;
-    params["body"] = req.body;
-
     params["cseq"] = int2str(req.cseq);
 
     // pass AmSipRequest for use by mod_dlg
@@ -287,20 +327,20 @@ void DSMCall::onSipRequest(const AmSipRequest& req) {
   AmB2BCallerSession::onSipRequest(req);  
 }
 
-void DSMCall::onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method) {
+void DSMCall::onSipReply(const AmSipRequest& req,
+			 const AmSipReply& reply, 
+			 AmBasicSipDialog::Status old_dlg_status) 
+{
 
   if (checkVar(DSM_ENABLE_REPLY_EVENTS, DSM_TRUE)) {
     map<string, string> params;
     params["code"] = int2str(reply.code);
     params["reason"] = reply.reason;
     params["hdrs"] = reply.hdrs;
-    params["content_type"] = reply.content_type;
-    params["body"] = reply.body;
-
     params["cseq"] = int2str(reply.cseq);
 
-    params["dlg_status"] = int2str(dlg.getStatus());
-    params["old_dlg_status"] = int2str(old_dlg_status);
+    params["dlg_status"] = dlg->getStatusStr();
+    params["old_dlg_status"] = AmBasicSipDialog::getStatusStr(old_dlg_status);
 
     // pass AmSipReply for use by mod_dlg (? sending ACK?)
     DSMSipReply* dsm_reply = new DSMSipReply(&reply);
@@ -318,18 +358,82 @@ void DSMCall::onSipReply(const AmSipReply& reply, int old_dlg_status, const stri
     }
   }
 
-  AmB2BCallerSession::onSipReply(reply,old_dlg_status,trans_method);
+  AmB2BCallerSession::onSipReply(req, reply, old_dlg_status);
 
+  if ((old_dlg_status < AmSipDialog::Connected) && 
+      (dlg->getStatus() == AmSipDialog::Disconnected)) {
+    DBG("Outbound call failed with reply %d %s.\n", 
+	reply.code, reply.reason.c_str());
+    map<string, string> params;
+    params["code"] = int2str(reply.code);
+    params["reason"] = reply.reason;
+    engine.runEvent(this, this, DSMCondition::FailedCall, &params);
+    setStopped();
+  }
 }
 
-void DSMCall::onOutboundCallFailed(const AmSipReply& reply) {
-  DBG("Outbound call failed with reply %d %s.\n",
-      reply.code, reply.reason.c_str());
+void DSMCall::onRemoteDisappeared(const AmSipReply& reply) {
   map<string, string> params;
   params["code"] = int2str(reply.code);
   params["reason"] = reply.reason;
-  engine.runEvent(this, this, DSMCondition::FailedCall, &params);
-  setStopped();
+  params["hdrs"] = reply.hdrs;
+  params["cseq"] = int2str(reply.cseq);
+
+  params["dlg_status"] = dlg->getStatusStr();
+
+  // pass AmSipReply for use by modules
+  DSMSipReply* dsm_reply = new DSMSipReply(&reply);
+  avar[DSM_AVAR_REPLY] = AmArg(dsm_reply);
+
+  engine.runEvent(this, this, DSMCondition::RemoteDisappeared, &params);
+
+  delete dsm_reply;
+  avar.erase(DSM_AVAR_REPLY);
+
+  if (checkParam(DSM_PROCESSED, DSM_TRUE, &params)) {
+    DBG("DSM script processed SIP onRemoteDisappeared reply '%u %s', returning\n",
+	reply.code, reply.reason.c_str());
+    return;
+  }
+
+  AmB2BCallerSession::onRemoteDisappeared(reply);
+}
+
+void DSMCall::onSessionTimeout() {
+  map<string, string> params;
+
+  engine.runEvent(this, this, DSMCondition::SessionTimeout, &params);
+
+  if (checkParam(DSM_PROCESSED, DSM_TRUE, &params)) {
+    DBG("DSM script processed onSessionTimeout, returning\n");
+    return;
+  }
+
+  AmB2BCallerSession::onSessionTimeout();
+}
+
+void DSMCall::onRtpTimeout() {
+  map<string, string> params;
+
+  engine.runEvent(this, this, DSMCondition::RtpTimeout, &params);
+
+  if (checkParam(DSM_PROCESSED, DSM_TRUE, &params)) {
+    DBG("DSM script processed onRtpTimeout, returning\n");
+    return;
+  }
+
+  AmB2BCallerSession::onRtpTimeout();
+}
+
+void DSMCall::onNoAck(unsigned int cseq)
+{
+  DBG("onNoAck\n");
+  map<string, string> params;
+  params["headers"] = "";
+  params["reason"] = "onNoAck";
+
+  engine.runEvent(this, this, DSMCondition::Hangup, &params);
+  AmB2BCallerSession::onNoAck(cseq);
 }
 
 void DSMCall::onSystemEvent(AmSystemEvent* ev) {
@@ -381,6 +485,14 @@ void DSMCall::process(AmEvent* event)
     map<string, string> params;
     params["id"] = int2str(sep_ev->event_id);
     engine.runEvent(this, this, DSMCondition::PlaylistSeparator, &params);
+  }
+
+  ConferenceEvent * conf_ev = dynamic_cast<ConferenceEvent*>(event);
+  if (conf_ev) {
+    map<string, string> params;
+    params["type"] = "conference_event";
+    params["id"] = int2str(conf_ev->event_id);
+    engine.runEvent(this, this, DSMCondition::DSMEvent, &params);
   }
 
   // todo: give modules the possibility to define/process events
@@ -439,6 +551,41 @@ void DSMCall::process(AmEvent* event)
 
   }
 
+  if (event->event_id == E_SIP_SUBSCRIPTION) {
+    SIPSubscriptionEvent* sub_ev = dynamic_cast<SIPSubscriptionEvent*>(event);
+    if (sub_ev) {
+      DBG("DSM Call received SIP Subscription Event\n");
+      map<string, string> params;
+      params["status"] = sub_ev->getStatusText();
+      params["code"] = int2str(sub_ev->code);
+      params["reason"] = sub_ev->reason;
+      params["expires"] = int2str(sub_ev->expires);
+      params["has_body"] = sub_ev->notify_body.get()?"true":"false";
+      if (sub_ev->notify_body.get()) {
+  	avar[DSM_AVAR_SIPSUBSCRIPTION_BODY] = AmArg(sub_ev->notify_body.get());
+      }
+      engine.runEvent(this, this, DSMCondition::SIPSubscription, &params);
+      avar.erase(DSM_AVAR_SIPSUBSCRIPTION_BODY);
+    }
+  }
+
+  AmRtpTimeoutEvent* timeout_ev = dynamic_cast<AmRtpTimeoutEvent*>(event);
+  if (timeout_ev) {
+    map<string, string> params;
+    params["type"] = "rtp_timeout";
+    params["timeout_value"] = int2str(AmConfig::DeadRtpTime);
+    engine.runEvent(this, this, DSMCondition::RTPTimeout, &params);
+    return;
+  }
+
+  if (event->event_id ==  E_B2B_APP) {
+    B2BEvent* b2b_ev = dynamic_cast<B2BEvent*>(event);
+    if(b2b_ev && b2b_ev->ev_type == B2BEvent::B2BApplication) {
+      engine.runEvent(this, this, DSMCondition::B2BEvent, &b2b_ev->params);
+      return;
+    }
+  }
+
   AmB2BCallerSession::process(event);
 }
 
@@ -446,13 +593,13 @@ inline UACAuthCred* DSMCall::getCredentials() {
   return cred.get();
 }
 
-void DSMCall::playPrompt(const string& name, bool loop) {
+void DSMCall::playPrompt(const string& name, bool loop, bool front) {
   DBG("playing prompt '%s'\n", name.c_str());
   if (prompts->addToPlaylist(name,  (long)this, playlist, 
-			    /*front =*/ false, loop))  {
+			    front, loop))  {
     if ((var["prompts.default_fallback"] != "yes") ||
       default_prompts->addToPlaylist(name,  (long)this, playlist, 
-				    /*front =*/ false, loop)) {
+				    front, loop)) {
       DBG("checked [%p]\n", default_prompts);
       throw DSMException("prompt", "name", name);
     } else {
@@ -464,14 +611,17 @@ void DSMCall::playPrompt(const string& name, bool loop) {
   }
 }
 
-void DSMCall::closePlaylist(bool notify) {
-  DBG("close playlist\n");
-  playlist.close(notify);  
+void DSMCall::flushPlaylist() {
+  DBG("flush playlist\n");
+  playlist.flush();  
 }
 
-void DSMCall::addToPlaylist(AmPlaylistItem* item) {
+void DSMCall::addToPlaylist(AmPlaylistItem* item, bool front) {
   DBG("add item to playlist\n");
-  playlist.addToPlaylist(item);
+  if (front)
+    playlist.addToPlayListFront(item);
+  else
+    playlist.addToPlaylist(item);
 }
 
 void DSMCall::playFile(const string& name, bool loop, bool front) {
@@ -488,6 +638,18 @@ void DSMCall::playFile(const string& name, bool loop, bool front) {
   if (loop) 
     af->loop.set(true);
 
+  if (front)
+    playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
+  else
+    playlist.addToPlaylist(new AmPlaylistItem(af, NULL));
+
+  audiofiles.push_back(af);
+  CLR_ERRNO;
+}
+
+void DSMCall::playSilence(unsigned int length, bool front) {
+  AmNullAudio* af = new AmNullAudio();
+  af->setReadLength(length);
   if (front)
     playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));
   else
@@ -619,10 +781,14 @@ void DSMCall::addSeparator(const string& name, bool front) {
 }
 
 void DSMCall::transferOwnership(DSMDisposable* d) {
+  if (d == NULL)
+    return;
   gc_trash.insert(d);
 }
 
 void DSMCall::releaseOwnership(DSMDisposable* d) {
+  if (d == NULL)
+    return;
   gc_trash.erase(d);
 }
 
@@ -659,10 +825,44 @@ void DSMCall::B2BconnectCallee(const string& remote_party,
   connectCallee(remote_party, remote_uri, relayed_invite);
 }
 
+AmB2BCalleeSession* DSMCall::newCalleeSession() {
+  DSMCallCalleeSession* s = new DSMCallCalleeSession(this);
+  s->dlg->setLocalParty(getVar(DSM_B2B_LOCAL_PARTY));
+  s->dlg->setLocalUri(getVar(DSM_B2B_LOCAL_URI));
+
+  string user = getVar(DSM_B2B_AUTH_USER);
+  string pwd = getVar(DSM_B2B_AUTH_PWD);
+  if (!user.empty() && !pwd.empty()) {
+    s->setCredentials("", user, pwd);
+
+    // adding auth handler
+    AmSessionEventHandlerFactory* uac_auth_f = 
+      AmPlugIn::instance()->getFactory4Seh("uac_auth");
+    if (NULL == uac_auth_f)  {
+      INFO("uac_auth module not loaded. uac auth NOT enabled for B2B b leg in DSM.\n");
+    } else {
+      AmSessionEventHandler* h = uac_auth_f->getHandler(s);
+      
+      // we cannot use the generic AmSessionEventHandler hooks, 
+      // because the hooks don't work in AmB2BSession
+      s->setAuthHandler(h);
+      DBG("uac auth enabled for DSM callee session.\n");
+    }
+  }
+
+  s->dlg->setCallid(getVar(DSM_B2B_CALLID));
+
+  return s;
+}
+
 void DSMCall::B2BaddReceivedRequest(const AmSipRequest& req) {
   DBG("inserting request '%s' with CSeq %d in list of received requests\n", 
       req.method.c_str(), req.cseq);
   recvd_req.insert(std::make_pair(req.cseq, req));
+}
+
+void DSMCall::B2BsetRelayEarlyMediaSDP(bool enabled) {
+  set_sip_relay_early_media_sdp(enabled);
 }
 
 void DSMCall::B2BsetHeaders(const string& hdr, bool replaceCRLF) {
@@ -699,3 +899,70 @@ void DSMCall::B2BclearHeaders() {
   invite_req.hdrs.clear();
 }
 
+void DSMCall::B2BremoveHeader(const string& hdr) {
+  removeHeader(invite_req.hdrs, hdr);
+}
+
+/* --- B2B second leg -------------------------------------------------- */
+
+DSMCallCalleeSession::DSMCallCalleeSession(const string& other_local_tag)
+  : AmB2BCalleeSession(other_local_tag) {
+}
+
+DSMCallCalleeSession::DSMCallCalleeSession(const AmB2BCallerSession* caller)
+  : AmB2BCalleeSession(caller) {
+}
+
+void DSMCallCalleeSession::setCredentials(const string& realm,
+					   const string& user,
+					  const string& pwd) {
+  cred.reset(new UACAuthCred(realm, user, pwd));
+}
+
+UACAuthCred* DSMCallCalleeSession::getCredentials() {
+  return cred.get();
+}
+
+void DSMCallCalleeSession::setAuthHandler(AmSessionEventHandler* h) {
+  auth.reset(h);
+}
+
+void DSMCallCalleeSession::onSendRequest(AmSipRequest& req, int& flags)
+{
+  if (NULL != auth.get()) {
+    DBG("auth->onSendRequest cseq = %d\n", req.cseq);
+    auth->onSendRequest(req, flags);
+  }
+  
+  AmB2BCalleeSession::onSendRequest(req, flags);
+}
+
+void DSMCallCalleeSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply, 
+				      AmBasicSipDialog::Status old_dlg_status)
+{
+  // call event handlers where it is not done 
+  TransMap::iterator t = relayed_req.find(reply.cseq);
+  bool fwd = t != relayed_req.end();
+  DBG("onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
+  DBG("onSipReply: content-type = %s\n",reply.body.getCTStr().c_str());
+  if(fwd) {
+    CALL_EVENT_H(onSipReply, req, reply, old_dlg_status);
+  }
+
+
+  if (NULL == auth.get()) {
+    AmB2BCalleeSession::onSipReply(req, reply, old_dlg_status);
+    return;
+  }
+  
+  unsigned int cseq_before = dlg->cseq;
+  if (!auth->onSipReply(req, reply, old_dlg_status)) {
+    AmB2BCalleeSession::onSipReply(req, reply, old_dlg_status);
+  } else {
+    if (cseq_before != dlg->cseq) {
+      DBG("uac_auth consumed reply with cseq %d and resent with cseq %d; "
+          "updating relayed_req map\n", reply.cseq, cseq_before);
+      updateUACTransCSeq(reply.cseq, cseq_before);
+    }
+  }
+}

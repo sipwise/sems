@@ -33,7 +33,8 @@
 AmEventQueue::AmEventQueue(AmEventHandler* handler)
   : handler(handler),
     wakeup_handler(NULL),
-    ev_pending(false)
+    ev_pending(false),
+    finalized(false)
 {
 }
 
@@ -53,11 +54,16 @@ void AmEventQueue::postEvent(AmEvent* event)
     DBG("AmEventQueue: trying to post event\n");
 
   m_queue.lock();
+
   if(event)
     ev_queue.push(event);
-  ev_pending.set(true);
-  if (NULL != wakeup_handler)
-    wakeup_handler->notify(this);
+
+  if(!ev_pending.get()) {
+    ev_pending.set(true);
+    if (NULL != wakeup_handler)
+      wakeup_handler->notify(this);
+  }
+
   m_queue.unlock();
 
   if (AmConfig::LogEvents) 
@@ -92,11 +98,6 @@ void AmEventQueue::processEvents()
 void AmEventQueue::waitForEvent()
 {
   ev_pending.wait_for();
-}
-
-void AmEventQueue::wakeup() 
-{
-  ev_pending.set(true);
 }
 
 void AmEventQueue::processSingleEvent()
@@ -136,5 +137,7 @@ void AmEventQueue::setEventNotificationSink(AmEventNotificationSink*
   // locking actually not necessary - if replacing pointer is atomic 
   m_queue.lock(); 
   wakeup_handler = _wakeup_handler;
+  if(wakeup_handler && ev_pending.get())
+    wakeup_handler->notify(this);
   m_queue.unlock();
 }

@@ -30,7 +30,7 @@
 #include "AmAudio.h"
 #include "AmPlaylist.h"
 #include "AmPromptCollection.h"
-#include "ampi/UACAuthAPI.h"
+#include "AmUACAuth.h"
 
 #include <map>
 #include <string>
@@ -72,8 +72,9 @@ public:
   static PlayoutType m_PlayoutType;
 
   CallBackFactory(const string& _app_name);
-  AmSession* onInvite(const AmSipRequest&);
-  AmSession* onInvite(const AmSipRequest& req,
+  AmSession* onInvite(const AmSipRequest&, const string& app_name,
+		      const map<string,string>& app_params);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 		      AmArg& session_params);
   int onLoad();
 
@@ -109,8 +110,8 @@ public:
   ~CallBackDialog();
 
   void process(AmEvent* ev);
-  void onSessionStart(const AmSipRequest& req);
-  void onSessionStart(const AmSipReply& rep);
+  void onInvite(const AmSipRequest& req); 
+  void onSessionStart();
   void onDtmf(int event, int duration);
 
   UACAuthCred* getCredentials() { return cred; }
@@ -131,7 +132,6 @@ public:
   UACAuthCred* getCredentials() { return cred; }
 };
 
-void addAuthHandler(AmSession* s);
 #endif
 // Local Variables:
 // mode:C++

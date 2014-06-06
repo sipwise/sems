@@ -683,12 +683,13 @@ void DSMFactory::runMonitorAppSelect(const AmSipRequest& req, string& start_diag
 #undef FALLBACK_OR_EXCEPTION
 }
  
-AmSession* DSMFactory::onInvite(const AmSipRequest& req)
+AmSession* DSMFactory::onInvite(const AmSipRequest& req, const string& app_name,
+				const map<string,string>& app_params)
 {
   string start_diag;
   map<string, string> vars;
 
-  if (req.cmd == MOD_NAME) {
+  if (app_name == MOD_NAME) {
     if (InboundStartDiag.empty()) {
       ERROR("no inbound calls allowed\n");
       throw AmSession::Exception(488, "Not Acceptable Here");
@@ -699,8 +700,10 @@ AmSession* DSMFactory::onInvite(const AmSipRequest& req)
       start_diag = InboundStartDiag;
     }
   } else {
-    start_diag = req.cmd;
+    start_diag = app_name;
   }
+
+  DBG("start_diag = %s\n",start_diag.c_str());
 
   // determine run configuration for script
   DSMScriptConfig call_config;
@@ -728,36 +731,32 @@ AmSession* DSMFactory::onInvite(const AmSipRequest& req)
 }
 
 // outgoing call
-AmSession* DSMFactory::onInvite(const AmSipRequest& req,
+AmSession* DSMFactory::onInvite(const AmSipRequest& req, const string& app_name,
 				AmArg& session_params) 
 {
 
   string start_diag;
 
-  if (req.cmd == MOD_NAME) {
+  if (app_name == MOD_NAME) {
     if (OutboundStartDiag.empty()) {
       ERROR("no outbound calls allowed\n");
-    throw AmSession::Exception(488, "Not Acceptable Here");
+      throw AmSession::Exception(488, "Not Acceptable Here");
     }
   } else {
-    start_diag = req.cmd;
+    start_diag = app_name;
   }
 
   UACAuthCred* cred = NULL;
   map<string, string> vars;
   // Creds
   if (session_params.getType() == AmArg::AObject) {
-    ArgObject* cred_obj = session_params.asObject();
+    AmObject* cred_obj = session_params.asObject();
     if (cred_obj)
       cred = dynamic_cast<UACAuthCred*>(cred_obj);
   } else if (session_params.getType() == AmArg::Array) {
     DBG("session params is array - size %zd\n", session_params.size());
     // Creds
-    if (session_params.get(0).getType() == AmArg::AObject) {
-      ArgObject* cred_obj = session_params.get(0).asObject();
-      if (cred_obj)
-	cred = dynamic_cast<UACAuthCred*>(cred_obj);
-    }
+    cred = AmUACAuth::unpackCredentials(session_params.get(0));
     // Creds + vars
     if (session_params.size()>1 && 
 	session_params.get(1).getType() == AmArg::Struct) {
@@ -792,17 +791,7 @@ AmSession* DSMFactory::onInvite(const AmSipRequest& req,
   if (NULL == cred) {
     DBG("outgoing DSM call will not be authenticated.\n");
   } else {
-    AmSessionEventHandlerFactory* uac_auth_f = 
-      AmPlugIn::instance()->getFactory4Seh("uac_auth");
-    if (uac_auth_f != NULL) {
-      DBG("UAC Auth enabled for new DSM session.\n");
-      AmSessionEventHandler* h = uac_auth_f->getHandler(s);
-      if (h != NULL )
-	s->addHandler(h);
-    } else {
-      ERROR("uac_auth interface not accessible. "
-	    "Load uac_auth for authenticated dialout.\n");
-    }		
+    AmUACAuth::enable(s);
   }
 
   return s;
@@ -1108,6 +1097,28 @@ void DSMFactory::loadDSMWithPaths(const AmArg& args, AmArg& ret) {
     throw;
   }
   ScriptConfigs_mut.unlock();
+}
+
+bool DSMFactory::addScriptDiagsToEngine(const string& config_set,
+					DSMStateEngine* engine,
+					map<string,string>& config_vars,
+					bool& SetParamVariables) {
+  bool res = false;
+  ScriptConfigs_mut.lock();
+  try {
+    map<string, DSMScriptConfig>::iterator it=Name2ScriptConfig.find(config_set);
+    if (it!=Name2ScriptConfig.end()) {
+      res = true;
+      it->second.diags->addToEngine(engine);
+      config_vars = it->second.config_vars;
+      SetParamVariables = it->second.SetParamVariables;
+    }
+  } catch(...) {
+    ScriptConfigs_mut.unlock();
+    throw;
+  }
+  ScriptConfigs_mut.unlock();
+  return res;
 }
 
 void DSMFactory::invoke(const string& method, const AmArg& args, 

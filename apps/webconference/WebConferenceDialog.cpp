@@ -28,25 +28,33 @@
 #include "AmUtils.h"
 #include "AmMediaProcessor.h"
 
+#define LONELY_USER_TIMER_ID 50
+
+// room name unknown
 WebConferenceDialog::WebConferenceDialog(AmPromptCollection& prompts,
 					 WebConferenceFactory* my_f,
 					 UACAuthCred* cred)
   : play_list(this), separator(this, 0), prompts(prompts), state(None),
     factory(my_f), cred(cred), muted(false), 
-    connect_ts(-1), disconnect_ts(-1) 
+    connect_ts(-1), disconnect_ts(-1),
+    local_input(NULL)
 {
+  // with SIP credentials -> outgoing ('dialout') call
   is_dialout = (cred != NULL);
   accept_early_session = is_dialout;
   // set configured playout type
   RTPStream()->setPlayoutType(WebConferenceFactory::m_PlayoutType);
 }
 
+// room name known
 WebConferenceDialog::WebConferenceDialog(AmPromptCollection& prompts,
 					 WebConferenceFactory* my_f,
 					 const string& room)
   : play_list(this), separator(this, 0), prompts(prompts), state(None),
-    factory(my_f), muted(false), 
-    connect_ts(-1), disconnect_ts(-1)
+    factory(my_f), muted(false),
+    connect_ts(-1), disconnect_ts(-1),
+    local_input(NULL), cred(NULL),
+    lonely_user(true)
 {
   conf_id = room;
   DBG("set conf_id to %s\n", conf_id.c_str());
@@ -65,9 +73,9 @@ WebConferenceDialog::~WebConferenceDialog()
   }
 
   prompts.cleanup((long)this);
-  play_list.close(false);
+  play_list.flush();
   if (is_dialout || (InConference == state)) {
-    factory->updateStatus(is_dialout?dlg.user:conf_id, 
+    factory->updateStatus(is_dialout?dlg->getUser():conf_id, 
 			  getLocalTag(), 
 			  ConferenceRoomParticipant::Finished,
 			  "");
@@ -88,144 +96,165 @@ void WebConferenceDialog::connectConference(const string& room) {
 
   // get a channel from the status 
   if (channel.get() == NULL) 
-    channel.reset(AmConferenceStatus::getChannel(conf_id,getLocalTag()));
+    channel.reset(AmConferenceStatus::getChannel(conf_id,getLocalTag(),RTPStream()->getSampleRate()));
   else 
     AmConferenceStatus::postConferenceEvent(conf_id,
 					    ConfNewParticipant,getLocalTag());
 
   // clear the playlist
-  play_list.close();
+  play_list.flush();
 
   // add the channel to our playlist
-  play_list.addToPlaylist(new AmPlaylistItem(channel.get(),
-					     channel.get()));
+  play_list.addToPlaylist(new AmPlaylistItem(channel.get(), channel.get()));
 
   // set the playlist as output and input 
   if (muted)
-    setInOut(NULL, &play_list);  
+    setInOut(NULL, &play_list);
   else
-    setInOut(&play_list,&play_list);
-
+    setInOut(&play_list, &play_list);
 }
 
-// dial-in
-void WebConferenceDialog::onSessionStart(const AmSipRequest& req) { 
-  time(&connect_ts);
-
-  if (WebConferenceFactory::participant_id_paramname.length()) {
-    string appparams = getHeader(req.hdrs, PARAM_HDR);
-    if (appparams.length()) {
-      participant_id = get_header_param(appparams,
-					WebConferenceFactory::participant_id_paramname);
+void WebConferenceDialog::onInvite(const AmSipRequest& req) { 
+  if (state == None) {
+    if (WebConferenceFactory::participant_id_paramname.length()) {
+      string appparams = getHeader(req.hdrs, PARAM_HDR);
+      if (appparams.length()) {
+	participant_id = get_header_param(appparams,
+					  WebConferenceFactory::participant_id_paramname);
+      }
+    } else if (WebConferenceFactory::participant_id_hdr.length()) {
+      participant_id = getHeader(req.hdrs, WebConferenceFactory::participant_id_hdr);
     }
-  } else if (WebConferenceFactory::participant_id_hdr.length()) {
-    participant_id = getHeader(req.hdrs, WebConferenceFactory::participant_id_hdr);
+
+    if (participant_id.empty()) {
+      DBG("no Participant ID set\n");
+    } else {
+      DBG("Participant ID set to '%s'\n", participant_id.c_str());
+    }
   }
 
-  if (participant_id.empty()) {
-    DBG("no Participant ID set\n");
-  } else {
-    DBG("Participant ID set to '%s'\n", participant_id.c_str());
-  }
+  AmSession::onInvite(req);
+}
 
-  // direct room access?
-  if (conf_id.empty()) {
-    state = EnteringPin;
-    prompts.addToPlaylist(ENTER_PIN,  (long)this, play_list);
+void WebConferenceDialog::onSessionStart() {
+  DBG("WebConferenceDialog::onSessionStart (state = %d)\n", state);
+
+  if (None == state || InConferenceRinging == state || InConferenceEarly == state) {
+
     // set the playlist as input and output
     setInOut(&play_list,&play_list);
-  } else {
-    DBG("########## direct connect conference #########\n");
-    if (!factory->newParticipant(conf_id, 
-				 getLocalTag(), 
-				 dlg.remote_party,
-				 participant_id)) {
-      DBG("inexisting conference room\n");
-      state = PlayErrorFinish;
-      setInOut(&play_list,&play_list);
-      prompts.addToPlaylist(WRONG_PIN_BYE, (long)this, play_list);
-      return;
-    }
 
-    factory->updateStatus(conf_id,
-			  getLocalTag(), 
-			  ConferenceRoomParticipant::Connected,
-			  "direct access: entered");
-    state = InConference;
-    connectConference(conf_id);
+    if (!is_dialout) {
+      // direct room access?
+      if (conf_id.empty()) {
+	state = EnteringPin;
+	prompts.addToPlaylist(ENTER_PIN,  (long)this, play_list);
+      } else {
+	DBG("########## direct connect conference '%s'  #########\n", conf_id.c_str());
+	if (!factory->newParticipant(conf_id, getLocalTag(), dlg->getRemoteParty(),
+				     participant_id)) {
+	  DBG("inexisting conference room '%s\n", conf_id.c_str());
+	  state = PlayErrorFinish;
+
+	  prompts.addToPlaylist(WRONG_PIN_BYE, (long)this, play_list);
+	} else {
+	  factory->updateStatus(conf_id, getLocalTag(), ConferenceRoomParticipant::Connected,
+				"direct access: entered");
+	  state = InConference;
+	  time(&connect_ts);
+	  connectConference(conf_id);
+	}
+      }
+    } else {
+      setMute(false);
+      DBG("########## dialout: connect to conference '%s' #########\n", dlg->getUser().c_str()); 
+      state = InConference;
+      setLocalInput(NULL);
+      time(&connect_ts);
+      connectConference(dlg->getUser());
+    }
   }
+
+  AmSession::onSessionStart();
 }
 
 void WebConferenceDialog::onRinging(const AmSipReply& rep) { 
-  if (None == state) {
+  if (None == state || InConferenceEarly == state) {
     DBG("########## dialout: connect ringing session to conference '%s'  #########\n", 
-	dlg.user.c_str()); 
-    state = InConferenceRinging;
-    connectConference(dlg.user);
-  
+	dlg->getUser().c_str()); 
+
     if(!RingTone.get())
       RingTone.reset(new AmRingTone(0,2000,4000,440,480)); // US
-    
+
     setLocalInput(RingTone.get());
-    setAudioLocal(AM_AUDIO_IN, true);
-    setAudioLocal(AM_AUDIO_OUT, true);
+
+    if (None == state) {
+      connectConference(dlg->getUser());
+    }
+    state = InConferenceRinging;
   }
+  AmSession::onRinging(rep);
 }
 
-void WebConferenceDialog::onEarlySessionStart(const AmSipReply& rep) { 
-  if ((None == state) || (InConferenceRinging == state)) {
-    state = InConferenceEarly;
+void WebConferenceDialog::onEarlySessionStart() { 
+  if (None == state || InConferenceRinging == state) {
+
     DBG("########## dialout: connect early session to conference '%s'  #########\n", 
-	dlg.user.c_str()); 
-    setAudioLocal(AM_AUDIO_IN, false);
-    setAudioLocal(AM_AUDIO_OUT, false);
-    connectConference(dlg.user);
-    setMute(true);
+	dlg->getUser().c_str());
+    setLocalInput(NULL);
+    if (None == state) {
+      connectConference(dlg->getUser());
+    }
+    //    setMute(true);
+
+    state = InConferenceEarly;
   }
+
+  AmSession::onEarlySessionStart();
 }
 
-void WebConferenceDialog::onSessionStart(const AmSipReply& rep) { 
-  time(&connect_ts);
-  setMute(false);
-  DBG("########## dialout: connect to conference '%s' #########\n",
-      dlg.user.c_str()); 
-  state = InConference;
-  setAudioLocal(AM_AUDIO_IN, false);
-  setAudioLocal(AM_AUDIO_OUT, false);
-  connectConference(dlg.user);
-}
-
-void WebConferenceDialog::onSipReply(const AmSipReply& reply, int old_dlg_status, const string& trans_method)
+void WebConferenceDialog::onSipReply(const AmSipRequest& req,
+				     const AmSipReply& reply, 
+				     AmBasicSipDialog::Status old_dlg_status)
 {
-  //int status = dlg.getStatus();
-
-  AmSession::onSipReply(reply,old_dlg_status,trans_method);
+  AmSession::onSipReply(req,reply,old_dlg_status);
 
   DBG("reply: %u %s, old_dlg_status = %s, status = %s\n",
       reply.code, reply.reason.c_str(),
-      AmSipDialog::status2str[old_dlg_status],
-      AmSipDialog::status2str[dlg.getStatus()]);
+      AmBasicSipDialog::getStatusStr(old_dlg_status),
+      dlg->getStatusStr());
+
+  if ((old_dlg_status < AmSipDialog::Connected) && 
+      (dlg->getStatus() == AmSipDialog::Disconnected)) {
+    DBG("Call failed.\n");
+    setStopped();
+  }
 
   // update status to map
   if (is_dialout) {
     // map AmSipDialog state to WebConferenceState
     ConferenceRoomParticipant::ParticipantStatus rep_st = 
       ConferenceRoomParticipant::Connecting;
-    switch (dlg.getStatus()) {
-    case AmSipDialog::Pending: {
+    switch (dlg->getStatus()) {
+    case AmSipDialog::Trying:
+    case AmSipDialog::Proceeding:
+    case AmSipDialog::Early:
+      {
       rep_st = ConferenceRoomParticipant::Connecting;
-      if (reply.code == 180) 
+      if (reply.code == 180 || reply.code == 183) 
 	rep_st  = ConferenceRoomParticipant::Ringing;
     } break;
     case AmSipDialog::Connected: 
       rep_st = ConferenceRoomParticipant::Connected; break;
+    case AmSipDialog::Cancelling:
     case AmSipDialog::Disconnecting: 
       rep_st = ConferenceRoomParticipant::Disconnecting; break;    
     case AmSipDialog::Disconnected: 
-      rep_st = ConferenceRoomParticipant::Finished; break;    
+      rep_st = ConferenceRoomParticipant::Finished; break;
+    default:break;
     }
     DBG("is dialout: updateing status\n");
-    factory->updateStatus(dlg.user, getLocalTag(), 
+    factory->updateStatus(dlg->getUser(), getLocalTag(), 
 			  rep_st, int2str(reply.code) + " " + reply.reason);
   }
 }
@@ -255,7 +284,7 @@ void WebConferenceDialog::onSessionTimeout() {
 }
 
 void WebConferenceDialog::disconnectConference() {
-  play_list.close();
+  play_list.flush();
   setInOut(NULL,NULL);
   channel.reset(NULL);
   setStopped();
@@ -272,8 +301,33 @@ void WebConferenceDialog::process(AmEvent* ev)
     case ConfNewParticipant: {
       DBG("########## new participant (%d) #########\n", ce->participants);
       if(ce->participants == 1){
-	prompts.addToPlaylist(FIRST_PARTICIPANT, (long)this, play_list, true);
+	prompts.addToPlaylist(FIRST_PARTICIPANT, (long)this, play_list, true,
+			      WebConferenceFactory::LoopFirstParticipantPrompt);
+
+	if (WebConferenceFactory::LonelyUserTimer) {
+	  DBG("only person in the room - setting LonelyUserTimer %u sec\n",
+	      WebConferenceFactory::LonelyUserTimer);
+	  setTimer(LONELY_USER_TIMER_ID, WebConferenceFactory::LonelyUserTimer);
+	  lonely_user = true;
+	}
+
       } else {
+	// someone else joined
+	lonely_user = false;
+
+	if (WebConferenceFactory::LoopFirstParticipantPrompt) {
+	  // -- reset the channel (flush playlist)
+	  // get a channel from the status 
+	  if (channel.get() == NULL) 
+	    channel.reset(AmConferenceStatus::getChannel(conf_id,getLocalTag(),RTPStream()->getSampleRate()));
+
+	  // clear the playlist
+	  play_list.flush();
+
+	  // add the channel to our playlist
+	  play_list.addToPlaylist(new AmPlaylistItem(channel.get(), channel.get()));
+	}
+
 	prompts.addToPlaylist(JOIN_SOUND, (long)this, play_list, true);
       }
     } break;
@@ -281,6 +335,16 @@ void WebConferenceDialog::process(AmEvent* ev)
     case ConfParticipantLeft: {
       DBG("########## participant left ########\n");
       prompts.addToPlaylist(DROP_SOUND, (long)this, play_list, true);
+
+      if(ce->participants == 1) {
+	if (WebConferenceFactory::LonelyUserTimer) {
+	  DBG("only person in the room - setting LonelyUserTimer %u sec\n",
+	      WebConferenceFactory::LonelyUserTimer);
+	  setTimer(LONELY_USER_TIMER_ID, WebConferenceFactory::LonelyUserTimer);
+	  lonely_user = true;
+	}
+      }
+
     } break;
 
     default:
@@ -297,24 +361,22 @@ void WebConferenceDialog::process(AmEvent* ev)
       state = InConference;
       DBG("########## connectConference after pin entry #########\n");
 
-      if (!factory->newParticipant(pin_str, 
-				   getLocalTag(), 
-				   dlg.remote_party,
+      if (!factory->newParticipant(pin_str, getLocalTag(), dlg->getRemoteParty(),
 				   participant_id)) {
-	DBG("inexisting conference room\n");
+	DBG("inexisting conference room '%s'\n", pin_str.c_str());
 	state = PlayErrorFinish;
 	setInOut(&play_list,&play_list);
 	prompts.addToPlaylist(WRONG_PIN_BYE, (long)this, play_list);
 	return;
       }
 
+      time(&connect_ts);
       connectConference(pin_str);
-      factory->updateStatus(pin_str, 
-			    getLocalTag(), 
-			    ConferenceRoomParticipant::Connected,
+      factory->updateStatus(pin_str, getLocalTag(), ConferenceRoomParticipant::Connected,
 			    "entered");
     }
   }
+
   // audio events
   AmAudioEvent* audio_ev = dynamic_cast<AmAudioEvent*>(ev);
   if (audio_ev  && 
@@ -322,7 +384,7 @@ void WebConferenceDialog::process(AmEvent* ev)
     DBG("########## noAudio event #########\n");
     if (PlayErrorFinish == state) {
       DBG("Finished playing bye message, ending call.\n");
-      dlg.bye();
+      dlg->bye();
       setStopped();
       return;
     }
@@ -340,14 +402,24 @@ void WebConferenceDialog::process(AmEvent* ev)
     } break;	
     }
   }
+
+
+  AmPluginEvent* plugin_event = dynamic_cast<AmPluginEvent*>(ev);
+  if(plugin_event && plugin_event->name == "timer_timeout") {
+    int timer_id = plugin_event->data.get(0).asInt();
+    if (timer_id == LONELY_USER_TIMER_ID && lonely_user) {
+      DBG("LonelyUserTimer of %u sec expired - kicking lonely user\n",
+	  WebConferenceFactory::LonelyUserTimer);
+      onKicked();
+      return;
+    }
+  }
   
   AmSession::process(ev);
 }
 
-void WebConferenceDialog::onDtmf(int event, int duration)
-{
-  DBG("WebConferenceDialog::onDtmf: event %d duration %d\n", 
-      event, duration);
+void WebConferenceDialog::onDtmf(int event, int duration) {
+  DBG("WebConferenceDialog::onDtmf: event %d duration %d\n", event, duration);
 
   if (EnteringPin == state) {
     // not yet in conference
@@ -355,7 +427,7 @@ void WebConferenceDialog::onDtmf(int event, int duration)
       pin_str += int2str(event);
       DBG("added '%s': PIN is now '%s'.\n", 
 	  int2str(event).c_str(), pin_str.c_str());
-      play_list.close(false);
+      play_list.flush();
     } else if (event==10 || event==11) {
       // pound and star key
       if (!pin_str.length() || !factory->isValidConference(pin_str)) {
@@ -364,19 +436,17 @@ void WebConferenceDialog::onDtmf(int event, int duration)
       } else {
 	state = EnteringConference;
 	setInOut(NULL, NULL);
-	play_list.close();
+	play_list.flush();
 	for (size_t i=0;i<pin_str.length();i++) {
 	  string num = "";
 	  num[0] = pin_str[i];
 	  DBG("adding '%s' to playlist.\n", num.c_str());
 
-	  prompts.addToPlaylist(num,
-				(long)this, play_list);
+	  prompts.addToPlaylist(num, (long)this, play_list);
 	}
 
        	setInOut(&play_list,&play_list);
-	prompts.addToPlaylist(ENTERING_CONFERENCE,
-			      (long)this, play_list);
+	prompts.addToPlaylist(ENTERING_CONFERENCE, (long)this, play_list);
 	play_list.addToPlaylist(new AmPlaylistItem(&separator, NULL));
       }
     }
@@ -386,11 +456,9 @@ void WebConferenceDialog::onDtmf(int event, int duration)
 
 void WebConferenceDialog::onKicked() {
   DBG("########## WebConference::onKick #########\n");
-  dlg.bye(); 
+  dlg->bye(); 
   disconnectConference();
-  factory->updateStatus(conf_id, 
-			getLocalTag(), 
-			ConferenceRoomParticipant::Disconnecting,
+  factory->updateStatus(conf_id, getLocalTag(), ConferenceRoomParticipant::Disconnecting,
 			"disconnect");
 }
 
@@ -412,20 +480,69 @@ void WebConferenceDialog::onMuted(bool mute) {
       
     case InConferenceRinging: {
       if (muted) {
-	setLocalInOut(NULL, NULL);
+	setLocalInput(NULL);
       } else {
 	if(!RingTone.get())
 	  RingTone.reset(new AmRingTone(0,2000,4000,440,480)); // US
     
-	setLocalInOut(RingTone.get(), NULL);
-	if (getDetached())
-	  AmMediaProcessor::instance()->addSession(this,
-						   callgroup); 
+	setLocalInput(RingTone.get());
+	if (isDetached())
+	  AmMediaProcessor::instance()->addSession(this, callgroup); 
       }
     } break;
     default: DBG("No default action for changing mute status.\n"); break;
 	
     }
   }
+}
+
+void WebConferenceDialog::setLocalInput(AmAudio* in)
+{
+  lockAudio();
+  local_input = in;
+  unlockAudio();
+}
+
+int WebConferenceDialog::readStreams(unsigned long long ts, unsigned char *buffer) 
+{ 
+  int res = 0;
+  lockAudio();
+
+  AmRtpAudio *stream = RTPStream();
+  unsigned int f_size = stream->getFrameSize();
+  if (stream->checkInterval(ts)) {
+    int got = 0;
+    if (local_input) got = local_input->get(ts, buffer, stream->getSampleRate(), f_size);
+    else got = stream->get(ts, buffer, stream->getSampleRate(), f_size);
+    if (got < 0) res = -1;
+    if (got > 0) {
+      if (isDtmfDetectionEnabled())
+        putDtmfAudio(buffer, got, ts);
+
+      if (input) res = input->put(ts, buffer, stream->getSampleRate(), got);
+    }
+  }
+  
+  unlockAudio();
+  return res;
+}
+
+bool WebConferenceDialog::isAudioSet()
+{
+  lockAudio();
+  bool set = input || output || local_input;
+  unlockAudio();
+  return set;
+}
+
+void WebConferenceDialog::clearAudio()
+{
+  lockAudio();
+  if (local_input) {
+    local_input->close();
+    local_input = NULL;
+  }
+  unlockAudio();
+  AmSession::clearAudio(); // locking second time but called not so often?
 }
 

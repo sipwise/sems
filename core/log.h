@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <unistd.h>	/* getpid() */
 #include <pthread.h>	/* pthread_self() */
+#include <execinfo.h>   /* backtrace_symbols() */
 
 
 #ifdef __cplusplus
@@ -100,7 +101,7 @@ enum Log_Level {
 #endif
 
 #ifndef LOG_BUFFER_LEN
-#define LOG_BUFFER_LEN 512
+#define LOG_BUFFER_LEN 4096
 #endif
 
 /* The underscores in parameter and local variable names are there to
@@ -127,10 +128,39 @@ enum Log_Level {
 /**
  * @{ Logging macros
  */
-#define ERROR(fmt, args...) _LOG(L_ERR,  fmt, ##args)
-#define WARN(fmt, args...)  _LOG(L_WARN, fmt, ##args)
-#define INFO(fmt, args...)  _LOG(L_INFO, fmt, ##args)
-#define DBG(fmt, args...)   _LOG(L_DBG,  fmt, ##args)
+
+#define CAT_ERROR(error_category, fmt, args... ) \
+  _LOG(L_ERR, error_category " " fmt, ##args)
+#define CAT_WARN(error_category, fmt, args... ) \
+_LOG(L_WARN, error_category " " fmt, ##args)
+#define CAT_INFO(error_category, fmt, args... ) \
+  _LOG(L_INFO, error_category " " fmt, ##args)
+#define CAT_DBG(error_category, fmt, args... ) \
+  _LOG(L_DBG, error_category " " fmt, ##args)
+
+#define CATEGORIZED_PREFIX    "SNMP:"
+#define CATEGORY_ERROR      CATEGORIZED_PREFIX "0"
+#define CATEGORY_WARNING    CATEGORIZED_PREFIX "1"
+#define CATEGORY_INFO       CATEGORIZED_PREFIX "2"
+#define CATEGORY_DEBUG      CATEGORIZED_PREFIX "3"
+
+#ifdef USE_LOG_CATEGORY_PREFIXES
+# define ERROR_CATEGORY_EGENERAL CATEGORY_ERROR   ".0" " "
+# define ERROR_CATEGORY_WGENERAL CATEGORY_WARNING ".0" " "
+# define ERROR_CATEGORY_IGENERAL CATEGORY_INFO    ".0" " "
+# define ERROR_CATEGORY_DGENERAL CATEGORY_DEBUG   ".0" " "
+#else
+# define ERROR_CATEGORY_EGENERAL
+# define ERROR_CATEGORY_WGENERAL
+# define ERROR_CATEGORY_IGENERAL
+# define ERROR_CATEGORY_DGENERAL
+#endif
+
+#define ERROR(fmt, args...) CAT_ERROR(ERROR_CATEGORY_EGENERAL, fmt, ##args)
+#define WARN(fmt, args...)  CAT_WARN(ERROR_CATEGORY_WGENERAL, fmt, ##args)
+#define INFO(fmt, args...)  CAT_INFO(ERROR_CATEGORY_IGENERAL, fmt, ##args)
+#define DBG(fmt, args...)   CAT_DBG(ERROR_CATEGORY_DGENERAL, fmt, ##args)
+
 /** @} */
 
 extern int log_level;
@@ -143,6 +173,8 @@ void run_log_hooks(int, pid_t, pthread_t, const char*, const char*, int, char*);
 #ifndef DISABLE_SYSLOG_LOG
 int set_syslog_facility(const char*);
 #endif
+
+void log_stacktrace(int ll);
 
 #ifdef __cplusplus
 }

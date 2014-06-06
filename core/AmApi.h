@@ -35,6 +35,7 @@
 #include "AmConfigReader.h"
 #include "AmArg.h"
 #include "AmEventQueue.h"
+#include "atomic_types.h"
 
 #include <stdarg.h>
 
@@ -63,6 +64,7 @@ class AmDynInvoke
  * \brief Base interface for plugin factories
  */
 class AmPluginFactory
+  : public virtual atomic_ref_cnt
 {
   string plugin_name;
 
@@ -81,12 +83,6 @@ class AmPluginFactory
    * @return 1 on error.
    */
   virtual int onLoad()=0;
-
-
-  /**
-   * Enables the plug-in to deinitialize once the server is stopped.
-   */
-  virtual void onUnload() { };
 };
 
 /**
@@ -134,6 +130,9 @@ class AmSessionFactory: public AmPluginFactory
   int configureModule(AmConfigReader& cfg);
 
  public:
+
+  static void replyOptions(const AmSipRequest& req);
+
   /**
    * This function applys the module configuration 
    */
@@ -142,18 +141,19 @@ class AmSessionFactory: public AmPluginFactory
   AmSessionFactory(const string& name);
 
   /**
-   * Creates a dialog state on new request.
+   * Creates a dialog state on new UAS request.
    * @return 0 if the request is not acceptable.
    *
    * Warning:
    *   This method should not make any expensive
    *   processing as it would block the server.
    */
-  virtual AmSession* onInvite(const AmSipRequest& req)=0;
+  virtual AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+			      const map<string,string>& app_params)=0;
 
   /**
-   * Creates a dialog state on new request. Passes with 
-   * parameters to the new session.
+   * Creates a dialog state on new UAC request. 
+   * @param session_params parameters passed to the new session by the caller.
    * 
    * @return 0 if the request is not acceptable.
    *
@@ -161,7 +161,7 @@ class AmSessionFactory: public AmPluginFactory
    *   This method should not make any expensive
    *   processing as it would block the server.
    */
-  virtual AmSession* onInvite(const AmSipRequest& req, 
+  virtual AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 			      AmArg& session_params);
 
   /**
@@ -172,7 +172,8 @@ class AmSessionFactory: public AmPluginFactory
    *   This method should not make any expensive
    *   processing as it would block the server.
    */
-  virtual AmSession* onRefer(const AmSipRequest& req);
+  virtual AmSession* onRefer(const AmSipRequest& req, const string& app_name,
+			     const map<string,string>& app_params);
 
   /**
    * Creates a dialog state on new REFER with local-tag.
@@ -183,7 +184,7 @@ class AmSessionFactory: public AmPluginFactory
    *   This method should not make any expensive
    *   processing as it would block the server.
    */
-  virtual AmSession* onRefer(const AmSipRequest& req, 
+  virtual AmSession* onRefer(const AmSipRequest& req, const string& app_name,
 			     AmArg& session_params);
 
   /**

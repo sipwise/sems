@@ -6,50 +6,54 @@
 
 import(mod_dlg);
 
-initial state START ;
-transition "on invite" START - invite -> runinvite;
-transition "on sess start" START - sessionStart -> runstart;
-state runinvite 
-      enter { 
+initial state START;
+
+transition "on invite" START - invite / { 
        log(2, run invite!); 
-       dlg.reply(100, trying...);
        -- we don't want to have the default 200 OK reply
-       set(connect_session=0);
+       dlg.reply(100, trying...);
+       setTimer(1, 2);
+} -> runinvite;
+state runinvite;
+
+transition "go early" runinvite - timerTest(#id==1) -> reply_183;
+state reply_183
+      enter {
+        -- this triggers "on sess start" transition
+        dlg.acceptInvite(183, progress);
 };
 
-state runstart
-      enter { 
-        log(2, run start!); 
-        -- we don't want to have session connected (RTP sent) yet
-        set(connect_session=0);
-        setTimer(1, 2);
-      };
-transition "go early" runstart - timerTest(#id==1) / 
-        dlg.acceptInvite(183, progress);
-        connectMedia();
-        playFile(wav/default_en.wav);
-   -> playing_early_msg; 
-transition "playing file failed" runstart - exception; test(#type==file) / {
+transition "on sess start" reply_183 - earlySession -> play_early_msg;
+state play_early_msg
+      enter {
+       log(2, run start!);
+       connectMedia();
+       playFile(wav/default_en.wav);
+};
+
+transition "play file failed" play_early_msg - exception; test(#type==file) / {
         log(1, Error playing file!); 
         dlg.reply(500, server error); 
         stop 
 } -> FIN;
 
-state playing_early_msg;
-transition "early message ended" playing_early_msg - noAudioTest / 
+transition "early message ended" play_early_msg - noAudioTest -> recording;
+state recording
+      enter {
         dlg.acceptInvite(200, ok);
         recordFile(/tmp/test.wav);
         setTimer(3,10);
-  -> recording;
-transition "recording failed" playing_early_msg - exception; / 
+};
+
+transition "recording failed" recording - exception; / 
    log(1, Error recording!); stop(true) -> FIN;
 
-state recording;
-
-transition "bye in early" (playing_early_msg, runstart) - hangup / {
-        dlg.reply(487,call terminated);
-        stop(false) 
+transition "bye in early" (runinvite, reply_183, play_early_msg, recording) - hangup / {
+	log(2, hangup event received);
+        stop(false)
 } -> FIN;
+
 transition "recording timer" recording - timerTest(#id==3) / stop -> FIN;
 transition "bye in recording" recording - hangup / stop -> FIN;
+
 state FIN;

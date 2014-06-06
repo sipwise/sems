@@ -42,27 +42,21 @@ public:
     PrecodedFactory(const string& _app_name);
 
     int onLoad();
-    AmSession* onInvite(const AmSipRequest& req);
+    AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+			const map<string,string>& app_params);
 };
 
 class PrecodedDialog : public AmSession
 {
-    
   AmPrecodedFile* file_def;
-
   int current_payload;
 
-protected:
-  AmAudioRtpFormat* getNewRtpFormat();
-
- public:
+public:
   PrecodedDialog(AmPrecodedFile* file_def);
   ~PrecodedDialog();
   
-  void onSessionStart(const AmSipRequest& req);
+  void onSessionStart();
   void onBye(const AmSipRequest& req);
-
-  AmPayloadProviderInterface* getPayloadProvider();
 };
 
 #endif

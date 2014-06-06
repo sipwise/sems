@@ -60,10 +60,22 @@ void LowcFE::zeros(short *s, int cnt)
     s[i] = 0;
 }
 
-LowcFE::LowcFE()
-  : erasecnt(0), pitchbufend(0)
+LowcFE::LowcFE(unsigned int sample_rate)
+  : erasecnt(0), pitchbufend(0), sample_rate(sample_rate)
 {
+  pitchbuf = new Float[HISTORYLEN];
+  lastq = new Float[POVERLAPMAX];
+  history = new short[HISTORYLEN];
+  memset(pitchbuf, 0, sizeof(Float) * HISTORYLEN);
+  memset(lastq, 0, sizeof(Float) * POVERLAPMAX);
   zeros(history, HISTORYLEN);
+}
+
+LowcFE::~LowcFE()
+{
+  delete[] history;
+  delete[] lastq;
+  delete[] pitchbuf;
 }
 
 /*
@@ -94,7 +106,7 @@ void LowcFE::addtohistory(short *s)
      * to smooth the transition between the synthetic
      * and real signal.
      */
-    int olen = poverlap + (erasecnt - 1) * EOVERLAPINCR;
+    unsigned int olen = poverlap + (erasecnt - 1) * EOVERLAPINCR;
     if (olen > FRAMESZ)
       olen = FRAMESZ;
     getfespeech(overlapbuf, olen);
@@ -181,7 +193,7 @@ int LowcFE::findpitch()
   rp = r;
   energy = 0.f;
   corr = 0.f;
-  for (i = 0; i < CORRLEN; i += NDEC) {
+  for (i = 0; i < (int)(CORRLEN); i += NDEC) {
     energy += rp[i] * rp[i];
     corr += rp[i] * l[i];
   }
@@ -192,12 +204,12 @@ int LowcFE::findpitch()
   corr = corr / (Float)sqrt(scale);
   bestcorr = corr;
   bestmatch = 0;
-  for (j = NDEC; j <= PITCHDIFF; j += NDEC) {
+  for (j = NDEC; j <= (int)(PITCHDIFF); j += NDEC) {
     energy -= rp[0] * rp[0];
     energy += rp[CORRLEN] * rp[CORRLEN];
     rp += NDEC;
     corr = 0.f;
-    for (i = 0; i < CORRLEN; i += NDEC)
+    for (i = 0; i < (int)(CORRLEN); i += NDEC)
       corr += rp[i] * l[i];
     scale = energy;
     if (scale < CORRMINPOWER)
@@ -213,12 +225,12 @@ int LowcFE::findpitch()
   if (j < 0)
     j = 0;
   k = bestmatch + (NDEC - 1);
-  if (k > PITCHDIFF)
+  if (k > (int)(PITCHDIFF))
     k = PITCHDIFF;
   rp = &r[j];
   energy = 0.f;
   corr = 0.f;
-  for (i = 0; i < CORRLEN; i++) {
+  for (i = 0; i < (int)(CORRLEN); i++) {
     energy += rp[i] * rp[i];
     corr += rp[i] * l[i];
   }
@@ -234,7 +246,7 @@ int LowcFE::findpitch()
     energy += rp[CORRLEN] * rp[CORRLEN];
     rp++;
     corr = 0.f;
-    for (i = 0; i < CORRLEN; i++)
+    for (i = 0; i < (int)(CORRLEN); i++)
       corr += rp[i] * l[i];
     scale = energy;
     if (scale < CORRMINPOWER)
@@ -270,7 +282,7 @@ void LowcFE::getfespeech(short *out, int sz)
 void LowcFE::scalespeech(short *out)
 {
   Float g = (Float)1. - (erasecnt - 1) * ATTENFAC;
-  for (int i = 0; i < FRAMESZ; i++) {
+  for (unsigned int i = 0; i < FRAMESZ; i++) {
     out[i] = (short)(out[i] * g);
     g -= ATTENINCR;
   }

@@ -29,13 +29,16 @@
 #define _AmRtpReceiver_h_
 
 #include "AmThread.h"
+#include "atomic_types.h"
+#include "singleton.h"
 
-#include <sys/select.h>
+#include <event2/event.h>
 
 #include <map>
 using std::greater;
 
 class AmRtpStream;
+class _AmRtpReceiver;
 
 /**
  * \brief receiver for RTP for all streams.
@@ -44,35 +47,68 @@ class AmRtpStream;
  * that are registered to it. It places the received packets in 
  * the stream's buffer. 
  */
-class AmRtpReceiver: public AmThread {
+class AmRtpReceiverThread
+  : public AmThread
+{
+  struct StreamInfo 
+  {
+    AmRtpStream* stream;
+    struct event* ev_read;
+    AmRtpReceiverThread* thread;
 
-  typedef std::map<int, AmRtpStream*, greater<int> > Streams;
+    StreamInfo()
+      : stream(NULL),
+	ev_read(NULL),
+	thread(NULL)
+    {}
+  };
 
-  static AmRtpReceiver* _instance;
-    
+  typedef std::map<int, StreamInfo> Streams;
+
+  struct event_base* ev_base;
+  struct event*      ev_default;
+
   Streams  streams;
   AmMutex  streams_mut;
 
-  //fd_set   fds;
-  struct pollfd* fds;
-  unsigned int   nfds;
-  AmMutex        fds_mut;
-    
-  AmRtpReceiver();
-  ~AmRtpReceiver();
+  AmSharedVar<bool> stop_requested;
+
+  static void _rtp_receiver_read_cb(evutil_socket_t sd, short what, void* arg);
+
+public:    
+  AmRtpReceiverThread();
+  ~AmRtpReceiverThread();
     
   void run();
   void on_stop();
-  AmSharedVar<bool> stop_requested;
 
-public:
-  static AmRtpReceiver* instance();
-  static bool haveInstance();
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
 
-  static void dispose();
+  void stop_and_wait();
 };
+
+class _AmRtpReceiver
+{
+  AmRtpReceiverThread* receivers;
+  unsigned int         n_receivers;
+
+  atomic_int next_index;
+
+protected:    
+  _AmRtpReceiver();
+  ~_AmRtpReceiver();
+
+  void dispose();
+
+public:
+  void start();
+
+  void addStream(int sd, AmRtpStream* stream);
+  void removeStream(int sd);
+};
+
+typedef singleton<_AmRtpReceiver> AmRtpReceiver;
 
 #endif
 

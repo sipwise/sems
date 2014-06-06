@@ -27,6 +27,7 @@
 
 #include "AmEventDispatcher.h"
 #include "AmSipEvent.h"
+#include "AmConfig.h"
 #include "sip/hash.h"
 
 unsigned int AmEventDispatcher::hash(const string& s1)
@@ -52,11 +53,9 @@ AmEventDispatcher* AmEventDispatcher::instance()
   return _instance ? _instance : ((_instance = new AmEventDispatcher()));
 }
 
-/** @return false on error */
-bool AmEventDispatcher::addEventQueue(const string& local_tag, 
-				      AmEventQueueInterface* q,
-				      const string& callid, 
-				      const string& remote_tag)
+
+bool AmEventDispatcher::addEventQueue(const string& local_tag,
+				      AmEventQueueInterface* q)
 {
     unsigned int queue_bucket = hash(local_tag);
 
@@ -67,39 +66,62 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
       return false;
     }
 
-    unsigned int id_bucket = 0;
-
-    if(!callid.empty() && !remote_tag.empty()) {
-      // try to find via id_lookup
-      id_bucket = hash(callid, remote_tag);
-      id_lookup_mut[id_bucket].lock();
-
-      if (id_lookup[id_bucket].find(callid+remote_tag) != 
-	  id_lookup[id_bucket].end()) {
-	id_lookup_mut[id_bucket].unlock();
-	queues_mut[queue_bucket].unlock();
-	return false;
-      }
-    }
-
-    queues[queue_bucket][local_tag] = q;
-    
-    if(!callid.empty() && !remote_tag.empty()) {
-      id_lookup[id_bucket][callid+remote_tag] = local_tag;
-      id_lookup_mut[id_bucket].unlock();
-    }
-   
+    queues[queue_bucket][local_tag] = QueueEntry(q);
     queues_mut[queue_bucket].unlock();
     
     return true;
 }
 
-AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag,
-							const string& callid, 
-							const string& remote_tag)
+
+/** @return false on error */
+bool AmEventDispatcher::addEventQueue(const string& local_tag, 
+				      AmEventQueueInterface* q,
+				      const string& callid, 
+				      const string& remote_tag,
+				      const string& via_branch)
+{
+    if(local_tag.empty () ||callid.empty() || remote_tag.empty() | via_branch.empty()) {
+      ERROR("local_tag, callid, remote_tag or via_branch is empty");
+      return false;
+    }
+
+    unsigned int queue_bucket = hash(local_tag);
+
+    queues_mut[queue_bucket].lock();
+
+    if (queues[queue_bucket].find(local_tag) != queues[queue_bucket].end()) {
+      queues_mut[queue_bucket].unlock();
+      return false;
+    }
+
+    // try to find via id_lookup
+    string id = callid+remote_tag;
+    if(AmConfig::AcceptForkedDialogs){
+      id += via_branch;
+    }
+    unsigned int id_bucket = hash(id);
+
+    id_lookup_mut[id_bucket].lock();
+    
+    if (id_lookup[id_bucket].find(id) != 
+	id_lookup[id_bucket].end()) {
+      id_lookup_mut[id_bucket].unlock();
+      queues_mut[queue_bucket].unlock();
+      return false;
+    }
+
+    queues[queue_bucket][local_tag] = QueueEntry(q,id);
+    id_lookup[id_bucket][id] = local_tag;
+
+    id_lookup_mut[id_bucket].unlock();
+    queues_mut[queue_bucket].unlock();
+    
+    return true;
+}
+
+AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
 {
     AmEventQueueInterface* q = NULL;
-    
     unsigned int queue_bucket = hash(local_tag);
 
     queues_mut[queue_bucket].lock();
@@ -107,20 +129,22 @@ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag,
     EvQueueMapIter qi = queues[queue_bucket].find(local_tag);
     if(qi != queues[queue_bucket].end()) {
 
-	q = qi->second;
-	queues[queue_bucket].erase(qi);
-
-	if(!callid.empty() && !remote_tag.empty()) {
-	  unsigned int id_bucket = hash(callid, remote_tag);
-	  id_lookup_mut[id_bucket].lock();
-
-	  DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
-	  if(di != id_lookup[id_bucket].end()) {	    
-	    id_lookup[id_bucket].erase(di);
-	  }
-
-	  id_lookup_mut[id_bucket].unlock();
+      QueueEntry qe(qi->second);
+      queues[queue_bucket].erase(qi);
+      q = qe.q;
+      
+      if(!qe.id.empty()) {
+	unsigned int id_bucket = hash(qe.id);
+	
+	id_lookup_mut[id_bucket].lock();
+	
+	DictIter di = id_lookup[id_bucket].find(qe.id);
+	if(di != id_lookup[id_bucket].end()) {	    
+	  id_lookup[id_bucket].erase(di);
 	}
+	
+	id_lookup_mut[id_bucket].unlock();
+      }
     }
     queues_mut[queue_bucket].unlock();
     
@@ -137,7 +161,7 @@ bool AmEventDispatcher::post(const string& local_tag, AmEvent* ev)
  
     EvQueueMapIter it = queues[queue_bucket].find(local_tag);
     if(it != queues[queue_bucket].end()){
-	it->second->postEvent(ev);
+	it->second.q->postEvent(ev);
 	posted = true;
     }
 
@@ -147,11 +171,20 @@ bool AmEventDispatcher::post(const string& local_tag, AmEvent* ev)
 }
 
 
-bool AmEventDispatcher::post(const string& callid, const string& remote_tag, AmEvent* ev)
+bool AmEventDispatcher::post(const string& callid, 
+			     const string& remote_tag, 
+			     const string& via_branch,
+			     AmEvent* ev)
 {
-    unsigned int id_bucket = hash(callid, remote_tag);
+    string id = callid+remote_tag;
+    if(AmConfig::AcceptForkedDialogs){
+      id += via_branch;
+    }
+    unsigned int id_bucket = hash(id);
+
     id_lookup_mut[id_bucket].lock();
-    DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
+
+    DictIter di = id_lookup[id_bucket].find(id);
     if (di == id_lookup[id_bucket].end()) {
       id_lookup_mut[id_bucket].unlock();
       return false;
@@ -176,7 +209,7 @@ bool AmEventDispatcher::broadcast(AmEvent* ev)
 	EvQueueMapIter this_evq = it;
 	it++;
 	queues_mut[i].unlock();
-	this_evq->second->postEvent(ev->clone());
+	this_evq->second.q->postEvent(ev->clone());
 	queues_mut[i].lock();
 	posted = true;
       }
@@ -200,24 +233,58 @@ bool AmEventDispatcher::empty() {
     return res;  
 }
 
+void AmEventDispatcher::dump()
+{
+    DBG("*** dumping Event dispatcher buckets ***\n");
+    for (size_t i=0;i<EVENT_DISPATCHER_BUCKETS;i++) {
+      queues_mut[i].lock();
+      if(!queues[i].empty()) {
+	DBG("queues[%zu].size() = %zu",i,queues[i].size());
+	for(EvQueueMapIter it = queues[i].begin();
+	    it != queues[i].end(); it++){
+	  DBG("\t%s -> %p\n",it->first.c_str(),it->second.q);
+	}
+      }
+      queues_mut[i].unlock();
+
+      id_lookup_mut[i].lock();
+      if(!id_lookup[i].empty()) {
+	DBG("id_lookup[%zu].size() = %zu",i,id_lookup[i].size());
+      }
+      id_lookup_mut[i].unlock();
+    }
+    DBG("*** End of Event dispatcher bucket dump ***\n");
+}
+
 void AmEventDispatcher::dispose() 
 {
   if(_instance != NULL) {
     // todo: add locking here
+    _instance->dump();
+
     delete _instance;
     _instance = NULL;
   }
 }
+
 /** this function optimizes posting of SIP Requests 
     - if the session does not exist, no event need to be created (req copied) */
-bool AmEventDispatcher::postSipRequest(const string& callid, const string& remote_tag, 
-				       const AmSipRequest& req)
+bool AmEventDispatcher::postSipRequest(const AmSipRequest& req)
 {
     // get local tag
     bool posted = false;
-    unsigned int id_bucket = hash(callid, remote_tag);
+    string callid = req.callid;
+    string remote_tag = req.from_tag;
+
+    string id = callid+remote_tag;
+    if(AmConfig::AcceptForkedDialogs){
+      id += req.via_branch;
+    }
+    unsigned int id_bucket = hash(id);
+
     id_lookup_mut[id_bucket].lock();
-    DictIter di = id_lookup[id_bucket].find(callid+remote_tag);
+
+    DictIter di = id_lookup[id_bucket].find(id);
     if (di == id_lookup[id_bucket].end()) {
       id_lookup_mut[id_bucket].unlock();
       return false;
@@ -232,7 +299,7 @@ bool AmEventDispatcher::postSipRequest(const string& callid, const string& remot
  
     EvQueueMapIter it = queues[queue_bucket].find(local_tag);
     if(it != queues[queue_bucket].end()){
-	it->second->postEvent(new AmSipRequestEvent(req));
+	it->second.q->postEvent(new AmSipRequestEvent(req));
 	posted = true;
     }
 

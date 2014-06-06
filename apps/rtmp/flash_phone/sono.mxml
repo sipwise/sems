@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+ * Copyright (C) 2011 Raphael Coeffic
+ *
+ * This file is part of SEMS, a free SIP media server.
+ *
+ * SEMS is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version. This program is released under
+ * the GPL with the additional exemption that compiling, linking,
+ * and/or using OpenSSL is allowed.
+ *
+ * For a license to use the SEMS software under conditions
+ * other than those described here, or to purchase support for this
+ * software, please contact iptel.org by e-mail at the following addresses:
+ *    info@iptel.org
+ *
+ * SEMS is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program; if not, write to the Free Software 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+-->
+
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+	       xmlns:mx="library://ns.adobe.com/flex/mx"
+	       xmlns:s="library://ns.adobe.com/flex/spark">
+
+  <!-- UI Definitions -->
+  <s:Panel title="Sono"
+           width="75%" height="75%"
+           horizontalCenter="0" verticalCenter="0"> 
+    <s:VGroup left="10" right="10" top="10" bottom="10">
+      <mx:HBox>
+	<mx:TextInput id="connectUrl" text="rtmp://localhost:1935"/>
+	<mx:Button id="bConnect" label="{g_state==NOT_CONNECTED?'Connect':'Disconnect'}"
+		   click="onConnectClick(event);"/>
+      </mx:HBox>
+      <mx:HBox>
+	<mx:TextInput id="dialUri" text="sip:123@10.36.2.21:5080"/>
+	<mx:Button id="bDial" label="{g_dial_state==NOT_CONNECTED?'Dial':'Hangup'}" 
+		   click="onDialClick(event);"
+		   enabled="{g_state == CONNECTED}"/>
+	<mx:Button id="bAccept" label="Accept"
+		   click="onAcceptClick(event);"
+		   visible="{g_dial_state == INCOMING_CALL}"
+		   enabled="{bAccept.visible == true}"/>
+      </mx:HBox>
+      <mx:Label id="lStatus" text="status: none"/>
+    </s:VGroup>
+  </s:Panel>
+  
+  <!-- Script -->
+  <fx:Script source="sono.as"/>
+  
+</s:Application>

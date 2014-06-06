@@ -1,7 +1,11 @@
 import(mod_conference)
 
-initial state lobby 
-  enter { playFile(wav/welcome.wav) };
+initial state START;
+
+transition "sess start" START - sessionStart / { 
+	   playFile(wav/welcome.wav) 
+} -> lobby;
+state lobby;
 
 transition "bye in lobby recvd" lobby - hangup / stop(false) -> end;
 
@@ -41,7 +45,8 @@ transition "negative reply" waitconnect - B2B.otherReply()  / {
 } -> end;
 
 state conn;
-transition "bye recvd" conn - hangup / B2B.terminateOtherLeg(); stop(false) -> end;
+
+transition "bye recvd" conn - hangup / stop(false) -> end;
 transition "bye on other leg" conn - B2B.otherBye() / stop(true) -> end;
 
 state end;

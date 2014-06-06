@@ -43,15 +43,15 @@ using std::string;
 #include "log.h"
 
 /** base for Objects as @see AmArg parameter, not owned by AmArg (!) */
-class ArgObject {
+class AmObject {
  public:
-  ArgObject() { }
-  virtual ~ArgObject() { }
+  AmObject() { }
+  virtual ~AmObject() { }
 };
 
 struct ArgBlob {  
 
-  char* data;
+  void* data;
   int   len;
   
   ArgBlob() 
@@ -61,14 +61,14 @@ struct ArgBlob {
 
   ArgBlob(const ArgBlob& a) {
     len = a.len;
-    data = (char*)malloc(len);
+    data = malloc(len);
     if (data)
       memcpy(data, a.data, len);
   }
   
-  ArgBlob(const char* _data, int _len) {
+  ArgBlob(const void* _data, int _len) {
     len = _len;
-    data = (char*)malloc(len);
+    data = malloc(len);
     if (data)
       memcpy(data, _data, len);
   }
@@ -80,7 +80,7 @@ class AmDynInvoke;
 
 /** \brief variable type argument for DynInvoke APIs */
 class AmArg
-: public ArgObject
+: public AmObject
 {
  public:
   // type enum
@@ -88,6 +88,7 @@ class AmArg
     Undef=0,
 
     Int,
+    LongLong,
     Bool,
     Double,
     CStr,
@@ -116,11 +117,12 @@ class AmArg
     
   // value
   union {
-    int            v_int;
+    long int       v_int;
+    long long int  v_long;
     bool           v_bool;
     double         v_double;
     const char*    v_cstr;
-    ArgObject*     v_obj;
+    AmObject*     v_obj;
     AmDynInvoke*   v_inv;
     ArgBlob*       v_blob;
     ValueArray*    v_array;
@@ -140,6 +142,16 @@ class AmArg
  AmArg(const int& v)
    : type(Int),
     v_int(v)
+    { }
+
+ AmArg(const long int& v)
+   : type(Int),
+    v_int(v)
+    { }
+
+ AmArg(const long long int& v)
+   : type(LongLong),
+    v_long(v)
     { }
 
  AmArg(const bool& v)
@@ -170,7 +182,7 @@ class AmArg
     v_blob = new ArgBlob(v);
   }
 
-  AmArg(ArgObject* v) 
+  AmArg(AmObject* v) 
     : type(AObject),
     v_obj(v) 
    { }
@@ -204,6 +216,7 @@ class AmArg
 #define isArgStruct(a)(AmArg::Struct == a.getType())
 #define isArgDouble(a) (AmArg::Double == a.getType())
 #define isArgInt(a) (AmArg::Int == a.getType())
+#define isArgLongLong(a) (AmArg::LongLong == a.getType())
 #define isArgBool(a) (AmArg::Bool == a.getType())
 #define isArgCStr(a) (AmArg::CStr == a.getType())
 #define isArgAObject(a) (AmArg::AObject == a.getType())
@@ -225,6 +238,9 @@ class AmArg
 #define assertArgInt(a)				\
   if (!isArgInt(a))				\
 	_THROW_TYPE_MISMATCH(Int,a);
+#define assertArgLongLong(a)				\
+  if (!isArgLongLong(a))				\
+	_THROW_TYPE_MISMATCH(LongLong,a);
 #define assertArgBool(a)				\
   if (!isArgBool(a))				\
 	_THROW_TYPE_MISMATCH(Bool,a);
@@ -244,17 +260,19 @@ class AmArg
   if (!isArgStruct(a))				\
 	_THROW_TYPE_MISMATCH(Struct,a);
 
-  void setBorrowedPointer(ArgObject* v) {
+  void setBorrowedPointer(AmObject* v) {
     invalidate();
     type = AObject;
     v_obj = v;
   }
 
-  int         asInt()    const { return v_int; }
+  int         asInt()    const { return (int)v_int; }
+  long int    asLong()   const { return v_int; }
+  long long   asLongLong() const { return v_long; }
   int         asBool()   const { return v_bool; }
   double      asDouble() const { return v_double; }
   const char* asCStr()   const { return v_cstr; }
-  ArgObject*  asObject() const { return v_obj; }
+  AmObject*  asObject() const { return v_obj; }
   AmDynInvoke* asDynInv() const { return v_inv; }
   ArgBlob*    asBlob()   const { return v_blob; }
   ValueStruct* asStruct() const { return v_struct; }
@@ -263,7 +281,7 @@ class AmArg
   vector<int>        asIntVector()       const; 
   vector<bool>       asBoolVector()      const; 
   vector<double>     asDoubleVector()    const; 
-  vector<ArgObject*> asArgObjectVector() const; 
+  vector<AmObject*> asAmObjectVector() const; 
   vector<ArgBlob>    asArgBlobVector()   const; 
 
   // operations on arrays
@@ -277,13 +295,19 @@ class AmArg
 
   void concat(const AmArg& a);
   
-  const size_t size() const;
+  size_t size() const;
 
   /** throws OutOfBoundsException if array too small */
   AmArg& get(size_t idx);
 
   /** throws OutOfBoundsException if array too small */
   AmArg& get(size_t idx) const;
+
+  /** throws OutOfBoundsException if array too small */
+  AmArg& back();
+
+  /** throws OutOfBoundsException if array too small */
+  AmArg& back() const;
 
   /** resizes array if too small */
   AmArg& operator[](size_t idx);
@@ -316,6 +340,7 @@ class AmArg
   /** 
    * throws exception if arg array does not conform to spec 
    *   i  - int 
+   *   l  - long long
    *   t  - bool
    *   f  - double
    *   s  - cstr

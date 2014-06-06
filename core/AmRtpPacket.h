@@ -33,6 +33,7 @@
 #include <netinet/in.h>
 
 class AmRtpPacketTracer;
+class msg_logger;
 
 /** \brief RTP packet implementation */
 class AmRtpPacket {
@@ -43,39 +44,32 @@ class AmRtpPacket {
   unsigned int   data_offset;
   unsigned int   d_size;
 
+  int sendto(int sd);
+  int sendmsg(int sd, unsigned int sys_if_idx);
+
 public:
   unsigned char  payload;
   bool           marker;
   unsigned short sequence;    
   unsigned int   timestamp;   
   unsigned int   ssrc;
+  unsigned char  version;
 
   struct timeval recv_time;
-
-#ifdef SUPPORT_IPV6
   struct sockaddr_storage addr;
-#else
-  struct sockaddr_in addr;
-#endif
-    
 
   AmRtpPacket();
   ~AmRtpPacket();
 
-#ifdef SUPPORT_IPV6
   void setAddr(struct sockaddr_storage* a);
   void getAddr(struct sockaddr_storage* a);
-#else
-  void setAddr(struct sockaddr_in* a);
-  void getAddr(struct sockaddr_in* a);
-#endif
 
   // returns -1 if error, else 0
   int compile(unsigned char* data_buf, unsigned int size);
   // returns -1 if error, else 0
   int compile_raw(unsigned char* data_buf, unsigned int size);
 
-  int send(int sd);
+  int send(int sd, unsigned int sys_if_idx, sockaddr_storage* l_saddr);
   int recv(int sd);
 
   int parse();
@@ -87,6 +81,8 @@ public:
   unsigned char* getBuffer();
   void setBufferSize(unsigned int b) { b_size = b; }
 
+  void logReceived(msg_logger *logger, struct sockaddr_storage *laddr);
+  void logSent(msg_logger *logger, struct sockaddr_storage *laddr);
 };
 
 #endif

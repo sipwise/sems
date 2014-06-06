@@ -61,7 +61,8 @@ public:
   EarlyAnnounceFactory(const string& _app_name);
 
   int onLoad();
-  AmSession* onInvite(const AmSipRequest& req);
+  AmSession* onInvite(const AmSipRequest& req, const string& app_name,
+		      const map<string,string>& app_params);
 };
 
 /** \brief session logic implementation for early_announce sessions */
@@ -75,9 +76,9 @@ public:
   ~EarlyAnnounceDialog();
 
   void onInvite(const AmSipRequest& req);
-  void onSessionStart(const AmSipRequest& req);
+  void onEarlySessionStart();
   void onBye(const AmSipRequest& req);
-  void onCancel();
+  void onCancel(const AmSipRequest& req);
   void onDtmf(int event, int duration_msec) {}
 
   void process(AmEvent* event);

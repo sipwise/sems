@@ -38,9 +38,7 @@
 #include <map>
 using std::list;
 using std::map;
-
-class sip_trans;
-struct sip_msg;
+using std::less;
 
 
 template<class Value>
@@ -50,7 +48,7 @@ public:
     typedef list<Value*> value_list;
 
     ht_bucket(unsigned long id) : id(id) {}
-    ~ht_bucket() {}
+    virtual ~ht_bucket() {}
     
     /**
      * Caution: The bucket MUST be locked before you can 
@@ -125,14 +123,42 @@ protected:
     value_list     elmts;
 };
 
-template<class Key, class Value>
+template<class Value>
+class ht_delete
+{
+public:
+    Value* new_elmt(Value* v) {
+	return v;
+    }
+    void dispose(Value* v) {
+	delete v;
+    }
+};
+
+template<class Value>
+class ht_ref_cnt
+{
+public:
+    Value* new_elmt(Value* v) {
+	inc_ref(v);
+	return v;
+    }
+    void dispose(Value* v) {
+	dec_ref(v);
+    }
+};
+
+template<class Key, class Value, 
+	 class ElmtAlloc = ht_delete<Value>,
+	 class ElmtCompare = less<Key> >
 class ht_map_bucket: public AmMutex
 {
 public:
-    typedef map<Key,Value*> value_map;
+    typedef map<Key,Value*,ElmtCompare> value_map;
+    typedef ElmtAlloc                   allocator;
 
     ht_map_bucket(unsigned long id) : id(id) {}
-    ~ht_map_bucket() {}
+    virtual ~ht_map_bucket() {}
     
     /**
      * Caution: The bucket MUST be locked before you can 
@@ -149,19 +175,38 @@ public:
     bool exist(const Key& k) {
 	return find(k) != elmts.end();
     }
-    
+
+    /**
+     * Insert the value into this bucket.
+     */
+    virtual bool insert(const Key& k, Value* v) {
+	v = ElmtAlloc().new_elmt(v);
+	bool res = elmts.insert(typename value_map::value_type(k,v)).second;
+	if(!res) ElmtAlloc().dispose(v);
+	return res;
+    }
+
     /**
      * Remove the value from this bucket,
      * if it was still present.
      */
-    void remove(const Key& k) {
+    virtual bool remove(const Key& k) {
 	typename value_map::iterator it = find(k);
 
 	if(it != elmts.end()){
 	    Value* v = it->second;
 	    elmts.erase(it);
-	    delete v;
+	    ElmtAlloc().dispose(v);
+	    return true;
 	}
+	return false;
+    }
+
+    Value* get(const Key& k) {
+	typename value_map::iterator it = find(k);
+	if(it != elmts.end())
+	    return it->second;
+	return NULL;
     }
 
     /**
@@ -180,11 +225,13 @@ public:
 	
 	DBG("*** Bucket ID: %i ***\n",(int)get_id());
 	
-	for(typename value_map::const_iterator it = elmts.begin(); it != elmts.end(); ++it) {
-	    
-	    (*it)->dump();
+	for(typename value_map::const_iterator it = elmts.begin(); 
+	    it != elmts.end(); ++it) {
+	    dump_elmt(it->first,it->second);
 	}
     }
+
+    virtual void dump_elmt(const Key& k, const Value* v) const {}
 
 protected:
     typename value_map::iterator find(const Key& k)
@@ -227,7 +274,9 @@ public:
 
     void dump() const {
 	for(unsigned long l=0; l<size; l++){
+	    _table[l]->lock();
 	    _table[l]->dump();
+	    _table[l]->unlock();
 	}
     }
 

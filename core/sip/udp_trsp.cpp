@@ -27,21 +27,25 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define __APPLE_USE_RFC_3542
+#include <netinet/in.h>
+
 #include "udp_trsp.h"
+#include "ip_util.h"
+#include "raw_sender.h"
 #include "sip_parser.h"
 #include "trans_layer.h"
 #include "log.h"
+#include "AmUtils.h"
 
-#include "SipCtrlInterface.h"
-
-#include <netinet/in.h>
 #include <sys/param.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netdb.h>
 
 #include <errno.h>
 #include <string.h>
-
-// FIXME: support IPv6
 
 #if defined IP_RECVDSTADDR
 # define DSTADDR_SOCKOPT IP_RECVDSTADDR
@@ -52,13 +56,19 @@
 # define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_pktinfo)))
 # define dstaddr(x) (&(((struct in_pktinfo *)(CMSG_DATA(x)))->ipi_addr))
 #else
-# error "can't determine socket option (IP_RECVDSTADDR or IP_PKTINFO)"
+# error "can't determine v4 socket option (IP_RECVDSTADDR or IP_PKTINFO)"
 #endif
 
-// union control_data {
-//     struct cmsghdr  cmsg;
-//     u_char          data[DSTADDR_DATASIZE];
-// };
+#if !defined IPV6_RECVPKTINFO
+# define DSTADDR6_SOCKOPT IPV6_PKTINFO
+# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
+#elif defined IPV6_PKTINFO
+# define DSTADDR6_SOCKOPT IPV6_RECVPKTINFO
+# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
+#else
+# error "cant't determine v6 socket option (IPV6_RECVPKTINFO or IPV6_PKTINFO)"
+#endif
+
 
 /** @see trsp_socket */
 int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
@@ -68,33 +78,29 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
 	close(sd);
     }
     
-    memset(&addr,0,sizeof(addr));
-
-    addr.ss_family = AF_INET;
-#if defined(BSD44SOCKETS)
-    addr.ss_len = sizeof(struct sockaddr_in);
-#endif
-    SAv4(&addr)->sin_port = htons(bind_port);
-
-    if(inet_aton(bind_ip.c_str(),&SAv4(&addr)->sin_addr)<0){
+    if(am_inet_pton(bind_ip.c_str(),&addr) == 0){
 	
-	ERROR("inet_aton: %s\n",strerror(errno));
+	ERROR("am_inet_pton(%s): %s\n",bind_ip.c_str(),strerror(errno));
 	return -1;
     }
+    
+    if( ((addr.ss_family == AF_INET) && 
+     	 (SAv4(&addr)->sin_addr.s_addr == INADDR_ANY)) ||
+     	((addr.ss_family == AF_INET6) && 
+     	 IN6_IS_ADDR_UNSPECIFIED(&SAv6(&addr)->sin6_addr)) ){
 
-    if(SAv4(&addr)->sin_addr.s_addr == INADDR_ANY){
-	ERROR("Sorry, we cannot bind 'ANY' address\n");
-	return -1;
+     	ERROR("Sorry, we cannot bind to 'ANY' address\n");
+     	return -1;
     }
 
-    if((sd = socket(PF_INET,SOCK_DGRAM,0)) == -1){
+    am_set_port(&addr,bind_port);
+
+    if((sd = socket(addr.ss_family,SOCK_DGRAM,0)) == -1){
 	ERROR("socket: %s\n",strerror(errno));
 	return -1;
     } 
     
-
-    if(::bind(sd,(const struct sockaddr*)&addr,
-	     sizeof(struct sockaddr_in))) {
+    if(::bind(sd,(const struct sockaddr*)&addr,SA_len(&addr))) {
 
 	ERROR("bind: %s\n",strerror(errno));
 	close(sd);
@@ -103,45 +109,165 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
     
     int true_opt = 1;
 
-    if(setsockopt(sd, IPPROTO_IP, DSTADDR_SOCKOPT,
-		  (void*)&true_opt, sizeof (true_opt)) == -1) {
-	
-	ERROR("%s\n",strerror(errno));
-	close(sd);
-	return -1;
-    }
-
-    if (SipCtrlInterface::udp_rcvbuf > 0) {
-	DBG("trying to set SIP UDP socket buffer to %d\n",
-	    SipCtrlInterface::udp_rcvbuf);
-	if(setsockopt(sd, SOL_SOCKET, SO_RCVBUF,
-		      (void*)&SipCtrlInterface::udp_rcvbuf,
-		      sizeof (SipCtrlInterface::udp_rcvbuf)) == -1) {
-	    WARN("could not set SIP UDP socket buffer: '%s'\n",
-		 strerror(errno));
-	} else {
-	    socklen_t optlen;
-	    int set_rcvbuf_size=0;
-	    if (getsockopt(sd, SOL_SOCKET, SO_RCVBUF,
-			   &set_rcvbuf_size, &optlen) == -1) {
-		WARN("could not read back SIP UDP socket buffer length: '%s'\n",
-		     strerror(errno));
-	    } else {
-		if (set_rcvbuf_size != SipCtrlInterface::udp_rcvbuf) {
-		    WARN("failed to set SIP UDP RCVBUF size (wanted %d, got %d)\n",
-			 SipCtrlInterface::udp_rcvbuf, set_rcvbuf_size);
-		}
-	    }
+    if(addr.ss_family == AF_INET) {
+	if(setsockopt(sd, IPPROTO_IP, DSTADDR_SOCKOPT,
+		      (void*)&true_opt, sizeof (true_opt)) == -1) {
+	    
+	    ERROR("%s\n",strerror(errno));
+	    close(sd);
+	    return -1;
+	}
+    } else {
+	if(setsockopt(sd, IPPROTO_IPV6, DSTADDR6_SOCKOPT,
+		      (void*)&true_opt, sizeof (true_opt)) == -1) {
+	    
+	    ERROR("%s\n",strerror(errno));
+	    close(sd);
+	    return -1;
 	}
     }
 
     port = bind_port;
     ip   = bind_ip;
 
-    DBG("UDP transport bound to %s:%i\n",ip.c_str(),port);
+    DBG("UDP transport bound to %s/%i\n",ip.c_str(),port);
 
     return 0;
 }
+
+
+int udp_trsp_socket::set_recvbuf_size(int rcvbuf_size)
+{
+    if (rcvbuf_size > 0) {
+	DBG("trying to set SIP UDP socket buffer to %d\n", rcvbuf_size);
+	if(setsockopt(sd, SOL_SOCKET, SO_RCVBUF,
+		      (void*)&rcvbuf_size, sizeof (int)) == -1) {
+	    WARN("could not set SIP UDP socket buffer: '%s'\n",
+		 strerror(errno));
+	} else {
+	    int set_rcvbuf_size=0;
+	    socklen_t optlen = sizeof(int);
+	    if (getsockopt(sd, SOL_SOCKET, SO_RCVBUF,
+			   &set_rcvbuf_size, &optlen) == -1) {
+		WARN("could not read back SIP UDP socket buffer length: '%s'\n",
+		     strerror(errno));
+	    } else {
+		if (set_rcvbuf_size != rcvbuf_size) {
+		    WARN("failed to set SIP UDP RCVBUF size"
+			 " (wanted %d, got %d)\n",
+			 rcvbuf_size, set_rcvbuf_size);
+		}
+	    }
+	}
+    }
+    
+    return 0;
+}
+
+int udp_trsp_socket::sendto(const sockaddr_storage* sa, 
+			    const char* msg, 
+			    const int msg_len)
+{
+  int err = ::sendto(sd, msg, msg_len, 0, 
+		     (const struct sockaddr*)sa, 
+		     SA_len(sa));
+
+  if (err < 0) {
+    char host[NI_MAXHOST] = "";
+    ERROR("sendto(%i;%s:%i): %s\n", sd,
+	  am_inet_ntop_sip(sa,host,NI_MAXHOST),
+	  am_get_port(sa),strerror(errno));
+    return err;
+  }
+  else if (err != msg_len) {
+    ERROR("sendto: sent %i instead of %i bytes\n", err, msg_len);
+    return -1;
+  }
+
+  return 0;
+}
+
+int udp_trsp_socket::sendmsg(const sockaddr_storage* sa, 
+			     const char* msg, 
+			     const int msg_len)
+{
+    struct msghdr hdr;
+    struct cmsghdr* cmsg;
+
+  union {
+    char cmsg4_buf[CMSG_SPACE(sizeof(struct in_pktinfo))];
+    char cmsg6_buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+  } cmsg_buf;
+
+  struct iovec msg_iov[1];
+  msg_iov[0].iov_base = (void*)msg;
+  msg_iov[0].iov_len  = msg_len;
+
+  bzero(&hdr,sizeof(hdr));
+  hdr.msg_name = (void*)sa;
+  hdr.msg_namelen = SA_len(sa);
+  hdr.msg_iov = msg_iov;
+  hdr.msg_iovlen = 1;
+
+  bzero(&cmsg_buf,sizeof(cmsg_buf));
+  hdr.msg_control = &cmsg_buf;
+  hdr.msg_controllen = sizeof(cmsg_buf);
+
+  cmsg = CMSG_FIRSTHDR(&hdr);
+  if(sa->ss_family == AF_INET) {
+
+    cmsg->cmsg_level = IPPROTO_IP;
+    cmsg->cmsg_type = IP_PKTINFO;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+
+    struct in_pktinfo* pktinfo = (struct in_pktinfo*) CMSG_DATA(cmsg);
+    pktinfo->ipi_ifindex = sys_if_idx;
+  }
+  else if(sa->ss_family == AF_INET6) {
+    cmsg->cmsg_level = IPPROTO_IPV6;
+    cmsg->cmsg_type = IPV6_PKTINFO;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+    
+    struct in6_pktinfo* pktinfo = (struct in6_pktinfo*) CMSG_DATA(cmsg);
+    pktinfo->ipi6_ifindex = sys_if_idx;
+  }
+
+  hdr.msg_controllen = cmsg->cmsg_len;
+  
+  // bytes_sent = ;
+  if(::sendmsg(sd, &hdr, 0) < 0) {
+      char host[NI_MAXHOST] = "";
+      ERROR("sendmsg(%i;%s:%i): %s\n", sd,
+	    am_inet_ntop_sip(sa,host,NI_MAXHOST),
+	    am_get_port(sa),strerror(errno));
+      return -1;
+  }
+
+  return 0;
+}
+
+int udp_trsp_socket::send(const sockaddr_storage* sa, 
+			  const char* msg, 
+			  const int msg_len,
+			  unsigned int flags)
+{
+    if (log_level_raw_msgs >= 0) {
+	_LOG(log_level_raw_msgs, 
+	     "send  msg to %s:%i\n--++--\n%.*s--++--\n",
+	     get_addr_str(sa).c_str(),
+	     ntohs(((sockaddr_in*)sa)->sin_port),
+	     msg_len, msg);
+    }
+
+    if(socket_options & use_raw_sockets)
+	return raw_sender::send(msg,msg_len,sys_if_idx,&addr,sa);
+
+    if(socket_options & force_outbound_if)
+    	return sendmsg(sa,msg,msg_len);
+
+    return sendto(sa,msg,msg_len);
+}
+
 
 /** @see trsp_socket */
 
@@ -191,6 +317,7 @@ void udp_trsp::run()
 
 	buf_len = recvmsg(sock->get_sd(),&msg,0);
 	if(buf_len <= 0){
+	    if(!buf_len) continue;
 	    ERROR("recvfrom returned %d: %s\n",buf_len,strerror(errno));
 	    switch(errno){
 	    case EBADF:
@@ -205,15 +332,28 @@ void udp_trsp::run()
 	    ERROR("Message was too big (>%d)\n",MAX_UDP_MSGLEN);
 	    continue;
 	}
-	sip_msg* s_msg = new sip_msg(buf,buf_len);
 
-	if (SipCtrlInterface::log_raw_messages >= 0) {
-	    _LOG(SipCtrlInterface::log_raw_messages, 
-		 "vv M [|] u recvd msg via UDP vv\n--++--\n%.*s--++--\n",
+	sockaddr_storage* sa = (sockaddr_storage*)msg.msg_name;
+	if(!am_get_port(sa)) {
+	    DBG("Source port is 0: dropping");
+	    continue;
+	}
+
+	sip_msg* s_msg = new sip_msg(buf,buf_len);
+	memcpy(&s_msg->remote_ip,msg.msg_name,msg.msg_namelen);
+
+	if (trsp_socket::log_level_raw_msgs >= 0) {
+	    char host[NI_MAXHOST] = "";
+	    _LOG(trsp_socket::log_level_raw_msgs, 
+		 "vv M [|] u recvd msg via UDP from %s:%i vv\n"
+		 "--++--\n%.*s--++--\n",
+		 am_inet_ntop_sip(&s_msg->remote_ip,host,NI_MAXHOST),
+		 am_get_port(&s_msg->remote_ip),
 		 s_msg->len, s_msg->buf);
 	}
-	memcpy(&s_msg->remote_ip,msg.msg_name,msg.msg_namelen);
+
 	s_msg->local_socket = sock;
+	inc_ref(sock);
 
 	for (cmsgptr = CMSG_FIRSTHDR(&msg);
              cmsgptr != NULL;
@@ -223,10 +363,19 @@ void udp_trsp::run()
                 cmsgptr->cmsg_type == DSTADDR_SOCKOPT) {
 		
 		s_msg->local_ip.ss_family = AF_INET;
-		((sockaddr_in*)(&s_msg->local_ip))->sin_port   = htons(sock->get_port());
-                memcpy(&((sockaddr_in*)(&s_msg->local_ip))->sin_addr,dstaddr(cmsgptr),sizeof(in_addr));
+	        am_set_port(&s_msg->local_ip,sock->get_port());
+                memcpy(&((sockaddr_in*)(&s_msg->local_ip))->sin_addr,
+		       dstaddr(cmsgptr),sizeof(in_addr));
             }
-        } 
+	    else if(cmsgptr->cmsg_level == IPPROTO_IPV6 &&
+		    cmsgptr->cmsg_type == IPV6_PKTINFO) {
+
+		s_msg->local_ip.ss_family = AF_INET6;
+	        am_set_port(&s_msg->local_ip,sock->get_port());
+                memcpy(&((sockaddr_in6*)(&s_msg->local_ip))->sin6_addr,
+		       dstaddr6(cmsgptr),sizeof(in6_addr));
+	    }
+        }
 
 	// pass message to the parser / transaction layer
 	trans_layer::instance()->received_msg(s_msg);

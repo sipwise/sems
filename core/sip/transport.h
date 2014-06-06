@@ -30,19 +30,27 @@
 #define _transport_h_
 
 #include "../AmThread.h"
+#include "../atomic_types.h"
 #include <sys/socket.h>
 
 #include <string>
 using std::string;
 
-#define SAv4(addr) \
-            ((struct sockaddr_in*)addr)
-
-#define SAv6(addr) \
-            ((struct sockaddr_in6*)addr)
+#define DEFAULT_TCP_CONNECT_TIMEOUT 2000 /* 2 seconds */
+#define DEFAULT_TCP_IDLE_TIMEOUT 3600000 /* 1 hour */
 
 class trsp_socket
+    : public atomic_ref_cnt
 {
+public:
+    enum socket_options {
+	force_via_address = (1 << 0),
+	force_outbound_if = (1 << 1),
+	use_raw_sockets   = (1 << 2)
+    };
+
+    static int log_level_raw_msgs;
+    
 protected:
     // socket descriptor
     int sd;
@@ -56,8 +64,21 @@ protected:
     // bound port number
     unsigned short   port;
 
+    // public IP (Via-HF)
+    string      public_ip;
+
+    // internal interface number
+    unsigned short   if_num;
+
+    // network interface index
+    unsigned int sys_if_idx;
+
+    // ORed field of socket_option
+    unsigned int socket_options;
+
 public:
-    trsp_socket();
+    trsp_socket(unsigned short if_num, unsigned int opts,
+		unsigned int sys_if_idx = 0, int sd = 0);
     virtual ~trsp_socket();
 
     /**
@@ -67,36 +88,68 @@ public:
     virtual int bind(const string& address, unsigned short port)=0;
 
     /**
+     * Getter for the transport name
+     */
+    virtual const char* get_transport() const = 0;
+
+    /**
      * Getter for IP address
      */
-    const char* get_ip();
+    const char* get_ip() const;
     
     /**
      * Getter for the port number
      */
-    unsigned short get_port();
+    unsigned short get_port() const;
+
+    /**
+     * Setter for public IP address
+     */
+    void set_public_ip(const string& ip);
+    
+    /**
+     * Getter for advertised IP address
+     * @return either bound IP or public IP
+     */
+    const char* get_advertised_ip() const;
 
     /**
      *  Getter for the socket descriptor
      */
-    int get_sd();
+    int get_sd() const;
+
+    /**
+     * Getter for the interface number
+     */
+    unsigned short get_if() const;
+
+    /**
+     * Is the transport reliable?
+     */
+    virtual bool is_reliable() const { return false; }
+
+    /**
+     * Checks for socket options
+     */
+    bool is_opt_set(unsigned int mask) const;
 
     /**
      * Copy the internal address into the given one (sa).
      */
-    void copy_addr_to(sockaddr_storage* sa);
+    void copy_addr_to(sockaddr_storage* sa) const;
 
     /**
      * Match with the given address
      * @return true if address matches
      */
-    bool match_addr(sockaddr_storage* other_addr);
+    bool match_addr(sockaddr_storage* other_addr) const;
 
     /**
      * Sends a message.
      * @return -1 if error(s) occured.
      */
-    virtual int send(const sockaddr_storage* sa, const char* msg, const int msg_len);
+    virtual int send(const sockaddr_storage* sa, const char* msg, 
+		     const int msg_len, unsigned int flags)=0;
 };
 
 class transport: public AmThread
