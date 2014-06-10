@@ -14,7 +14,6 @@ Build-Depends: debhelper (>= 8~),
                libspeex-dev,
                libssl-dev,
                libxml2-dev,
-               ngcp-sems-prompts,
                openssl,
                python-dev,
                python-sip-dev
@@ -23,6 +22,7 @@ Standards-Version: 3.9.5
 Package: ngcp-sems
 Architecture: any
 Depends: adduser,
+         ngcp-sems-prompts,
          python,
          ${misc:Depends},
          ${shlibs:Depends}
