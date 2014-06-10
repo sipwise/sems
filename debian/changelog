@@ -1,3 +1,9 @@
+ngcp-sems (1.4.3+spce2.8.3) unstable; urgency=medium
+
+  * [9f66f9d] MT#7347 added reference counting to plug-in interfaces.
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Tue, 10 Jun 2014 12:22:26 +0200
+
 ngcp-sems (1.4.3+spce2.8.2) unstable; urgency=low
 
   * [f2fae05] Fix the ReplacesMapper.cpp compilation.
