@@ -101,6 +101,8 @@ class AmPlugIn : public AmPayloadProviderInterface
   std::map<string,AmDynInvokeFactory*>           name2di;
   std::map<string,AmLoggingFacility*>            name2logfac;
 
+  std::map<string,AmPluginFactory*>             module_objects;
+
   //AmCtrlInterfaceFactory *ctrlIface;
 
   int dynamic_pl; // range: 96->127, see RFC 1890
