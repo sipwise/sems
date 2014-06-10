@@ -22,23 +22,25 @@ export APP_NAME=ngcp-sems
 
 override_dh_auto_build:
 	$(MAKE) \
-	cfg-target=/etc/ngcp-sems/ prefix=/usr \
+	cfg-target=/etc/$(APP_NAME)/ prefix=/usr \
 	exclude_app_modules="$(EXCLUDED_MODULES)" \
 	exclude_dsm_modules="$(EXCLUDED_DSM_MODULES)" \
-	DESTDIR=$(CURDIR)/debian/ngcp-sems
+	DESTDIR=$(CURDIR)/debian/$(APP_NAME)
 
 override_dh_auto_install:
 	$(MAKE) -C core/ install \
-		DESTDIR=$(CURDIR)/debian/ngcp-sems \
+		DESTDIR=$(CURDIR)/debian/$(APP_NAME) \
 		prefix=/usr \
-		cfg-target=/etc/ngcp-sems/
+		cfg-target=/etc/$(APP_NAME)/
 
 	$(MAKE) -C apps/ install \
 		exclude_app_modules="$(EXCLUDED_MODULES) $(PYTHON_MODULES)" \
 		exclude_dsm_modules="$(EXCLUDED_DSM_PY_MODULES)" \
-		DESTDIR=$(CURDIR)/debian/ngcp-sems \
+		DESTDIR=$(CURDIR)/debian/$(APP_NAME) \
 		prefix=/usr \
-		cfg-target=/etc/ngcp-sems/
+		cfg-target=/etc/$(APP_NAME)/
+
+	dh_python2 /usr/lib/$(APP_NAME)
 
 override_dh_strip:
-	dh_strip --dbg-package=ngcp-sems-dbg
+	dh_strip --dbg-package=$(APP_NAME)-dbg
