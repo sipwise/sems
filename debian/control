@@ -14,6 +14,7 @@ Build-Depends: debhelper (>= 8~),
                libspeex-dev,
                libssl-dev,
                libxml2-dev,
+               ngcp-sems-prompts,
                openssl,
                python-dev,
                python-sip-dev
@@ -21,7 +22,10 @@ Standards-Version: 3.9.5
 
 Package: ngcp-sems
 Architecture: any
-Depends: adduser, python, ${misc:Depends}, ${shlibs:Depends}
+Depends: adduser,
+         python,
+         ${misc:Depends},
+         ${shlibs:Depends}
 Conflicts: sems
 Replaces: sems
 Description: SIP Express Media Server, very fast and flexible SIP media server
@@ -43,9 +47,11 @@ Description: Debugging symbols for Sems SIP Express Media Server
 Package: ngcp-sems-libsems1-dev
 Architecture: any
 Section: libdevel
-Conflicts: ngcp-libsems-dev, libsems-dev
+Conflicts: libsems-dev,
+           ngcp-libsems-dev
 Provides: libsems-dev
-Replaces: ngcp-libsems-dev, libsems-dev
+Replaces: libsems-dev,
+          ngcp-libsems-dev
 Depends: ${misc:Depends}
 Description: development files for SIP Express Media Server
  SEMS, the SIP Express Media Server, is a free, high performance,
