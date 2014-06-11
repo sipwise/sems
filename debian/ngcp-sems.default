@@ -1,27 +1,18 @@
 # configuration for SEMS - SIP Express Media Server
 #
-# this file is sourced by SEMS init script /etc/init.d/sems-pbx
-
-# Note: the #DEBCONF-xxx-START and DEBCONF-xxx-END lines are used for
-# debconf configuration, please don't remove or alter them.
+# this file is sourced by SEMS init script /etc/init.d/ngcp-sems
 
 # Don't start with default config as we need to deploy the ngcp-templates first
 SEMS_RUN="no"
 
 # ser configuration file
-#DEBCONF-CFG_FILE-START
 SEMS_CFG_FILE="/etc/ngcp-sems/sems.conf"
-#DEBCONF-CFG_FILE-END
 
 # user to run ser as
-#DEBCONF-USER-START
 SEMS_USER="sems"
-#DEBCONF-USER-END
 
 # group to run ser as
-#DEBCONF-GROUP-START
-SEMS_GROUP="sems-pbx"
-#DEBCONF-GROUP-END
+SEMS_GROUP="sems"
 
 SEMS_RUNDIR="/var/run/ngcp-sems"
 
@@ -29,11 +20,9 @@ SEMS_RUNDIR="/var/run/ngcp-sems"
 SEMS_PIDFILE="$SEMS_RUNDIR/ngcp-sems.pid"
 
 # set if you want to create core files
-#DEBCONF-CREATE_CORE-START
 SEMS_CREATE_CORE="yes"
-#DEBCONF-CREATE_CORE-END
 
-#DEBCONF-COREDIR-START
 SEMS_COREDIR="/var/cores"
-#DEBCONF-COREDIR-END
 
+SEMS_CACHEDIR="/var/cache/ngcp-sems"
+SEMS_CACHEDIR_EXTRADIRS="audio_cache callingcard"
