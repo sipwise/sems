@@ -13,7 +13,7 @@
 +include $(COREPATH)/plug-in/Makefile.app_module
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.cpp
-@@ -0,0 +1,1757 @@
+@@ -0,0 +1,1761 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
 +
@@ -523,24 +523,28 @@
 +        return 1;
 +    }
 +
-+    snprintf(query, sizeof(query), SW_VSC_GET_SUBPROFILE_ATTRIBUTE, profileId, attributeId);
++    snprintf(query, sizeof(query), SW_VSC_GET_SUBPROFILE_ATTRIBUTE,
++        (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +
 +    if (mysql_real_query(my_handler, query, strlen(query)) != 0)
 +    {
 +        ERROR("Error checking profile attributes for profile '%llu' and attribute %llu: %s",
-+              profileId, attributeId, mysql_error(my_handler));
++              (unsigned long long int) profileId, (unsigned long long int) attributeId,
++              mysql_error(my_handler));
 +        return 0;
 +    }
 +
 +    res = mysql_store_result(my_handler);
 +    if (mysql_num_rows(res) >= 1)
 +    {
-+        INFO("Allow preference attribute %llu as it is in profile %llu", attributeId, profileId);
++        INFO("Allow preference attribute %llu as it is in profile %llu",
++              (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +        ret = 1;
 +    }
 +    else
 +    {
-+        INFO("Reject preference attribute %llu as it is not in profile %llu", attributeId, profileId);
++        INFO("Reject preference attribute %llu as it is not in profile %llu",
++              (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +        ret = 0;
 +    }
 +    return ret;
