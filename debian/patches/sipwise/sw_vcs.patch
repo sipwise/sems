@@ -13,7 +13,7 @@
 +include $(COREPATH)/plug-in/Makefile.app_module
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.cpp
-@@ -0,0 +1,1688 @@
+@@ -0,0 +1,1757 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
 +
@@ -33,7 +33,7 @@
 +#define SW_VSC_DATABASE "provisioning"
 +
 +#define SW_VSC_GET_ATTRIBUTE_ID "select id from voip_preferences where attribute='%s'"
-+#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id "\
++#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id, s.profile_id "\
 +    "from voip_subscribers s, voip_domains d "\
 +    "where s.uuid='%s' and s.domain_id = d.id"
 +#define SW_VSC_GET_PREFERENCE_ID "select id,value from voip_usr_preferences where subscriber_id=%llu " \
@@ -79,6 +79,9 @@
 +#define SW_VSC_CREATE_VSC_CFMAP "insert into voip_cf_mappings "\
 +    "(subscriber_id, type, destination_set_id, time_set_id) "\
 +    "values(%llu, '%s', %llu, NULL)"
++
++#define SW_VSC_GET_SUBPROFILE_ATTRIBUTE "select id from voip_subscriber_profile_attributes "\
++    "where profile_id=%llu and attribute_id=%llu"
 +
 +#define SW_VSC_DESTSET_CFU  "cfu_by_vsc"
 +#define SW_VSC_DESTSET_CFB  "cfb_by_vsc"
@@ -506,8 +509,45 @@
 +    return id;
 +}
 +
++int SW_VscDialog::checkSubscriberProfile(MYSQL *my_handler, u_int64_t profileId, u_int64_t attributeId)
++{
++    MYSQL_RES *res;
++    MYSQL_ROW row;
++    char query[1024] = "";
++    int ret = 0;
++
++    // if no profile is set, allow by default
++    if(profileId == 0)
++    {
++        INFO("Allow preference due to unset subscriber profile");
++        return 1;
++    }
++
++    snprintf(query, sizeof(query), SW_VSC_GET_SUBPROFILE_ATTRIBUTE, profileId, attributeId);
++
++    if (mysql_real_query(my_handler, query, strlen(query)) != 0)
++    {
++        ERROR("Error checking profile attributes for profile '%llu' and attribute %llu: %s",
++              profileId, attributeId, mysql_error(my_handler));
++        return 0;
++    }
++
++    res = mysql_store_result(my_handler);
++    if (mysql_num_rows(res) >= 1)
++    {
++        INFO("Allow preference attribute %llu as it is in profile %llu", attributeId, profileId);
++        ret = 1;
++    }
++    else
++    {
++        INFO("Reject preference attribute %llu as it is not in profile %llu", attributeId, profileId);
++        ret = 0;
++    }
++    return ret;
++}
++
 +u_int64_t SW_VscDialog::getSubscriberId(MYSQL *my_handler, const char *uuid,
-+                                        string *domain, u_int64_t &domain_id)
++                                        string *domain, u_int64_t &domain_id, u_int64_t &profile_id)
 +{
 +    MYSQL_RES *res;
 +    MYSQL_ROW row;
@@ -542,6 +582,7 @@
 +    domain->clear();
 +    *domain += string(row[1]);
 +    domain_id = atoll(row[2]);
++    profile_id = row[3] == NULL ? 0 : atoll(row[3]);
 +    mysql_free_result(res);
 +    return id;
 +}
@@ -1009,7 +1050,7 @@
 +    MYSQL *my_handler = NULL;
 +    my_bool recon = 1;
 +
-+    u_int64_t subId, domId;
++    u_int64_t subId, domId, profId;
 +    string domain, uri;
 +    char map_str[128] = "";
 +    string mapStr, prefStr;
@@ -1043,7 +1084,7 @@
 +        goto out;
 +    }
 +
-+    subId = getSubscriberId(my_handler, uuid.c_str(), &domain, domId);
++    subId = getSubscriberId(my_handler, uuid.c_str(), &domain, domId, profId);
 +    if (!subId)
 +    {
 +        filename = m_patterns->failAnnouncement;
@@ -1081,6 +1122,13 @@
 +            filename = m_patterns->failAnnouncement;
 +            goto out;
 +        }
++
++        if(!checkSubscriberProfile(my_handler, profId, attId))
++        {
++            filename = m_patterns->failAnnouncement;
++            goto out;
++        }
++
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
@@ -1190,6 +1238,13 @@
 +            filename = m_patterns->failAnnouncement;
 +            goto out;
 +        }
++
++        if(!checkSubscriberProfile(my_handler, profId, attId))
++        {
++            filename = m_patterns->failAnnouncement;
++            goto out;
++        }
++
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
@@ -1305,6 +1360,13 @@
 +            filename = m_patterns->failAnnouncement;
 +            goto out;
 +        }
++
++        if(!checkSubscriberProfile(my_handler, profId, attId))
++        {
++            filename = m_patterns->failAnnouncement;
++            goto out;
++        }
++
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
@@ -1472,6 +1534,13 @@
 +            filename = m_patterns->failAnnouncement;
 +            goto out;
 +        }
++
++        if(!checkSubscriberProfile(my_handler, profId, attId))
++        {
++            filename = m_patterns->failAnnouncement;
++            goto out;
++        }
++
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
@@ -1704,7 +1773,7 @@
 +}
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.h
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,131 @@
 +#ifndef _SW_VSC_H_
 +#define _SW_VSC_H_
 +
@@ -1798,7 +1867,7 @@
 +
 +    u_int64_t getAttributeId(MYSQL *my_handler, const char *attribute);
 +    u_int64_t getSubscriberId(MYSQL *my_handler, const char *uuid,
-+                              string *domain, u_int64_t &domain_id);
++                              string *domain, u_int64_t &domain_id, u_int64_t &profile_id);
 +    u_int64_t getPreference(MYSQL *my_handler, u_int64_t subscriberId, u_int64_t attributeId,
 +                            int *foundPref, string *value);
 +    int deletePreferenceId(MYSQL *my_handler, u_int64_t preferenceId);
@@ -1810,6 +1879,7 @@
 +    int deleteReminder(MYSQL *my_handler, u_int64_t subscriberId);
 +    int number2uri(const AmSipRequest &req, MYSQL *my_handler, string &uuid, u_int64_t subId,
 +                   string &domain, u_int64_t domId, int offset, string &uri);
++    int checkSubscriberProfile(MYSQL *my_handler, u_int64_t profileId, u_int64_t attributeId);
 +    u_int64_t createCFMap(MYSQL *my_handler, u_int64_t subscriberId, string &uri,
 +                          const char *mapName, const char *type);
 +    u_int64_t deleteCFMap(MYSQL *my_handler, u_int64_t subscriberId,
