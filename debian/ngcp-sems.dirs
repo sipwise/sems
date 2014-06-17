@@ -1,0 +1,3 @@
+var/cache/sems
+var/cache/sems/audio_cache
+var/cache/sems/callingcard

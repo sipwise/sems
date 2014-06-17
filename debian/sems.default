@@ -35,3 +35,5 @@ SEMS_CREATE_CORE="yes"
 SEMS_COREDIR="/var/cores"
 #DEBCONF-COREDIR-END
 
+SEMS_CACHEDIR="/var/cache/sems"
+SEMS_CACHEDIR_EXTRADIRS="audio_cache callingcard"
