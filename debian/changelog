@@ -1,3 +1,16 @@
+ngcp-sems (1:1.4.3-1+0~mr3.3.2.0) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [0b43fc6] MT#7347 added reference counting to plug-in interfaces.
+  * [11cdf71] MT#7347 fix broken build (scope issues with GCC).
+
+  [ Victor Seva ]
+  * [3e828eb] MT#7399 create SEMS_CACHEDIR
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 19 Jun 2014 07:34:16 +0200
+
 ngcp-sems (1:1.4.3-1+0~mr3.3.1.0) unstable; urgency=low
 
   [ Victor Seva ]
