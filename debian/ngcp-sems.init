@@ -116,7 +116,7 @@ case "$1" in
 		fi
 	fi
 	sleep 5
-	start-stop-daemon --start --quiet --pidfile \
+	start-stop-daemon --oknodo --start --quiet --pidfile \
 		$SEMS_PIDFILE --exec $DAEMON  -- $PARAMS
 	echo "."
 	;;
