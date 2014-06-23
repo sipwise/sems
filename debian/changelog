@@ -1,3 +1,12 @@
+ngcp-sems (1:1.4.3-1+0~mr3.3.1.2) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [c56d831] MT#7355 sems init: add --oknodo to fix restart during package upgrade
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 23 Jun 2014 11:58:01 +0200
+
 ngcp-sems (1:1.4.3-1+0~mr3.3.1.1) unstable; urgency=low
 
   [ Andrew Pogrebennyk ]
