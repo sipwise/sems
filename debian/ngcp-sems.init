@@ -63,16 +63,24 @@ if test "$SEMS_CFG_FILE" ; then
 fi
 
 if test "$SEMS_CREATE_CORE" = "yes" ; then
-	# directory for the core dump files
-	[ -d $SEMS_COREDIR ] || mkdir $SEMS_COREDIR
-	chmod 777 $SEMS_COREDIR
-	echo "$SEMS_COREDIR/core.%e.sig%s.%p" > /proc/sys/kernel/core_pattern
-	echo 2 > /proc/sys/fs/suid_dumpable
-	ulimit -c unlimited
+  if /usr/sbin/ngcp-virt-identify --type container; then
+    echo "Container environment detected. Skipping core dump configuration."
+  else
+    # directory for the core dump files
+    [ -d $SEMS_COREDIR ] || mkdir $SEMS_COREDIR
+    chmod 777 $SEMS_COREDIR
+    echo "$SEMS_COREDIR/core.%e.sig%s.%p" > /proc/sys/kernel/core_pattern
+    echo 2 > /proc/sys/fs/suid_dumpable
+    ulimit -c unlimited
+  fi
 fi
 
-# raise file descriptors limit - call hold consumes two fds for RTP ports and one for moh file
-ulimit -n 100000
+if /usr/sbin/ngcp-virt-identify --type container; then
+  echo "Container environment detected. Skipping file descriptors limit configuration."
+else
+  # raise file descriptors limit - call hold consumes two fds for RTP ports and one for moh file
+  ulimit -n 100000
+fi
 
 if ! test -f $DAEMON ; then
   echo "Error: cannot find $DAEMON"
