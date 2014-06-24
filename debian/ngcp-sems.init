@@ -62,8 +62,14 @@ if test "$SEMS_CFG_FILE" ; then
   CFGPARAMS="-f $SEMS_CFG_FILE"
 fi
 
-if test "$SEMS_CREATE_CORE" = "yes" ; then
+if [ -x /usr/sbin/ngcp-virt-identify ]; then
   if /usr/sbin/ngcp-virt-identify --type container; then
+    VIRT="yes"
+  fi
+fi
+
+if test "$SEMS_CREATE_CORE" = "yes" ; then
+  if [ "$VIRT" = "yes" ]; then
     echo "Container environment detected. Skipping core dump configuration."
   else
     # directory for the core dump files
@@ -75,7 +81,7 @@ if test "$SEMS_CREATE_CORE" = "yes" ; then
   fi
 fi
 
-if /usr/sbin/ngcp-virt-identify --type container; then
+if [ "$VIRT" = "yes" ]; then
   echo "Container environment detected. Skipping file descriptors limit configuration."
 else
   # raise file descriptors limit - call hold consumes two fds for RTP ports and one for moh file
