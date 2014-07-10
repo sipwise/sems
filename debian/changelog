@@ -1,3 +1,34 @@
+ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.5.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [85c87b8] MT#7349 fix packaging
+  * [5d430bb] MT#7349 add sw_vcs module
+  * [bbe253a] MT#7349 update sw_vsc to 1.6
+  * [a53a562] MT#7349 add ngcp-sems-prompts dep
+  * [001a0c8] MT#7399 create cache dir
+  * [927f14b] MT#7349 add ngcp-sems-prompts dep on ngcp-sems
+  * [af25546] MT#7349 fix py_sems install dir
+  * [73e6984] Revert "MT#7349 fix py_sems install dir"
+  * [cc61483] MT#7349 fix py_sems install dir properly
+  * [63fc5e7] MT#7349 use dh_python2 to deal with python modules. Use APP_NAME in rules.
+  * [7354b78] MT#7399 Add SEMS_CACHEDIR
+  * [d4e4010] MT#6485 Container detection in init script. Minor improve.
+
+  [ Michael Prokop ]
+  * [68cbeb5] MT#7431 Force strip getarch + getos files in ngcp-sems-libsems1-dev
+  * [764c344] MT#6485 Container detection in init script
+
+  [ Andreas Granig ]
+  * [e4f9fe5] MT#7527 Check sub profile before setting VSC.
+  * [b236740] MT#7527 Cast %llu to avoid warnings.
+
+  [ Andrew Pogrebennyk ]
+  * [29a8716] MT#7355 sems init: add --oknodo to fix restart during package upgrade
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 10 Jul 2014 15:37:26 +0200
+
 ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.4.0.0) unstable; urgency=medium
 
   * [df99926] Imported Upstream version 1.6.0~20140516~eaa616
