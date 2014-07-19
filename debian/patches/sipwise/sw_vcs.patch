@@ -13,7 +13,7 @@
 +include $(COREPATH)/plug-in/Makefile.app_module
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.cpp
-@@ -0,0 +1,1761 @@
+@@ -0,0 +1,1759 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
 +
@@ -460,16 +460,13 @@
 +{
 +}
 +
-+void SW_VscDialog::onSessionStart(const AmSipRequest &req)
++void SW_VscDialog::onSessionStart()
 +{
-+    DBG("SW_VscDialog::onSessionStart\n");
-+    startSession(req);
++    DBG("SW_VscDialog::onSessionStart()...\n");
++    AmSession::onSessionStart();
 +}
 +
-+void SW_VscDialog::onSessionStart(const AmSipReply &rep)
-+{
-+    DBG("SW_VscDialog::onSessionStart (SEMS originator mode)\n");
-+    startSession();
++void SW_VscDialog::onStart() {
 +}
 +
 +u_int64_t SW_VscDialog::getAttributeId(MYSQL *my_handler, const char *attribute)
@@ -524,7 +521,7 @@
 +    }
 +
 +    snprintf(query, sizeof(query), SW_VSC_GET_SUBPROFILE_ATTRIBUTE,
-+        (unsigned long long int) profileId, (unsigned long long int) attributeId);
++             (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +
 +    if (mysql_real_query(my_handler, query, strlen(query)) != 0)
 +    {
@@ -538,13 +535,13 @@
 +    if (mysql_num_rows(res) >= 1)
 +    {
 +        INFO("Allow preference attribute %llu as it is in profile %llu",
-+              (unsigned long long int) profileId, (unsigned long long int) attributeId);
++             (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +        ret = 1;
 +    }
 +    else
 +    {
 +        INFO("Reject preference attribute %llu as it is not in profile %llu",
-+              (unsigned long long int) profileId, (unsigned long long int) attributeId);
++             (unsigned long long int) profileId, (unsigned long long int) attributeId);
 +        ret = 0;
 +    }
 +    return ret;
@@ -596,7 +593,7 @@
 +                                      string *value)
 +{
 +    MYSQL_RES *res;     MYSQL_ROW row;     char query[1024] =
-+        "";     u_int64_t id;     *foundPref = 0;
++    "";     u_int64_t id;     *foundPref = 0;
 +
 +    snprintf(query, sizeof(query), SW_VSC_GET_PREFERENCE_ID,
 +             (unsigned long long int)subscriberId,
@@ -1046,8 +1043,13 @@
 +    return 1;
 +}
 +
-+void SW_VscDialog::startSession(const AmSipRequest &req)
++void SW_VscDialog::onInvite(const AmSipRequest &req)
 +{
++    /// fooooo 
++    if(dlg->getStatus() == AmSipDialog::Connected){
++      AmSession::onInvite(req); 
++      return;
++    }
 +
 +    int ret;
 +    string filename;
@@ -1742,18 +1744,14 @@
 +
 +
 +    setOutput(&m_wav_file);
-+}
 +
-+void SW_VscDialog::startSession()
-+{
-+    AmSipRequest dummy;
-+    startSession(dummy);
++    AmSession::onInvite(req); 
 +}
 +
 +void SW_VscDialog::onBye(const AmSipRequest &req)
 +{
 +    DBG("onBye: stopSession\n");
-+    setStopped();
++    AmSession::onBye(req);
 +}
 +
 +
@@ -1777,7 +1775,7 @@
 +}
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.h
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,130 @@
 +#ifndef _SW_VSC_H_
 +#define _SW_VSC_H_
 +
@@ -1896,10 +1894,9 @@
 +                 UACAuthCred *credentials = NULL);
 +    ~SW_VscDialog();
 +
-+    void onSessionStart(const AmSipRequest &req);
-+    void onSessionStart(const AmSipReply &rep);
-+    void startSession(const AmSipRequest &req);
-+    void startSession();
++    void onSessionStart();
++    void onStart();
++    void onInvite(const AmSipRequest &req);
 +    void onBye(const AmSipRequest &req);
 +    void onDtmf(int event, int duration_msec) {}
 +
