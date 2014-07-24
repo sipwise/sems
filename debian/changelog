@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.4.1.1) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [1ddd666] MT#8251 update sw_vsc module to sems 1.6 module API
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 24 Jul 2014 18:09:35 +0200
+
 ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.4.1.0) unstable; urgency=low
 
   [ Victor Seva ]
