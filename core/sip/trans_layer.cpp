@@ -1406,8 +1406,8 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
     }
 
     if(!t){
-	DBG("No transaction to cancel: wrong key or finally replied\n");
 	bucket->unlock();
+	DBG("No transaction to cancel: wrong key or finally replied\n");
 	return 0;
     }
 
@@ -1416,8 +1416,10 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
     // RFC 3261 says: SHOULD NOT be sent for other request
     // than INVITE.
     if(req->u.request->method != sip_request::INVITE){
+	t->dump();
 	bucket->unlock();
-	ERROR("Trying to cancel a non-INVITE request (we SHOULD NOT do that)\n");
+	ERROR("Trying to cancel a non-INVITE request (we SHOULD NOT do that); inv_cseq: %u, i:%.*s\n",
+	      inv_cseq, dialog_id.len,dialog_id.s);
 	return -1;
     }
     
@@ -1439,8 +1441,10 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
     }
 
     case TS_COMPLETED:
+	ERROR("Trying to cancel a request while in TS_COMPLETED state; inv_cseq: %u, i:%.*s\n",
+	      inv_cseq, dialog_id.len,dialog_id.s);
+	t->dump();
 	bucket->unlock();
-	ERROR("Trying to cancel a request while in TS_COMPLETED state\n");
 	return -1;
 	
     case TS_PROCEEDING:
@@ -1449,8 +1453,10 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 	break;
 
     default:
+	ERROR("Trying to cancel a request while in %s state; inv_cseq: %u, i:%.*s\n",
+	      t->state_str(), inv_cseq, dialog_id.len,dialog_id.s);
+	t->dump();
 	bucket->unlock();
-	ERROR("Trying to cancel a request while in unknown state\n");
 	return -1;
     }
 
@@ -1836,13 +1842,24 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
     
 	if(reply_code >= 300){
 	
-	    if(reply_code == 503) {
-		if(default_bl_ttl) {
+	    bool forget_reply = false;
+	    if(reply_code == 503 &&
+	       (t->state == TS_CALLING ||
+		t->state == TS_PROCEEDING)) {
+
+		if(!(t->flags & TR_FLAG_DISABLE_BL)) {
 		    tr_blacklist::instance()->insert(&t->msg->remote_ip,
 						     default_bl_ttl,"503");
 		}
-		if(!try_next_ip(bucket,t,false))
-		    goto end;
+
+		if(msg->local_socket) { // remote reply
+		    if(!try_next_ip(bucket,t,true))
+			forget_reply = true;
+		}
+		else { // local reply
+		    if(!try_next_ip(bucket,t,false))
+			goto end;
+		}
 	    }
     
 	    // Final error reply
@@ -1860,6 +1877,9 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 		send_non_200_ack(msg,t);
 		t->reset_timer(STIMER_D, D_TIMER, bucket->get_id());
 		
+		if(forget_reply)
+		    goto end;
+
 		goto pass_reply;
 		
 	    case TS_ABANDONED:
@@ -2488,7 +2508,11 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
     } break;
 
     case STIMER_M: {
-	try_next_ip(bucket,tr,true);
+	if(!try_next_ip(bucket,tr,true)) {
+	    // Abandon old transaction
+	    tr->clear_timer(STIMER_A);
+	    tr->state = TS_ABANDONED;
+	}
     } break;
 
     case STIMER_BL:
@@ -2653,10 +2677,6 @@ int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	tmp_msg.release();
 	n_tr->msg = p_msg;
-
-	// Abandon old transaction
-	tr->clear_timer(STIMER_A);
-	tr->state = TS_ABANDONED;
 
 	// take over target set
 	n_tr->targets = tr->targets;
