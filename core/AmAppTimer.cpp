@@ -25,7 +25,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "AmEventDispatcher.h"
+#include "AmSessionContainer.h"
 
 #include "AmAppTimer.h"
 #include "log.h"
@@ -88,8 +88,8 @@ void _AmAppTimer::app_timer_cb(app_timer* at)
       user_timers[at->get_q_id()][at->get_id()] = at_local;
     } else {
       DBG("timer fired: %d for '%s'\n", at->get_id(), at->get_q_id().c_str());
-      AmEventDispatcher::instance()->post(at->get_q_id(),
-					  new AmTimeoutEvent(at->get_id()));
+      AmSessionContainer::instance()->postEvent(at->get_q_id(),
+						new AmTimeoutEvent(at->get_id()));
       delete at;
     }
 
