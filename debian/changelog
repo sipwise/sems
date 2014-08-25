@@ -1,3 +1,21 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.4.2.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [df99926] Imported Upstream version 1.6.0~20140516~eaa616
+  * [be6b7d5] Imported Upstream version 1.6.0~20140819~0b6d12
+  * [824b8ba] MT#8653 remove already merged upstream patches
+
+  [ Jenkins User ]
+  * [e4927e4] Release new version 1:1.6.0~20140516~eaa616-1+0~mr3.5.0.0
+
+  [ Andrew Pogrebennyk ]
+  * [369010b] MT#8251 update sw_vsc module to sems 1.6 module API
+
+  [ Michael Prokop ]
+  * [8bb11bb] MT#8529 Add core/compat/* files to debian/source/include-binaries
+
+ -- Andrew Pogrebennyk <apogrebennyk@sipwise.com>  Mon, 25 Aug 2014 11:22:52 +0200
+
 ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.4.2.0) unstable; urgency=low
 
   [ Andrew Pogrebennyk ]
