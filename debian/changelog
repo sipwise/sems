@@ -1,6 +1,8 @@
-ngcp-sems (1:1.6.0~20140819~0b6d12-1) unstable; urgency=medium
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.5.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
+  * [824b8ba] MT#8653 remove already merged upstream patches
+  * [8b3a87e] MT#8741 remove init script tricks
   * [df99926] Imported Upstream version 1.6.0~20140516~eaa616
   * [be6b7d5] Imported Upstream version 1.6.0~20140819~0b6d12
 
@@ -10,7 +12,7 @@ ngcp-sems (1:1.6.0~20140819~0b6d12-1) unstable; urgency=medium
   [ Michael Prokop ]
   * [8bb11bb] MT#8529 Add core/compat/* files to debian/source/include-binaries
 
- -- Victor Seva <vseva@sipwise.com>  Tue, 19 Aug 2014 14:23:17 +0200
+ -- Alexander Lutay <alutay@sipwise.com>  Tue, 26 Aug 2014 12:02:14 +0200
 
 ngcp-sems (1:1.6.0~20140516~eaa616-1+0~mr3.5.0.0) unstable; urgency=low
 
