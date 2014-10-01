@@ -1,5 +1,7 @@
+Index: sems/apps/sw_vsc/Makefile
+===================================================================
 --- /dev/null
-+++ b/apps/sw_vsc/Makefile
++++ sems/apps/sw_vsc/Makefile
 @@ -0,0 +1,10 @@
 +plug_in_name = sw_vsc
 +
@@ -11,8 +13,10 @@
 +
 +COREPATH ?=../../core
 +include $(COREPATH)/plug-in/Makefile.app_module
+Index: sems/apps/sw_vsc/SW_Vsc.cpp
+===================================================================
 --- /dev/null
-+++ b/apps/sw_vsc/SW_Vsc.cpp
++++ sems/apps/sw_vsc/SW_Vsc.cpp
 @@ -0,0 +1,1759 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
@@ -535,13 +539,13 @@
 +    if (mysql_num_rows(res) >= 1)
 +    {
 +        INFO("Allow preference attribute %llu as it is in profile %llu",
-+             (unsigned long long int) profileId, (unsigned long long int) attributeId);
++             (unsigned long long int) attributeId, (unsigned long long int) profileId);
 +        ret = 1;
 +    }
 +    else
 +    {
 +        INFO("Reject preference attribute %llu as it is not in profile %llu",
-+             (unsigned long long int) profileId, (unsigned long long int) attributeId);
++             (unsigned long long int) attributeId, (unsigned long long int) profileId);
 +        ret = 0;
 +    }
 +    return ret;
@@ -1773,8 +1777,10 @@
 +{
 +    return cred.get();
 +}
+Index: sems/apps/sw_vsc/SW_Vsc.h
+===================================================================
 --- /dev/null
-+++ b/apps/sw_vsc/SW_Vsc.h
++++ sems/apps/sw_vsc/SW_Vsc.h
 @@ -0,0 +1,130 @@
 +#ifndef _SW_VSC_H_
 +#define _SW_VSC_H_
@@ -1906,8 +1912,10 @@
 +};
 +
 +#endif
+Index: sems/apps/sw_vsc/etc/sw_vsc.conf
+===================================================================
 --- /dev/null
-+++ b/apps/sw_vsc/etc/sw_vsc.conf
++++ sems/apps/sw_vsc/etc/sw_vsc.conf
 @@ -0,0 +1,40 @@
 +mysql_host = 127.0.0.1
 +mysql_port = 3306
