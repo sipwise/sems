@@ -10,6 +10,8 @@
 # Short-Description: Start/stop SEMS Application Server
 ### END INIT INFO
 
+umask 0022
+
 SEMS_CACHEDIR="/var/cache/ngcp-sems"
 
 # read configuration from /etc/default/ngcp-sems file
@@ -31,17 +33,17 @@ DESC=ngcp-sems
 PARAMS=""
 
 if ! test -d $SEMS_CACHEDIR ; then
-	mkdir -p $SEMS_CACHEDIR
+	mkdir -m 0755 -p $SEMS_CACHEDIR
 fi
 
 for dir in $SEMS_CACHEDIR_EXTRADIRS ; do
 	if ! test -d ${SEMS_CACHEDIR}/${dir} ; then
-		mkdir -p ${SEMS_CACHEDIR}/${dir}
+		mkdir -m 0755 -p ${SEMS_CACHEDIR}/${dir}
 	fi
 done
 
 if ! test -d $SEMS_RUNDIR ; then
-   mkdir -p $SEMS_RUNDIR
+   mkdir -m 0755 -p $SEMS_RUNDIR
 fi
 chown -R $SEMS_USER:$SEMS_GROUP $SEMS_RUNDIR $SEMS_CACHEDIR
 
