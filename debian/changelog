@@ -1,3 +1,19 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.5.1.0) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [7f514c6] MT#7527 fix the attribute vs profile Id confusion in log
+
+  [ Alexander Lutay ]
+  * [c1bc8c5] MT#7505 Add .gitreview file for sems
+  * [c1977fb] MT#7505 Ignore .gitreview file instead of using a patch file for it
+
+  [ Victor Seva ]
+  * [961c8a8] MT#9425 init: set umask and perms
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 09 Oct 2014 16:55:09 +0200
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.5.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
