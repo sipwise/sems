@@ -24,7 +24,7 @@ Architecture: any
 Pre-Depends: ngcp-system-tools,
              ${misc:Pre-Depends}
 Depends: adduser,
-         ngcp-sems-prompts,
+         ngcp-prompts,
          python,
          ${misc:Depends},
          ${shlibs:Depends}
