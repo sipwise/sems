@@ -1,0 +1,233 @@
+From 0925459582f1148cfe726fa2fd40068e9d6a6233 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 10 Dec 2014 14:06:36 +0100
+Subject: [PATCH 3/4] dsm:mod_utils: utils.getCountRight / getCountLeft actions
+ to get number filenames
+
+---
+ apps/dsm/mods/mod_utils/ModUtils.cpp | 147 +++++++++++++++++++++++++++++++++++
+ apps/dsm/mods/mod_utils/ModUtils.h   |   5 ++
+ doc/dsm/mods/Readme.mod_utils.txt    |  16 +++-
+ 3 files changed, 167 insertions(+), 1 deletion(-)
+
+diff --git a/apps/dsm/mods/mod_utils/ModUtils.cpp b/apps/dsm/mods/mod_utils/ModUtils.cpp
+index 987ed79..8856204 100644
+--- a/apps/dsm/mods/mod_utils/ModUtils.cpp
++++ b/apps/dsm/mods/mod_utils/ModUtils.cpp
+@@ -41,6 +41,11 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
+ 
+   DEF_CMD("utils.playCountRight", SCUPlayCountRightAction);
+   DEF_CMD("utils.playCountLeft",  SCUPlayCountLeftAction);
++  DEF_CMD("utils.getCountRight",  SCUGetCountRightAction);
++  DEF_CMD("utils.getCountLeft",   SCUGetCountLeftAction);
++  DEF_CMD("utils.getCountRightNoSuffix",  SCUGetCountRightNoSuffixAction);
++  DEF_CMD("utils.getCountLeftNoSuffix",   SCUGetCountLeftNoSuffixAction);
++
+   DEF_CMD("utils.getNewId", SCGetNewIdAction);
+   DEF_CMD("utils.spell", SCUSpellAction);
+   DEF_CMD("utils.rand", SCURandomAction);
+@@ -57,6 +62,47 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
+ 
+ MOD_CONDITIONEXPORT_NONE(MOD_CLS_NAME);
+ 
++vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt, 
++				     const string& basedir, const string& suffix, bool right) {
++  
++  vector<string> res;
++
++  if (cnt <= 20) {
++    res.push_back(basedir+int2str(cnt)+suffix);
++    return res;
++  }
++  
++  for (int i=9;i>1;i--) {
++    div_t num = div(cnt, (int)pow(10.,i));  
++    if (num.quot) {
++      res.push_back(basedir+int2str(int(num.quot * pow(10.,i)))+suffix);
++    }
++    cnt = num.rem;
++  }
++
++  if (!cnt)
++    return res;
++
++  if ((cnt <= 20) || (!(cnt%10))) {
++    res.push_back(basedir+int2str(cnt)+suffix);
++    return res;
++  }
++
++  div_t num = div(cnt, 10);
++  if (right) { 
++   // language has single digits before 10s
++    res.push_back(basedir+int2str(num.quot * 10)+suffix);
++    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
++  } else {
++    // language has single digits before 10s
++    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
++    res.push_back(basedir+int2str(num.quot * 10)+suffix);
++  }
++
++  return res;
++}
++
++
+ bool utils_play_count(DSMSession* sc_sess, unsigned int cnt, 
+ 		      const string& basedir, const string& suffix, bool right) {
+   
+@@ -131,6 +177,107 @@ EXEC_ACTION_START(SCUPlayCountLeftAction) {
+   sc_sess->CLR_ERRNO;
+ } EXEC_ACTION_END;
+ 
++
++CONST_ACTION_2P(SCUGetCountRightAction, ',', true);
++EXEC_ACTION_START(SCUGetCountRightAction) {
++  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
++  string basedir = resolveVars(par2, sess, sc_sess, event_params);
++
++  unsigned int cnt = 0;
++  if (str2i(cnt_s,cnt)) {
++    ERROR("could not parse count '%s'\n", cnt_s.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
++    return false;
++  }
++
++  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, ".wav", true);
++
++  cnt=0;
++  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
++    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
++    cnt++;
++  }
++
++  sc_sess->CLR_ERRNO;
++} EXEC_ACTION_END;
++
++
++CONST_ACTION_2P(SCUGetCountLeftAction, ',', true);
++EXEC_ACTION_START(SCUGetCountLeftAction) {
++  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
++  string basedir = resolveVars(par2, sess, sc_sess, event_params);
++
++  unsigned int cnt = 0;
++  if (str2i(cnt_s,cnt)) {
++    ERROR("could not parse count '%s'\n", cnt_s.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
++    return false;
++  }
++
++  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, ".wav", false);
++
++  cnt=0;
++  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
++    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
++    cnt++;
++  }
++
++  sc_sess->CLR_ERRNO;
++} EXEC_ACTION_END;
++
++
++CONST_ACTION_2P(SCUGetCountRightNoSuffixAction, ',', true);
++EXEC_ACTION_START(SCUGetCountRightNoSuffixAction) {
++  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
++  string basedir = resolveVars(par2, sess, sc_sess, event_params);
++
++  unsigned int cnt = 0;
++  if (str2i(cnt_s,cnt)) {
++    ERROR("could not parse count '%s'\n", cnt_s.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
++    return false;
++  }
++
++  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, "", true);
++
++  cnt=0;
++  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
++    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
++    cnt++;
++  }
++
++  sc_sess->CLR_ERRNO;
++} EXEC_ACTION_END;
++
++
++CONST_ACTION_2P(SCUGetCountLeftNoSuffixAction, ',', true);
++EXEC_ACTION_START(SCUGetCountLeftNoSuffixAction) {
++  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
++  string basedir = resolveVars(par2, sess, sc_sess, event_params);
++
++  unsigned int cnt = 0;
++  if (str2i(cnt_s,cnt)) {
++    ERROR("could not parse count '%s'\n", cnt_s.c_str());
++    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
++    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
++    return false;
++  }
++
++  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, "", false);
++
++  cnt=0;
++  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
++    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
++    cnt++;
++  }
++
++  sc_sess->CLR_ERRNO;
++} EXEC_ACTION_END;
++
++
+ EXEC_ACTION_START(SCGetNewIdAction) {
+   string d = resolveVars(arg, sess, sc_sess, event_params);
+   sc_sess->var[d]=AmSession::getNewId();
+diff --git a/apps/dsm/mods/mod_utils/ModUtils.h b/apps/dsm/mods/mod_utils/ModUtils.h
+index aaf89c7..744e2ea 100644
+--- a/apps/dsm/mods/mod_utils/ModUtils.h
++++ b/apps/dsm/mods/mod_utils/ModUtils.h
+@@ -37,6 +37,11 @@ DECLARE_MODULE(MOD_CLS_NAME);
+ 
+ DEF_ACTION_2P(SCUPlayCountRightAction);
+ DEF_ACTION_2P(SCUPlayCountLeftAction);
++DEF_ACTION_2P(SCUGetCountRightAction);
++DEF_ACTION_2P(SCUGetCountLeftAction);
++DEF_ACTION_2P(SCUGetCountRightNoSuffixAction);
++DEF_ACTION_2P(SCUGetCountLeftNoSuffixAction);
++
+ DEF_ACTION_1P(SCGetNewIdAction);
+ DEF_ACTION_2P(SCUSpellAction);
+ DEF_ACTION_2P(SCURandomAction);
+diff --git a/doc/dsm/mods/Readme.mod_utils.txt b/doc/dsm/mods/Readme.mod_utils.txt
+index 413f670..09a668a 100644
+--- a/doc/dsm/mods/Readme.mod_utils.txt
++++ b/doc/dsm/mods/Readme.mod_utils.txt
+@@ -7,10 +7,24 @@ Actions:
+     * sets $errno (arg)
+ 
+  utils.playCountLeft(int cnt [, string basedir])
+-    play count for laguages that have single digits befire the 10s (like german)  
++    play count for laguages that have single digits before the 10s (like german)  
+     * Throws "file" exeption with #path if file can not be opened
+     * sets $errno (arg)
+ 
++ utils.getCountRight(int cnt [, string basedir])
++    get filenames for a number for laguages that have single digits after the 10s (like english)
++    into count_file[n]  (i.e. count_file[0] .. count_file[n])
++    * sets $errno (arg)
++
++ utils.getCountLeft(int cnt [, string basedir])
++    get filenames for a number for laguages that have single digits before the 10s (like german)  
++    into count_file[n]  (i.e. count_file[0] .. count_file[n])
++    * sets $errno (arg)
++
++ utils.getCountRightNoSuffix(int cnt [, string basedir])
++ utils.getCountLeftNoSuffix(int cnt [, string basedir])
++    as above but without .wav suffix
++
+  utils.spell(string word[, string basedir])
+   plays each character in the word (e.g. utils.spell(321,wav/digits/) plays
+     wav/digits/3.wav, wav/digits/2.wav, wav/digits/1.wav 
+-- 
+1.9.3 (Apple Git-50)
+

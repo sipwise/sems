@@ -1,0 +1,97 @@
+From c8976619b1d32e1f433c166dfe04ab375932d253 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Mon, 24 Nov 2014 22:40:20 +0100
+Subject: [PATCH 2/2] dsm: clearArray and clearStruct actions
+
+---
+ apps/dsm/DSMCoreModule.cpp | 26 ++++++++++++++++++++++++--
+ apps/dsm/DSMCoreModule.h   |  1 +
+ doc/dsm/dsm_syntax.txt     |  5 ++++-
+ 3 files changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index fc9e43b..6f1633f 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -97,6 +97,7 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
+   DEF_CMD("inc", SCIncAction);
+   DEF_CMD("log", SCLogAction);
+   DEF_CMD("clear", SCClearAction);
++  DEF_CMD("clearStruct", SCClearStructAction);
+   DEF_CMD("clearArray", SCClearArrayAction);
+   DEF_CMD("size", SCSizeAction);
+   DEF_CMD("arrayIndex", SCArrayIndexAction);
+@@ -838,10 +839,10 @@ EXEC_ACTION_START(SCClearAction) {
+   sc_sess->var.erase(var_name);
+ } EXEC_ACTION_END;
+ 
+-EXEC_ACTION_START(SCClearArrayAction) {
++EXEC_ACTION_START(SCClearStructAction) {
+   string varprefix = (arg.length() && arg[0] == '$')?
+     arg.substr(1) : arg;
+-  DBG("clear variable array '%s.*'\n", varprefix.c_str());
++  DBG("clear variable struct '%s.*'\n", varprefix.c_str());
+ 
+   varprefix+=".";
+ 
+@@ -857,6 +858,27 @@ EXEC_ACTION_START(SCClearArrayAction) {
+ 
+ } EXEC_ACTION_END;
+ 
++
++EXEC_ACTION_START(SCClearArrayAction) {
++  string varprefix = (arg.length() && arg[0] == '$')?
++    arg.substr(1) : arg;
++  DBG("clear variable array '%s[*'\n", varprefix.c_str());
++
++  varprefix+="[";
++
++  VarMapT::iterator lb = sc_sess->var.lower_bound(varprefix);
++  while (lb != sc_sess->var.end()) {
++    if ((lb->first.length() < varprefix.length()) ||
++	strncmp(lb->first.c_str(), varprefix.c_str(),varprefix.length()))
++      break;
++    // fixme: check whether it's really an array index
++    VarMapT::iterator lb_d = lb;
++    lb++;
++    sc_sess->var.erase(lb_d);
++  }
++
++} EXEC_ACTION_END;
++
+ CONST_ACTION_2P(SCSizeAction, ',', false);
+ EXEC_ACTION_START(SCSizeAction) {
+   string array_name = par1;
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index a65616e..6ad0a91 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -92,6 +92,7 @@ DEF_ACTION_2P(SCAppendAction);
+ DEF_ACTION_2P(SCSubStrAction);
+ DEF_ACTION_1P(SCIncAction);
+ DEF_ACTION_1P(SCClearAction);
++DEF_ACTION_1P(SCClearStructAction);
+ DEF_ACTION_1P(SCClearArrayAction);
+ DEF_ACTION_2P(SCSizeAction);
+ DEF_ACTION_2P(SCArrayIndexAction);
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index 8bb6bb6..3cc8143 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -114,9 +114,12 @@ DSM flow
+ 
+  inc($var)
+  clear($var)
+- clearArray($var)
++ clearStruct($var)
+   clears all var.* variables
++ clearArray($var)
++  clears all var[* variables 
+ 
++ 
+ Playing prompts and file I/O
+ ----------------------------
+ 
+-- 
+1.9.3 (Apple Git-50)
+

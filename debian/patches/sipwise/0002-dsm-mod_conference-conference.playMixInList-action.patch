@@ -1,0 +1,123 @@
+From ef1d8c8f6e74383615f4c7e3d0a72e387134d0cd Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Wed, 10 Dec 2014 13:33:26 +0100
+Subject: [PATCH 2/4] dsm:mod_conference: conference.playMixInList action
+
+uses a playlist to mix in files into a list
+---
+ apps/dsm/mods/mod_conference/ModConference.cpp | 55 +++++++++++++++++++++++++-
+ apps/dsm/mods/mod_conference/ModConference.h   |  2 +
+ doc/dsm/mods/Readme.mod_conference.txt         |  4 ++
+ 3 files changed, 59 insertions(+), 2 deletions(-)
+
+diff --git a/apps/dsm/mods/mod_conference/ModConference.cpp b/apps/dsm/mods/mod_conference/ModConference.cpp
+index 07a3e39..6137989 100644
+--- a/apps/dsm/mods/mod_conference/ModConference.cpp
++++ b/apps/dsm/mods/mod_conference/ModConference.cpp
+@@ -49,7 +49,8 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
+   DEF_CMD("conference.teeleave", ConfTeeLeaveAction);
+ 
+   DEF_CMD("conference.setupMixIn", ConfSetupMixInAction);
+-  DEF_CMD("conference.playMixIn", ConfPlayMixInAction);
++  DEF_CMD("conference.playMixIn",  ConfPlayMixInAction);
++  DEF_CMD("conference.playMixInList", ConfPlayMixInListAction);
+ 
+ } MOD_ACTIONEXPORT_END;
+ 
+@@ -175,7 +176,8 @@ EXEC_ACTION_START(ConfJoinAction) {
+     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+   }
+ } EXEC_ACTION_END;
+- 
++
++// get conference channel or other object (mixer etc)
+ template<class T> 
+ static T* getDSMConfChannel(DSMSession* sc_sess, const char* key_name) {
+   if (sc_sess->avar.find(key_name) == sc_sess->avar.end()) {
+@@ -399,3 +401,52 @@ EXEC_ACTION_START(ConfPlayMixInAction) {
+   m->mixin(af);
+ 
+ } EXEC_ACTION_END;
++
++
++EXEC_ACTION_START(ConfPlayMixInListAction) {
++  string filename = resolveVars(arg, sess, sc_sess, event_params);
++
++  bool has_playlist = true;
++  // get playlist
++  DSMDisposableT<AmPlaylist >* l_obj = 
++    getDSMConfChannel<DSMDisposableT<AmPlaylist> >(sc_sess, CONF_AKEY_MIXLIST);
++  if (NULL == l_obj) {
++    // playlist newly setup
++    AmPlaylist* pl = new AmPlaylist(NULL); // no event receiver - no 'clear' event
++    l_obj = new DSMDisposableT<AmPlaylist >(pl);
++    AmArg c_arg;
++    c_arg.setBorrowedPointer(l_obj);
++    sc_sess->avar[CONF_AKEY_MIXLIST] = c_arg;
++      
++    // add to garbage collector
++    sc_sess->transferOwnership(l_obj);
++    has_playlist = false;
++  }
++  AmPlaylist* l = l_obj->get();
++
++
++  DSMDisposableAudioFile* af = new DSMDisposableAudioFile();
++  if(af->open(filename,AmAudioFile::Read)) {
++    ERROR("audio file '%s' could not be opened for reading.\n", 
++	  filename.c_str());
++    delete af;
++    
++    throw DSMException("file", "path", filename);
++  }
++  sc_sess->transferOwnership(af);
++
++    DBG("adding file '%s' to mixin playlist\n", filename.c_str());
++    l->addToPlaylist(new AmPlaylistItem(af, NULL));
++
++  if (!has_playlist) {
++    // get mixin mixer
++    DSMDisposableT<AmAudioMixIn >* m_obj = 
++      getDSMConfChannel<DSMDisposableT<AmAudioMixIn > >(sc_sess, CONF_AKEY_MIXER);
++    if (NULL == m_obj) {
++      throw DSMException("conference", "cause", "mixer not setup!\n");
++    }
++    AmAudioMixIn* m = m_obj->get();
++    // play from list
++    m->mixin(l);
++  }
++} EXEC_ACTION_END;
+diff --git a/apps/dsm/mods/mod_conference/ModConference.h b/apps/dsm/mods/mod_conference/ModConference.h
+index c1e29b2..52d59fd 100644
+--- a/apps/dsm/mods/mod_conference/ModConference.h
++++ b/apps/dsm/mods/mod_conference/ModConference.h
+@@ -39,6 +39,7 @@ DECLARE_MODULE(MOD_CLS_NAME);
+ #define CONF_AKEY_CHANNEL        "conf.chan" 
+ #define CONF_AKEY_DEF_TEECHANNEL "conf.teechan" 
+ #define CONF_AKEY_MIXER          "conf.mixer" 
++#define CONF_AKEY_MIXLIST        "conf.mixlist" 
+ 
+ /** holds a conference channel  */
+ class DSMConfChannel 
+@@ -94,5 +95,6 @@ DEF_ACTION_1P(ConfTeeLeaveAction);
+ 
+ DEF_ACTION_2P(ConfSetupMixInAction);
+ DEF_ACTION_1P(ConfPlayMixInAction);
++DEF_ACTION_1P(ConfPlayMixInListAction);
+ 
+ #endif
+diff --git a/doc/dsm/mods/Readme.mod_conference.txt b/doc/dsm/mods/Readme.mod_conference.txt
+index 1df3b3e..71189df 100644
+--- a/doc/dsm/mods/Readme.mod_conference.txt
++++ b/doc/dsm/mods/Readme.mod_conference.txt
+@@ -48,3 +48,7 @@ conference.setupMixIn(float level, unsigned int seconds)
+ 
+ conference.playMixIn(string filename)
+     - mix in a file
++
++conference.playMixInList(string filename)
++    - add a file to the mix-in playlist
++    - the list is setup when this is called for the first time and set as mixin source 
+-- 
+1.9.3 (Apple Git-50)
+

@@ -1,3 +1,8 @@
 sipwise/sw_vcs.patch
+sipwise/0001-core-advanced_audio-mixin-allow-generic-AmAudio-for-.patch
+sipwise/0002-dsm-mod_conference-conference.playMixInList-action.patch
+sipwise/0003-dsm-mod_utils-utils.getCountRight-getCountLeft-actio.patch
+sipwise/0004-dsm-arrayIndex-action-get-the-index-of-a-string-in-a.patch
+sipwise/0005-dsm-clearArray-and-clearStruct-actions.patch
 no_config.patch
 py_sems_path.patch
