@@ -1,7 +1,5 @@
-Index: sems/apps/sw_vsc/Makefile
-===================================================================
 --- /dev/null
-+++ sems/apps/sw_vsc/Makefile
++++ b/apps/sw_vsc/Makefile
 @@ -0,0 +1,10 @@
 +plug_in_name = sw_vsc
 +
@@ -13,11 +11,9 @@ Index: sems/apps/sw_vsc/Makefile
 +
 +COREPATH ?=../../core
 +include $(COREPATH)/plug-in/Makefile.app_module
-Index: sems/apps/sw_vsc/SW_Vsc.cpp
-===================================================================
 --- /dev/null
-+++ sems/apps/sw_vsc/SW_Vsc.cpp
-@@ -0,0 +1,1759 @@
++++ b/apps/sw_vsc/SW_Vsc.cpp
+@@ -0,0 +1,1872 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
 +
@@ -116,7 +112,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +
 +int SW_VscFactory::onLoad()
 +{
-+    string aPath;
 +    string cfuOnPattern;
 +    string cfuOffPattern;
 +    string cfbOnPattern;
@@ -161,28 +156,95 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+
-+
-+
-+    aPath = cfg.getParameter("announce_path", ANNOUNCE_PATH);
-+    if (!aPath.empty()
-+            && aPath[aPath.length() - 1] != '/' )
-+        aPath += "/";
-+
-+    m_patterns.failAnnouncement = aPath + cfg.getParameter("error_announcement", "");
-+    if (!file_exists(m_patterns.failAnnouncement))
++    m_patterns.audioPath = cfg.getParameter("announce_path", ANNOUNCE_PATH);
++    if (m_patterns.audioPath.empty())
 +    {
-+        ERROR("ErrorAnnouncement file does not exist ('%s').\n",
-+              m_patterns.failAnnouncement.c_str());
++        ERROR("AnnouncePath option announce_path is empty.\n");
 +        return -1;
 +    }
-+    m_patterns.unknownAnnouncement = aPath + cfg.getParameter("unknown_announcement", "");
-+    if (!file_exists(m_patterns.unknownAnnouncement))
++    if (m_patterns.audioPath[m_patterns.audioPath.length() - 1] != '/' )
++        m_patterns.audioPath += "/";
++
++    m_patterns.failAnnouncement = cfg.getParameter("error_announcement", "");
++    if (m_patterns.failAnnouncement.empty())
 +    {
-+        ERROR("UnknownAnnouncement file does not exist ('%s').\n",
-+              m_patterns.unknownAnnouncement.c_str());
++        ERROR("ErrorAnnouncement file not set\n");
 +        return -1;
 +    }
++    m_patterns.unknownAnnouncement = cfg.getParameter("unknown_announcement", "");
++    if (m_patterns.unknownAnnouncement.empty())
++    {
++        ERROR("UnknownAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfuOnAnnouncement = cfg.getParameter("cfu_on_announcement", "");
++    if (m_patterns.cfuOnAnnouncement.empty())
++    {
++        ERROR("CfuOnAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfuOffAnnouncement = cfg.getParameter("cfu_off_announcement", "");
++    if (m_patterns.cfuOffAnnouncement.empty())
++    {
++        ERROR("CfuOffAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfbOnAnnouncement = cfg.getParameter("cfb_on_announcement", "");
++    if (m_patterns.cfbOnAnnouncement.empty())
++    {
++        ERROR("CfbOnAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfbOffAnnouncement = cfg.getParameter("cfb_off_announcement", "");
++    if (m_patterns.cfbOffAnnouncement.empty())
++    {
++        ERROR("CfbOffAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cftOnAnnouncement = cfg.getParameter("cft_on_announcement", "");
++    if (m_patterns.cftOnAnnouncement.empty())
++    {
++        ERROR("CftOnAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cftOffAnnouncement = cfg.getParameter("cft_off_announcement", "");
++    if (m_patterns.cftOffAnnouncement.empty())
++    {
++        ERROR("CftOffAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfnaOnAnnouncement = cfg.getParameter("cfna_on_announcement", "");
++    if (m_patterns.cfnaOnAnnouncement.empty())
++    {
++        ERROR("CfnaOnAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.cfnaOffAnnouncement = cfg.getParameter("cfna_off_announcement", "");
++    if (m_patterns.cfnaOffAnnouncement.empty())
++    {
++        ERROR("CfnaOffAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.speedDialAnnouncement = cfg.getParameter("speed_dial_announcement", "");
++    if (m_patterns.speedDialAnnouncement.empty())
++    {
++        ERROR("SpeedDialAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.reminderOnAnnouncement = cfg.getParameter("reminder_on_announcement", "");
++    if (m_patterns.reminderOnAnnouncement.empty())
++    {
++        ERROR("ReminderOnAnnouncement file not set\n");
++        return -1;
++    }
++    m_patterns.reminderOffAnnouncement = cfg.getParameter("reminder_off_announcement", "");
++    if (m_patterns.reminderOffAnnouncement.empty())
++    {
++        ERROR("ReminderOffAnnouncement file not set\n");
++        return -1;
++    }
++
++
 +    m_patterns.voicemailNumber = cfg.getParameter("voicemail_number", "");
 +    if (m_patterns.voicemailNumber.empty())
 +    {
@@ -190,13 +252,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfuOnAnnouncement = aPath + "/" + cfg.getParameter("cfu_on_announcement", "");
-+    if (!file_exists(m_patterns.cfuOnAnnouncement))
-+    {
-+        ERROR("CfuOnAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfuOnAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfuOnPattern = cfg.getParameter("cfu_on_pattern", "");
 +    if (cfuOnPattern.empty())
 +    {
@@ -211,13 +266,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfuOffAnnouncement = aPath + "/" + cfg.getParameter("cfu_off_announcement", "");
-+    if (!file_exists(m_patterns.cfuOffAnnouncement))
-+    {
-+        ERROR("CfuOffAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfuOffAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfuOffPattern = cfg.getParameter("cfu_off_pattern", "");
 +    if (cfuOffPattern.empty())
 +    {
@@ -232,13 +280,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfbOnAnnouncement = aPath + "/" + cfg.getParameter("cfb_on_announcement", "");
-+    if (!file_exists(m_patterns.cfbOnAnnouncement))
-+    {
-+        ERROR("CfbOnAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfbOnAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfbOnPattern = cfg.getParameter("cfb_on_pattern", "");
 +    if (cfbOnPattern.empty())
 +    {
@@ -253,13 +294,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfbOffAnnouncement = aPath + "/" + cfg.getParameter("cfb_off_announcement", "");
-+    if (!file_exists(m_patterns.cfbOffAnnouncement))
-+    {
-+        ERROR("CfbOffAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfbOffAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfbOffPattern = cfg.getParameter("cfb_off_pattern", "");
 +    if (cfbOffPattern.empty())
 +    {
@@ -275,13 +309,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    }
 +
 +
-+    m_patterns.cftOnAnnouncement = aPath + "/" + cfg.getParameter("cft_on_announcement", "");
-+    if (!file_exists(m_patterns.cftOnAnnouncement))
-+    {
-+        ERROR("CftOnAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cftOnAnnouncement.c_str());
-+        return -1;
-+    }
 +    cftOnPattern = cfg.getParameter("cft_on_pattern", "");
 +    if (cftOnPattern.empty())
 +    {
@@ -296,13 +323,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cftOffAnnouncement = aPath + "/" + cfg.getParameter("cft_off_announcement", "");
-+    if (!file_exists(m_patterns.cftOffAnnouncement))
-+    {
-+        ERROR("CftOffAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cftOffAnnouncement.c_str());
-+        return -1;
-+    }
 +    cftOffPattern = cfg.getParameter("cft_off_pattern", "");
 +    if (cftOffPattern.empty())
 +    {
@@ -317,13 +337,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfnaOnAnnouncement = aPath + "/" + cfg.getParameter("cfna_on_announcement", "");
-+    if (!file_exists(m_patterns.cfnaOnAnnouncement))
-+    {
-+        ERROR("CfnaOnAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfnaOnAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfnaOnPattern = cfg.getParameter("cfna_on_pattern", "");
 +    if (cfnaOnPattern.empty())
 +    {
@@ -338,13 +351,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.cfnaOffAnnouncement = aPath + "/" + cfg.getParameter("cfna_off_announcement", "");
-+    if (!file_exists(m_patterns.cfnaOffAnnouncement))
-+    {
-+        ERROR("CfnaOffAnnouncement file does not exist ('%s').\n",
-+              m_patterns.cfnaOffAnnouncement.c_str());
-+        return -1;
-+    }
 +    cfnaOffPattern = cfg.getParameter("cfna_off_pattern", "");
 +    if (cfnaOffPattern.empty())
 +    {
@@ -359,13 +365,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        return -1;
 +    }
 +
-+    m_patterns.speedDialAnnouncement = aPath + "/" + cfg.getParameter("speed_dial_announcement", "");
-+    if (!file_exists(m_patterns.speedDialAnnouncement))
-+    {
-+        ERROR("SpeedDialAnnouncement file does not exist ('%s').\n",
-+              m_patterns.speedDialAnnouncement.c_str());
-+        return -1;
-+    }
 +    speedDialPattern = cfg.getParameter("speed_dial_pattern", "");
 +    if (speedDialPattern.empty())
 +    {
@@ -381,13 +380,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    }
 +
 +
-+    m_patterns.reminderOnAnnouncement = aPath + "/" + cfg.getParameter("reminder_on_announcement", "");
-+    if (!file_exists(m_patterns.reminderOnAnnouncement))
-+    {
-+        ERROR("ReminderOnAnnouncement file does not exist ('%s').\n",
-+              m_patterns.reminderOnAnnouncement.c_str());
-+        return -1;
-+    }
 +    reminderOnPattern = cfg.getParameter("reminder_on_pattern", "");
 +    if (reminderOnPattern.empty())
 +    {
@@ -403,13 +395,6 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    }
 +
 +
-+    m_patterns.reminderOffAnnouncement = aPath + "/" + cfg.getParameter("reminder_off_announcement", "");
-+    if (!file_exists(m_patterns.reminderOffAnnouncement))
-+    {
-+        ERROR("ReminderOffAnnouncement file does not exist ('%s').\n",
-+              m_patterns.reminderOffAnnouncement.c_str());
-+        return -1;
-+    }
 +    reminderOffPattern = cfg.getParameter("reminder_off_pattern", "");
 +    if (reminderOffPattern.empty())
 +    {
@@ -1049,9 +1034,9 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +
 +void SW_VscDialog::onInvite(const AmSipRequest &req)
 +{
-+    /// fooooo 
++    /// fooooo
 +    if(dlg->getStatus() == AmSipDialog::Connected){
-+      AmSession::onInvite(req); 
++      AmSession::onInvite(req);
 +      return;
 +    }
 +
@@ -1066,13 +1051,137 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    string mapStr, prefStr;
 +    int foundPref = 0;
 +
++    string failAnnouncement;
++    string unknownAnnouncement;
++    string cfuOnAnnouncement;
++    string cfuOffAnnouncement;
++    string cfbOnAnnouncement;
++    string cfbOffAnnouncement;
++    string cftOnAnnouncement;
++    string cftOffAnnouncement;
++    string cfnaOnAnnouncement;
++    string cfnaOffAnnouncement;
++    string speedDialAnnouncement;
++    string reminderOnAnnouncement;
++    string reminderOffAnnouncement;
++
 +    string uuid = getHeader(req.hdrs, "P-Caller-UUID");
 +    if (!uuid.length())
 +    {
 +        ERROR("Application header P-Caller-UUID not found\n");
 +        throw AmSession::Exception(500, "could not get UUID parameter");
 +    }
++    string lang = getHeader(req.hdrs, "P-Language");
++    if (!lang.length())
++    {
++        lang = "en";
++    }
++    lang += "/";
 +
++
++    failAnnouncement = m_patterns->audioPath + lang + m_patterns->failAnnouncement;
++    if (!file_exists(failAnnouncement))
++    {
++        ERROR("ErrorAnnouncement file does not exist ('%s').\n",
++              failAnnouncement.c_str());
++        throw AmSession::Exception(500, "could not get failed announcement");
++    }
++    unknownAnnouncement = m_patterns->audioPath + lang + m_patterns->unknownAnnouncement;
++    if (!file_exists(unknownAnnouncement))
++    {
++        ERROR("UnknownAnnouncement file does not exist ('%s').\n",
++              unknownAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfuOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfuOnAnnouncement;
++    if (!file_exists(cfuOnAnnouncement))
++    {
++        ERROR("CfuOnAnnouncement file does not exist ('%s').\n",
++              cfuOnAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfuOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfuOffAnnouncement;
++    if (!file_exists(cfuOffAnnouncement))
++    {
++        ERROR("CfuOffAnnouncement file does not exist ('%s').\n",
++              cfuOffAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfbOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfbOnAnnouncement;
++    if (!file_exists(cfbOnAnnouncement))
++    {
++        ERROR("CfbOnAnnouncement file does not exist ('%s').\n",
++              cfbOnAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfbOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfbOffAnnouncement;
++    if (!file_exists(cfbOffAnnouncement))
++    {
++        ERROR("CfbOffAnnouncement file does not exist ('%s').\n",
++              cfbOffAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cftOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cftOnAnnouncement;
++    if (!file_exists(cftOnAnnouncement))
++    {
++        ERROR("CftOnAnnouncement file does not exist ('%s').\n",
++              cftOnAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cftOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cftOffAnnouncement;
++    if (!file_exists(cftOffAnnouncement))
++    {
++        ERROR("CftOffAnnouncement file does not exist ('%s').\n",
++              cftOffAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfnaOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfnaOnAnnouncement;
++    if (!file_exists(cfnaOnAnnouncement))
++    {
++        ERROR("CfnaOnAnnouncement file does not exist ('%s').\n",
++              cfnaOnAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    cfnaOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfnaOffAnnouncement;
++    if (!file_exists(cfnaOffAnnouncement))
++    {
++        ERROR("CfnaOffAnnouncement file does not exist ('%s').\n",
++              cfnaOffAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    speedDialAnnouncement = m_patterns->audioPath + lang + m_patterns->speedDialAnnouncement;
++    if (!file_exists(speedDialAnnouncement))
++    {
++        ERROR("SpeedDialAnnouncement file does not exist ('%s').\n",
++              speedDialAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    reminderOnAnnouncement = m_patterns->audioPath + lang + m_patterns->reminderOnAnnouncement;
++    if (!file_exists(reminderOnAnnouncement))
++    {
++        ERROR("ReminderOnAnnouncement file does not exist ('%s').\n",
++              reminderOnAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
++    reminderOffAnnouncement = m_patterns->audioPath + lang + m_patterns->reminderOffAnnouncement;
++    if (!file_exists(reminderOffAnnouncement))
++    {
++        ERROR("ReminderOffAnnouncement file does not exist ('%s').\n",
++              reminderOffAnnouncement.c_str());
++        filename = failAnnouncement;
++        goto out;
++    }
 +
 +    my_handler = mysql_init(NULL);
 +    if (!mysql_real_connect(my_handler,
@@ -1083,21 +1192,21 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        ERROR("Error connecting to provisioning db: %s",
 +              mysql_error(my_handler));
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +    if (mysql_options(my_handler, MYSQL_OPT_RECONNECT, &recon) != 0)
 +    {
 +        ERROR("Error setting reconnect-option for provisioning db: %s",
 +              mysql_error(my_handler));
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
 +    subId = getSubscriberId(my_handler, uuid.c_str(), &domain, domId, profId);
 +    if (!subId)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1111,7 +1220,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1119,7 +1228,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                      SW_VSC_DESTSET_CFU, "cfu");
 +        if (!mapId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1129,13 +1238,13 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        u_int64_t attId = getAttributeId(my_handler, "cfu");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
 +        if(!checkSubscriberProfile(my_handler, profId, attId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1143,14 +1252,14 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
 +        {
 +            if (!insertPreference(my_handler, subId, attId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully set VSC CFU to '%s' using mapping id '%llu' for uuid '%s'",
@@ -1160,19 +1269,19 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        {
 +            if (!updatePreferenceId(my_handler, prefId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully updated VSC CFU to '%s' using mapping id '%llu' for uuid '%s'",
 +                 uri.c_str(), (unsigned long long int)mapId, uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfuOnAnnouncement;
++        filename = cfuOnAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1181,20 +1290,20 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu"))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t attId = getAttributeId(my_handler, "cfu");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
@@ -1204,7 +1313,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        }
 +        else if (!deletePreferenceId(my_handler, prefId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1213,12 +1322,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfuOffAnnouncement;
++        filename = cfuOffAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1227,7 +1336,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1235,7 +1344,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                      SW_VSC_DESTSET_CFB, "cfb");
 +        if (!mapId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1245,13 +1354,13 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        u_int64_t attId = getAttributeId(my_handler, "cfb");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
 +        if(!checkSubscriberProfile(my_handler, profId, attId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1259,14 +1368,14 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
 +        {
 +            if (!insertPreference(my_handler, subId, attId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully set VSC CFB to '%s' for uuid '%s'",
@@ -1276,19 +1385,19 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        {
 +            if (!updatePreferenceId(my_handler, prefId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully updated VSC CFB to '%s' for uuid '%s'",
 +                 uri.c_str(), uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfbOnAnnouncement;
++        filename = cfbOnAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1297,20 +1406,20 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb"))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t attId = getAttributeId(my_handler, "cfb");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
@@ -1320,7 +1429,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        }
 +        else if (!deletePreferenceId(my_handler, prefId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1329,12 +1438,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfbOffAnnouncement;
++        filename = cfbOffAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1349,7 +1458,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        if (!number2uri(req, my_handler, uuid, subId, domain,
 +                        domId, timend + 1, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1357,7 +1466,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                      SW_VSC_DESTSET_CFT, "cft");
 +        if (!mapId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1367,13 +1476,13 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        u_int64_t attId = getAttributeId(my_handler, "cft");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
 +        if(!checkSubscriberProfile(my_handler, profId, attId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1381,14 +1490,14 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
 +        {
 +            if (!insertPreference(my_handler, subId, attId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully set VSC CFT to '%s' for uuid '%s'",
@@ -1398,7 +1507,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        {
 +            if (!updatePreferenceId(my_handler, prefId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully updated VSC CFT to '%s' for uuid '%s'",
@@ -1408,20 +1517,20 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        attId = getAttributeId(my_handler, "ringtimeout");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
 +        {
 +            if (!insertPreference(my_handler, subId, attId, tim))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully set VSC ringtimeout to '%s' for uuid '%s'",
@@ -1431,19 +1540,19 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        {
 +            if (!updatePreferenceId(my_handler, prefId, tim))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully updated VSC ringtimeout to '%s' for uuid '%s'",
 +                 tim.c_str(), uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cftOnAnnouncement;
++        filename = cftOnAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1452,13 +1561,13 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFT, "cft"))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t attId = getAttributeId(my_handler, "cft");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1466,7 +1575,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
@@ -1476,7 +1585,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        }
 +        else if (!deletePreferenceId(my_handler, prefId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1488,18 +1597,18 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        attId = getAttributeId(my_handler, "ringtimeout");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (foundPref && !deletePreferenceId(my_handler, prefId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1509,12 +1618,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        }
 +
 +
-+        filename = m_patterns->cftOffAnnouncement;
++        filename = cftOffAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1523,7 +1632,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1531,7 +1640,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                      SW_VSC_DESTSET_CFNA, "cfna");
 +        if (!mapId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1541,13 +1650,13 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        u_int64_t attId = getAttributeId(my_handler, "cfna");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
 +        if(!checkSubscriberProfile(my_handler, profId, attId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +
@@ -1555,14 +1664,14 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
 +        {
 +            if (!insertPreference(my_handler, subId, attId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully set VSC CFNA to '%s' for uuid '%s'",
@@ -1572,19 +1681,19 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        {
 +            if (!updatePreferenceId(my_handler, prefId, mapStr))
 +            {
-+                filename = m_patterns->failAnnouncement;
++                filename = failAnnouncement;
 +                goto out;
 +            }
 +            INFO("Successfully updated VSC CFNA to '%s' for uuid '%s'",
 +                 uri.c_str(), uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfnaOnAnnouncement;
++        filename = cfnaOnAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1593,20 +1702,20 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna"))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t attId = getAttributeId(my_handler, "cfna");
 +        if (!attId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        u_int64_t prefId = getPreference(my_handler, subId, attId,
 +                                         &foundPref, &prefStr);
 +        if (!prefId)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else if (!foundPref)
@@ -1616,7 +1725,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        }
 +        else if (!deletePreferenceId(my_handler, prefId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1625,12 +1734,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 uuid.c_str());
 +        }
 +
-+        filename = m_patterns->cfnaOffAnnouncement;
++        filename = cfnaOffAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1640,12 +1749,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +        string slot = string("*") + req.user.substr(4, 1);
 +        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        if (!insertSpeedDialSlot(my_handler, subId, slot, uri))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1654,12 +1763,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 slot.c_str(), uuid.c_str());
 +        }
 +
-+        filename = m_patterns->speedDialAnnouncement;
++        filename = speedDialAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1673,14 +1782,14 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +
 +        if (hour < 0 || hour > 23)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            INFO("Invalid hour '%s' in reminder data for uuid '%s'",
 +                 req.user.substr(4, 2).c_str(), uuid.c_str());
 +            goto out;
 +        }
 +        if (min < 0 || min > 59)
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            INFO("Invalid minute '%s' in reminder data for uuid '%s'",
 +                 req.user.substr(6, 2).c_str(), uuid.c_str());
 +            goto out;
@@ -1691,7 +1800,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +
 +        if (!insertReminder(my_handler, subId, recur, tim))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1700,12 +1809,12 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 c_tim, uuid.c_str());
 +        }
 +
-+        filename = m_patterns->reminderOnAnnouncement;
++        filename = reminderOnAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
@@ -1714,7 +1823,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +    {
 +        if (!deleteReminder(my_handler, subId))
 +        {
-+            filename = m_patterns->failAnnouncement;
++            filename = failAnnouncement;
 +            goto out;
 +        }
 +        else
@@ -1723,19 +1832,19 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +                 uuid.c_str());
 +        }
 +
-+        filename = m_patterns->reminderOffAnnouncement;
++        filename = reminderOffAnnouncement;
 +        goto out;
 +    }
 +    else if (ret != REG_NOMATCH)
 +    {
-+        filename = m_patterns->failAnnouncement;
++        filename = failAnnouncement;
 +        goto out;
 +    }
 +
 +
 +
 +    INFO("Unkown VSC code '%s' found", req.user.c_str());
-+    filename = m_patterns->unknownAnnouncement;
++    filename = unknownAnnouncement;
 +
 +out:
 +
@@ -1749,7 +1858,7 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +
 +    setOutput(&m_wav_file);
 +
-+    AmSession::onInvite(req); 
++    AmSession::onInvite(req);
 +}
 +
 +void SW_VscDialog::onBye(const AmSipRequest &req)
@@ -1777,11 +1886,9 @@ Index: sems/apps/sw_vsc/SW_Vsc.cpp
 +{
 +    return cred.get();
 +}
-Index: sems/apps/sw_vsc/SW_Vsc.h
-===================================================================
 --- /dev/null
-+++ sems/apps/sw_vsc/SW_Vsc.h
-@@ -0,0 +1,130 @@
++++ b/apps/sw_vsc/SW_Vsc.h
+@@ -0,0 +1,132 @@
 +#ifndef _SW_VSC_H_
 +#define _SW_VSC_H_
 +
@@ -1806,6 +1913,8 @@ Index: sems/apps/sw_vsc/SW_Vsc.h
 +    int mysqlPort;
 +    string mysqlUser;
 +    string mysqlPass;
++
++    string audioPath;
 +
 +    string failAnnouncement;
 +    string unknownAnnouncement;
@@ -1912,10 +2021,8 @@ Index: sems/apps/sw_vsc/SW_Vsc.h
 +};
 +
 +#endif
-Index: sems/apps/sw_vsc/etc/sw_vsc.conf
-===================================================================
 --- /dev/null
-+++ sems/apps/sw_vsc/etc/sw_vsc.conf
++++ b/apps/sw_vsc/etc/sw_vsc.conf
 @@ -0,0 +1,40 @@
 +mysql_host = 127.0.0.1
 +mysql_port = 3306
