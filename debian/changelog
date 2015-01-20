@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.1.2) unstable; urgency=low
+
+  [ Andreas Granig ]
+  * [5688835] MT#10367 Dynamically set VSC language.
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 20 Jan 2015 11:46:49 +0100
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.1.1) unstable; urgency=low
 
   * New release.
