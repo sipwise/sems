@@ -4,5 +4,6 @@ sipwise/0002-dsm-mod_conference-conference.playMixInList-action.patch
 sipwise/0003-dsm-mod_utils-utils.getCountRight-getCountLeft-actio.patch
 sipwise/0004-dsm-arrayIndex-action-get-the-index-of-a-string-in-a.patch
 sipwise/0005-dsm-clearArray-and-clearStruct-actions.patch
+sipwise/0006-rename_xdigits.patch
 no_config.patch
 py_sems_path.patch
