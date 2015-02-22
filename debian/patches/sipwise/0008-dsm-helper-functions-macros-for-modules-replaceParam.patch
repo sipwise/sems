@@ -1,0 +1,55 @@
+From 4ec1e1d2d06359c599d9fc551478d443934c616c Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 20 Nov 2014 19:46:49 +0100
+Subject: [PATCH 2/3] dsm: helper functions / macros for modules:
+ replaceParams/SET_ERROR/CLR_ERROR
+
+use resolveVars in module actions/condition to replace only one variable/param,
+use replaceParams to replace substrings as well,
+
+e.g.  myAction($myvar) - resolveVars
+      myOtherAction("this is $(myvar) and #(myparam) replaced") - replaceParams
+---
+ apps/dsm/DSMCoreModule.h |  4 ++++
+ apps/dsm/DSMSession.h    | 12 ++++++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index 328e18e..ff8cee3 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -160,4 +160,8 @@ class TestDSMCondition
+ 	     map<string,string>* event_params);
+ };
+ 
++/** return string q with variables/params/selects replaced */
++string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
++		     map<string,string>* event_params);
++
+ #endif
+diff --git a/apps/dsm/DSMSession.h b/apps/dsm/DSMSession.h
+index 5607c9d..f7841a7 100644
+--- a/apps/dsm/DSMSession.h
++++ b/apps/dsm/DSMSession.h
+@@ -97,6 +97,18 @@ using std::map;
+ #define CLR_STRERROR				\
+   var["strerror"] = "";
+ 
++#define SET_ERROR(s, errno, errstr)	\
++  do {					\
++    s->SET_ERRNO(errno);		\
++    s->SET_STRERROR(errstr);		\
++  } while (0)
++
++#define CLR_ERROR(s)			\
++  do {					\
++    s->CLR_ERRNO;			\
++    s->CLR_STRERROR;			\
++  } while (0)
++
+ typedef map<string, string> VarMapT;
+ typedef map<string, AmArg>  AVarMapT;
+ 
+-- 
+1.9.3 (Apple Git-50)
+

@@ -1,0 +1,25 @@
+From 7392ee5ea6b27f3d8b06d854dd9be2311b528ef5 Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 20 Feb 2015 21:17:44 +0100
+Subject: [PATCH 3/7] b/f: dsm:mod_groups: really lock the groups list
+
+---
+ apps/dsm/mods/mod_groups/ModGroups.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/apps/dsm/mods/mod_groups/ModGroups.cpp b/apps/dsm/mods/mod_groups/ModGroups.cpp
+index 15a19f1..60a1edd 100644
+--- a/apps/dsm/mods/mod_groups/ModGroups.cpp
++++ b/apps/dsm/mods/mod_groups/ModGroups.cpp
+@@ -144,7 +144,7 @@ EXEC_ACTION_START(GroupsPostEventAction) {
+ 
+ 
+   DBG("posting event to group '%s'\n", groupname.c_str());
+-  GroupsModule::groups_mut.unlock();
++  GroupsModule::groups_mut.lock();
+   GroupMap::iterator grp = GroupsModule::groups.find(groupname);
+   bool posted = false;
+   if (grp != GroupsModule::groups.end()) {
+-- 
+1.9.3 (Apple Git-50)
+
