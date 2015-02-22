@@ -1,0 +1,97 @@
+--- a/apps/dsm/DSMStateEngine.cpp
++++ b/apps/dsm/DSMStateEngine.cpp
+@@ -37,6 +37,57 @@
+ 
+ #include "DSM.h" // for DSMFactory::MonitoringFullCallgraph
+ 
++const char* DSMCondition::type2str(EventType event) {
++#define rt(e) case e: return #e;
++
++  switch (event) {
++    rt(Any);
++    rt(Invite);
++    rt(SessionStart);
++    rt(Ringing);
++    rt(EarlySession);
++    rt(FailedCall);
++    rt(SipRequest);
++    rt(SipReply);
++
++    rt(Hangup);
++    rt(Hold);
++    rt(UnHold);
++
++    rt(B2BOtherReply);
++    rt(B2BOtherBye);
++
++    rt(SessionTimeout);
++    rt(RtpTimeout);
++    rt(RemoteDisappeared);
++
++    rt(Key);
++    rt(Timer);
++
++    rt(NoAudio);
++    rt(PlaylistSeparator);
++
++    rt(DSMEvent);
++    rt(DSMException);
++
++    rt(XmlrpcResponse);
++
++    rt(JsonRpcResponse);
++    rt(JsonRpcRequest);
++
++    rt(Startup);
++    rt(Reload);
++    rt(System);
++
++    rt(SIPSubscription);
++
++    rt(RTPTimeout);
++
++  default: return "<unknown>";
++#undef rt
++  };
++}
++
+ DSMStateDiagram::DSMStateDiagram(const string& name) 
+   : name(name) {
+ }
+@@ -526,14 +577,14 @@ void DSMStateEngine::runEvent(AmSession*
+   map<string,string> exception_params;
+   bool is_exception = run_exception;
+ 
+-  DBG("o v DSM processing event, current state '%s' v\n", current->name.c_str());
++  DBG("o v DSM current state '%s', processing '%s' event v\n",
++      current->name.c_str(), DSMCondition::type2str(event));
++
+   bool is_consumed = true;
+   do {
+     try {
+       is_consumed = true;
+ 
+-
+-      DBG(" > state '%s'\n", current->name.c_str());
+       for (vector<DSMTransition>::iterator tr = current->transitions.begin();
+ 	   tr != current->transitions.end();tr++) {
+ 	if (tr->is_exception != is_exception)
+@@ -617,7 +668,6 @@ void DSMStateEngine::runEvent(AmSession*
+ 	      break;
+ 	    }
+ 	  }
+-	  DBG(" >>o arrived in state '%s'\n", current->name.c_str());
+ 	  
+ 	  break;
+ 	}
+--- a/apps/dsm/DSMStateEngine.h
++++ b/apps/dsm/DSMStateEngine.h
+@@ -123,6 +123,8 @@ class DSMCondition
+     RelayOnB2BReply
+   };
+ 
++  static const char* type2str(EventType event);
++
+   bool invert; 
+   
+   DSMCondition() : invert(false) { }
