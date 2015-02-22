@@ -1,0 +1,46 @@
+From 34b7598451dc639ed1a526d244b496adff9a130b Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Thu, 20 Nov 2014 20:50:20 +0100
+Subject: [PATCH 3/3] dsm:syntax - allow @@,## and $$ for @, # and $$ in sets()
+ action
+
+Conflicts:
+
+	doc/dsm/dsm_syntax.txt
+---
+ apps/dsm/DSMCoreModule.cpp | 4 ++++
+ doc/dsm/dsm_syntax.txt     | 5 ++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index 37c2344..c4f18af 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -627,6 +627,10 @@ string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
+     repl_pos = rstart+1;
+     if (rstart == string::npos) 
+       break;
++    if (rstart && (res.length() > rstart) && (res[rstart]==res[repl_pos])) {
++      res.erase(rstart, 1);
++      continue;
++    }
+     if (rstart && res[rstart-1] == '\\') // escaped
+       continue;
+     size_t rend;
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index cf29e6e..05fd2db 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -89,6 +89,9 @@ DSM flow
+   e.g.  set($var="text"); set($var=$var2); set($var=#key)
+  sets($var=value)
+   e.g.  sets($var="text and some $variable and some #param");
++        sets($var="$(variable1)$(variable2)");
++        sets($var="this is a single hash: ##")
++        sets($var="a single at on a date with a single dollar: @@$$")
+  var($dstvar=srcvarname)
+   e.g.  var($dstvar=$var_counter)
+  param($dstvar=srcparamname)
+-- 
+1.9.3 (Apple Git-50)
+
