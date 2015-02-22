@@ -1,0 +1,128 @@
+From b1dfeab659a0188304bcc6715672af462f75afae Mon Sep 17 00:00:00 2001
+From: Stefan Sayer <stefan.sayer@googlemail.com>
+Date: Fri, 20 Feb 2015 20:49:31 +0100
+Subject: [PATCH 2/7] dsm: logs(), dgb(), info(), warn(), error() actions for
+ easy logging
+
+---
+ apps/dsm/DSMCoreModule.cpp | 40 ++++++++++++++++++++++++++++++++++++++--
+ apps/dsm/DSMCoreModule.h   |  5 +++++
+ doc/dsm/dsm_syntax.txt     |  7 ++++++-
+ 3 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/apps/dsm/DSMCoreModule.cpp b/apps/dsm/DSMCoreModule.cpp
+index 1da9ad1..b4ae758 100644
+--- a/apps/dsm/DSMCoreModule.cpp
++++ b/apps/dsm/DSMCoreModule.cpp
+@@ -92,6 +92,11 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
+   DEF_CMD("substr", SCSubStrAction);
+   DEF_CMD("inc", SCIncAction);
+   DEF_CMD("log", SCLogAction);
++  DEF_CMD("logs", SCLogsAction);
++  DEF_CMD("dbg", SCDbgAction);
++  DEF_CMD("info", SCInfoAction);
++  DEF_CMD("warn", SCWarnAction);
++  DEF_CMD("error", SCErrorAction);
+   DEF_CMD("clear", SCClearAction);
+   DEF_CMD("clearStruct", SCClearStructAction);
+   DEF_CMD("clearArray", SCClearArrayAction);
+@@ -516,6 +521,37 @@ EXEC_ACTION_START(SCLogAction) {
+        l_line.c_str());
+ } EXEC_ACTION_END;
+ 
++CONST_ACTION_2P(SCLogsAction, ',', false);
++EXEC_ACTION_START(SCLogsAction) {
++  unsigned int lvl;
++  if (str2i(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
++    ERROR("unknown log level '%s'\n", par1.c_str());
++    EXEC_ACTION_STOP;
++  }
++  string l_line = replaceParams(par2, sess, sc_sess, event_params);
++  _LOG((int)lvl, "FSM: '%s'\n", l_line.c_str());
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCDbgAction) {
++  string l_line = replaceParams(arg, sess, sc_sess, event_params);
++  DBG("FSM: '%s'\n", l_line.c_str());
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCInfoAction) {
++  string l_line = replaceParams(arg, sess, sc_sess, event_params);
++  INFO("FSM: '%s'\n", l_line.c_str());
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCWarnAction) {
++  string l_line = replaceParams(arg, sess, sc_sess, event_params);
++  WARN("FSM: '%s'\n", l_line.c_str());
++} EXEC_ACTION_END;
++
++EXEC_ACTION_START(SCErrorAction) {
++  string l_line = replaceParams(arg, sess, sc_sess, event_params);
++  ERROR("FSM: '%s'\n", l_line.c_str());
++} EXEC_ACTION_END;
++
+ void log_vars(const string& l_arg, AmSession* sess,
+ 	      DSMSession* sc_sess, map<string,string>* event_params) {
+   unsigned int lvl;
+@@ -1199,7 +1235,7 @@ EXEC_ACTION_START(SCDIAction) {
+       p.erase(0, 8);
+       AmArg var_struct;
+       string varprefix = p+".";
+-      bool has_vars = false;
++      //bool has_vars = false;
+       map<string, string>::iterator lb = sc_sess->var.lower_bound(varprefix);
+       while (lb != sc_sess->var.end()) {
+ 	if ((lb->first.length() < varprefix.length()) ||
+@@ -1213,7 +1249,7 @@ EXEC_ACTION_START(SCDIAction) {
+ 	  string2argarray(varname, lb->second, var_struct);
+ 	
+ 	lb++;
+-	has_vars = true;
++	//has_vars = true;
+       }
+       di_args.push(var_struct);
+     } else if (p.length() > 7 &&  
+diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
+index a91a10f..a74241b 100644
+--- a/apps/dsm/DSMCoreModule.h
++++ b/apps/dsm/DSMCoreModule.h
+@@ -98,6 +98,11 @@ DEF_ACTION_2P(SCSetTimerAction);
+ DEF_ACTION_1P(SCRemoveTimerAction);
+ DEF_ACTION_1P(SCRemoveTimersAction);
+ DEF_ACTION_2P(SCLogAction);
++DEF_ACTION_2P(SCLogsAction);
++DEF_ACTION_1P(SCDbgAction);
++DEF_ACTION_1P(SCInfoAction);
++DEF_ACTION_1P(SCWarnAction);
++DEF_ACTION_1P(SCErrorAction);
+ DEF_ACTION_1P(SCLogVarsAction);
+ DEF_ACTION_1P(SCLogParamsAction);
+ DEF_ACTION_1P(SCLogSelectsAction);
+diff --git a/doc/dsm/dsm_syntax.txt b/doc/dsm/dsm_syntax.txt
+index 9c42ead..8b45676 100644
+--- a/doc/dsm/dsm_syntax.txt
++++ b/doc/dsm/dsm_syntax.txt
+@@ -246,6 +246,7 @@ B2B call control
+ 
+  log(level, text)
+    e.g. log(1, $var1)
++ logs(level, "text with $(variable_name) and #(paramname) replacements")
+  -- log all variables:
+  logVars(level) 
+  -- log all selects:
+@@ -253,7 +254,11 @@ B2B call control
+  -- log all Params (only in actions of a transition):
+  logParams(level) 
+  -- log everything:
+- logAll(level) 
++ logAll(level)
++ dbg("some debug with $(replaced_var)") 
++ info("some info $(message)")
++ warn("warn #(message_parameter)")
++ error("error in call @(local_tag)")
+ 
+  Timers
+  ------
+-- 
+1.9.3 (Apple Git-50)
+
