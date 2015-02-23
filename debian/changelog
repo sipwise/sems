@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.1.4) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [8cd0a0d] MT#11241 confpin: add conference_first and moh for first participant.
+  * [bf6444c] MT#11241 mod_conference: AmPlaylist::close(…) is now replaced by AmPlaylist::flush()
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 23 Feb 2015 12:58:03 +0100
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.1.3) unstable; urgency=low
 
   [ Andrew Pogrebennyk ]
