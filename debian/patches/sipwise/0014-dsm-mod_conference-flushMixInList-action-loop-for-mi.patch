@@ -62,7 +62,7 @@ index 236cdd2..0028a14 100644
 +    EXEC_ACTION_STOP;
 +  }
 +  AmPlaylist* l = l_obj->get();
-+  l->close(false);
++  l->flush();
 +  DBG("flushed mixInList\n");
 +} EXEC_ACTION_END;
 diff --git a/apps/dsm/mods/mod_conference/ModConference.h b/apps/dsm/mods/mod_conference/ModConference.h
