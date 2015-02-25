@@ -17,7 +17,7 @@ Build-Depends: debhelper (>= 8~),
                openssl,
                python-dev,
                python-sip-dev
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 
 Package: ngcp-sems
 Architecture: any
