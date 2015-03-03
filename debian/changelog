@@ -1,3 +1,17 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.3.0) unstable; urgency=low
+
+  [ Andreas Granig ]
+  * [c07137c] MT#10367 Dynamically set VSC language.
+
+  [ Andrew Pogrebennyk ]
+  * [7a38157] MT#11239 MT#11219 rename prompts x1..9 to 1..9-and
+  * [cb6c4b7] MT#11241 confpin: add conference_first and moh for first participant
+  * [692a3bb] MT#11241 mod_conference: AmPlaylist::close(…) is now replaced by AmPlaylist::flush()
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 03 Mar 2015 16:50:26 +0100
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.2.0) unstable; urgency=low
 
   * New release.
