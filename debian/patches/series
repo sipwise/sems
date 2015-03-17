@@ -14,5 +14,6 @@ sipwise/0012-b-f-dsm-mod_groups-really-lock-the-groups-list.patch
 sipwise/0013-dsm-mod_groups-functions-to-get-group-participants-a.patch
 sipwise/0014-dsm-mod_conference-flushMixInList-action-loop-for-mi.patch
 sipwise/0015-confpin-simple-pin-conference-app.patch
+sipwise/0016-core-made-sems-aware-of-rfc5764-media-types-UDP-TLS-.patch
 no_config.patch
 py_sems_path.patch
