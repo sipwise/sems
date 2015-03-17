@@ -1,0 +1,69 @@
+From d8f4137cb217ea7e74d60f8d2f0cf65dbb367e5c Mon Sep 17 00:00:00 2001
+From: Juha Heinanen <jh@tutpro.com>
+Date: Thu, 20 Nov 2014 10:10:35 +0200
+Subject: [PATCH] core: made sems aware of rfc5764 media types UDP/TLS/RTP/SAVP
+ and   UDP/TLS/RTP/SAVPF
+
+---
+ core/AmSdp.cpp | 10 ++++++++--
+ core/AmSdp.h   |  2 +-
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/core/AmSdp.cpp b/core/AmSdp.cpp
+index 5689a34..dd2ff5f 100644
+--- a/core/AmSdp.cpp
++++ b/core/AmSdp.cpp
+@@ -103,6 +103,8 @@ inline string transport_p_2_str(int tp)
+   case TP_UDP: return "udp";
+   case TP_RTPSAVP: return "RTP/SAVP";
+   case TP_RTPSAVPF: return "RTP/SAVPF";
++  case TP_UDPTLSRTPSAVP: return "UDP/TLS/RTP/SAVP";
++  case TP_UDPTLSRTPSAVPF: return "UDP/TLS/RTP/SAVPF";
+   case TP_UDPTL: return "udptl";
+   default: return "<unknown media type>";
+   }
+@@ -358,7 +360,7 @@ void AmSdp::print(string& body) const
+ 
+       string options;
+ 
+-      if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPSAVP || media_it->transport == TP_RTPSAVPF) {
++      if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPSAVP || media_it->transport == TP_RTPSAVPF || media_it->transport == TP_UDPTLSRTPSAVP || media_it->transport == TP_UDPTLSRTPSAVPF) {
+ 	for(std::vector<SdpPayload>::const_iterator pl_it = media_it->payloads.begin();
+ 	    pl_it != media_it->payloads.end(); pl_it++) {
+ 
+@@ -889,7 +891,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
+       }
+     case FMT:
+       {
+-	if (m.transport == TP_RTPAVP || m.transport == TP_RTPSAVP || m.transport == TP_RTPSAVPF) {
++	if (m.transport == TP_RTPAVP || m.transport == TP_RTPSAVP || m.transport == TP_RTPSAVPF || m.transport == TP_UDPTLSRTPSAVP || m.transport == TP_UDPTLSRTPSAVPF) {
+ 	  if (contains(media_line, line_end, ' ')) {
+ 	    next = parse_until(media_line, ' ');
+ 	    string value;
+@@ -1471,6 +1473,10 @@ static TransProt transport_type(string transport)
+     return TP_RTPSAVP;
+   else if(transport_uc == "RTP/SAVPF")
+     return TP_RTPSAVPF;
++  else if(transport_uc == "UDP/TLS/RTP/SAVP")
++    return TP_UDPTLSRTPSAVP;
++  else if(transport_uc == "UDP/TLS/RTP/SAVPF")
++    return TP_UDPTLSRTPSAVPF;
+   else if(transport_uc == "UDPTL")
+     return TP_UDPTL;
+   else 
+diff --git a/core/AmSdp.h b/core/AmSdp.h
+index 1e20e12..23302fc 100644
+--- a/core/AmSdp.h
++++ b/core/AmSdp.h
+@@ -55,7 +55,7 @@ enum AddressType { AT_NONE=0, AT_V4, AT_V6 };
+ /** media type */
+ enum MediaType { MT_NONE=0, MT_AUDIO, MT_VIDEO, MT_APPLICATION, MT_TEXT, MT_MESSAGE, MT_IMAGE };
+ /** transport protocol */
+-enum TransProt { TP_NONE=0, TP_RTPAVP, TP_UDP, TP_RTPSAVP, TP_UDPTL, TP_RTPSAVPF };
++enum TransProt { TP_NONE=0, TP_RTPAVP, TP_UDP, TP_RTPSAVP, TP_UDPTL, TP_RTPSAVPF, TP_UDPTLSRTPSAVP, TP_UDPTLSRTPSAVPF };
+ 
+ /** \brief c=... line in SDP*/
+ struct SdpConnection
+-- 
+1.9.1
+
