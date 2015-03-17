@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.2.2) unstable; urgency=low
+
+  [ Andrew Pogrebennyk ]
+  * [18c21bb] MT#12189 sems: support the UDP/TLS/RTP/SAVPF
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 17 Mar 2015 11:58:04 +0100
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.7.2.1) unstable; urgency=low
 
   [ Andreas Granig ]
