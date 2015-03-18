@@ -1,3 +1,21 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr4.0.0.0) unstable; urgency=low
+
+  [ Andreas Granig ]
+  * [94a4d37] MT#10367 Dynamically set VSC language.
+
+  [ Andrew Pogrebennyk ]
+  * [a69ba12] MT#11239 MT#11219 rename prompts x1..9 to 1..9-and
+  * [f3fe2dc] MT#11241 confpin: add conference_first and moh for first participant
+  * [108e6f5] MT#11241 mod_conference: AmPlaylist::close(…) is now replaced by AmPlaylist::flush()
+  * [99d6a68] MT#12189 sems: support the UDP/TLS/RTP/SAVPF
+
+  [ Michael Prokop ]
+  * [4a643f0] MT#9127 Bump Standards-Version to 3.9.6
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 18 Mar 2015 14:16:23 +0100
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.0.0) unstable; urgency=low
 
   [ Andreas Granig ]
