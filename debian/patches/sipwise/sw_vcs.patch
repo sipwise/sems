@@ -13,7 +13,7 @@
 +include $(COREPATH)/plug-in/Makefile.app_module
 --- /dev/null
 +++ b/apps/sw_vsc/SW_Vsc.cpp
-@@ -0,0 +1,1872 @@
+@@ -0,0 +1,1887 @@
 +#include <pcrecpp.h>
 +using namespace pcrecpp;
 +
@@ -33,7 +33,7 @@
 +#define SW_VSC_DATABASE "provisioning"
 +
 +#define SW_VSC_GET_ATTRIBUTE_ID "select id from voip_preferences where attribute='%s'"
-+#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id, s.profile_id "\
++#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id, s.profile_id, s.username "\
 +    "from voip_subscribers s, voip_domains d "\
 +    "where s.uuid='%s' and s.domain_id = d.id"
 +#define SW_VSC_GET_PREFERENCE_ID "select id,value from voip_usr_preferences where subscriber_id=%llu " \
@@ -66,8 +66,9 @@
 +    "and vrr.set_id = vrrs.id and vrr.direction='in' and " \
 +    "vrr.field='callee' order by vrr.priority asc"
 +
-+#define SW_VSC_GET_VOICEMAIL_NUMBER "select mailbox from kamailio.voicemail_users "\
-+    "where customer_id='%s'"
++#define SW_VSC_GET_PRIMARY_NUMBER "select alias_username " \
++    "from kamailio.dbaliases where username='%s' " \
++    "and domain = '%s' and is_primary"
 +
 +#define SW_VSC_DELETE_VSC_DESTSET "delete from voip_cf_destination_sets where "\
 +    "subscriber_id=%llu and name='%s'"
@@ -537,7 +538,8 @@
 +}
 +
 +u_int64_t SW_VscDialog::getSubscriberId(MYSQL *my_handler, const char *uuid,
-+                                        string *domain, u_int64_t &domain_id, u_int64_t &profile_id)
++                                        string *domain, u_int64_t &domain_id,
++                                        u_int64_t &profile_id, string *username)
 +{
 +    MYSQL_RES *res;
 +    MYSQL_ROW row;
@@ -573,6 +575,8 @@
 +    *domain += string(row[1]);
 +    domain_id = atoll(row[2]);
 +    profile_id = row[3] == NULL ? 0 : atoll(row[3]);
++    username->clear();
++    *username += string(row[4]);
 +    mysql_free_result(res);
 +    return id;
 +}
@@ -735,7 +739,7 @@
 +int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
 +                             string &uuid, u_int64_t subId,
 +                             string &domain, u_int64_t domId,
-+                             int offset, string &uri)
++                             int offset, string &uri, string &username)
 +{
 +    string num = "", acStr = "", ccStr = "";
 +    u_int64_t acAttId, ccAttId;
@@ -753,24 +757,30 @@
 +        if (m_patterns->voicemailNumber == num)
 +        {
 +            snprintf(query, sizeof(query),
-+                     SW_VSC_GET_VOICEMAIL_NUMBER, uuid.c_str());
++                     SW_VSC_GET_PRIMARY_NUMBER,
++                     username.c_str(), domain.c_str());
 +            if (mysql_real_query(my_handler, query, strlen(query)) != 0)
 +            {
-+                ERROR("Error fetching voicemail number for subscriber uuid '%s': %s",
-+                      uuid.c_str(), mysql_error(my_handler));
++                ERROR("Error fetching primary number for username '%s'"
++                    " at domain '%s': %s",
++                      username.c_str(), domain.c_str(),
++                      mysql_error(my_handler));
 +                return 0;
 +            }
 +            res = mysql_store_result(my_handler);
 +            row = mysql_fetch_row(res);
 +            if (row == NULL || row[0] == NULL)
 +            {
-+                ERROR("Failed to fetch row for voicemail number of uuid %s: %s\n", uuid.c_str(),
++                ERROR("Failed to fetch row for primary number for username '%s'"
++                    " at domain '%s': %s",
++                      username.c_str(), domain.c_str(),
 +                      mysql_error(my_handler));
 +                mysql_free_result(res);
 +                return 0;
 +            }
 +            uri = string("sip:vmu") + row[0] + "@voicebox.local";
-+            INFO("Normalized '%s' to voicemail uri '%s' for uuid '%s'", num.c_str(), uri.c_str(), uuid.c_str());
++            INFO("Normalized '%s' to voicemail uri '%s' for uuid '%s'",
++                num.c_str(), uri.c_str(), uuid.c_str());
 +            mysql_free_result(res);
 +            return 1;
 +        }
@@ -1046,7 +1056,7 @@
 +    my_bool recon = 1;
 +
 +    u_int64_t subId, domId, profId;
-+    string domain, uri;
++    string domain, uri, username;
 +    char map_str[128] = "";
 +    string mapStr, prefStr;
 +    int foundPref = 0;
@@ -1203,7 +1213,8 @@
 +        goto out;
 +    }
 +
-+    subId = getSubscriberId(my_handler, uuid.c_str(), &domain, domId, profId);
++    subId = getSubscriberId(my_handler, uuid.c_str(),
++        &domain, domId, profId, username);
 +    if (!subId)
 +    {
 +        filename = failAnnouncement;
@@ -1218,7 +1229,8 @@
 +    if ((ret = regexec(&m_patterns->cfuOnPattern,
 +                       req.user.c_str(), 0, 0, 0)) == 0)
 +    {
-+        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
++        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
++                uri, username))
 +        {
 +            filename = failAnnouncement;
 +            goto out;
@@ -1334,7 +1346,8 @@
 +    if ((ret = regexec(&m_patterns->cfbOnPattern,
 +                       req.user.c_str(), 0, 0, 0)) == 0)
 +    {
-+        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
++        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
++                uri, username))
 +        {
 +            filename = failAnnouncement;
 +            goto out;
@@ -1456,7 +1469,7 @@
 +             tim.c_str(), req.user.c_str(), uuid.c_str());
 +
 +        if (!number2uri(req, my_handler, uuid, subId, domain,
-+                        domId, timend + 1, uri))
++                        domId, timend + 1, uri, username))
 +        {
 +            filename = failAnnouncement;
 +            goto out;
@@ -1630,7 +1643,8 @@
 +    if ((ret = regexec(&m_patterns->cfnaOnPattern,
 +                       req.user.c_str(), 0, 0, 0)) == 0)
 +    {
-+        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4, uri))
++        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
++                uri, username))
 +        {
 +            filename = failAnnouncement;
 +            goto out;
@@ -1747,7 +1761,8 @@
 +                       req.user.c_str(), 0, 0, 0)) == 0)
 +    {
 +        string slot = string("*") + req.user.substr(4, 1);
-+        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5, uri))
++        if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5,
++                uri, username))
 +        {
 +            filename = failAnnouncement;
 +            goto out;
