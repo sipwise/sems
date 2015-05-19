@@ -87,9 +87,11 @@ rtp_high_port=60000
 # optional parameter: sig_sock_opts=option,option,option,...
 #
 # - signaling socket options
-#      o force_via_address   - force sending replies to 1st Via
+#      o force_via_address         - force sending replies to 1st Via
+#      o no_transport_in_contact   - do not add transport to contact in replies
+#
 # Example:
-#  sig_sock_opts=force_via_address
+#  sig_sock_opts=force_via_address,no_transport_in_contact
 
 # optional parameter: tcp_connect_timeout=<timeout in millisec>
 # Default: 2000 (2 sec)
@@ -372,6 +374,15 @@ loglevel=2
 #
 # Example:
 #  cps_limit="100;503;Server overload"
+
+###########################################################
+# if build with ZRTP support (see Makefile.defs)
+# enable ZRTP support in endpoint calls:
+#enable_zrtp=yes (default: yes)
+#
+
+# enable ZRTP debug log? (prints lots of info)
+#enable_zrtp_debuglog=no (default: yes)
 
 ############################################################
 # tuning

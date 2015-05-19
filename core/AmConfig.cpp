@@ -104,6 +104,11 @@ bool         AmConfig::LogSessions             = false;
 bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
+#ifdef WITH_ZRTP
+bool         AmConfig::enable_zrtp             = true;
+bool         AmConfig::enable_zrtp_debuglog    = true;
+#endif
+
 unsigned int AmConfig::SessionLimit            = 0;
 unsigned int AmConfig::SessionLimitErrCode     = 503;
 string       AmConfig::SessionLimitErrReason   = "Server overload";
@@ -588,6 +593,14 @@ int AmConfig::readConfiguration()
     }
   }
 
+#ifdef WITH_ZRTP
+  enable_zrtp = cfg.getParameter("enable_zrtp", "yes") == "yes";
+  INFO("ZRTP %sabled\n", enable_zrtp ? "en":"dis");
+
+  enable_zrtp_debuglog = cfg.getParameter("enable_zrtp_debuglog", "yes") == "yes";
+  INFO("ZRTP debug log %sabled\n", enable_zrtp_debuglog ? "en":"dis");
+#endif
+
   if(cfg.hasParameter("session_limit")){ 
     vector<string> limit = explode(cfg.getParameter("session_limit"), ";");
     if (limit.size() != 3) {
@@ -761,8 +774,9 @@ static int readSIPInterface(AmConfigReader& cfg, const string& i_name)
 	it_opt != opt_strs.end(); ++it_opt) {
       if(*it_opt == "force_via_address") {
 	opts |= trsp_socket::force_via_address;
-      }
-      else {
+      } else if(*it_opt == "no_transport_in_contact") {
+	opts |= trsp_socket::no_transport_in_contact;
+      } else {
 	WARN("unknown signaling socket option '%s' set on interface '%s'\n",
 	     it_opt->c_str(),i_name.c_str());
       }
