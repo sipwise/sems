@@ -58,7 +58,7 @@
  DSMStateDiagram::DSMStateDiagram(const string& name) 
    : name(name) {
  }
-@@ -526,14 +577,14 @@ void DSMStateEngine::runEvent(AmSession*
+@@ -526,14 +577,14 @@
    map<string,string> exception_params;
    bool is_exception = run_exception;
  
@@ -76,7 +76,7 @@
        for (vector<DSMTransition>::iterator tr = current->transitions.begin();
  	   tr != current->transitions.end();tr++) {
  	if (tr->is_exception != is_exception)
-@@ -617,7 +668,6 @@ void DSMStateEngine::runEvent(AmSession*
+@@ -617,7 +668,6 @@
  	      break;
  	    }
  	  }
@@ -86,8 +86,8 @@
  	}
 --- a/apps/dsm/DSMStateEngine.h
 +++ b/apps/dsm/DSMStateEngine.h
-@@ -123,6 +123,8 @@ class DSMCondition
-     RelayOnB2BReply
+@@ -128,6 +128,8 @@
+ #endif
    };
  
 +  static const char* type2str(EventType event);
