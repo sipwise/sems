@@ -1,3 +1,11 @@
+ngcp-sems (1:1.6.0~20150519~ae8a42-1+0~mr4.0.0.0) unstable; urgency=medium
+
+  * [3dc1fbb] MT#12905 sw_vcs: use primary number for voicemail uri and uuid as fallback
+  * [6a96ffd] Imported Upstream version 1.6.0~20150519~ae8a42
+  * [c4b6fb9] MT#13019 debian: remove already applied patches
+
+ -- Victor Seva <vseva@sipwise.com>  Tue, 19 May 2015 16:08:22 +0200
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr4.0.0.0) unstable; urgency=low
 
   [ Andreas Granig ]
