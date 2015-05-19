@@ -106,7 +106,7 @@ static string payload2str(const SdpPayload &p);
 	iface = name_it->second;					\
       else {								\
 	ERROR("selected " #what " '%s' does not exist as a media interface. " \
-	      "Please check the 'additional_interfaces' "		\
+	      "Please check the 'interfaces' "				\
 	      "parameter in the main configuration file.",		\
 	      what.c_str());						\
 	return false;							\
@@ -128,7 +128,7 @@ static string payload2str(const SdpPayload &p);
 	  else {							\
 	    ERROR("selected " #what " '%s' does not exist as a signaling" \
 		  " interface. "					\
-		  "Please check the 'additional_interfaces' "		\
+		  "Please check the 'interfaces' "			\
 		  "parameter in the main configuration file.",		\
 		  what.c_str());					\
 	    return false;						\
@@ -859,7 +859,7 @@ bool SBCCallProfile::evaluateOutboundInterface() {
     } else {
       ERROR("selected outbound_interface '%s' does not exist as a signaling"
 	    " interface. "
-	    "Please check the 'additional_interfaces' "
+	    "Please check the 'interfaces' "
 	    "parameter in the main configuration file.",
 	    outbound_interface.c_str());
       return false;
@@ -890,7 +890,7 @@ static int apply_outbound_interface(const string& oi, AmBasicSipDialog& dlg)
     } else {
       ERROR("selected [aleg_]outbound_interface '%s' "
 	    "does not exist as an interface. "
-	    "Please check the 'additional_interfaces' "
+	    "Please check the 'interfaces' "
 	    "parameter in the main configuration file.",
 	    oi.c_str());
       
@@ -1290,6 +1290,7 @@ string SBCCallProfile::retarget(const string& alias, AmBasicSipDialog& dlg) cons
     // REG-Cache lookup
     AliasEntry alias_entry;
     if(!RegisterCache::instance()->findAliasEntry(alias, alias_entry)) {
+      DBG("No alias entry found for alias '%s', replying with 404\n", alias.c_str());
       throw AmSession::Exception(404,"User not found");
     }
     string new_r_uri = alias_entry.contact_uri;

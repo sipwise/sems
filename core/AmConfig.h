@@ -220,6 +220,11 @@ struct AmConfig
   /* this is regex->application mapping is used if  App_MAPPING */
   static RegexMappingVector AppMapping; 
 
+#ifdef WITH_ZRTP
+  static bool enable_zrtp;
+  static bool enable_zrtp_debuglog;
+#endif
+
   static unsigned int SessionLimit;
   static unsigned int SessionLimitErrCode;
   static string SessionLimitErrReason;
