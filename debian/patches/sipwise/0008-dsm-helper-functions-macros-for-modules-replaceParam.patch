@@ -14,26 +14,22 @@ e.g.  myAction($myvar) - resolveVars
  apps/dsm/DSMSession.h    | 12 ++++++++++++
  2 files changed, 16 insertions(+)
 
-diff --git a/apps/dsm/DSMCoreModule.h b/apps/dsm/DSMCoreModule.h
-index 328e18e..ff8cee3 100644
 --- a/apps/dsm/DSMCoreModule.h
 +++ b/apps/dsm/DSMCoreModule.h
-@@ -160,4 +160,8 @@ class TestDSMCondition
- 	     map<string,string>* event_params);
- };
+@@ -175,4 +175,8 @@
+ string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
+ 		     map<string,string>* event_params);
  
 +/** return string q with variables/params/selects replaced */
 +string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
 +		     map<string,string>* event_params);
 +
  #endif
-diff --git a/apps/dsm/DSMSession.h b/apps/dsm/DSMSession.h
-index 5607c9d..f7841a7 100644
 --- a/apps/dsm/DSMSession.h
 +++ b/apps/dsm/DSMSession.h
-@@ -97,6 +97,18 @@ using std::map;
- #define CLR_STRERROR				\
-   var["strerror"] = "";
+@@ -111,6 +111,18 @@
+     s->CLR_STRERROR;			\
+   } while (0)
  
 +#define SET_ERROR(s, errno, errstr)	\
 +  do {					\
@@ -50,6 +46,3 @@ index 5607c9d..f7841a7 100644
  typedef map<string, string> VarMapT;
  typedef map<string, AmArg>  AVarMapT;
  
--- 
-1.9.3 (Apple Git-50)
-

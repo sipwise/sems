@@ -11,7 +11,7 @@
  install-bin:
 --- a/apps/dsm/mods/Makefile
 +++ b/apps/dsm/mods/Makefile
-@@ -41,7 +41,7 @@
+@@ -45,7 +45,7 @@
  	done 
  
  .PHONY: install

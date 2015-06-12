@@ -4,11 +4,9 @@ Date:   Thu Jan 29 12:04:00 2015 +0100
 
     rename prompts x1..9.wav to 1..9-and.wav
 
-diff --git a/apps/dsm/mods/mod_utils/ModUtils.cpp b/apps/dsm/mods/mod_utils/ModUtils.cpp
-index 03acf43..1a8f649 100644
 --- a/apps/dsm/mods/mod_utils/ModUtils.cpp
 +++ b/apps/dsm/mods/mod_utils/ModUtils.cpp
-@@ -90,10 +90,10 @@ vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt,
+@@ -97,10 +97,10 @@
    if (right) { 
     // language has single digits before 10s
      res.push_back(basedir+int2str(num.quot * 10)+suffix);
@@ -21,7 +19,7 @@ index 03acf43..1a8f649 100644
      res.push_back(basedir+int2str(num.quot * 10)+suffix);
    }
  
-@@ -129,10 +129,10 @@ bool utils_play_count(DSMSession* sc_sess, unsigned int cnt,
+@@ -136,10 +136,10 @@
    if (right) { 
     // language has single digits before 10s
      sc_sess->playFile(basedir+int2str(num.quot * 10)+suffix, false);

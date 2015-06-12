@@ -38,9 +38,6 @@ Subject: [PATCH 7/7] confpin: simple pin conference app
  create mode 100755 apps/confpin/tools/fetch_file
  create mode 100755 apps/confpin/tools/push_file
 
-diff --git a/apps/confpin/confpin.conf b/apps/confpin/confpin.conf
-new file mode 100644
-index 0000000..2af4d14
 --- /dev/null
 +++ b/apps/confpin/confpin.conf
 @@ -0,0 +1,39 @@
@@ -83,9 +80,6 @@ index 0000000..2af4d14
 +run_invite_event=yes
 +set_param_variables=yes
 +run_system_dsms=sw_audio_api
-diff --git a/apps/confpin/lib/confpin.dsm b/apps/confpin/lib/confpin.dsm
-new file mode 100644
-index 0000000..2f4f6de
 --- /dev/null
 +++ b/apps/confpin/lib/confpin.dsm
 @@ -0,0 +1,237 @@
@@ -326,9 +320,6 @@ index 0000000..2f4f6de
 +transition "bye_recvd" (START,COLLECT_PIN,PLAY_FIN,TESTPINRESULT) - hangup / stop(false) -> END;
 +
 +state END;
-diff --git a/apps/confpin/lib/sw_audio.dsm b/apps/confpin/lib/sw_audio.dsm
-new file mode 100644
-index 0000000..322266b
 --- /dev/null
 +++ b/apps/confpin/lib/sw_audio.dsm
 @@ -0,0 +1,50 @@
@@ -383,9 +374,6 @@ index 0000000..322266b
 +  swPlayFile();
 +};
 \ No newline at end of file
-diff --git a/apps/confpin/lib/sw_audio_api.dsm b/apps/confpin/lib/sw_audio_api.dsm
-new file mode 100644
-index 0000000..aba8d25
 --- /dev/null
 +++ b/apps/confpin/lib/sw_audio_api.dsm
 @@ -0,0 +1,66 @@
@@ -456,9 +444,6 @@ index 0000000..aba8d25
 +
 +state SW_AUDIO_END;
 \ No newline at end of file
-diff --git a/apps/confpin/prompts/Makefile b/apps/confpin/prompts/Makefile
-new file mode 100644
-index 0000000..25028e8
 --- /dev/null
 +++ b/apps/confpin/prompts/Makefile
 @@ -0,0 +1,22 @@
@@ -485,65 +470,38 @@ index 0000000..25028e8
 +clean:
 +	rm -f *.dbs *.wav
 \ No newline at end of file
-diff --git a/apps/confpin/prompts/conference_first.txt b/apps/confpin/prompts/conference_first.txt
-new file mode 100644
-index 0000000..1589216
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_first.txt
 @@ -0,0 +1 @@
 +you are the first participant in the conference.
-diff --git a/apps/confpin/prompts/conference_greeting.txt b/apps/confpin/prompts/conference_greeting.txt
-new file mode 100644
-index 0000000..ac5cadc
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_greeting.txt
 @@ -0,0 +1 @@
 +welcome to the conference, please enter your pin number
-diff --git a/apps/confpin/prompts/conference_join.txt b/apps/confpin/prompts/conference_join.txt
-new file mode 100644
-index 0000000..58e771a
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_join.txt
 @@ -0,0 +1 @@
 +someone joined the conference
-diff --git a/apps/confpin/prompts/conference_joined.txt b/apps/confpin/prompts/conference_joined.txt
-new file mode 100644
-index 0000000..29a4feb
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_joined.txt
 @@ -0,0 +1 @@
 +you joined the conference
-diff --git a/apps/confpin/prompts/conference_leave.txt b/apps/confpin/prompts/conference_leave.txt
-new file mode 100644
-index 0000000..2a5a881
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_leave.txt
 @@ -0,0 +1 @@
 +someone left the conference
-diff --git a/apps/confpin/prompts/conference_music.txt b/apps/confpin/prompts/conference_music.txt
-new file mode 100644
-index 0000000..d075594
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_music.txt
 @@ -0,0 +1 @@
 +bum bada bum bum bamm, bamm bada bamm bamm bamm, hum di dum di dum dum dumm
-diff --git a/apps/confpin/prompts/conference_pin_wrong.txt b/apps/confpin/prompts/conference_pin_wrong.txt
-new file mode 100644
-index 0000000..16a203a
 --- /dev/null
 +++ b/apps/confpin/prompts/conference_pin_wrong.txt
 @@ -0,0 +1 @@
 +sorry, that pin is wrong. please try again
-diff --git a/apps/confpin/prompts/goodbye.txt b/apps/confpin/prompts/goodbye.txt
-new file mode 100644
-index 0000000..024d23d
 --- /dev/null
 +++ b/apps/confpin/prompts/goodbye.txt
 @@ -0,0 +1 @@
 +good bye
-diff --git a/apps/confpin/tools/clear_file b/apps/confpin/tools/clear_file
-new file mode 100755
-index 0000000..a3bf106
 --- /dev/null
 +++ b/apps/confpin/tools/clear_file
 @@ -0,0 +1,14 @@
@@ -562,9 +520,6 @@ index 0000000..a3bf106
 +#print s.di('sbc','loadProfile',p)
 +print s.di('dsm', 'postDSMEvent', 'sw_audio', [['cmd', 'clearFile'],['audio_id', sys.argv[1]],['sound_set_id', sys.argv[2]]])
 \ No newline at end of file
-diff --git a/apps/confpin/tools/fetch_file b/apps/confpin/tools/fetch_file
-new file mode 100755
-index 0000000..bb54ae6
 --- /dev/null
 +++ b/apps/confpin/tools/fetch_file
 @@ -0,0 +1,14 @@
@@ -583,9 +538,6 @@ index 0000000..bb54ae6
 +#print s.di('sbc','loadProfile',p)
 +print s.di('dsm', 'postDSMEvent', 'sw_audio', [['cmd', 'fetchFile'],['audio_id', sys.argv[1]],['sound_set_id', sys.argv[2]]])
 \ No newline at end of file
-diff --git a/apps/confpin/tools/push_file b/apps/confpin/tools/push_file
-new file mode 100755
-index 0000000..d949d99
 --- /dev/null
 +++ b/apps/confpin/tools/push_file
 @@ -0,0 +1,14 @@
@@ -603,6 +555,3 @@ index 0000000..d949d99
 +#p ={ 'name' : sys.argv[1], 'path' : sys.argv[2] }
 +#print s.di('sbc','loadProfile',p)
 +print s.di('dsm','postDSMEvent', 'sw_audio', [['cmd', 'pushFile'],['audio_id', sys.argv[1]],['sound_set_id', sys.argv[2]]])
--- 
-1.9.3 (Apple Git-50)
-
