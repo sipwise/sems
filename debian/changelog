@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0~20150612~a2d214df36-1+0~mr4.0.0.0) unstable; urgency=medium
+
+  * [e63b96a] MT#13019 debian: refresh quilt patch
+  * [73ea634] MT#13019 debian: add libopus-dev to Build-Depends
+  * [2bf464e] Imported Upstream version 1.6.0~20150612~a2d214df36
+  * [701aeef] MT#13019 set SYSTEM_SAMPLECLOCK_RATE=48000LL
+  * [06a5889] remove and update patches
+
+ -- Victor Seva <vseva@sipwise.com>  Fri, 12 Jun 2015 15:45:42 +0200
+
 ngcp-sems (1:1.6.0~20150519~ae8a42-1+0~mr4.0.0.0) unstable; urgency=medium
 
   * [3dc1fbb] MT#12905 sw_vcs: use primary number for voicemail uri and uuid as fallback
