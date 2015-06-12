@@ -65,7 +65,7 @@ class AmDtmfEvent;
  * The session is identified by Call-ID, From-Tag and To-Tag.
  */
 class AmSession : 
-  public AmObject,
+  public virtual AmObject,
 #ifndef SESSION_THREADPOOL
   public AmThread,
 #endif
@@ -610,6 +610,7 @@ public:
   virtual void onAfterRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr) {}
 
   int getRtpInterface();
+  void setRtpInterface(int _rtp_interface);
 };
 
 inline AmRtpAudio* AmSession::RTPStream() {

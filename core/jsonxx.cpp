@@ -93,10 +93,10 @@ bool parse_string(std::istream& input, std::string* value) {
 	  case 'n': value->push_back('\n'); break;
 	  case 'r': value->push_back('\r'); break;
 	  case 't': value->push_back('\t'); break;
-	  case 'u': {
-	    //	    ERROR("todo: unicode\n");
-	    return false;
-	  } break;
+	  case 'u':
+            value->push_back('\\');
+            value->push_back('u');
+            break;
 	  default: return false;
 	  }
 	}
@@ -303,7 +303,7 @@ bool parse_number(std::istream& input, long* value) {
 	    
 	    return false;  
 	  }
-	  *value *= powl(10, e_value);
+	  *value *= pow(10, e_value);
 	}
 
         return true;

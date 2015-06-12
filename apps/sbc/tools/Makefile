@@ -1,5 +1,7 @@
 COREPATH_TOOLS ?= ../../../core
+COREPATH?=$(COREPATH_TOOLS)
 include $(COREPATH_TOOLS)/../Makefile.defs
+
 
 sbc_scripts = $(wildcard sems-sbc-*)
 

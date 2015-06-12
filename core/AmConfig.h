@@ -163,6 +163,7 @@ struct AmConfig
   static vector<SysIntf> SysIfs;
 
   static int insert_SIP_interface(const SIP_interface& intf);
+  static int insert_SIP_interface_mapping(const SIP_interface& intf);
   static int insert_RTP_interface(const RTP_interface& intf);
   static int finalizeIPConfig();
 
@@ -254,6 +255,9 @@ struct AmConfig
   /** header containing the transcoder's incoming codec statistics which should
    * be present in every message leaving server */
   static string TranscoderInStatsHdr;
+
+  static bool DumpConferenceStreams;
+  static string DumpConferencePath;
 
   static Am100rel::State rel100;
 

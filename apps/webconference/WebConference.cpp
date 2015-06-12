@@ -79,6 +79,9 @@ unsigned int WebConferenceFactory::LonelyUserTimer = 0;
 string WebConferenceFactory::participant_id_paramname; // default: param not used
 string WebConferenceFactory::participant_id_hdr = "X-ParticipantID"; // default header
 
+bool WebConferenceFactory::room_pin_split = false;
+unsigned int WebConferenceFactory::room_pin_split_pos = 0;
+
 int WebConferenceFactory::onLoad()
 {
   return getInstance()->load();
@@ -155,6 +158,17 @@ int WebConferenceFactory::load()
     DBG("Webconference will strip %d leading characters from "
 	"direct room access usernames\n",
 	direct_room_strip);
+  }
+
+  string room_pin_split_s = cfg.getParameter("room_pin_split");
+  if (!room_pin_split_s.empty()) {
+    if (str2i(room_pin_split_s, room_pin_split_pos)) {
+      ERROR("room_pin_split in webconference config not readable\n");
+      return -1;
+    }
+    room_pin_split = true;
+  } else {
+    room_pin_split = false;
   }
 
   string feedback_filename = cfg.getParameter("feedback_file");
@@ -255,11 +269,19 @@ int WebConferenceFactory::load()
   return 0;
 }
 
-bool WebConferenceFactory::isValidConference(const string& conf_id) {
+bool WebConferenceFactory::isValidConference(const string& conf_id, const string& participant_id) {
   if (!PrivateRoomsMode)
     return true;
+
+  bool res = false;
   rooms_mut.lock();
-  bool res = rooms.find(conf_id) != rooms.end();
+  map<string, ConferenceRoom>::iterator room = rooms.find(conf_id);
+  if (room != rooms.end()) {
+    if (!participant_id.size() || room->second.hasInvitedParticipant(participant_id)) {
+      DBG("room '%s', participant_id '%s' -> valid\n", conf_id.c_str(), participant_id.c_str());
+      res = true;
+    }
+  }
   rooms_mut.unlock();
   return res;
 }
@@ -267,11 +289,25 @@ bool WebConferenceFactory::isValidConference(const string& conf_id) {
 bool WebConferenceFactory::newParticipant(const string& conf_id, 
 					  const string& localtag, 
 					  const string& number,
-					  const string& participant_id) {
+					  const string& participant_id,
+					  bool check_exisiting) {
+
   rooms_mut.lock();
-  if (PrivateRoomsMode && rooms.find(conf_id) == rooms.end()) {
-    rooms_mut.unlock();
-    return false;
+
+  if (PrivateRoomsMode) {
+    map<string, ConferenceRoom>::iterator room = rooms.find(conf_id);
+    if (room == rooms.end()) {
+      rooms_mut.unlock();
+      return false;
+    }
+    DBG("found conference room '%s'\n", conf_id.c_str());
+    if (check_exisiting && room_pin_split && !room->second.hasInvitedParticipant(participant_id)) {
+      DBG("participant with ID '%s' not listed in invited participants for '%s'\n",
+	  participant_id.c_str(), conf_id.c_str());
+      rooms_mut.unlock();
+      return false;
+    }
+
   }
 
   rooms[conf_id].newParticipant(localtag, number, participant_id);
@@ -375,22 +411,34 @@ AmSession* WebConferenceFactory::onInvite(const AmSipRequest& req, const string&
     if (!session_timer_f->onInvite(req, cfg))
       return NULL;
   }
-
   WebConferenceDialog* w;
 
-  if (use_direct_room && !regexec(&direct_room_re, req.user.c_str(), 0,0,0)) {
-      string room = req.user;
-      if (room.length() > direct_room_strip) 
- 	room = room.substr(direct_room_strip);
-      DBG("direct room access match. connecting to room '%s'\n", 
-	  room.c_str());
+  map<string,string>::const_iterator r_it = app_params.find("room");
+  map<string,string>::const_iterator enter_room_it = app_params.find("enter_room");
+  if (enter_room_it != app_params.end() && enter_room_it->second=="true") {
+    // enter the room
+    DBG("creating new Webconference call, room name to be entered via keypad\n");
+    w = new WebConferenceDialog(prompts, getInstance(), NULL);    
+  } else if (r_it != app_params.end()) {
+    // use provided room name
+    string room = r_it->second;
+    DBG("creating new Webconference call, room name '%s'\n", room.c_str());
+    w = new WebConferenceDialog(prompts, getInstance(), room);
+    w->setUri(getAccessUri(room));    
+  } else if (use_direct_room && !regexec(&direct_room_re, req.user.c_str(), 0,0,0)) {
+    // regegex match
+    string room = req.user;
+    if (room.length() > direct_room_strip) 
+      room = room.substr(direct_room_strip);
+    DBG("direct room access match. connecting to room '%s'\n", room.c_str());
 
-      w = new WebConferenceDialog(prompts, getInstance(), room);
-      w->setUri(getAccessUri(room));
-
+    w = new WebConferenceDialog(prompts, getInstance(), room);
+    w->setUri(getAccessUri(room));
   } else {
+    // enter the room
     w = new WebConferenceDialog(prompts, getInstance(), NULL);
   }
+
   setupSessionTimer(w);
   return w;
 }
@@ -432,6 +480,10 @@ void WebConferenceFactory::invoke(const string& method,
   } else if(method == "roomDelete"){
     args.assertArrayFmt("ss");
     roomDelete(args, ret);
+    ret.push(getServerInfoString().c_str());
+  } else if(method == "addParticipant"){
+    args.assertArrayFmt("sss"); // conf_id, participant_id, number  
+    roomAddParticipant(args, ret);
     ret.push(getServerInfoString().c_str());
   } else if(method == "dialout"){
     args.assertArrayFmt("sssssss");
@@ -659,6 +711,20 @@ void WebConferenceFactory::closeExpiredRooms() {
     DBG("deleting expired room '%s'\n", it->c_str());
     AmArg ret;
     roomDelete(*it, "", ret, true);
+  }
+}
+
+void WebConferenceFactory::roomAddParticipant(const AmArg& args, AmArg& ret) {
+  string room                = args.get(0).asCStr();
+  string participant_id      = args.get(1).asCStr();
+  string number              = args.get(2).asCStr();
+  if (newParticipant(room, /* ltag = */ "", number, participant_id,
+		     /* check_exisiting = */ false)) {
+    ret.push(200);
+    ret.push("OK");
+  } else {
+    ret.push(400);
+    ret.push("Failed"); // no info here
   }
 }
 

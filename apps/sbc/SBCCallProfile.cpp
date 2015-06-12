@@ -185,6 +185,12 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   if (!readFilter(cfg, "sdp_filter", "sdpfilter_list", sdpfilter, true))
     return false;
 
+  have_aleg_sdpfilter = cfg.hasParameter("aleg_sdp_filter");
+  if (have_aleg_sdpfilter) {
+    if (!readFilter(cfg, "aleg_sdp_filter", "aleg_sdpfilter_list", aleg_sdpfilter, true))
+      return false;
+  }
+
   if (!readFilter(cfg, "media_filter", "mediafilter_list", mediafilter, true))
     return false;
 
@@ -461,6 +467,16 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	 sdpfilter.size()?"en":"dis", filter_type.c_str(), filter_elems,
 	 anonymize_sdp?"":"not ");
 
+    if (have_aleg_sdpfilter) {
+      filter_type = aleg_sdpfilter.size() ?
+	FilterType2String(aleg_sdpfilter.back().filter_type) : "disabled";
+      filter_elems = aleg_sdpfilter.size() ? aleg_sdpfilter.back().filter_list.size() : 0;
+      INFO("SBC:      separate A-leg SDP filter is %sabled, %s, %zd items in list\n",
+	   sdpfilter.size()?"en":"dis", filter_type.c_str(), filter_elems);
+    } else {
+      INFO("SBC:      separate A-leg SDP filter is disabled (same SDP filter for both legs)\n");
+    }
+
     filter_type = sdpalinesfilter.size() ?
       FilterType2String(sdpalinesfilter.back().filter_type) : "disabled";
     filter_elems = sdpalinesfilter.size() ? sdpalinesfilter.back().filter_list.size() : 0;
@@ -607,6 +623,7 @@ bool SBCCallProfile::operator==(const SBCCallProfile& rhs) const {
     //messagefilter_list == rhs.messagefilter_list &&
     //sdpfilter_enabled == rhs.sdpfilter_enabled &&
     sdpfilter == rhs.sdpfilter &&
+    aleg_sdpfilter == rhs.aleg_sdpfilter &&
     mediafilter == rhs.mediafilter &&
     sst_enabled == rhs.sst_enabled &&
     sst_aleg_enabled == rhs.sst_aleg_enabled &&
@@ -1368,11 +1385,11 @@ static bool read(const std::string &src, vector<SdpPayload> &codecs)
 
   for (vector<string>::iterator it=elems.begin(); it != elems.end(); ++it) {
     SdpPayload p;
-    if (!readPayload(p, *it)) return false;
+    if (!readPayload(p, trim(*it, " "))) return false;
     int payload_id = plugin->getDynPayload(p.encoding_name, p.clock_rate, 0);
     amci_payload_t* payload = plugin->payload(payload_id);
     if(!payload) {
-      ERROR("Ignoring unknown payload found in call profile: %s/%i\n",
+      ERROR("Ignoring unknown payload found in call profile: '%s/%i'\n",
 	    p.encoding_name.c_str(), p.clock_rate);
     }
     else {

@@ -62,6 +62,7 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("playFileFront", SCPlayFileFrontAction);
   DEF_CMD("playSilence", SCPlaySilenceAction);
   DEF_CMD("playSilenceFront", SCPlaySilenceFrontAction);
+  DEF_CMD("playRingtone", SCPlayRingtoneAction);
   DEF_CMD("recordFile", SCRecordFileAction);
   DEF_CMD("stopRecord", SCStopRecordAction);
   DEF_CMD("getRecordLength", SCGetRecordLengthAction);
@@ -96,9 +97,16 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("substr", SCSubStrAction);
   DEF_CMD("inc", SCIncAction);
   DEF_CMD("log", SCLogAction);
+  DEF_CMD("logs", SCLogsAction);
+  DEF_CMD("dbg", SCDbgAction);
+  DEF_CMD("info", SCInfoAction);
+  DEF_CMD("warn", SCWarnAction);
+  DEF_CMD("error", SCErrorAction);
   DEF_CMD("clear", SCClearAction);
+  DEF_CMD("clearStruct", SCClearStructAction);
   DEF_CMD("clearArray", SCClearArrayAction);
   DEF_CMD("size", SCSizeAction);
+  DEF_CMD("arrayIndex", SCArrayIndexAction);
   DEF_CMD("logVars", SCLogVarsAction);
   DEF_CMD("logParams", SCLogParamsAction);
   DEF_CMD("logSelects", SCLogSelectsAction);
@@ -239,6 +247,9 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
   if (cmd == "start")
     return new TestDSMCondition(params, DSMCondition::Start);
 
+  if (cmd == "beforeDestroy")
+    return new TestDSMCondition(params, DSMCondition::BeforeDestroy);
+
   if (cmd == "reload")
     return new TestDSMCondition(params, DSMCondition::Reload);
 
@@ -362,6 +373,39 @@ EXEC_ACTION_START(SCPlaySilenceAction) {
     throw DSMException("core", "cause", "cannot parse number");
   }
   sc_sess->playSilence(length);
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(SCPlayRingtoneAction, ',', false);
+EXEC_ACTION_START(SCPlayRingtoneAction) {
+  int length = 0, on=0, off=0, f=0, f2=0;
+
+  string varname = par1;
+  if (varname.length() && varname[0]=='$')
+    varname = varname.substr(1);
+
+  string front = resolveVars(par2, sess, sc_sess, event_params);
+
+#define GET_VAR_INT(var_str, var_name)					\
+  it = sc_sess->var.find(varname+"." var_str);				\
+  if (it != sc_sess->var.end()) {					\
+    if (!str2int(it->second, var_name)) {				\
+      throw DSMException("core", "cause", "cannot parse number");	\
+    }									\
+  }
+
+  VarMapT::iterator
+
+  GET_VAR_INT("length", length);
+  GET_VAR_INT("on", on);
+  GET_VAR_INT("off", off);
+  GET_VAR_INT("f", f);
+  GET_VAR_INT("f2", f2);
+
+#undef GET_VAR_INT
+  DBG("Playing ringtone with length %d, on %d, off %d, f %d, f2 %d, front %s\n",
+      length, on, off, f, f2, front.c_str());
+  sc_sess->playRingtone(length, on, off, f, f2, front=="true");
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCPlaySilenceFrontAction) {
@@ -569,6 +613,37 @@ EXEC_ACTION_START(SCLogAction) {
        l_line.c_str());
 } EXEC_ACTION_END;
 
+CONST_ACTION_2P(SCLogsAction, ',', false);
+EXEC_ACTION_START(SCLogsAction) {
+  unsigned int lvl;
+  if (str2i(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
+    ERROR("unknown log level '%s'\n", par1.c_str());
+    EXEC_ACTION_STOP;
+  }
+  string l_line = replaceParams(par2, sess, sc_sess, event_params);
+  _LOG((int)lvl, "FSM: '%s'\n", l_line.c_str());
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCDbgAction) {
+  string l_line = replaceParams(arg, sess, sc_sess, event_params);
+  DBG("FSM: '%s'\n", l_line.c_str());
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCInfoAction) {
+  string l_line = replaceParams(arg, sess, sc_sess, event_params);
+  INFO("FSM: '%s'\n", l_line.c_str());
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCWarnAction) {
+  string l_line = replaceParams(arg, sess, sc_sess, event_params);
+  WARN("FSM: '%s'\n", l_line.c_str());
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCErrorAction) {
+  string l_line = replaceParams(arg, sess, sc_sess, event_params);
+  ERROR("FSM: '%s'\n", l_line.c_str());
+} EXEC_ACTION_END;
+
 void log_vars(const string& l_arg, AmSession* sess,
 	      DSMSession* sc_sess, map<string,string>* event_params) {
   unsigned int lvl;
@@ -684,6 +759,10 @@ string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
     repl_pos = rstart+1;
     if (rstart == string::npos) 
       break;
+    if (rstart && (res.length() > rstart) && (res[rstart]==res[repl_pos])) {
+      res.erase(rstart, 1);
+      continue;
+    }
     if (rstart && res[rstart-1] == '\\') // escaped
       continue;
     size_t rend;
@@ -711,23 +790,36 @@ string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
     // todo: simply use resolveVars (?)
     switch(res[rstart]) {
     case '$': {
-      
-      if (sc_sess->var.find(keyname) == sc_sess->var.end())
-	res.erase(rstart, rend-rstart); 
-      else 
-	res.replace(rstart, rend-rstart, sc_sess->var[keyname]); 
+      if (sc_sess->var.find(keyname) == sc_sess->var.end()) {
+	res.erase(rstart, rend-rstart);
+	if (repl_pos) repl_pos--; // repl_pos was after $
+      } else { 
+	res.replace(rstart, rend-rstart, sc_sess->var[keyname]);
+	if (sc_sess->var[keyname].size())
+	  repl_pos+=sc_sess->var[keyname].size()-1; // skip after new string
+      }
     } break;
     case '#':
       if (NULL!=event_params) {
-	if (event_params->find(keyname) != event_params->end())
+	if (event_params->find(keyname) != event_params->end()) {
 	  res.replace(rstart, rend-rstart, (*event_params)[keyname]);
-	else
-	  res.erase(rstart, rend-rstart);	
+	  repl_pos+=(*event_params)[keyname].size()-1; // skip after new string
+	} else {
+	  res.erase(rstart, rend-rstart);
+	  if (repl_pos) repl_pos--; // repl_pos was after #
+	}
       } break;
     case '@': {
-      // todo: optimize 
-      res.replace(rstart, rend-rstart, 
-		  resolveVars("@"+keyname, sess, sc_sess, event_params));
+      // todo: optimize
+      string n = resolveVars("@"+keyname, sess, sc_sess, event_params);
+      res.replace(rstart, rend-rstart, n);
+      if (n.size())
+	repl_pos+=n.size()-1;  // skip after new string
+        //    rstart  rend
+	// bla@(varname)uuuu
+        //     r
+        //         r
+        // bla12345huuuu
     } break;
     default: break;
     }
@@ -819,10 +911,10 @@ EXEC_ACTION_START(SCClearAction) {
   sc_sess->var.erase(var_name);
 } EXEC_ACTION_END;
 
-EXEC_ACTION_START(SCClearArrayAction) {
+EXEC_ACTION_START(SCClearStructAction) {
   string varprefix = (arg.length() && arg[0] == '$')?
     arg.substr(1) : arg;
-  DBG("clear variable array '%s.*'\n", varprefix.c_str());
+  DBG("clear variable struct '%s.*'\n", varprefix.c_str());
 
   varprefix+=".";
 
@@ -834,6 +926,27 @@ EXEC_ACTION_START(SCClearArrayAction) {
     map<string, string>::iterator lb_d = lb;
     lb++;
     sc_sess->var.erase(lb_d);    
+  }
+
+} EXEC_ACTION_END;
+
+
+EXEC_ACTION_START(SCClearArrayAction) {
+  string varprefix = (arg.length() && arg[0] == '$')?
+    arg.substr(1) : arg;
+  DBG("clear variable array '%s[*'\n", varprefix.c_str());
+
+  varprefix+="[";
+
+  VarMapT::iterator lb = sc_sess->var.lower_bound(varprefix);
+  while (lb != sc_sess->var.end()) {
+    if ((lb->first.length() < varprefix.length()) ||
+	strncmp(lb->first.c_str(), varprefix.c_str(),varprefix.length()))
+      break;
+    // fixme: check whether it's really an array index
+    VarMapT::iterator lb_d = lb;
+    lb++;
+    sc_sess->var.erase(lb_d);
   }
 
 } EXEC_ACTION_END;
@@ -863,6 +976,35 @@ EXEC_ACTION_START(SCSizeAction) {
   DBG("set $%s=%s\n", dst_name.c_str(), res.c_str());
 } EXEC_ACTION_END;
 
+CONST_ACTION_2P(SCArrayIndexAction, ',', false);
+EXEC_ACTION_START(SCArrayIndexAction) {
+  string array_name = par1;
+  if (array_name.length() && array_name[0]=='$')
+    array_name.erase(0,1);
+
+  string val = resolveVars(par2, sess, sc_sess, event_params);
+  unsigned int i = 0;
+  bool found = false;
+  while (true) {
+    VarMapT::iterator lb = sc_sess->var.find(array_name+"["+int2str(i)+"]");
+    if (lb == sc_sess->var.end())
+      break;
+    if (val == lb->second) {
+      found = true;
+      break;
+    }
+    i++;
+  }
+
+  string res = found ? int2str(i) : "nil";
+  if (par2[0]=='$') {
+    sc_sess->var[par2.substr(1)+".index"] = res;
+    DBG("set %s=%s\n", (par2+".index").c_str(), res.c_str());
+  } else {
+    sc_sess->var["index"] = res;
+    DBG("set $index=%s\n", res.c_str());
+  }
+} EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCAppendAction,',', false);
 EXEC_ACTION_START(SCAppendAction) {
@@ -1200,7 +1342,7 @@ EXEC_ACTION_START(SCDIAction) {
       p.erase(0, 8);
       AmArg var_struct;
       string varprefix = p+".";
-      bool has_vars = false;
+      //bool has_vars = false;
       map<string, string>::iterator lb = sc_sess->var.lower_bound(varprefix);
       while (lb != sc_sess->var.end()) {
 	if ((lb->first.length() < varprefix.length()) ||
@@ -1214,7 +1356,7 @@ EXEC_ACTION_START(SCDIAction) {
 	  string2argarray(varname, lb->second, var_struct);
 	
 	lb++;
-	has_vars = true;
+	//has_vars = true;
       }
       di_args.push(var_struct);
     } else if (p.length() > 7 &&  

@@ -35,6 +35,10 @@
 #include <pthread.h>	/* pthread_self() */
 #include <execinfo.h>   /* backtrace_symbols() */
 
+#ifdef __cplusplus
+#include <cxxabi.h> /* __cxa_demangle() */
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,8 +119,8 @@ enum Log_Level {
       pthread_t tid_ = GET_TID();					\
       char msg_[LOG_BUFFER_LEN];					\
       int n_ = snprintf(msg_, sizeof(msg_), fmt, ##args);		\
-      if (msg_[n_ - 1] == '\n') msg_[n_ - 1] = '\0';			\
-									\
+      if ((n_ < LOG_BUFFER_LEN) && (msg_[n_ - 1] == '\n'))              \
+        msg_[n_ - 1] = '\0';                                            \
       if (log_stderr) {							\
 	fprintf(stderr, COMPLETE_LOG_FMT);				\
 	fflush(stderr);							\
@@ -182,6 +186,8 @@ void log_stacktrace(int ll);
 
 #ifdef __cplusplus
 /* ...only for C++ */
+#define log_demangled_stacktrace __lds
+void __lds(int ll, unsigned int max_frames = 63);
 class AmLoggingFacility;
 void register_log_hook(AmLoggingFacility*);
 #endif

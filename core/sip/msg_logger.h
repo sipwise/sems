@@ -25,22 +25,24 @@ public:
 		  cstring method, int reply_code=0)=0;
 };
 
+class exclusive_file;
+
 class file_msg_logger
   : public msg_logger
 {
-  int      fd;
-
 protected:
-  AmMutex  fd_mut;
+  exclusive_file* excl_fp;
 
   int write(const void *buf, int len);
+  int writev(const struct iovec *iov, int iovcnt);
+
   virtual int write_file_header() = 0;
 
 public:
-  file_msg_logger() : fd(-1) {}
+  file_msg_logger() : excl_fp(NULL) {}
   ~file_msg_logger();
 
-  int  open(const char* filename);
+  int open(const char* filename);
   int log(const char* buf, int len,
 	  sockaddr_storage* src_ip,
 	  sockaddr_storage* dst_ip,

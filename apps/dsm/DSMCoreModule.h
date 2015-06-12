@@ -92,12 +92,19 @@ DEF_ACTION_2P(SCAppendAction);
 DEF_ACTION_2P(SCSubStrAction);
 DEF_ACTION_1P(SCIncAction);
 DEF_ACTION_1P(SCClearAction);
+DEF_ACTION_1P(SCClearStructAction);
 DEF_ACTION_1P(SCClearArrayAction);
 DEF_ACTION_2P(SCSizeAction);
+DEF_ACTION_2P(SCArrayIndexAction);
 DEF_ACTION_2P(SCSetTimerAction);
 DEF_ACTION_1P(SCRemoveTimerAction);
 DEF_ACTION_1P(SCRemoveTimersAction);
 DEF_ACTION_2P(SCLogAction);
+DEF_ACTION_2P(SCLogsAction);
+DEF_ACTION_1P(SCDbgAction);
+DEF_ACTION_1P(SCInfoAction);
+DEF_ACTION_1P(SCWarnAction);
+DEF_ACTION_1P(SCErrorAction);
 DEF_ACTION_1P(SCLogVarsAction);
 DEF_ACTION_1P(SCLogParamsAction);
 DEF_ACTION_1P(SCLogSelectsAction);
@@ -111,6 +118,7 @@ DEF_ACTION_1P(SCPlaySilenceAction);
 DEF_ACTION_1P(SCPlaySilenceFrontAction);
 DEF_ACTION_2P(SCPostEventAction);
 DEF_ACTION_1P(SCRelayB2BEventAction);
+DEF_ACTION_2P(SCPlayRingtoneAction);
 
 DEF_ACTION_2P(SCB2BConnectCalleeAction);
 DEF_ACTION_1P(SCB2BTerminateOtherLegAction);
@@ -162,5 +170,9 @@ class TestDSMCondition
   bool match(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
 	     map<string,string>* event_params);
 };
+
+/** return string q with variables/params/selects replaced */
+string replaceParams(const string& q, AmSession* sess, DSMSession* sc_sess,
+		     map<string,string>* event_params);
 
 #endif
