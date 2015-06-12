@@ -361,11 +361,14 @@ class AmArg
 
   static string print(const AmArg &a);
 
-  const char* t2str(int type);
+  static const char* t2str(int type);
 };
 
 // equality
 bool operator==(const AmArg& lhs, const AmArg& rhs);
+
+const int arg2int(const AmArg &a);
+string arg2str(const AmArg &a);
 
 #endif
 

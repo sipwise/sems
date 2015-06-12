@@ -135,7 +135,7 @@ e.g. the request-URI can be set to the user part of the P-Asserted-Identity
 header combined with the host part of the To.
 
 The patterns which can be used are the following:
-
+  $m (or $m. if something follows) - Method
   $r (or $r. if something follows) - R-URI
   $f (or $f. if something follows) - From
   $t (or $t. if something follows) - To
@@ -326,6 +326,9 @@ persist and how short it should be to the UA. E.g. if the UA should periodicly
 re-REGISTER every 60 seconds, but to the upstream registrar the registration should
 persist 1h, min_reg_expires=3600 and max_ua_expires=60 should be set.
 
+A sample configuration with this kind of setup can be found in
+doc/sbc/sample_config_regcache
+
 For a local registrar (i.e. operation without an upstream registrar), see the 'registrar'
 call control module.
 
@@ -347,6 +350,11 @@ set to transparent, the SDP is parsed and reconstructed (SDP sanity check).
 Codecs may be filtered out by their payload names in whitelist or blacklist
 modes. The payload names in the list are case-insensitive (PCMU==pcmu).
 
+If codecs in the two legs should be filtered separately, which is useful for
+forcing transcoding codecs, a separate aleg_sdp_filter and aleg_sdpfilter_list
+can be set. If this is not set, the sdp_filter/sdpfilter_list is applied to
+both call legs.
+  
 The s, u and o-lines of the SDP can be anonymized with the setting
 sdp_anonymize=yes.
 
@@ -480,7 +488,9 @@ party to choose from more codecs than used in the original SDP.
 In case of another codec preference you can configure codec_preference resp.
 codec_preference_aleg as described above and choose if codecs should be ordered
 before adding transcoder codecs or after using prefer_existing_codecs resp.
-prefer_existing_codecs_aleg call profile options.
+prefer_existing_codecs_aleg call profile options. prefer_existing_codecs and
+prefer_existing_codecs_aleg only has effect if codec_preference/codec_preference_aleg
+is set.
 
 Transcoding related call profile options:
 
@@ -505,7 +515,8 @@ Transcoding related call profile options:
   prefer_existing_codecs
 
     Describes if codecs present in SDP from caller are preferred to added
-    transcoder codecs.
+    transcoder codecs. This parameter only has effect in case the codec
+    preference is set.
 
     If this parameter is set to "yes" transcoder codecs are added at the end of
     codec lists in SDP body AFTER ordering using codec_preference is done.
@@ -517,7 +528,8 @@ Transcoding related call profile options:
   prefer_existing_codecs_aleg
     
     Describes if codecs present in SDP from callee are preferred to added
-    transcoder codecs.
+    transcoder codecs. This parameter only has effect in case the codec
+    preference is set for the a leg.
 
     If this parameter is set to "yes" transcoder codecs are added at the end of
     codec lists in SDP body AFTER ordering using codec_preference_aleg is done.
@@ -525,6 +537,9 @@ Transcoding related call profile options:
     If this parameter is set to something else, transcoder codecs are
     added BEFORE ordering using codec_preference_aleg is done and thus
     may become preferred ones. 
+
+Use sdp_filter and aleg_sdp_filter together with the transcoder settings
+to force use of transcoded codecs.
 
 Transcoder statistics can be checked via "printCallStats" SBC DI method or can
 be put into additional headers within reply generated to OPTIONS request. To

@@ -66,7 +66,7 @@ static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, co
 
   for (vector<SdpPayload>::const_iterator p = payloads.begin(); p != payloads.end(); ++p) {
     // fix for clients using non-standard names for static payload type (SPA504g: G729a)
-    if (transport == TP_RTPAVP && payload.payload_type < 20) {
+    if (transport == TP_RTPAVP && payload.payload_type >= 0 && payload.payload_type < 20) {
       if (payload.payload_type != p->payload_type) continue;
     }
     else {
@@ -707,7 +707,9 @@ void SBCCallLeg::onDtmf(int event, int duration)
   }
 
   AmB2BMedia *ms = getMediaSession();
-  if(ms) {
+
+  // Don't send the DTMF to the other leg unless we are transcoding
+  if (ms && getRtpRelayMode() == RTP_Transcoding) {
     DBG("sending DTMF (%i;%i)\n", event, duration);
     ms->sendDtmf(!a_leg,event,duration);
   }
@@ -1440,9 +1442,10 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
   bool prefer_existing_codecs = call_profile.codec_prefs.preferExistingCodecs(a_leg);
 
   bool needs_normalization =
-          call_profile.codec_prefs.shouldOrderPayloads(a_leg) ||
-          call_profile.transcoder.isActive() ||
-          !call_profile.sdpfilter.empty();
+    call_profile.codec_prefs.shouldOrderPayloads(a_leg) ||
+    call_profile.transcoder.isActive() ||
+    !call_profile.sdpfilter.empty() ||
+    !call_profile.aleg_sdpfilter.empty();
 
   if (needs_normalization) {
     normalizeSDP(sdp, false, ""); // anonymization is done in the other leg to use correct IP address
@@ -1495,10 +1498,16 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
   // => So we wouldn't try to avoid filtering out transcoder codecs what would
   // just complicate things.
 
-  if (call_profile.sdpfilter.size()) {
-    res = filterSDP(sdp, call_profile.sdpfilter);
+  // figure out appropriate SDP filter instance (A leg, or common one)
+  vector<FilterEntry>& sdpfilter = call_profile.sdpfilter;
+  if (!a_leg && call_profile.have_aleg_sdpfilter)
+    sdpfilter = call_profile.aleg_sdpfilter;
+
+  if (sdpfilter.size()) {
+    res = filterSDP(sdp, sdpfilter);
     changed = true;
   }
+
   if (call_profile.sdpalinesfilter.size()) {
     // filter SDP "a=lines"
     filterSDPalines(sdp, call_profile.sdpalinesfilter);

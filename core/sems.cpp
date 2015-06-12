@@ -42,6 +42,7 @@
 
 #include "SipCtrlInterface.h"
 #include "sip/trans_table.h"
+#include "sip/async_file_writer.h"
 
 #include "log.h"
 
@@ -316,7 +317,26 @@ static int write_pid_file()
 
 #endif /* !DISABLE_DAEMON_MODE */
 
+int set_fd_limit()
+{
+  struct rlimit rlim;
+  if(getrlimit(RLIMIT_NOFILE,&rlim) < 0) {
+    ERROR("getrlimit: %s\n",strerror(errno));
+    return -1;
+  }
 
+  rlim.rlim_cur = rlim.rlim_max;
+
+  if(setrlimit(RLIMIT_NOFILE,&rlim) < 0) {
+    ERROR("setrlimit: %s\n",strerror(errno));
+    return -1;
+  }
+ 
+  INFO("Open FDs limit has been raised to %u",
+       (unsigned int)rlim.rlim_cur);
+ 
+  return 0;
+}
 
 /*
  * Main
@@ -403,6 +423,10 @@ int main(int argc, char* argv[])
 	 AmConfig::Application.empty() ? "<not set>" : AmConfig::Application.c_str());
 
   AmConfig::dump_Ifs();
+
+  if(set_fd_limit() < 0) {
+    WARN("could not raise FD limit");
+  }
 
 #ifndef DISABLE_DAEMON_MODE
 
@@ -579,6 +603,9 @@ int main(int argc, char* argv[])
     goto error;
   }
 
+  // start the asynchronous file writer (sorry, no better place...)
+  async_file_writer::instance()->start();
+
   INFO("Starting RTP receiver\n");
   AmRtpReceiver::instance()->start();
 
@@ -604,6 +631,8 @@ int main(int argc, char* argv[])
   }
   #endif
 
+  INFO("SEMS " SEMS_VERSION " (" ARCH "/" OS") started");
+
   // running the server
   if(sip_ctrl.run() != -1)
     success = true;
@@ -628,6 +657,9 @@ int main(int argc, char* argv[])
  error:
   INFO("Disposing plug-ins\n");
   AmPlugIn::dispose();
+
+  async_file_writer::instance()->stop();
+  async_file_writer::instance()->join();
 
 #ifndef DISABLE_DAEMON_MODE
   if (AmConfig::DaemonMode) {

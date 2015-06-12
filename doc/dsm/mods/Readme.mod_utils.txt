@@ -7,9 +7,23 @@ Actions:
     * sets $errno (arg)
 
  utils.playCountLeft(int cnt [, string basedir])
-    play count for laguages that have single digits befire the 10s (like german)  
+    play count for laguages that have single digits before the 10s (like german)  
     * Throws "file" exeption with #path if file can not be opened
     * sets $errno (arg)
+
+ utils.getCountRight(int cnt [, string basedir])
+    get filenames for a number for laguages that have single digits after the 10s (like english)
+    into count_file[n]  (i.e. count_file[0] .. count_file[n])
+    * sets $errno (arg)
+
+ utils.getCountLeft(int cnt [, string basedir])
+    get filenames for a number for laguages that have single digits before the 10s (like german)  
+    into count_file[n]  (i.e. count_file[0] .. count_file[n])
+    * sets $errno (arg)
+
+ utils.getCountRightNoSuffix(int cnt [, string basedir])
+ utils.getCountLeftNoSuffix(int cnt [, string basedir])
+    as above but without .wav suffix
 
  utils.spell(string word[, string basedir])
   plays each character in the word (e.g. utils.spell(321,wav/digits/) plays
@@ -55,3 +69,9 @@ utils.playRingTone(length [, on [, off [, f [, f2]]]])
 
    Example:
       utils.playRingTone(0, 1000, 4000, 425, 0);   -- Germany
+
+Conditions
+----------
+
+utils.isInList(key, cs_list) - match if key is in comma-separated list
+   e.g. if utils.isInList(#sip_code, "404, 405") { ... }

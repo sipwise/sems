@@ -42,6 +42,30 @@ AmAudioFileFormat::AmAudioFileFormat(const string& name, int subtype)
     channels = p_subtype->channels;
     subtype = p_subtype->type;
   } 
+  DBG("created AmAudioFileFormat of subtype %i, with rate %u, channels %u\n",
+      subtype, rate, channels);
+}
+
+AmAudioFileFormat::AmAudioFileFormat(const string& name, int subtype, amci_subtype_t* p_subtype)
+  : name(name), subtype(subtype), p_subtype(p_subtype)
+{
+  codec = getCodec();
+    
+  if(p_subtype && codec){
+    rate = p_subtype->sample_rate;
+    channels = p_subtype->channels;
+  } 
+  DBG("created AmAudioFileFormat of subtype %i, with rate %u, channels %u\n",
+      subtype, rate, channels);
+}
+
+amci_codec_t* AmAudioFileFormat::getCodec()
+{
+  if(p_subtype && p_subtype->codec_id != codec_id){
+    codec_id = p_subtype->codec_id;
+    destroyCodec();
+  }
+  return AmAudioFormat::getCodec();
 }
 
 void AmAudioFileFormat::setSubtypeId(int subtype_id)  { 
@@ -92,15 +116,16 @@ AmAudioFileFormat* AmAudioFile::fileName2Fmt(const string& name, const string& s
     return NULL;
   }
 
-  int subtype_id = -1;
   if (!subtype.empty()) {
-    subtype_id = AmPlugIn::instance()->subtypeID(iofmt, subtype);
-    if (subtype_id<0) {
-      WARN("subtype '%s' for file '%s' not found. Using default subtype\n",
-	   subtype.c_str(), name.c_str());
+    amci_subtype_t* st = AmPlugIn::instance()->subtype(iofmt, subtype);
+    if (st!=NULL) {
+      return new AmAudioFileFormat(iofmt->name, st->type, st);
     }
+    WARN("subtype '%s' for file '%s' not found. Using default subtype\n",
+	 subtype.c_str(), name.c_str());
   }
-  return new AmAudioFileFormat(iofmt->name, subtype_id);
+
+  return new AmAudioFileFormat(iofmt->name, -1);
 }
 
 
@@ -376,7 +401,13 @@ int AmAudioFile::read(unsigned int user_ts, unsigned int size)
       ret = -2; // eof
     } else {
       // read from file
-      s = fread((void*)((unsigned char*)samples),1,s,fp);
+      int rs = fread((void*)((unsigned char*)samples),1,s,fp);
+      if (rs != s) {
+        DBG("marking data size as invalid as we read %d but should read %d", rs, s);
+        // we read less than we should => data size is probably broken
+        data_size = -1;
+        s = rs;
+      }
     
       ret = (!ferror(fp) ? s : -1);
     }
@@ -438,7 +469,6 @@ int AmAudioFile::getLength()
   if (!data_size || !fmt.get())
     return 0;
 
-  return 
-    fmt->bytes2samples(data_size)*1000
-    / fmt->getRate();
+  float rate = fmt->getRate() / 1000;
+  return (int) (fmt->bytes2samples(data_size)  / rate);
 }

@@ -68,6 +68,7 @@ class DSMCondition
     FailedCall,
     SipRequest,
     SipReply,
+    BeforeDestroy,
 
     Hangup,
     Hold,
@@ -127,6 +128,8 @@ class DSMCondition
     ZRTPSecurityEvent
 #endif
   };
+
+  static const char* type2str(EventType event);
 
   bool invert; 
   

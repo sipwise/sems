@@ -100,6 +100,7 @@ inline string transport_p_2_str(int tp)
 {
   switch(tp){
   case TP_RTPAVP: return "RTP/AVP";
+  case TP_RTPAVPF: return "RTP/AVPF";
   case TP_UDP: return "udp";
   case TP_RTPSAVP: return "RTP/SAVP";
   case TP_RTPSAVPF: return "RTP/SAVPF";
@@ -360,7 +361,7 @@ void AmSdp::print(string& body) const
 
       string options;
 
-      if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPSAVP || media_it->transport == TP_RTPSAVPF || media_it->transport == TP_UDPTLSRTPSAVP || media_it->transport == TP_UDPTLSRTPSAVPF) {
+      if (media_it->transport == TP_RTPAVP || media_it->transport == TP_RTPAVPF || media_it->transport == TP_RTPSAVP || media_it->transport == TP_RTPSAVPF || media_it->transport == TP_UDPTLSRTPSAVP || media_it->transport == TP_UDPTLSRTPSAVPF) {
 	for(std::vector<SdpPayload>::const_iterator pl_it = media_it->payloads.begin();
 	    pl_it != media_it->payloads.end(); pl_it++) {
 
@@ -754,11 +755,14 @@ static char* parse_sdp_connection(AmSdp* sdp_msg, char* s, char t)
     case ADDR_TYPE:
       {
 	string addr_type(connection_line,3);
-	connection_line +=4; // fixme
-	if(addr_type == "IP4"){
+
+	string addr_type_uc = addr_type;
+	std::transform(addr_type_uc.begin(), addr_type_uc.end(), addr_type_uc.begin(), toupper);
+	connection_line +=4;
+	if(addr_type_uc == "IP4"){
 	  c.addrType = AT_V4;
 	  state = IP4;
-	}else if(addr_type == "IP6"){
+	}else if(addr_type_uc == "IP6"){
 	  c.addrType = AT_V6;
 	  state = IP6;
 	}else{
@@ -891,7 +895,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
       }
     case FMT:
       {
-	if (m.transport == TP_RTPAVP || m.transport == TP_RTPSAVP || m.transport == TP_RTPSAVPF || m.transport == TP_UDPTLSRTPSAVP || m.transport == TP_UDPTLSRTPSAVPF) {
+	if (m.transport == TP_RTPAVP || m.transport  == TP_RTPAVPF || m.transport == TP_RTPSAVP || m.transport == TP_RTPSAVPF || m.transport == TP_UDPTLSRTPSAVP || m.transport == TP_UDPTLSRTPSAVPF) {
 	  if (contains(media_line, line_end, ' ')) {
 	    next = parse_until(media_line, ' ');
 	    string value;
@@ -1467,6 +1471,8 @@ static TransProt transport_type(string transport)
 
   if(transport_uc == "RTP/AVP")
     return TP_RTPAVP;
+  else if(transport_uc == "RTP/AVPF")
+    return TP_RTPAVPF;
   else if(transport_uc == "UDP")
     return TP_UDP;
   else if(transport_uc == "RTP/SAVP")

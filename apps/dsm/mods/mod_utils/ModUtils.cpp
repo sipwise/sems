@@ -41,6 +41,11 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
 
   DEF_CMD("utils.playCountRight", SCUPlayCountRightAction);
   DEF_CMD("utils.playCountLeft",  SCUPlayCountLeftAction);
+  DEF_CMD("utils.getCountRight",  SCUGetCountRightAction);
+  DEF_CMD("utils.getCountLeft",   SCUGetCountLeftAction);
+  DEF_CMD("utils.getCountRightNoSuffix",  SCUGetCountRightNoSuffixAction);
+  DEF_CMD("utils.getCountLeftNoSuffix",   SCUGetCountLeftNoSuffixAction);
+
   DEF_CMD("utils.getNewId", SCGetNewIdAction);
   DEF_CMD("utils.spell", SCUSpellAction);
   DEF_CMD("utils.rand", SCURandomAction);
@@ -55,7 +60,53 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
 
 } MOD_ACTIONEXPORT_END;
 
-MOD_CONDITIONEXPORT_NONE(MOD_CLS_NAME);
+MOD_CONDITIONEXPORT_BEGIN(MOD_CLS_NAME) {
+  if (cmd == "utils.isInList") {
+    return new IsInListCondition(params, false);
+  }
+
+} MOD_CONDITIONEXPORT_END;
+
+vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt, 
+				     const string& basedir, const string& suffix, bool right) {
+  
+  vector<string> res;
+
+  if (cnt <= 20) {
+    res.push_back(basedir+int2str(cnt)+suffix);
+    return res;
+  }
+  
+  for (int i=9;i>1;i--) {
+    div_t num = div(cnt, (int)pow(10.,i));  
+    if (num.quot) {
+      res.push_back(basedir+int2str(int(num.quot * pow(10.,i)))+suffix);
+    }
+    cnt = num.rem;
+  }
+
+  if (!cnt)
+    return res;
+
+  if ((cnt <= 20) || (!(cnt%10))) {
+    res.push_back(basedir+int2str(cnt)+suffix);
+    return res;
+  }
+
+  div_t num = div(cnt, 10);
+  if (right) { 
+   // language has single digits before 10s
+    res.push_back(basedir+int2str(num.quot * 10)+suffix);
+    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
+  } else {
+    // language has single digits before 10s
+    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
+    res.push_back(basedir+int2str(num.quot * 10)+suffix);
+  }
+
+  return res;
+}
+
 
 bool utils_play_count(DSMSession* sc_sess, unsigned int cnt, 
 		      const string& basedir, const string& suffix, bool right) {
@@ -130,6 +181,107 @@ EXEC_ACTION_START(SCUPlayCountLeftAction) {
   utils_play_count(sc_sess, cnt, basedir, ".wav", false);
   sc_sess->CLR_ERRNO;
 } EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(SCUGetCountRightAction, ',', true);
+EXEC_ACTION_START(SCUGetCountRightAction) {
+  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
+  string basedir = resolveVars(par2, sess, sc_sess, event_params);
+
+  unsigned int cnt = 0;
+  if (str2i(cnt_s,cnt)) {
+    ERROR("could not parse count '%s'\n", cnt_s.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
+    return false;
+  }
+
+  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, ".wav", true);
+
+  cnt=0;
+  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
+    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
+    cnt++;
+  }
+
+  sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(SCUGetCountLeftAction, ',', true);
+EXEC_ACTION_START(SCUGetCountLeftAction) {
+  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
+  string basedir = resolveVars(par2, sess, sc_sess, event_params);
+
+  unsigned int cnt = 0;
+  if (str2i(cnt_s,cnt)) {
+    ERROR("could not parse count '%s'\n", cnt_s.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
+    return false;
+  }
+
+  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, ".wav", false);
+
+  cnt=0;
+  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
+    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
+    cnt++;
+  }
+
+  sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(SCUGetCountRightNoSuffixAction, ',', true);
+EXEC_ACTION_START(SCUGetCountRightNoSuffixAction) {
+  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
+  string basedir = resolveVars(par2, sess, sc_sess, event_params);
+
+  unsigned int cnt = 0;
+  if (str2i(cnt_s,cnt)) {
+    ERROR("could not parse count '%s'\n", cnt_s.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
+    return false;
+  }
+
+  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, "", true);
+
+  cnt=0;
+  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
+    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
+    cnt++;
+  }
+
+  sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_2P(SCUGetCountLeftNoSuffixAction, ',', true);
+EXEC_ACTION_START(SCUGetCountLeftNoSuffixAction) {
+  string cnt_s = resolveVars(par1, sess, sc_sess, event_params);
+  string basedir = resolveVars(par2, sess, sc_sess, event_params);
+
+  unsigned int cnt = 0;
+  if (str2i(cnt_s,cnt)) {
+    ERROR("could not parse count '%s'\n", cnt_s.c_str());
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
+    return false;
+  }
+
+  vector<string> filenames = utils_get_count_files(sc_sess, cnt, basedir, "", false);
+
+  cnt=0;
+  for (vector<string>::iterator it=filenames.begin();it!=filenames.end();it++) {
+    sc_sess->var["count_file["+int2str(cnt)+"]"]=*it;
+    cnt++;
+  }
+
+  sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
 
 EXEC_ACTION_START(SCGetNewIdAction) {
   string d = resolveVars(arg, sess, sc_sess, event_params);
@@ -308,3 +460,26 @@ EXEC_ACTION_START(SCUPlayRingToneAction) {
 
   sc_sess->transferOwnership(rt);
 } EXEC_ACTION_END;
+
+CONST_CONDITION_2P(IsInListCondition, ',', false);
+MATCH_CONDITION_START(IsInListCondition) {
+  string key = resolveVars(par1, sess, sc_sess, event_params);
+  string cslist = resolveVars(par2, sess, sc_sess, event_params);
+  DBG("checking whether '%s' is in list '%s'\n", key.c_str(), cslist.c_str());
+
+  bool res = false;
+  vector<string> items = explode(cslist, ",");
+  for (vector<string>::iterator it=items.begin(); it != items.end(); it++) {
+    if (key == trim(*it, " \t")) {
+      res = true;
+      break;
+    }
+  }
+  DBG("key %sfound\n", res?"":" not");
+
+  if (inv) {
+    return !res;
+  } else {
+    return res;
+  }
+ } MATCH_CONDITION_END;

@@ -4,6 +4,8 @@ DSM quick reference
 Syntax
 ======
 -- comment
+# also comment
+
 #include "script.dsm"
 #include "/path/to/anotherscript.dsm"
 import(mod_name);
@@ -87,6 +89,9 @@ DSM flow
   e.g.  set($var="text"); set($var=$var2); set($var=#key)
  sets($var=value)
   e.g.  sets($var="text and some $variable and some #param");
+        sets($var="$(variable1)$(variable2)");
+        sets($var="this is a single hash: ##")
+        sets($var="a single at on a date with a single dollar: @@$$")
  var($dstvar=srcvarname)
   e.g.  var($dstvar=$var_counter)
  param($dstvar=srcparamname)
@@ -104,11 +109,17 @@ DSM flow
   set variable $dst to size of array 
   (e.g. $arrayname[0], $arrayname[1] set, $dst set to 2)
 
+ arrayIndex($array, key)  - find key in $array, set $index to its index, or "nil" if not found
+ arrayIndex($array, $var) - find $var in $array, set $var.index to its index, or "nil" if not found
+
  inc($var)
  clear($var)
- clearArray($var)
+ clearStruct($var)
   clears all var.* variables
+ clearArray($var)
+  clears all var[* variables 
 
+ 
 Playing prompts and file I/O
 ----------------------------
 
@@ -135,6 +146,14 @@ Playing prompts and file I/O
 
  playSilence(millisec)      - play silence for millisec ms
  playSilenceFront(millisec) - play silence for millisec ms at first position in playlist
+
+ playRingtone(varname, bool front) - play ringtone - parameters in varname
+ e.g. set($r.length=10000);
+      set($r.on=150);
+      set($r.off=550);
+      set($r.f=550);
+      set($r.f2=850);
+      playRingtone($r,true);
 
  recordFile(filename)
    Throws "file" exeption with #path if file can not be opened for recording
@@ -236,6 +255,7 @@ B2B call control
 
  log(level, text)
    e.g. log(1, $var1)
+ logs(level, "text with $(variable_name) and #(paramname) replacements")
  -- log all variables:
  logVars(level) 
  -- log all selects:
@@ -243,7 +263,11 @@ B2B call control
  -- log all Params (only in actions of a transition):
  logParams(level) 
  -- log everything:
- logAll(level) 
+ logAll(level)
+ dbg("some debug with $(replaced_var)") 
+ info("some info $(message)")
+ warn("warn #(message_parameter)")
+ error("error in call @(local_tag)")
 
  Timers
  ------
@@ -339,6 +363,9 @@ brackets match.
 
  start
    start of a session (onStart). This event is processed before any other.
+
+beforeDestroy
+   end of a session (onBeforeDestroy). This event is processed after any other.
 
  hangup
    bye/cancel received
