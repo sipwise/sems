@@ -1,3 +1,9 @@
+ngcp-sems (1:1.6.0-1+0~mr4.0.0.0) unstable; urgency=medium
+
+  * [00ab164] Imported Upstream version 1.6.0
+
+ -- Victor Seva <vseva@sipwise.com>  Wed, 17 Jun 2015 09:44:03 +0200
+
 ngcp-sems (1:1.6.0~20150612~a2d214df36-1+0~mr4.0.0.0) unstable; urgency=medium
 
   * [e63b96a] MT#13019 debian: refresh quilt patch
