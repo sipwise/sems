@@ -1,3 +1,11 @@
+upstream/0001-b-f-sbc-codecs-compare-encoding_param-only-if-both-0.patch
+upstream/0002-core-codec-init-support-for-fmt-params-negotiation-f.patch
+upstream/0003-core-amci-call-codec-module-init-function-with-mod_c.patch
+upstream/0004-core-rtp-stream-take-fmt-params-in-payload-initializ.patch
+upstream/0005-opus-configurable-codec-settings-for-OPUS-codec.patch
+upstream/0006-b-f-fixes-c7800ea-remove-leftover-stacktrace-in-setC.patch
+upstream/0007-b-f-fix-bbb13a1-remove-excessive-debug-info.patch
+#
 sipwise/sw_vcs.patch
 sipwise/0006-rename_xdigits.patch
 sipwise/0008-dsm-helper-functions-macros-for-modules-replaceParam.patch
