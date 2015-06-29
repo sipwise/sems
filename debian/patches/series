@@ -11,5 +11,6 @@ sipwise/sw_vcs.patch
 sipwise/0006-rename_xdigits.patch
 sipwise/0008-dsm-helper-functions-macros-for-modules-replaceParam.patch
 sipwise/0015-confpin-simple-pin-conference-app.patch
+sipwise/0016-MT-13599-don-t-create-CF-map-if-CF-is-denied-by-prof.patch
 no_config.patch
 py_sems_path.patch
