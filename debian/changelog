@@ -1,3 +1,17 @@
+ngcp-sems (1:1.6.0-1+0~mr4.1.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [5d72c50] MT#13019 add upstream patches for codec transcoding
+  * [dc86891] MT#13019 added missing upstream patch
+
+  [ Andrew Pogrebennyk ]
+  * [89c3172] MT#13599 don't create CF map if CF is denied by profile
+  * [daab304] MT#13599 don't create CF map if CF is denied by profile (rename patch for merge)
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Jul 2015 15:35:53 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr4.0.0.0) unstable; urgency=medium
 
   * [00ab164] Imported Upstream version 1.6.0
