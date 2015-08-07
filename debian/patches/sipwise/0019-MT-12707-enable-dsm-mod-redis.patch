@@ -1,0 +1,7 @@
+--- a/apps/dsm/mods/CMakeLists.txt
++++ b/apps/dsm/mods/CMakeLists.txt
+@@ -11,4 +11,5 @@ ADD_SUBDIRECTORY (mod_py)
+ ADD_SUBDIRECTORY (mod_sys)
+ ADD_SUBDIRECTORY (mod_uri)
+ ADD_SUBDIRECTORY (mod_utils)
++ADD_SUBDIRECTORY (mod_redis)
