@@ -1,3 +1,15 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.3.1) unstable; urgency=medium
+
+  [ Andrew Pogrebennyk ]
+  * [421f785] MT#13599 don't create CF map if CF is denied by profile
+
+  [ Victor Seva ]
+  * [4232764] MT#12905 sw_vcs: use primary number for voicemail uri and uuid as fallback
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 20 Aug 2015 23:29:03 +0200
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.3.0) unstable; urgency=low
 
   * New release.
