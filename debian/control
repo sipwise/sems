@@ -22,10 +22,10 @@ Standards-Version: 3.9.6
 
 Package: ngcp-sems
 Architecture: any
-Pre-Depends: ngcp-system-tools,
-             ${misc:Pre-Depends}
+Pre-Depends: ${misc:Pre-Depends}
 Depends: adduser,
          ngcp-prompts,
+         ngcp-system-tools,
          python,
          ${misc:Depends},
          ${shlibs:Depends}
