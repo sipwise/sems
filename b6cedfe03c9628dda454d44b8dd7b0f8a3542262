@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a76adc5_5c8ff123",
+        "filename": "debian/control",
+        "patchSetId": 2
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2016-02-23T12:04:27Z",
+      "side": 0,
+      "message": "commit 764c344f830e99385f04434cc2c6ab110c14aa83\nAuthor: Michael Prokop \u003cmprokop@sipwise.com\u003e\nDate:   Mon Jun 23 23:05:31 2014 +0200\n\n    MT#6485 Container detection in init script\n    \n    Core dump configuratino and certain ulimit operations don\u0027t work\n    when running inside a container like docker, lxc or openvz:\n    \n    | # /etc/init.d/sems status\n    | /etc/init.d/sems: 53: /etc/init.d/sems: cannot create /proc/sys/kernel/core_pattern: Permission denied\n    | /etc/init.d/sems: 54: /etc/init.d/sems: cannot create /proc/sys/fs/suid_dumpable: Permission denied\n    | /etc/init.d/sems: 59: ulimit: error setting limit (Operation not permitted)\n\n\nSo can we drop it?",
+      "revId": "b6cedfe03c9628dda454d44b8dd7b0f8a3542262",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
