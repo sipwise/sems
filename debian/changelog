@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0-1+0~mr4.4.0.0) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [b6cedfe] MT#17699 Bump Standards-Version to 3.9.7
+  * [2736bff] MT#11387 Switch Pre-Depends into Depends
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 21 Mar 2016 22:31:48 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr4.3.0.0) unstable; urgency=medium
 
   * New release.
