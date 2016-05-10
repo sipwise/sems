@@ -7,7 +7,7 @@ export DH_VERBOSE=1
 PYTHON_MODULES=ivr conf_auth mailbox pin_collect
 
 EXCLUDED_MODULES=gateway mp3 twit
-
+EXCLUDED_CORE_MODULES=silk
 EXCLUDED_DSM_MODULES=mod_aws
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
 
@@ -25,6 +25,7 @@ override_dh_auto_build:
 	cfg-target=/etc/$(APP_NAME)/ prefix=/usr \
 	exclude_app_modules="$(EXCLUDED_MODULES)" \
 	exclude_dsm_modules="$(EXCLUDED_DSM_MODULES)" \
+	exclude_core_modules="$(EXCLUDED_CORE_MODULES)" \
 	DESTDIR=$(CURDIR)/debian/$(APP_NAME)
 
 override_dh_auto_install:
