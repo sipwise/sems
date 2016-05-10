@@ -19,3 +19,4 @@ sipwise/0017-MT-13599-don-t-create-CF-map-if-CF-is-denied-by-prof.patch
 no_config.patch
 py_sems_path.patch
 sipwise/0002-b-f-dsm-mod_conference-set-callgroup-to-conference-c.patch
+sipwise/split_string.patch
