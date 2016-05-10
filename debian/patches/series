@@ -14,3 +14,4 @@ sipwise/0015-confpin-simple-pin-conference-app.patch
 sipwise/0017-MT-13599-don-t-create-CF-map-if-CF-is-denied-by-prof.patch
 no_config.patch
 py_sems_path.patch
+sipwise/split_string.patch
