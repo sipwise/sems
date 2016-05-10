@@ -18,3 +18,4 @@ sipwise/0016-core-made-sems-aware-of-rfc5764-media-types-UDP-TLS-.patch
 sipwise/0017-MT-13599-don-t-create-CF-map-if-CF-is-denied-by-prof.patch
 no_config.patch
 py_sems_path.patch
+sipwise/split_string.patch
