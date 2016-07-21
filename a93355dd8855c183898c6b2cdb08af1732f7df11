@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9ab8dda7_c2dd3516",
+        "filename": "debian/patches/sipwise/MT-20649-change-config-validation",
+        "patchSetId": 1
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2016-07-21T11:46:16Z",
+      "side": 1,
+      "message": "Does \"throw AmSession::Exception(500\" means produce 500 SIP reply and sems continue to work? Then OK",
+      "range": {
+        "startLine": 350,
+        "startChar": 46,
+        "endLine": 350,
+        "endChar": 48
+      },
+      "revId": "a93355dd8855c183898c6b2cdb08af1732f7df11",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
