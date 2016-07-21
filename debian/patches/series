@@ -15,3 +15,5 @@ sipwise/0017-MT-13599-don-t-create-CF-map-if-CF-is-denied-by-prof.patch
 no_config.patch
 py_sems_path.patch
 sipwise/MT-20649-add-vsc-for-block-in-clir
+sipwise/MT-20649-change-config-validation
+sipwise/MT-20649-use-macros
