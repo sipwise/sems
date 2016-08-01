@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0-1+0~mr5.0.0.0) unstable; urgency=medium
+
+  [ Andreas Granig ]
+  * [cd20d43] MT#20649 Implement vsc for block_in_clir
+  * [f40a8b9] MT#20649 Rework config validation to be more slack
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 01 Aug 2016 16:37:40 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr4.5.0.0) unstable; urgency=medium
 
   * New release.
