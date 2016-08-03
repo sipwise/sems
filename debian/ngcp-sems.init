@@ -118,13 +118,13 @@ case "$1" in
   stop)
 	echo -n "Stopping $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --quiet --pidfile $SEMS_PIDFILE \
-		--exec $DAEMON
+		--signal 9 --exec $DAEMON
 	log_end_msg $?
 	;;
   restart|force-reload)
 	echo "Restarting $DESC: $NAME"
 	start-stop-daemon --oknodo --stop --quiet --pidfile \
-		$SEMS_PIDFILE --exec $DAEMON
+		$SEMS_PIDFILE --signal 9 --exec $DAEMON
 	if [ -x /usr/sbin/ngcp-check_active ]; then
 		if ! /usr/sbin/ngcp-check_active -q; then
 		  echo "Ignored start action in inactive node"
