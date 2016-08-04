@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.7.2) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [59f4a0d] MT#8041 debian/init: use signal 9 to stop as suggested by authors
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 04 Aug 2016 17:08:18 +0200
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.7.1) unstable; urgency=medium
 
   * New release.
