@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr4.4.1.3) unstable; urgency=medium
+
+  [ Andrew Pogrebennyk ]
+  * [f5b4404] MT#18839 import 5ec9bf2 - b/f:dsm:mod_conference:set callgroup to conference channel
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Sun, 14 Aug 2016 22:46:41 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr4.4.1.2) unstable; urgency=medium
 
   [ Victor Seva ]
