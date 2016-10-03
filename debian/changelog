@@ -1,3 +1,15 @@
+ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.9.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [ef06444] MT#8041 debian/init: use signal 9 to stop as suggested by authors
+
+  [ Andrew Pogrebennyk ]
+  * [84b3d07] MT#18839 import 5ec9bf2 - b/f:dsm:mod_conference:set callgroup to conference channel
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 03 Oct 2016 18:17:05 +0200
+
 ngcp-sems (1:1.6.0~20140819~0b6d12-1+0~mr3.8.8.0) unstable; urgency=medium
 
   * New release.
