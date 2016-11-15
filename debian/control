@@ -3,12 +3,12 @@ Section: net
 Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
 Build-Depends: debhelper (>= 8~),
+               default-libmysqlclient-dev | libmysql++-dev,
                flite-dev,
                libcurl4-openssl-dev | libcurl4-gnutls-dev,
                libev-dev,
                libevent-dev (>= 2.0.0),
                libhiredis-dev,
-               libmysql++-dev,
                libopus-dev,
                libpcre3-dev,
                libspandsp-dev,
