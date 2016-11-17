@@ -6,6 +6,7 @@ upstream/0004-core-rtp-stream-take-fmt-params-in-payload-initializ.patch
 upstream/0005-opus-configurable-codec-settings-for-OPUS-codec.patch
 upstream/0006-b-f-fixes-c7800ea-remove-leftover-stacktrace-in-setC.patch
 upstream/0007-b-f-fix-bbb13a1-remove-excessive-debug-info.patch
+upstream/0008-fix-for-c++11.patch
 #
 sipwise/sw_vcs.patch
 sipwise/0006-rename_xdigits.patch
