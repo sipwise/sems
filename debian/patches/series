@@ -19,3 +19,7 @@ sipwise/MT-20649-add-vsc-for-block-in-clir
 sipwise/MT-20649-change-config-validation
 sipwise/MT-20649-use-macros
 sipwise/0002-b-f-dsm-mod_conference-set-callgroup-to-conference-c.patch
+build-fix-bit-rot.patch
+build-fix-pie.patch
+build-fix-excludes.patch
+build-system-revamp.patch
