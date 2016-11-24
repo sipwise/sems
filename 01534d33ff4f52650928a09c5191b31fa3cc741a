@@ -22,6 +22,29 @@
       "revId": "01534d33ff4f52650928a09c5191b31fa3cc741a",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba51214e_3422d4b9",
+        "filename": "debian/patches/build-fix-pie.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2016-11-24T14:50:45Z",
+      "side": 1,
+      "message": "Same typo here, fixed.",
+      "range": {
+        "startLine": 2,
+        "startChar": 21,
+        "endLine": 2,
+        "endChar": 22
+      },
+      "revId": "01534d33ff4f52650928a09c5191b31fa3cc741a",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
