@@ -21,7 +21,7 @@ fi
 
 
 if test "$SEMS_RUN" = "no" ; then
-    echo -ne "Sems start disabled by default file"
+    echo "Sems start disabled by default file"
     exit 0
 fi
 
