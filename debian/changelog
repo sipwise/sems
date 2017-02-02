@@ -1,3 +1,19 @@
+ngcp-sems (1:1.6.0-1+0~mr5.2.0.0) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [b14b5dc] TT#6431 Revert "TT#6431 Build-Depend on either default-libmysqlclient-dev or libmysql++-dev"
+  * [02cba21] TT#9211 Avoid non-POSIX usage of echo(1) in init script
+
+  [ Guillem Jover ]
+  * [efbb87f] TT#6850 Fix build system
+
+  [ Andrew Pogrebennyk ]
+  * [e278bdd] TT#9306 implemented db_reg_agent option username_with_domain
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 03 Feb 2017 00:43:22 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr5.1.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
