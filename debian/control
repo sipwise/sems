@@ -2,35 +2,41 @@ Source: ngcp-sems
 Section: net
 Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
-Build-Depends: debhelper (>= 8~),
-               flite-dev,
-               libcurl4-openssl-dev | libcurl4-gnutls-dev,
-               libev-dev,
-               libevent-dev (>= 2.0.0),
-               libhiredis-dev,
-               libmysql++-dev,
-               libopus-dev,
-               libpcre3-dev,
-               libspandsp-dev,
-               libspeex-dev,
-               libssl-dev,
-               libxml2-dev,
-               openssl,
-               python-dev,
-               python-sip-dev
+Build-Depends:
+ debhelper (>= 8~),
+ flite-dev,
+ libcurl4-openssl-dev | libcurl4-gnutls-dev,
+ libev-dev,
+ libevent-dev (>= 2.0.0),
+ libhiredis-dev,
+ libmysql++-dev,
+ libopus-dev,
+ libpcre3-dev,
+ libspandsp-dev,
+ libspeex-dev,
+ libssl-dev,
+ libxml2-dev,
+ openssl,
+ python-dev,
+ python-sip-dev,
 Standards-Version: 3.9.7
 
 Package: ngcp-sems
 Architecture: any
-Pre-Depends: ${misc:Pre-Depends}
-Depends: adduser,
-         ngcp-prompts,
-         ngcp-system-tools,
-         python,
-         ${misc:Depends},
-         ${shlibs:Depends}
-Conflicts: sems
-Replaces: sems
+Pre-Depends:
+ ${misc:Pre-Depends},
+Depends:
+ adduser,
+ lsb-base,
+ ngcp-prompts,
+ ngcp-system-tools,
+ python,
+ ${misc:Depends},
+ ${shlibs:Depends},
+Conflicts:
+ sems,
+Replaces:
+ sems,
 Description: SIP Express Media Server, very fast and flexible SIP media server
  SEMS, the SIP Express Media Server, is a free, high performance, extensible media
  server for SIP (RFC3261) based VoIP  services. It features voicemail, conferencing,
@@ -38,9 +44,12 @@ Description: SIP Express Media Server, very fast and flexible SIP media server
 
 Package: ngcp-sems-dbg
 Architecture: any
-Depends: ngcp-sems (= ${binary:Version})
-Conflicts: sems-dbg
-Replaces: sems-dbg
+Depends:
+ ngcp-sems (= ${binary:Version}),
+Conflicts:
+ sems-dbg,
+Replaces:
+ sems-dbg,
 Description: Debugging symbols for Sems SIP Express Media Server
  This is a HA enabled sems version packaged for Sipwise's NGCP platforms.
  SEMS, the SIP Express Media Server, is a free, high performance, extensible media
@@ -50,12 +59,16 @@ Description: Debugging symbols for Sems SIP Express Media Server
 Package: ngcp-sems-libsems1-dev
 Architecture: any
 Section: libdevel
-Conflicts: libsems-dev,
-           ngcp-libsems-dev
-Provides: libsems-dev
-Replaces: libsems-dev,
-          ngcp-libsems-dev
-Depends: ${misc:Depends}
+Conflicts:
+ libsems-dev,
+ ngcp-libsems-dev,
+Provides:
+ libsems-dev,
+Replaces:
+ libsems-dev,
+ ngcp-libsems-dev,
+Depends:
+ ${misc:Depends},
 Description: development files for SIP Express Media Server
  SEMS, the SIP Express Media Server, is a free, high performance,
  extensible media server for SIP (RFC3261) based VoIP services.
