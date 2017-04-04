@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
 Build-Depends:
  debhelper (>= 8~),
+ dh-python,
  flite-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libev-dev,
@@ -30,8 +31,8 @@ Depends:
  lsb-base,
  ngcp-prompts,
  ngcp-system-tools,
- python,
  ${misc:Depends},
+ ${python:Depends},
  ${shlibs:Depends},
 Conflicts:
  sems,
