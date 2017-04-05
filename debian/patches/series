@@ -20,6 +20,7 @@ sipwise/MT-20649-change-config-validation
 sipwise/MT-20649-use-macros
 sipwise/0002-b-f-dsm-mod_conference-set-callgroup-to-conference-c.patch
 sipwise/0018-db_reg_agent-add-username_with_domain-option-to-use-.patch
+sipwise/0019-TT-1640-core_increase-max-config-line.patch
 build-fix-bit-rot.patch
 build-fix-pie.patch
 build-fix-excludes.patch
