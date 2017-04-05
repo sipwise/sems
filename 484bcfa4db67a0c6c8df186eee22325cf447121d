@@ -1,0 +1,9 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Jozef Kenyeres <jkenyeres@sipwise.com>
+Code-Review+2: Víctor Seva <vseva@sipwise.com>
+Code-Review+2: Andreas Granig <agranig@sipwise.com>
+Submitted-by: Víctor Seva <vseva@sipwise.com>
+Submitted-at: Wed, 05 Apr 2017 16:41:41 +0200
+Reviewed-on: http://gerrit.mgm.sipwise.com/12579
+Project: sems
+Branch: refs/heads/master
