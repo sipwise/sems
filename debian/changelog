@@ -1,3 +1,18 @@
+ngcp-sems (1:1.6.0-1+0~mr5.4.0.0) unstable; urgency=medium
+
+  [ Alexander Lutay ]
+  * [67afc66] TT#13418 Add lsb-base to ngcp-sems to fix lintian error
+
+  [ Victor Seva ]
+  * [7a1e2a0] TT#13419 fix lintian error due missing dependency of dh-python
+
+  [ Andrew Pogrebennyk ]
+  * [484bcfa] TT#1640 increase the config line length to 4096 because of header_list
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 16 May 2017 21:44:53 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr5.3.0.0) unstable; urgency=medium
 
   * New release.
