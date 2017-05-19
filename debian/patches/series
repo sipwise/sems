@@ -25,3 +25,4 @@ build-fix-bit-rot.patch
 build-fix-pie.patch
 build-fix-excludes.patch
 build-system-revamp.patch
+fix-build-with-newer-openssl.patch
