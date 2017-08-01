@@ -25,3 +25,4 @@ build-fix-bit-rot.patch
 build-fix-pie.patch
 build-fix-excludes.patch
 build-system-revamp.patch
+sipwise/0020-TT-9521-fix-200OK-without-SPD.patch
