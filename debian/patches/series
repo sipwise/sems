@@ -26,3 +26,4 @@ build-fix-pie.patch
 build-fix-excludes.patch
 build-system-revamp.patch
 fix-build-with-newer-openssl.patch
+fix-200OK-without-SPD.patch
