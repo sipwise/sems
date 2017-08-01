@@ -392,6 +392,9 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
       if (reply.code == 183 && reply.cseq_method == SIP_METH_INVITE) {
         // just ignore if no SDP is generated (required for B2B)
       }
+      else if (reply.code == 200 && reply.cseq_method == SIP_METH_INVITE && state == OA_Completed) {
+        // just ignore if no SDP is generated (required for B2B)
+      }
       else return -1;
     }
     else {
