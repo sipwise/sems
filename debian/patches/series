@@ -26,3 +26,4 @@ build-fix-pie.patch
 build-fix-excludes.patch
 build-system-revamp.patch
 fix-build-with-newer-openssl.patch
+sipwise/0020-TT-9521-fix-200OK-without-SPD.patch
