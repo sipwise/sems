@@ -45,6 +45,8 @@ Description: SIP Express Media Server, very fast and flexible SIP media server
 
 Package: ngcp-sems-dbg
 Architecture: any
+Section: debug
+Priority: extra
 Depends:
  ngcp-sems (= ${binary:Version}),
 Conflicts:
