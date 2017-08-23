@@ -41,6 +41,7 @@ override_dh_auto_install:
 		prefix=/usr \
 		cfg_target=/etc/$(APP_NAME)/
 
+	dh_python2
 	dh_python2 /usr/lib/$(APP_NAME)
 
 override_dh_strip:
