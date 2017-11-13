@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr5.4.2.1) unstable; urgency=medium
+
+  [ Jozef Kenyeres ]
+  * [ba4e2b4] TT#9521 fix failed relay of 200OK without SDP.
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Nov 2017 15:10:41 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr5.4.2.0) unstable; urgency=medium
 
   * New release.
