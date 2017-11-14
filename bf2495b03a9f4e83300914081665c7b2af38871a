@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baada198_be7361e6",
+        "filename": "debian/control",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2017-11-14T19:05:37Z",
+      "side": 1,
+      "message": "Empty field Vcs-Git ?",
+      "revId": "bf2495b03a9f4e83300914081665c7b2af38871a",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
