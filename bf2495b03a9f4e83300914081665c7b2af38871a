@@ -16,6 +16,29 @@
       "revId": "bf2495b03a9f4e83300914081665c7b2af38871a",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baada198_21d3b439",
+        "filename": "debian/control",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2017-11-15T09:31:02Z",
+      "side": 1,
+      "message": "+1 to Manuel here.",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 8
+      },
+      "revId": "bf2495b03a9f4e83300914081665c7b2af38871a",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
