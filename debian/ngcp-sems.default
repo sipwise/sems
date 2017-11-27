@@ -22,7 +22,5 @@ SEMS_PIDFILE="$SEMS_RUNDIR/ngcp-sems.pid"
 # set if you want to create core files
 SEMS_CREATE_CORE="yes"
 
-SEMS_COREDIR="/var/cores"
-
 SEMS_CACHEDIR="/var/cache/ngcp-sems"
 SEMS_CACHEDIR_EXTRADIRS="audio_cache callingcard"

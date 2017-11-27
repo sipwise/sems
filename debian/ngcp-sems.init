@@ -74,11 +74,6 @@ if test "$SEMS_CREATE_CORE" = "yes" ; then
   if [ "$VIRT" = "yes" ]; then
     echo "Container environment detected. Skipping core dump configuration."
   else
-    # directory for the core dump files
-    [ -d $SEMS_COREDIR ] || mkdir $SEMS_COREDIR
-    chmod 777 $SEMS_COREDIR
-    echo "$SEMS_COREDIR/core.%e.sig%s.%p" > /proc/sys/kernel/core_pattern
-    echo 2 > /proc/sys/fs/suid_dumpable
     ulimit -c unlimited
   fi
 fi
