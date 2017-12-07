@@ -1,0 +1,26 @@
+--- a/core/AmSessionContainer.cpp
++++ b/core/AmSessionContainer.cpp
+@@ -36,6 +36,9 @@
+ #include <assert.h>
+ #include <sys/types.h>
+ #include <unistd.h>
++#include <fcntl.h>
++#include <termios.h>
++#include <sys/ioctl.h>
+ 
+ #include "sems.h"
+ 
+@@ -506,6 +509,13 @@
+       return NULL;
+   }
+ 
++  int fd = open("/proc/ngcp/check", O_RDONLY);
++  if (fd >= 0) {
++      // set calls usage
++      ioctl(fd, TCXONC, AmSession::session_num + 1);
++      close(fd);
++  }
++
+   AmSessionFactory* session_factory = NULL;
+   if(!app_name.empty())
+       session_factory = AmPlugIn::instance()->getFactory4App(app_name);
