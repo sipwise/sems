@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr6.0.1.1) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [57e033f] TT#27201 restore reporting of number of running calls
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 18 Dec 2017 08:47:04 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr6.0.1.0) unstable; urgency=medium
 
   [ Guillem Jover ]
