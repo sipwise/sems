@@ -17,6 +17,7 @@ export USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)"
 
 export APP_NAME=ngcp-sems
 export SYSTEM_SAMPLECLOCK_RATE=48000LL
+export USE_THREADPOOL=yes
 
 %:
 	dh $@
