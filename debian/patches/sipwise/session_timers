@@ -1,0 +1,27 @@
+--- a/core/plug-in/session_timer/SessionTimer.cpp
++++ b/core/plug-in/session_timer/SessionTimer.cpp
+@@ -339,6 +339,9 @@ void SessionTimer::updateTimer(AmSession
+ 
+ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply) 
+ {
++
++  DBG("+++++++++++ I'm here ++++++++++++++++++");
++
+   if (!session_timer_conf.getEnableSessionTimer())
+     return;
+ 
+@@ -346,6 +349,14 @@ void SessionTimer::updateTimer(AmSession
+   if (((reply.code < 200) || (reply.code >= 300)) &&
+       (!(accept_501_reply && reply.code == 501)))
+     return;
++
++  remote_timer_aware =
++      key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
++                  TIMER_OPTION_TAG);
++  if (remote_timer_aware) {
++    DBG("+++++++++++ Remote header not included ++++++++++++++++++");
++    return;
++  }
+   
+   // determine session interval
+   string sess_expires_hdr = getHeader(reply.hdrs, SIP_HDR_SESSION_EXPIRES,
