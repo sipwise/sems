@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "3a6ff13c_7314aaf5",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-09T17:55:39Z",
+      "side": 1,
+      "message": "\u003e If this is done in the init script, fin. But the correct way to do\n \u003e this is via rpath.\n\nYes, it\u0027s how it\u0027s done:\n\nroot@web01a:~# grep LD_LIBRARY_PATH /etc/init.d/ngcp-sems \nLD_LIBRARY_PATH\u003d/usr/lib/sems-pbx                                                                                                                                           \nexport LD_LIBRARY_PATH",
+      "parentUuid": "3a6ff13c_9824e5c7",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a6ff13c_f82b1992",
         "filename": "debian/ngcp-sems.service",
         "patchSetId": 1
@@ -70,6 +88,24 @@
     },
     {
       "key": {
+        "uuid": "3a6ff13c_b3f542cd",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-09T17:55:39Z",
+      "side": 1,
+      "message": "\u003e Please use tmpdirs.d instead of all these StartPre.\n\nAny pointer to doc or something?  I am not familiar with that and my web search didn\u0027t enlighten me too much.  Is it a separate command or a systemd feature?",
+      "parentUuid": "3a6ff13c_f82b1992",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a6ff13c_d8057d15",
         "filename": "debian/ngcp-sems.service",
         "patchSetId": 1
@@ -81,6 +117,24 @@
       "writtenOn": "2018-03-09T14:31:40Z",
       "side": 1,
       "message": "Please use the LimitCORE and LimitNOFILE instead.\n\nAlso after this I don\u0027t think then there\u0027s any point in sourcing the default/sems file, which I think should have been called default/ngcp-sems anyway. :)",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_93f846c6",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-09T17:55:39Z",
+      "side": 1,
+      "message": "\u003e Please use the LimitCORE and LimitNOFILE instead.\n\nNice to know, thanks.  I have to see if they will work on the conditional (running under containers) though, not sure.\n\n\n \u003e Also after this I don\u0027t think then there\u0027s any point in sourcing\n \u003e the default/sems file, which I think should have been called\n \u003e default/ngcp-sems anyway. :)\n\nI have to check if the variables might be used internally by the program.\n\nIn any case, with the \u003d-, we can remove the file at any time and the unit will continue to work.\n\nRegarding this, I think that these files can be removed in the long run, but not sure in the short run.  If there are systems customised for sysvinit or customers which don\u0027t want to have to migrate with systemd,  at least it will be much more easy if we keep these legacy files for a while.  They don\u0027t do much harm if we ignore them or don\u0027t rely too much on them on systemd, for example if we don\u0027t pay attention to RUN_DAEMON\u003dyes.\n\nBut I\u0027m fine if we decide to get rid of them right away.",
+      "parentUuid": "3a6ff13c_d8057d15",
       "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
