@@ -1,1 +1,2 @@
 ngcp-sems: possible-gpl-code-linked-with-openssl
+ngcp-sems: init.d-script-not-included-in-package etc/init.d/ngcp-sems
