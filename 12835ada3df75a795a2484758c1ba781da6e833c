@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a6ff13c_38369104",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T14:31:40Z",
+      "side": 1,
+      "message": "While we are at it, just let\u0027s use mariadb.service",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_583b4deb",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T14:31:40Z",
+      "side": 1,
+      "message": "ditto",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_9824e5c7",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T14:31:40Z",
+      "side": 1,
+      "message": "If this is done in the init script, fin. But the correct way to do this is via rpath.",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_f82b1992",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T14:31:40Z",
+      "side": 1,
+      "message": "Please use tmpdirs.d instead of all these StartPre.",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_d8057d15",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T14:31:40Z",
+      "side": 1,
+      "message": "Please use the LimitCORE and LimitNOFILE instead.\n\nAlso after this I don\u0027t think then there\u0027s any point in sourcing the default/sems file, which I think should have been called default/ngcp-sems anyway. :)",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
