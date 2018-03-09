@@ -2,14 +2,11 @@
 
 set -e
 
-dpkg-maintscript-helper rm_conffile /etc/default/sems -- "$@"
-dpkg-maintscript-helper rm_conffile /etc/init.d/sems -- "$@"
-
 case "$1" in
   configure)
     # add sems user
     adduser --quiet --system --group --disabled-password --shell /bin/false \
-      --gecos "SIP Express Media Server" --home /var/run/ngcp-sems sems || true
+      --gecos "SIP Express Media Server" --home /run/ngcp-sems sems || true
   ;;
   abort-upgrade|abort-remove|abort-deconfigure)
     exit 0
