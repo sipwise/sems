@@ -106,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "3a6ff13c_f316daf0",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T18:15:06Z",
+      "side": 1,
+      "message": "Sorry, man tmpfiles.d :)",
+      "parentUuid": "3a6ff13c_b3f542cd",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a6ff13c_d8057d15",
         "filename": "debian/ngcp-sems.service",
         "patchSetId": 1
@@ -135,6 +153,24 @@
       "side": 1,
       "message": "\u003e Please use the LimitCORE and LimitNOFILE instead.\n\nNice to know, thanks.  I have to see if they will work on the conditional (running under containers) though, not sure.\n\n\n \u003e Also after this I don\u0027t think then there\u0027s any point in sourcing\n \u003e the default/sems file, which I think should have been called\n \u003e default/ngcp-sems anyway. :)\n\nI have to check if the variables might be used internally by the program.\n\nIn any case, with the \u003d-, we can remove the file at any time and the unit will continue to work.\n\nRegarding this, I think that these files can be removed in the long run, but not sure in the short run.  If there are systems customised for sysvinit or customers which don\u0027t want to have to migrate with systemd,  at least it will be much more easy if we keep these legacy files for a while.  They don\u0027t do much harm if we ignore them or don\u0027t rely too much on them on systemd, for example if we don\u0027t pay attention to RUN_DAEMON\u003dyes.\n\nBut I\u0027m fine if we decide to get rid of them right away.",
       "parentUuid": "3a6ff13c_d8057d15",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_13d37639",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-09T18:15:06Z",
+      "side": 1,
+      "message": "\u003e \u003e Please use the LimitCORE and LimitNOFILE instead.\n \u003e \n \u003e Nice to know, thanks.  I have to see if they will work on the\n \u003e conditional (running under containers) though, not sure.\n\nI think we should not care, systemd will either be running fully or we\u0027ll need to run via nspawn in some kind of \"container\", but I don\u0027t see why we\u0027d not want these limits not be used on virtualized systems. Also if the user does not want cores, then they can add an override which is how this is supposed to be configured, instead of using external configuration files that are sourced.\n\n \u003e \u003e Also after this I don\u0027t think then there\u0027s any point in sourcing\n \u003e \u003e the default/sems file, which I think should have been called\n \u003e \u003e default/ngcp-sems anyway. :)\n \u003e \n \u003e I have to check if the variables might be used internally by the\n \u003e program.\n \u003e \n \u003e In any case, with the \u003d-, we can remove the file at any time and\n \u003e the unit will continue to work.\n \u003e \n \u003e Regarding this, I think that these files can be removed in the long\n \u003e run, but not sure in the short run.  If there are systems\n \u003e customised for sysvinit or customers which don\u0027t want to have to\n \u003e migrate with systemd,  at least it will be much more easy if we\n \u003e keep these legacy files for a while.  They don\u0027t do much harm if we\n \u003e ignore them or don\u0027t rely too much on them on systemd, for example\n \u003e if we don\u0027t pay attention to RUN_DAEMON\u003dyes.\n \u003e \n \u003e But I\u0027m fine if we decide to get rid of them right away.\n\nI briefly checked and didn\u0027t see any other usage. And we\u0027ve already started removing such files, and general sysvinit support anyway, you cannot rely on it anymore on latest NGCP.",
+      "parentUuid": "3a6ff13c_93f846c6",
       "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
