@@ -1,0 +1,30 @@
+[Unit]
+Description=NGCP SIP Express Media Server (SEMS)
+After=mysql.service
+After=network-online.target
+After=remote-fs.target
+Requires=mysql.service
+Requires=remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sems
+Group=sems
+EnvironmentFile=-/etc/default/sems
+Environment="LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/sems-pbx"
+PIDFile=/run/sems/sems.pid
+Restart=always
+StartLimitInterval=10
+StartLimitBurst=5
+ExecStart=/usr/sbin/sems-pbx -E -u sems -g sems -P /run/sems/sems.pid -f /etc/ngcp-sems/sems.conf
+ExecStartPre=/bin/mkdir -m 0755 -p $SEMS_CACHEDIR
+ExecStartPre=/bin/mkdir -m 0755 -p $SEMS_CACHEDIR/$dir
+# dangerous?
+ExecStartPre=/usr/bin/find $SEMS_CACHEDIR -type f -exec rm {} ;
+ExecStartPre=/bin/chown -R $SEMS_USER:$SEMS_GROUP $SEMS_RUNDIR $SEMS_CACHEDIR
+ExecStartPre-=/bin/bash -c '/usr/sbin/ngcp-virt-identify && (ulimit -c unlimited; ulimit -n 100000)'
+
+[Install]
+WantedBy=multi-user.target
+Alias=sems.service
