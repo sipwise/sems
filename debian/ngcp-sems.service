@@ -1,0 +1,26 @@
+[Unit]
+Description=NGCP SIP Express Media Server (SEMS)
+After=mariadb.service
+After=network-online.target
+After=remote-fs.target
+Requires=mariadb.service
+Requires=remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sems
+Group=sems
+Environment=LD_LIBRARY_PATH=/usr/lib/sems-pbx
+PassEnvironment=LD_LIBRARY_PATH
+PIDFile=/run/sems/sems.pid
+Restart=always
+StartLimitInterval=10
+StartLimitBurst=5
+ExecStart=/usr/sbin/sems-pbx -E -u sems -g sems -P /run/sems/sems.pid -f /etc/ngcp-sems/sems.conf
+LimitCORE=unlimited
+LimitNOFILE=100000
+
+[Install]
+WantedBy=multi-user.target
+Alias=sems.service
