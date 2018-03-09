@@ -1,0 +1,2 @@
+rm_conffile /etc/default/ngcp-sems 6.3~ ngcp-sems
+rm_conffile /etc/init.d/ngcp-sems 6.3~ ngcp-sems
