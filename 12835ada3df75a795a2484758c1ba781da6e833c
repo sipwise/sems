@@ -192,6 +192,24 @@
       "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_deb8052d",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-12T15:19:34Z",
+      "side": 1,
+      "message": "The virtual envs stuff was from commit 764c344f830e99385f04434cc2c6ab110c14aa83 this was apparently to avoid errors while setting the sysctl values and the ulimit. IMO systemd should handle that by itself, which I think it already contains code to detect virtual envs. Otherwise it\u0027s a bug in systemd.",
+      "parentUuid": "3a6ff13c_fe478149",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
