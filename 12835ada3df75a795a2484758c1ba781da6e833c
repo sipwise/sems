@@ -210,6 +210,24 @@
       "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_3e4f5994",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-13T13:03:05Z",
+      "side": 1,
+      "message": "\u003e I briefly checked and didn\u0027t see any other usage. And we\u0027ve already\n \u003e started removing such files, and general sysvinit support anyway,\n \u003e you cannot rely on it anymore on latest NGCP.\n\nApparently this var in /etc/default/ngcpit serves to control whether to have coredumps:\n\n# set if you want to create core files\nSEMS_CREATE_CORE\u003d\"yes\"\n\n\nI grepped /etc/ngcp-sems/ and theres no \"core\" string.  I suppose that there are other ways to control this, but dunno, maybe people within our team relying on this (if anybody does, which I don\u0027t know) will get confused.\n\nAnyway, fine with removing it, we can always bring it back.",
+      "parentUuid": "3a6ff13c_13d37639",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
