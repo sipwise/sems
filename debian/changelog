@@ -1,3 +1,15 @@
+ngcp-sems (1:1.6.0-1+0~mr6.0.3.0) unstable; urgency=medium
+
+  [ Andrew Pogrebennyk ]
+  * [6596dc3] TT#30000 restore use_threadpool after d8b3cbf4
+
+  [ Marco Capetta ]
+  * [5ecd385] TT#29926 NGCP refreshes the session even if STT is not supported
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 13 Mar 2018 14:07:11 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr6.0.2.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
