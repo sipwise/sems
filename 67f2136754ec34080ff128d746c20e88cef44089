@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a6ff13c_6b09122c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-13T21:27:48Z",
+      "side": 1,
+      "message": "We went for mariadb.service here (and the next refs)",
+      "range": {
+        "startLine": 24,
+        "startChar": 54,
+        "endLine": 24,
+        "endChar": 59
+      },
+      "revId": "67f2136754ec34080ff128d746c20e88cef44089",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_8b0e4e33",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-13T21:27:48Z",
+      "side": 1,
+      "message": "The pidfile should be /run/ngcp-sems/ngcp-sems.pid or monit might not find it.",
+      "revId": "67f2136754ec34080ff128d746c20e88cef44089",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_f9023b0a",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-13T21:27:48Z",
+      "side": 1,
+      "message": "That looks wrong, the binary in the init script is called ngcp-sems, as well as the ngcp-sems/ngcp-sems.pid file",
+      "revId": "67f2136754ec34080ff128d746c20e88cef44089",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_cb0f662d",
+        "filename": "debian/ngcp-sems.tmpfiles.d.conf",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-13T21:27:48Z",
+      "side": 1,
+      "message": "/run/ngcp-sems",
+      "revId": "67f2136754ec34080ff128d746c20e88cef44089",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
