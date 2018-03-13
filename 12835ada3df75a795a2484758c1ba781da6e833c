@@ -228,6 +228,24 @@
       "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_de572525",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1000006
+      },
+      "writtenOn": "2018-03-13T13:26:12Z",
+      "side": 1,
+      "message": "\u003e But I\u0027m fine if we decide to remove all of that and strive to get\n \u003e the cleanest/simplest unit files that we can.\n \nI am fine to streamline the unit file can skip any special treatment of container environment. We do sometimes get the coredump from ngcp-sems/sems-pbx so let\u0027s preserve the cores as well as \"NFILE\" limit raising functionality.",
+      "parentUuid": "3a6ff13c_fe478149",
+      "revId": "12835ada3df75a795a2484758c1ba781da6e833c",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
