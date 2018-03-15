@@ -16,6 +16,24 @@
       "revId": "6177938d804339028e37eeacbec4b90404fcc4d8",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a6ff13c_c1f4a589",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 6
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-15T15:02:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a6ff13c_ee57d024",
+      "revId": "6177938d804339028e37eeacbec4b90404fcc4d8",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
