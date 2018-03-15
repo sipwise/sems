@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a6ff13c_ee57d024",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 6
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-15T12:26:08Z",
+      "side": 1,
+      "message": "Actually let\u0027s remove this and set it globally instead. I\u0027m preparing a review for that.",
+      "revId": "6177938d804339028e37eeacbec4b90404fcc4d8",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
