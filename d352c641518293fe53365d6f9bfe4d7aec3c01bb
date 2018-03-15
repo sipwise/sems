@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a6ff13c_c173c5e5",
+        "filename": "debian/ngcp-sems.maintscript",
+        "patchSetId": 7
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-15T18:31:09Z",
+      "side": 1,
+      "message": "this version is wrong, it needs to be higher than the latest one released in the changelog.",
+      "revId": "d352c641518293fe53365d6f9bfe4d7aec3c01bb",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
