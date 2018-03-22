@@ -16,6 +16,24 @@
       "revId": "9b8cabc96c884f3dbf3a8681311eac34d595eba0",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da9b358b_a487acd6",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-22T19:44:26Z",
+      "side": 1,
+      "message": "What it was doing in the case of the bug report was to KILL later, but to KILL anyway.  The only way in which this would make it worse would be to maybe kill the process in cases where it\u0027s slower to shut down than 10s but faster than 90s, if this ever happens.\n\nBut yeah, as you say, with sysvinit (thanks for the research!) was even worse, so this point is moot now.\n\nI added the maintainers to the review so they can comment in the case that they think that it\u0027s unsafe, to have a chance to fix it now :)",
+      "parentUuid": "da9b358b_c498706d",
+      "revId": "9b8cabc96c884f3dbf3a8681311eac34d595eba0",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
