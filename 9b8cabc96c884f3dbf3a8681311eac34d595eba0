@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da9b358b_c498706d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-22T17:56:01Z",
+      "side": 1,
+      "message": "I guess that depends on how the service reacts to a forced SIGKILL, and whether there\u0027s a chance for it to damage databases or on-disk data, etc. OTOH I assume the sysvinit script was using --retry on the s-s-d call which would have forced a SIGKILL too at some point?\n\nHah, checking now it seems it was just using --signal 9, which means it was not even sending a SIGTERM first, but a SIGKILL straight away! So it seems rather safe to lower the timeout, probably even further down. :)",
+      "revId": "9b8cabc96c884f3dbf3a8681311eac34d595eba0",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
