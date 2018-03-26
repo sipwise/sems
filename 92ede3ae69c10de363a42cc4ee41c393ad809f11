@@ -16,6 +16,24 @@
       "revId": "92ede3ae69c10de363a42cc4ee41c393ad809f11",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da9b358b_0a4adf83",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-03-26T15:06:33Z",
+      "side": 1,
+      "message": "\u003e This is set globally, and we already took it out from here because\n \u003e of that! :)\n\nYou\u0027re right, thanks for the reminder!  Will abandon this one.",
+      "parentUuid": "da9b358b_ca9e3707",
+      "revId": "92ede3ae69c10de363a42cc4ee41c393ad809f11",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
