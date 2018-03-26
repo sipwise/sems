@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da9b358b_ca9e3707",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-03-26T14:43:09Z",
+      "side": 1,
+      "message": "This is set globally, and we already took it out from here because of that! :)",
+      "revId": "92ede3ae69c10de363a42cc4ee41c393ad809f11",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
