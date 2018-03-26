@@ -17,6 +17,7 @@ PIDFile=/run/ngcp-sems/ngcp-sems.pid
 Restart=always
 ExecStart=/usr/sbin/ngcp-sems -E -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf
 TimeoutStopSec=10
+LimitCORE=infinity
 LimitNOFILE=100000
 
 [Install]
