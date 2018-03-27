@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr4.5.9.0) unstable; urgency=medium
+
+  [ Andrew Pogrebennyk ]
+  * [c0ab909] TT#30000 restore use_threadpool after d8b3cbf4
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 27 Mar 2018 18:34:54 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr4.5.8.0) unstable; urgency=medium
 
   * New release.
