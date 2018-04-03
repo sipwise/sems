@@ -1,3 +1,24 @@
+ngcp-sems (1:1.6.0-1+0~mr6.3.0.0) unstable; urgency=medium
+
+  [ Marco Capetta ]
+  * [f47f18c] TT#29926 NGCP refreshes the session even if STT is not supported
+
+  [ Alexander Lutay ]
+  * [fde9945] TT#33276 Remove sysv init script dependency on sshd
+
+  [ Manuel Montecelo ]
+  * [b471eef] TT#26264 Add systemd unit service file, remove sysvinit support
+  * [f51d219] TT#26264 Use /var/run/ngcp-sems again as home of user "sems", instead of /run
+  * [b106d5b] TT#26264 Rename tmpfiles.d file to avoid code in d/rules
+  * [e33ab78] TT#34428 Fix typo in ngcp-sems.tmpfile name so dh_installinit can find it
+  * [092b363] TT#26264 Removing unimportant fields in the systemd service/unit file
+  * [9b8cabc] TT#34414 Changing systemd unit file TimeoutStopSec to 10
+  * [03a7e21] TT#34414 Removing empty line
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 03 Apr 2018 22:33:17 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr6.2.0.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
