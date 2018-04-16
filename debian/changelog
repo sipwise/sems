@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr5.5.4.1) unstable; urgency=medium
+
+  [ Marco Capetta ]
+  * [a8633d4] TT#29926 NGCP refreshes the session even if STT is not supported
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 16 Apr 2018 16:08:43 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr5.5.4.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
