@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aaa499b_a1f798f4",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-04-24T20:25:14Z",
+      "side": 1,
+      "message": "You want instead KillSignal\u003dSIGKILL",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
