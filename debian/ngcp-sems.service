@@ -16,6 +16,7 @@ PassEnvironment=LD_LIBRARY_PATH
 PIDFile=/run/ngcp-sems/ngcp-sems.pid
 Restart=always
 ExecStart=/usr/sbin/ngcp-sems -E -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf
+ExecStop=/bin/kill -KILL $MAINPID
 TimeoutStopSec=10
 LimitNOFILE=100000
 
