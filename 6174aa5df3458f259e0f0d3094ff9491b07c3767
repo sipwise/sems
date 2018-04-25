@@ -124,6 +124,42 @@
       "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_61ad1031",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-04-25T12:22:20Z",
+      "side": 1,
+      "message": "\u003e I guess adding SuccessExitStatus\u003dSIGKILL would help here\n\nBut then we don\u0027t know when it was killed due to a controlled stop or the kernel\u0027s OOM forcing a kill due to excessive use of memory, for example.\n\nDunno, adding \"SuccessExitStatus\u003dSIGKILL\", when there are sources that might not come from Stop, doesn\u0027t feel right to me.\n\nI suppose that if this is fixed soon we can live with it.",
+      "parentUuid": "7aaa499b_41fc543e",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_81b01c8d",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-04-25T12:22:20Z",
+      "side": 1,
+      "message": "It happens also with the previous one I think (ExecStop\u003dkill -KILL)",
+      "parentUuid": "7aaa499b_c1e744ab",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
