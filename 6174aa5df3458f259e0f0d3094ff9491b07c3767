@@ -70,6 +70,24 @@
       "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_c1e744ab",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-04-25T12:06:18Z",
+      "side": 1,
+      "message": "And now we have \"visibility\" issue on sems stop:\n  \nroot@sp2:~# systemctl status sems\n● ngcp-sems.service - NGCP SIP Express Media Server (SEMS)\n   Loaded: loaded (/lib/systemd/system/ngcp-sems.service; disabled; vendor preset: disabled)\n   Active: active (running) since Wed 2018-04-25 14:04:00 CEST; 18s ago\n Main PID: 12592 (sems-pbx)\n    Tasks: 37 (limit: 2376)\n   CGroup: /system.slice/ngcp-sems.service\n           └─12592 /usr/sbin/sems-pbx -E -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf\nroot@sp2:~# systemctl stop sems\nroot@sp2:~# systemctl status sems\n● ngcp-sems.service - NGCP SIP Express Media Server (SEMS)\n   Loaded: loaded (/lib/systemd/system/ngcp-sems.service; disabled; vendor preset: disabled)\n   Active: failed (Result: signal) since Wed 2018-04-25 14:04:22 CEST; 1s ago\n  Process: 12592 ExecStart\u003d/usr/sbin/sems-pbx -E -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf (code\u003dkilled, signal\u003dKILL)\n Main PID: 12592 (code\u003dkilled, signal\u003dKILL)\nroot@sp2:~#\n\nroot@sp2:~# ngcp-service summary | grep sems\nsems                           managed      by-monit  failed\nroot@sp2:~# \n\non inactive node we have failed sems now... reverting the changes to this commit?",
+      "parentUuid": "7aaa499b_a102f86d",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
