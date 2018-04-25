@@ -1,0 +1,9 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Mykola Malkov <mmalkov@sipwise.com>
+Code-Review+2: Guillem Jover <gjover@sipwise.com>
+Code-Review+2: Alexander Lutay <alutay@sipwise.com>
+Submitted-by: Manuel Montecelo <mmontecelo@sipwise.com>
+Submitted-at: Wed, 25 Apr 2018 13:10:28 +0200
+Reviewed-on: http://gerrit.mgm.sipwise.com/20735
+Project: sems
+Branch: refs/heads/master
