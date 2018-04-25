@@ -52,6 +52,24 @@
       "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_a102f86d",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-04-25T11:19:55Z",
+      "side": 1,
+      "message": "I\u0027ve got your point. So far since we migrate to some component (\u0027systemd\u0027 in this case), we have to respect their best practices. From what I read about systemd, it is recommended to configure proper systemd stop signals, otherwise systemd is not aware of what ExecStop is doing with the process.\nIt changes nothing here from functionality point of view, sure.\n\nre: size, at the end, ExecStop is a rudiment from Sysv, and services should properly react in SIGTERM to terminate the state (as at the end it is what the process finally received to stop).",
+      "parentUuid": "7aaa499b_a12af82a",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
