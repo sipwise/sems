@@ -160,6 +160,24 @@
       "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_6174f0ce",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-04-25T12:26:01Z",
+      "side": 1,
+      "message": "IMHO, then add SuccessExitStatus\u003dSIGKILL as current behavious just doesn\u0027t work for us :-(",
+      "parentUuid": "7aaa499b_81b01c8d",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
