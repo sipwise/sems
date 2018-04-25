@@ -34,6 +34,24 @@
       "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_a12af82a",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-04-25T09:04:04Z",
+      "side": 1,
+      "message": "\u003e Yes please, it is better/proper approach here.\n\nI merged it yesterday before seeing the comment from Guillem.\n\nThinking about it, for me it\u0027s way clearer to use ExecStop.  If I\u0027m debugging a problem I would first look for a reverse of \"Start\" (present in all units) than looking for something like KillSignal, and then having to read the doc to clearly understand what it will do.  (Since our units are usually small, I would eventually find \"KillSignal\" and figure out that it might be related to my problem, but still).\n\nBut since both of you prefer this way, I will change it.",
+      "parentUuid": "7aaa499b_81f93ccb",
+      "revId": "6174aa5df3458f259e0f0d3094ff9491b07c3767",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
