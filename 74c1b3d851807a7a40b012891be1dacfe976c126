@@ -22,6 +22,30 @@
       "revId": "74c1b3d851807a7a40b012891be1dacfe976c126",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aaa499b_41ad7487",
+        "filename": "debian/ngcp-sems.service",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2018-04-25T10:34:41Z",
+      "side": 1,
+      "message": "\u003e shout this be dropped then?\n\nIMO we should keep it, because if the team implementing the changes finish soonish we can drop the KillSignal but probably want to keep a small time of timeout here as a safeguard, instead of the default 90 seconds.",
+      "parentUuid": "7aaa499b_e18c8037",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 17
+      },
+      "revId": "74c1b3d851807a7a40b012891be1dacfe976c126",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
