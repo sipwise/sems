@@ -2,12 +2,12 @@
 Description=NGCP SIP Express Media Server (SEMS)
 After=mariadb.service
 After=redis-master.service
-After=network-online.target
 After=remote-fs.target
-Requires=mariadb.service
-Requires=redis-master.service
+After=network-online.target
+Requires=network-online.target
 Requires=remote-fs.target
-Wants=network-online.target
+Wants=mariadb.service
+Wants=redis-master.service
 
 [Service]
 Type=simple
