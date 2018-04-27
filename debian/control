@@ -29,7 +29,6 @@ Pre-Depends:
  ${misc:Pre-Depends},
 Depends:
  adduser,
- lsb-base,
  ngcp-prompts,
  ngcp-system-tools,
  ${misc:Depends},

@@ -7,12 +7,15 @@ case "$1" in
     # add sems user
     adduser --quiet --system --group --disabled-password --shell /bin/false \
       --gecos "SIP Express Media Server" --home /var/run/ngcp-sems sems || true
+
+    # Remove obsolete rc.d links.
+    update-rc.d ngcp-sems remove
   ;;
   abort-upgrade|abort-remove|abort-deconfigure)
     exit 0
   ;;
   *)
-    echo "postinst called with unknown argument \$1'" >&2
+    echo "postinst called with unknown argument '$1'" >&2
     exit 1
   ;;
 esac
