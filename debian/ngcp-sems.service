@@ -5,7 +5,7 @@ After=redis-master.service
 After=remote-fs.target
 After=network-online.target
 Requires=network-online.target
-Requires=remote-fs.target
+Wants=remote-fs.target
 Wants=mariadb.service
 Wants=redis-master.service
 
