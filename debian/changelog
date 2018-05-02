@@ -1,3 +1,24 @@
+ngcp-sems (1:1.6.0-1+0~mr6.2.1.1) unstable; urgency=medium
+
+  [ Manuel Montecelo ]
+  * [3c144f2] TT#36053 Stop sems* with -KILL
+  * [5b3e146] TT#36053 Use KillSignal instead of ExecStop
+  * [65acf07] TT#36053 Avoid SIGKILL being considered a problematic exit status
+
+  [ Guillem Jover ]
+  * [96f8248] TT#36053 Make systemd sems service require redis-master
+  * [f47d51c] TT#26264 Remove obsolete rc.d symlinks
+
+  [ Alexander Lutay ]
+  * [b41440e] TT#35502 Replace Requires= with Wants= for sems.service
+
+  [ Mykola Malkov ]
+  * [5f9da27] TT#33384 Use weaker type of services' dependency on remote-fs
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 02 May 2018 12:59:11 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr6.2.1.0) unstable; urgency=medium
 
   [ Marco Capetta ]
