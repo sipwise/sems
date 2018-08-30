@@ -1,0 +1,176 @@
+--- a/core/AmOfferAnswer.cpp
++++ b/core/AmOfferAnswer.cpp
+@@ -305,38 +305,51 @@ int AmOfferAnswer::onRequestOut(AmSipReq
+   bool generate_sdp = sdp_body && !sdp_body->getLen();
+   bool has_sdp = sdp_body && sdp_body->getLen();
+ 
++  DBG("Entered in onRequestOut with state: %s\n", getOAStateStr(state));
++
+   if (!sdp_body &&
+       ((req.method == SIP_METH_PRACK) ||
+        (req.method == SIP_METH_ACK))
+       && (state == OA_OfferRecved)) {
++    DBG("Still in onRequestOut 1\n");
+     generate_sdp = true;
+     sdp_body = req.body.addPart(SIP_APPLICATION_SDP);
+   }
+ 
+   saveState();
+ 
++  DBG("Still in onRequestOut 2\n");
++
+   if (generate_sdp) {
++    DBG("Still in onRequestOut 3\n");
+     string sdp_buf;
+     if (!getSdpBody(sdp_buf)){
++      DBG("Still in onRequestOut 4\n");
+       sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+ 			   sdp_buf.length());
+       has_sdp = true;
+     }
+     else {
++      DBG("Still in onRequestOut 5\n");
+       return -1;
+     }
+   } else if (sdp_body && has_sdp) {
++    DBG("Still in onRequestOut 6\n");
+     // update local SDP copy
+     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
+       ERROR("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+     }
+   }
+ 
++  DBG("Still in onRequestOut 7\n");
++
+   if(has_sdp && (onTxSdp(req.cseq,req.body) != 0)){
+     DBG("onTxSdp() failed\n");
+     return -1;
+   }
+ 
++  DBG("Still in onRequestOut 8\n");
++
+   return 0;
+ }
+ 
+@@ -346,13 +359,18 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+   bool generate_sdp = sdp_body && !sdp_body->getLen();
+   bool has_sdp = sdp_body && sdp_body->getLen();
+ 
++  DBG("Entered in onReplyOut with state: %s\n", getOAStateStr(state));
++
+   if (!has_sdp && !generate_sdp) {
++    DBG("Still in onReplyOut 1\n");
+     // let's see whether we should force SDP or not.
+ 
+     if (reply.cseq_method == SIP_METH_INVITE){
++      DBG("Still in onReplyOut 2\n");
+       
+       if ((reply.code == 183) 
+ 	  || ((reply.code >= 200) && (reply.code < 300))) {
++        DBG("Still in onReplyOut 3\n");
+ 	
+ 	// either offer received or no offer at all:
+ 	//  -> force SDP
+@@ -362,9 +380,11 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+       }
+     }
+     else if (reply.cseq_method == SIP_METH_UPDATE) {
++      DBG("Still in onReplyOut 4\n");
+ 
+       if ((reply.code >= 200) &&
+ 	  (reply.code < 300)) {
++        DBG("Still in onReplyOut 5\n");
+ 	
+ 	// offer received:
+ 	//  -> force SDP
+@@ -373,32 +393,47 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+     }
+   }
+ 
++  DBG("Still in onReplyOut 6\n");
++
+   if (reply.cseq_method == SIP_METH_INVITE && reply.code < 300) {
++    DBG("Still in onReplyOut 7\n");
+     // ignore SDP repeated in 1xx and 2xx replies (183, 180, ... 2xx)
+     if (has_sdp &&
+         (state == OA_Completed || state == OA_OfferSent) &&
+         reply.cseq == cseq)
+     {
++      DBG("Still in onReplyOut 8\n");
+       has_sdp = false;
+     }
+   }
+ 
+   saveState();
+ 
++  DBG("Still in onReplyOut 9\n");
++
+   if (generate_sdp) {
++    DBG("Still in onReplyOut 10\n");
+ 
+     string sdp_buf;
+     if(getSdpBody(sdp_buf)) {
++      DBG("Still in onReplyOut 11\n");
+       if (reply.code == 183 && reply.cseq_method == SIP_METH_INVITE) {
++        DBG("Still in onReplyOut 12\n");
+         // just ignore if no SDP is generated (required for B2B)
+       }
+       else if (reply.code == 200 && reply.cseq_method == SIP_METH_INVITE && state == OA_Completed) {
++        DBG("Still in onReplyOut 13\n");
+         // just ignore if no SDP is generated (required for B2B)
+       }
+-      else return -1;
++      else {
++        DBG("Still in onReplyOut 14\n");
++        return -1;
++      }
+     }
+     else {
++      DBG("Still in onReplyOut 15\n");
+       if(!sdp_body){
++        DBG("Still in onReplyOut 16\n");
+         if( (sdp_body = 
+              reply.body.addPart(SIP_APPLICATION_SDP)) 
+             == NULL ) {
+@@ -407,23 +442,32 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+         }
+       }
+ 
++      DBG("Still in onReplyOut 17\n");
++
+       sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+                            sdp_buf.length());
+       has_sdp = true;
++
++      DBG("Still in onReplyOut 18\n");
+     }
+   } else if (sdp_body && has_sdp) {
++    DBG("Still in onReplyOut 19\n");
+     // update local SDP copy
+     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
+       ERROR("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+     }
+   }
+ 
++  DBG("Still in onReplyOut 20\n");
++
+   if (has_sdp && (onTxSdp(reply.cseq,reply.body) != 0)) {
+     
+     DBG("onTxSdp() failed\n");
+     return -1;
+   }
+ 
++  DBG("Still in onReplyOut 21\n");
++
+   if( (reply.code >= 300) &&
+       (reply.cseq == cseq) ) {
+     // final error reply -> cleanup OA state
+@@ -432,6 +476,8 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+     clearTransitionalState();
+   }
+ 
++  DBG("Still in onReplyOut 22\n");
++
+   return 0;
+ }
+ 
