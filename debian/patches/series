@@ -29,3 +29,4 @@ fix-build-with-newer-openssl.patch
 sipwise/0020-TT-9521-fix-200OK-without-SPD.patch
 sipwise/usage-reporting.patch
 sipwise/session_timers
+sipwise/introduce_forcesdp_from_pbx.patch
