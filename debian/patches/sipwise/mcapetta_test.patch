@@ -1,0 +1,135 @@
+--- a/core/AmOfferAnswer.cpp
++++ b/core/AmOfferAnswer.cpp
+@@ -53,7 +53,8 @@ AmOfferAnswer::AmOfferAnswer(AmSipDialog
+     cseq(0),
+     sdp_remote(),
+     sdp_local(),
+-    dlg(dlg)
++    dlg(dlg),
++    force_sdp(true)
+ {
+   
+ }
+@@ -305,38 +306,51 @@ int AmOfferAnswer::onRequestOut(AmSipReq
+   bool generate_sdp = sdp_body && !sdp_body->getLen();
+   bool has_sdp = sdp_body && sdp_body->getLen();
+ 
++  DBG("Entered in onRequestOut with state: %s\n", getOAStateStr(state));
++
+   if (!sdp_body &&
+       ((req.method == SIP_METH_PRACK) ||
+        (req.method == SIP_METH_ACK))
+       && (state == OA_OfferRecved)) {
++    DBG("Still in onRequestOut 1\n");
+     generate_sdp = true;
+     sdp_body = req.body.addPart(SIP_APPLICATION_SDP);
+   }
+ 
+   saveState();
+ 
++  DBG("Still in onRequestOut 2\n");
++
+   if (generate_sdp) {
++    DBG("Still in onRequestOut 3\n");
+     string sdp_buf;
+     if (!getSdpBody(sdp_buf)){
++      DBG("Still in onRequestOut 4\n");
+       sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+ 			   sdp_buf.length());
+       has_sdp = true;
+     }
+-    else {
++    else if(force_sdp) {
++      DBG("Still in onRequestOut 5\n");
+       return -1;
+     }
+   } else if (sdp_body && has_sdp) {
++    DBG("Still in onRequestOut 6\n");
+     // update local SDP copy
+     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
+       ERROR("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+     }
+   }
+ 
++  DBG("Still in onRequestOut 7\n");
++
+   if(has_sdp && (onTxSdp(req.cseq,req.body) != 0)){
+     DBG("onTxSdp() failed\n");
+     return -1;
+   }
+ 
++  DBG("Still in onRequestOut 8\n");
++
+   return 0;
+ }
+ 
+@@ -395,7 +409,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply
+       else if (reply.code == 200 && reply.cseq_method == SIP_METH_INVITE && state == OA_Completed) {
+         // just ignore if no SDP is generated (required for B2B)
+       }
+-      else return -1;
++      else if(force_sdp) return -1;
+     }
+     else {
+       if(!sdp_body){
+--- a/apps/sbc/CallLeg.cpp
++++ b/apps/sbc/CallLeg.cpp
+@@ -197,7 +197,10 @@ CallLeg::CallLeg(const CallLeg* caller,
+   set_sip_relay_only(false); // will be changed later on (for now we have no peer so we can't relay)
+ 
+   // enable OA for the purpose of hold request detection
+-  if (dlg) dlg->setOAEnabled(true);
++  if (dlg) {
++    dlg->setOAEnabled(true);
++    dlg->setOAForceSDP(false);
++  }
+   else WARN("can't enable OA!\n");
+ 
+   // code below taken from createCalleeSession
+@@ -259,7 +262,10 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmS
+   set_sip_relay_only(false);
+ 
+   // enable OA for the purpose of hold request detection
+-  if (dlg) dlg->setOAEnabled(true);
++  if (dlg) {
++    dlg->setOAEnabled(true);
++    dlg->setOAForceSDP(false);
++  }
+   else WARN("can't enable OA!\n");
+ }
+     
+--- a/core/AmOfferAnswer.h
++++ b/core/AmOfferAnswer.h
+@@ -53,6 +53,9 @@ private:
+ 
+   AmSipDialog* dlg;
+ 
++  /** Should SDP generation be forced when not required by standards? */
++  bool force_sdp;
++
+   /** State maintenance */
+   void saveState();
+   int  checkStateChange();
+@@ -75,6 +78,9 @@ public:
+   void clear();
+   void clearTransitionalState();
+ 
++  void setForceSDP(bool force) { force_sdp = force; }
++  bool getForceSDP() const { return force_sdp; }
++
+   /** Event handlers */
+   int onRequestIn(const AmSipRequest& req);
+   int onReplyIn(const AmSipReply& reply);
+--- a/core/AmSipDialog.h
++++ b/core/AmSipDialog.h
+@@ -95,6 +95,10 @@ protected:
+   AmOfferAnswer::OAState getOAState();
+   void setOAState(AmOfferAnswer::OAState n_st);
+   void setOAEnabled(bool oa_enabled);
++
++  void setOAForceSDP(bool force) { oa.setForceSDP(force); }
++  bool getOAForceSDP() const { return oa.getForceSDP(); }
++
+   const AmSdp& getLocalSdp() { return oa.getLocalSdp(); }
+   const AmSdp& getRemoteSdp() { return oa.getRemoteSdp(); }
+ 
