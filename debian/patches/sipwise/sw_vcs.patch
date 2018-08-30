@@ -56,7 +56,7 @@
 +    "voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs " \
 +    "where vrrs.callee_in_dpid=%llu and vrr.set_id = vrrs.id " \
 +    "and vrr.direction='in' and vrr.field='callee' " \
-+    "order by vrr.priority asc"
++    "and vrr.enabled = 1 order by vrr.priority asc"
 +#define SW_VSC_GET_DOMAIN_CALLEE_REWRITES \
 +    "select vrr.match_pattern, vrr.replace_pattern " \
 +    "from voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs, " \
@@ -64,7 +64,7 @@
 +    "where vdp.domain_id=%llu and vp.attribute='rewrite_callee_in_dpid' " \
 +    "and vdp.attribute_id = vp.id and  vdp.value = vrrs.callee_in_dpid " \
 +    "and vrr.set_id = vrrs.id and vrr.direction='in' and " \
-+    "vrr.field='callee' order by vrr.priority asc"
++    "vrr.field='callee' and vrr.enabled = 1 order by vrr.priority asc"
 +
 +#define SW_VSC_GET_PRIMARY_NUMBER "select alias_username " \
 +    "from kamailio.dbaliases where username='%s' " \
