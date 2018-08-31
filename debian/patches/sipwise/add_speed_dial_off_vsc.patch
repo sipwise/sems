@@ -1,0 +1,173 @@
+--- a/apps/sw_vsc/SW_Vsc.cpp
++++ b/apps/sw_vsc/SW_Vsc.cpp
+@@ -28,6 +28,7 @@ using namespace pcrecpp;
+ #define SW_VSC_UPDATE_PREFERENCE_ID "update voip_usr_preferences set value='%s' where id=%llu"
+ #define SW_VSC_INSERT_SPEEDDIAL "replace into voip_speed_dial (subscriber_id, slot, destination) "\
+     "values(%llu, '%s', '%s')"
++#define SW_VSC_DELETE_SPEEDDIAL "delete from voip_speed_dial where subscriber_id=%llu and slot='%s'"
+ #define SW_VSC_INSERT_REMINDER "replace into voip_reminder (subscriber_id, time, recur) "\
+     "values(%llu, '%s', '%s')"
+ #define SW_VSC_DELETE_REMINDER "delete from voip_reminder where subscriber_id=%llu"
+@@ -122,7 +123,8 @@ SW_VscFactory::~SW_VscFactory()
+     regfree(&m_patterns.cftOffPattern);
+     regfree(&m_patterns.cfnaOnPattern);
+     regfree(&m_patterns.cfnaOffPattern);
+-    regfree(&m_patterns.speedDialPattern);
++    regfree(&m_patterns.speedDialOnPattern);
++    regfree(&m_patterns.speedDialOffPattern);
+     regfree(&m_patterns.reminderOnPattern);
+     regfree(&m_patterns.reminderOffPattern);
+     regfree(&m_patterns.blockinclirOnPattern);
+@@ -139,7 +141,8 @@ int SW_VscFactory::onLoad()
+     string cftOffPattern;
+     string cfnaOnPattern;
+     string cfnaOffPattern;
+-    string speedDialPattern;
++    string speedDialOnPattern;
++    string speedDialOffPattern;
+     string reminderOnPattern;
+     string reminderOffPattern;
+     string blockinclirOnPattern;
+@@ -196,7 +199,8 @@ int SW_VscFactory::onLoad()
+     CHECK_ANNOUNCEMENT_CONFIG(cftOffAnnouncement,         "cft_off_announcement");
+     CHECK_ANNOUNCEMENT_CONFIG(cfnaOnAnnouncement,         "cfna_on_announcement");
+     CHECK_ANNOUNCEMENT_CONFIG(cfnaOffAnnouncement,        "cfna_off_announcement");
+-    CHECK_ANNOUNCEMENT_CONFIG(speedDialAnnouncement,      "speed_dial_announcement");
++    CHECK_ANNOUNCEMENT_CONFIG(speedDialOnAnnouncement,    "speed_dial_on_announcement");
++    CHECK_ANNOUNCEMENT_CONFIG(speedDialOffAnnouncement,   "speed_dial_off_announcement");
+     CHECK_ANNOUNCEMENT_CONFIG(reminderOnAnnouncement,     "reminder_on_announcement");
+     CHECK_ANNOUNCEMENT_CONFIG(reminderOffAnnouncement,    "reminder_off_announcement");
+     CHECK_ANNOUNCEMENT_CONFIG(blockinclirOnAnnouncement,  "blockinclir_on_announcement");
+@@ -221,7 +225,8 @@ int SW_VscFactory::onLoad()
+     COMPILE_MATCH_PATTERN(cftOffPattern,         "cft_off_pattern");
+     COMPILE_MATCH_PATTERN(cfnaOnPattern,         "cfna_on_pattern");
+     COMPILE_MATCH_PATTERN(cfnaOffPattern,        "cfna_off_pattern");
+-    COMPILE_MATCH_PATTERN(speedDialPattern,      "speed_dial_pattern");
++    COMPILE_MATCH_PATTERN(speedDialOnPattern,    "speed_dial_on_pattern");
++    COMPILE_MATCH_PATTERN(speedDialOffPattern,   "speed_dial_off_pattern");
+     COMPILE_MATCH_PATTERN(reminderOnPattern,     "reminder_on_pattern");
+     COMPILE_MATCH_PATTERN(reminderOffPattern,    "reminder_off_pattern");
+     COMPILE_MATCH_PATTERN(blockinclirOnPattern,  "blockinclir_on_pattern");
+@@ -551,6 +556,25 @@ int SW_VscDialog::insertSpeedDialSlot(MY
+     return 1;
+ }
+ 
++int SW_VscDialog::deleteSpeedDialSlot(MYSQL *my_handler,
++                                      u_int64_t subscriberId,
++                                      string &slot)
++{
++    char query[1024] = "";
++
++    snprintf(query, sizeof(query), SW_VSC_DELETE_SPEEDDIAL,
++             (unsigned long long int)subscriberId, slot.c_str());
++
++    if (mysql_real_query(my_handler, query, strlen(query)) != 0)
++    {
++        ERROR("Error deleting speed-dial slot '%s' for subscriber id '%llu': %s",
++              slot.c_str(), (unsigned long long int)subscriberId,
++              mysql_error(my_handler));
++        return 0;
++    }
++    return 1;
++}
++
+ 
+ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
+                              string &uuid, u_int64_t subId,
+@@ -888,7 +912,8 @@ void SW_VscDialog::onInvite(const AmSipR
+     string cftOffAnnouncement;
+     string cfnaOnAnnouncement;
+     string cfnaOffAnnouncement;
+-    string speedDialAnnouncement;
++    string speedDialOnAnnouncement;
++    string speedDialOffAnnouncement;
+     string reminderOnAnnouncement;
+     string reminderOffAnnouncement;
+     string blockinclirOnAnnouncement;
+@@ -1505,10 +1530,10 @@ void SW_VscDialog::onInvite(const AmSipR
+         goto out;
+     }
+ 
+-    if ((ret = regexec(&m_patterns->speedDialPattern,
++    if ((ret = regexec(&m_patterns->speedDialOnPattern,
+                        req.user.c_str(), 0, 0, 0)) == 0)
+     {
+-        CHECK_ANNOUNCEMENT_PATH(speedDialAnnouncement, "speed_dial_announcement");
++        CHECK_ANNOUNCEMENT_PATH(speedDialOnAnnouncement, "speed_dial_on_announcement");
+ 
+         string slot = string("*") + req.user.substr(4, 1);
+         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5,
+@@ -1528,7 +1553,33 @@ void SW_VscDialog::onInvite(const AmSipR
+                  slot.c_str(), uuid.c_str());
+         }
+ 
+-        filename = speedDialAnnouncement;
++        filename = speedDialOnAnnouncement;
++        goto out;
++    }
++    else if (ret != REG_NOMATCH)
++    {
++        filename = failAnnouncement;
++        goto out;
++    }
++
++    if ((ret = regexec(&m_patterns->speedDialOffPattern,
++                       req.user.c_str(), 0, 0, 0)) == 0)
++    {
++        CHECK_ANNOUNCEMENT_PATH(speedDialOffAnnouncement, "speed_dial_off_announcement");
++
++        string slot = string("*") + req.user.substr(4, 1);
++        if (!deleteSpeedDialSlot(my_handler, subId, slot))
++        {
++            filename = failAnnouncement;
++            goto out;
++        }
++        else
++        {
++            INFO("Successfully deleted speed-dial slot '%s' for uuid '%s'",
++                 slot.c_str(), uuid.c_str());
++        }
++
++        filename = speedDialOffAnnouncement;
+         goto out;
+     }
+     else if (ret != REG_NOMATCH)
+--- a/apps/sw_vsc/SW_Vsc.h
++++ b/apps/sw_vsc/SW_Vsc.h
+@@ -53,8 +53,11 @@ typedef struct
+     regex_t cfnaOffPattern;
+     string cfnaOffAnnouncement;
+ 
+-    regex_t speedDialPattern;
+-    string speedDialAnnouncement;
++    regex_t speedDialOnPattern;
++    string speedDialOnAnnouncement;
++
++    regex_t speedDialOffPattern;
++    string speedDialOffAnnouncement;
+ 
+     regex_t reminderOnPattern;
+     string reminderOnAnnouncement;
+@@ -108,6 +111,7 @@ class SW_VscDialog : public AmSession,
+                          u_int64_t attributeId, string &uri);
+     int updatePreferenceId(MYSQL *my_handler, u_int64_t preferenceId, string &uri);
+     int insertSpeedDialSlot(MYSQL *my_handler, u_int64_t subscriberId, string &slot, string &uri);
++    int deleteSpeedDialSlot(MYSQL *my_handler, u_int64_t subscriberId, string &slot);
+     int insertReminder(MYSQL *my_handler, u_int64_t subscriberId, string &repeat, string &tim);
+     int deleteReminder(MYSQL *my_handler, u_int64_t subscriberId);
+     int number2uri(const AmSipRequest &req, MYSQL *my_handler, string &uuid, u_int64_t subId,
+--- a/apps/sw_vsc/etc/sw_vsc.conf
++++ b/apps/sw_vsc/etc/sw_vsc.conf
+@@ -30,8 +30,10 @@ cfna_on_announcement = sw_vsc_activated.
+ cfna_off_pattern = ^(\%23)93(\%23)?.*$
+ cfna_off_announcement = sw_vsc_deactivated.wav
+ 
+-speed_dial_pattern = ^\*50\*[0-9]+$
+-speed_dial_announcement = sw_vsc_activated.wav
++speed_dial_on_pattern = ^\*50\*[0-9]+$
++speed_dial_on_announcement = sw_vsc_activated.wav
++speed_dial_off_pattern = ^(\%23)50(\%23)[0-9]$
++speed_dial_off_announcement = sw_vsc_deactivated.wav
+ 
+ reminder_on_pattern = ^\*55\*[0-9]+$
+ reminder_on_announcement = sw_vsc_activated.wav
