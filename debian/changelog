@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0-1+0~mr6.4.3.0) unstable; urgency=medium
+
+  [ Marco Capetta ]
+  * [64b5989] TT#43602 VSC number rewritten using only enabled rules
+  * [801d7ff] TT#43503 Fix issue if an UPDATE is received after 183
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 23 Oct 2018 14:19:15 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr6.4.2.0) unstable; urgency=medium
 
   * New release.
