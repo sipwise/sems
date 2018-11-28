@@ -30,3 +30,4 @@ sipwise/0020-TT-9521-fix-200OK-without-SPD.patch
 sipwise/usage-reporting.patch
 sipwise/session_timers
 sipwise/introduce_forcesdp_from_pbx.patch
+sipwise/0001-TT-34704-Fix-sems-and-sems-pbx-to-write-pid-file-whe.patch
