@@ -17,7 +17,7 @@ Environment=LD_LIBRARY_PATH=/usr/lib/sems-pbx
 PassEnvironment=LD_LIBRARY_PATH
 PIDFile=/run/ngcp-sems/ngcp-sems.pid
 Restart=always
-ExecStart=/usr/sbin/ngcp-sems -E -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf
+ExecStart=/usr/sbin/ngcp-sems -u sems -g sems -P /run/ngcp-sems/ngcp-sems.pid -f /etc/ngcp-sems/sems.conf
 KillSignal=SIGKILL
 SuccessExitStatus=SIGKILL
 TimeoutStopSec=10
