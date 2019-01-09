@@ -1,3 +1,15 @@
+ngcp-sems (1:1.6.0-1+0~mr7.2.0.0) unstable; urgency=medium
+
+  [ Andrew Pogrebennyk ]
+  * [ae34e87] TT#34704 Fix sems to write pid file when running with -E option
+
+  [ Roman Romanchenko ]
+  * [a0f611c] TT#48401 sems duplicates log entries because of "printing to stderr" enabled.
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 09 Jan 2019 22:04:04 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr7.1.0.0) unstable; urgency=medium
 
   * New release.
