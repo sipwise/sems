@@ -1,0 +1,37 @@
+--- a/apps/db_reg_agent/DBRegAgent.cpp
++++ b/apps/db_reg_agent/DBRegAgent.cpp
+@@ -897,9 +897,8 @@ void DBRegAgent::run() {
+   DBG("running DBRegAgent thread...\n");
+   shutdown_finished = false;
+   while (running) {
++    waitForEventTimed(500); // 500 milliseconds
+     processEvents();
+-
+-    usleep(1000); // 1ms
+   }
+ 
+   DBG("DBRegAgent done, removing all registrations from Event Dispatcher...\n");
+--- a/core/AmEventQueue.cpp
++++ b/core/AmEventQueue.cpp
+@@ -100,6 +100,11 @@ void AmEventQueue::waitForEvent()
+   ev_pending.wait_for();
+ }
+ 
++void AmEventQueue::waitForEventTimed(unsigned long msec)
++{
++  ev_pending.wait_for_to(msec);
++}
++
+ void AmEventQueue::processSingleEvent()
+ {
+   m_queue.lock();
+--- a/core/AmEventQueue.h
++++ b/core/AmEventQueue.h
+@@ -80,6 +80,7 @@ public:
+   void postEvent(AmEvent*);
+   void processEvents();
+   void waitForEvent();
++  void waitForEventTimed(unsigned long msec);
+   void processSingleEvent();
+   bool eventPending();
+ 

@@ -1,3 +1,4 @@
+sipwise/tt52455.patch
 upstream/0000-b-f-sbc-fixed-reading-encoding-param-in-readPayload.patch
 upstream/0001-b-f-sbc-codecs-compare-encoding_param-only-if-both-0.patch
 upstream/0002-core-codec-init-support-for-fmt-params-negotiation-f.patch
