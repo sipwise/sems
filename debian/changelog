@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr7.3.0.0) unstable; urgency=medium
+
+  [ Roman Romanchenko ]
+  * [d7bce51] TT#52455 sems-* constant 10% CPU usage in idle Virtual environment vagrant/vmware
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 25 Feb 2019 22:59:28 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr7.2.0.0) unstable; urgency=medium
 
   [ Andrew Pogrebennyk ]
