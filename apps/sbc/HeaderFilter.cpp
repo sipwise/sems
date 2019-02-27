@@ -216,11 +216,13 @@ int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list) {
 	    }
 	    string hdr_name = hdrs.substr(start_pos, name_end-start_pos);
 	    std::transform(hdr_name.begin(), hdr_name.end(), hdr_name.begin(), ::tolower);
-	    bool erase = false;
-	    if (f_type == Whitelist) {
-		erase = headerfilter_list.find(hdr_name)==headerfilter_list.end();
-	    } else if (f_type == Blacklist) {
-		erase = headerfilter_list.find(hdr_name)!=headerfilter_list.end();
+	    bool erase = f_type == Whitelist ? true : false;
+	    for (set<string>::iterator it = headerfilter_list.begin();
+			it != headerfilter_list.end(); it++) {
+		if (match_header((*it).c_str(), hdr_name.c_str())) {
+		    erase = f_type == Whitelist ? false : true;
+		    break;
+		}
 	    }
 	    if (erase) {
 		DBG("erasing header '%s' by %s\n", hdr_name.c_str(), FilterType2String(f_type));
@@ -233,4 +235,20 @@ int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list) {
     }
 
     return 0;
+}
+
+bool match_header(const char* pattern, const char* str)
+{
+	if (*pattern == '\0' && *str == '\0')
+		return true;
+
+	if (*pattern == '*' && *(pattern+1) != '\0' && *str == '\0')
+		return false;
+
+	if (*pattern == '?' || *pattern == *str)
+		return match_header(pattern+1, str+1);
+
+	if (*pattern == '*')
+		return match_header(pattern+1, str) || match_header(pattern, str+1);
+	return false;
 }

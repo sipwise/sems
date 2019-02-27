@@ -62,5 +62,6 @@ const char* FilterType2String(FilterType ft);
 int skip_header(const std::string& hdr, size_t start_pos, 
 		 size_t& name_end, size_t& val_begin, size_t& val_end, size_t& hdr_end);
 int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list);
+bool match_header(const char* pattern, const char* str);
 
 #endif
