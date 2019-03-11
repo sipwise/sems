@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr7.2.1.1) unstable; urgency=medium
+
+  [ Kirill Solomko ]
+  * [ad0e349] TT#53685 add header filter wildcard match support
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 11 Mar 2019 15:51:17 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr7.2.1.0) unstable; urgency=medium
 
   [ Roman Romanchenko ]
