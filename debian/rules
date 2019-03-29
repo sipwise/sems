@@ -19,6 +19,13 @@ export APP_NAME=ngcp-sems
 export SYSTEM_SAMPLECLOCK_RATE=48000LL
 export USE_THREADPOOL=yes
 
+# Enable parallel builds for overrides.
+NUMJOBS = 1
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  MAKEFLAGS += -j$(NUMJOBS)
+endif
+
 %:
 	dh $@
 
