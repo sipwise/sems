@@ -20,7 +20,7 @@ export SYSTEM_SAMPLECLOCK_RATE=48000LL
 export USE_THREADPOOL=yes
 
 %:
-	dh $@ --parallel
+	dh $@
 
 override_dh_auto_build:
 	$(MAKE) \
