@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a016987_d07b717a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2019-03-29T16:02:04Z",
+      "side": 1,
+      "message": "TBH, I\u0027d prefer to not have chat conversions in (esp public) git commits/repositories as c/p. IMO use the chat notes and then add \"Thanks:\" or \"Credits:\" or so for the involved people :)",
+      "revId": "6e35573d8c9238f7d2739695ba385947cb59f9ee",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
