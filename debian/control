@@ -41,7 +41,7 @@ Replaces:
 Description: SIP Express Media Server, very fast and flexible SIP media server
  SEMS, the SIP Express Media Server, is a free, high performance, extensible media
  server for SIP (RFC3261) based VoIP  services. It features voicemail, conferencing,
- announcements, pre-call announcements, prepaid service, calling card service etc.
+ announcements, pre-call announcements, prepaid service, calling card service etc test.
 
 Package: ngcp-sems-libsems1-dev
 Architecture: any
