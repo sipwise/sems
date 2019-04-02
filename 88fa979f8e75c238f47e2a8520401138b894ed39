@@ -1,0 +1,8 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Manuel Montecelo <mmontecelo@sipwise.com>
+Code-Review+2: Alexander Lutay <alutay@sipwise.com>
+Submitted-by: Guillem Jover <gjover@sipwise.com>
+Submitted-at: Tue, 02 Apr 2019 13:32:46 +0200
+Reviewed-on: http://gerrit.mgm.sipwise.com/28635
+Project: sems
+Branch: refs/heads/mr7.2
