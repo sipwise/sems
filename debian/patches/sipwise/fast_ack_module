@@ -1,0 +1,172 @@
+--- /dev/null
++++ b/apps/fast_ack/FastAck.cpp
+@@ -0,0 +1,118 @@
++#include "FastAck.h"
++
++#include <AmPlugIn.h>
++#include <AmArg.h>
++#include <log.h>
++#include <SBCCallControlAPI.h>
++#include <SBCCallLeg.h>
++
++#include <string>
++
++static const std::string FAST_ACK(MOD_NAME "::fa");
++
++EXPORT_PLUGIN_CLASS_FACTORY(FastAckFactory, MOD_NAME);
++
++FastAck *FastAck::_instance = 0;
++
++FastAck *FastAck::instance()
++{
++    if(!_instance)
++    {
++        _instance = new FastAck();
++    }
++
++    return _instance;
++}
++
++FastAck::FastAck() { }
++
++FastAck::~FastAck() { }
++
++int FastAck::onLoad()
++{
++    return 0;
++}
++
++void FastAck::invoke(const std::string & method, const AmArg& args, AmArg& ret)
++{
++    DBG("FastAck: %s(%s)\n", method.c_str(), AmArg::print(args).c_str());
++
++    if ((method == "start") || (method == "connect") || (method == "end"))
++    {
++    }
++    else if(method == "_list")
++    {
++        ret.push("start");
++        ret.push("connect");
++        ret.push("end");
++    }
++    else if (method == "getExtendedInterfaceHandler")
++    {
++        ret.push((AmObject*)this);
++    }
++    else
++    {
++        throw AmDynInvoke::NotImplemented(method);
++    }
++}
++
++bool FastAck::init(SBCCallLeg *call, const map<string, std::string> &values)
++{
++    std::map<std::string, std::string>::const_iterator it;
++    for  (it = values.begin(); it != values.end(); ++it)
++    {
++        DBG("FastAck::init %s=%s\n", (it->first).c_str(), (it->second).c_str());
++    }
++
++    std::string fast_ack = "";
++
++    std::map<std::string, std::string>::const_iterator i = values.find("enabled");
++    if (i != values.end())
++    {
++        fast_ack = i->second;
++    }
++
++    if (fast_ack.empty())
++    {
++        DBG("FastAck::init fast_ack is not enabled\n");
++    }
++    else
++    {
++        DBG("FastAck::init fast_ack enabled: %s\n", fast_ack.c_str());
++        call->getCallProfile().cc_vars[FAST_ACK] = fast_ack;
++    }
++
++    return true;
++}
++
++CCChainProcessing FastAck::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply)
++{
++    DBG("FastAck::onInDialogRepl\n");
++
++    if (reply.code == 200 && reply.cseq_method == SIP_METH_INVITE)
++    {
++        std::string fast_ack = "";
++
++        const SBCVarMapT &cc_vars = call->getCallProfile().cc_vars;
++
++        SBCVarMapConstIteratorT i = cc_vars.find(FAST_ACK);
++
++        if (i != cc_vars.end() && isArgCStr(i->second))
++        {
++            fast_ack = i->second.asCStr();
++        }
++
++        if (fast_ack == "yes")
++        {
++            DBG("Applying sending fast ack\n");
++            call->dlg->send_200_ack(reply.cseq);
++        }
++        else
++        {
++            DBG("NOT applying sending fast ack\n");
++        }
++    }
++
++    return ContinueProcessing;
++}
++
+--- /dev/null
++++ b/apps/fast_ack/FastAck.h
+@@ -0,0 +1,38 @@
++#pragma once
++
++#include <AmApi.h>
++#include <AmPlugIn.h>
++#include <ExtendedCCInterface.h>
++
++class SBCCallLeg;
++class SBCCallProfile;
++
++/**
++ * fast_ack module:
++ * if on initial invite fast_ack parameter provided then
++ * on invite 200 module will send ACK without waiting of other side ACK
++ */
++class FastAck : public AmObject, public AmDynInvoke, public ExtendedCCInterface
++{
++    static FastAck* _instance;
++
++public:
++    FastAck();
++    ~FastAck();
++
++    static FastAck* instance();
++    void invoke(const std::string& method, const AmArg& args, AmArg& ret);
++    int onLoad();
++
++    bool init(SBCCallLeg *call, const map<string, std::string> &values);
++    CCChainProcessing onInDialogReply(SBCCallLeg *call, const AmSipReply & reply);
++};
++
++class FastAckFactory : public AmDynInvokeFactory
++{
++public:
++    FastAckFactory(const std::string& name) : AmDynInvokeFactory(name) {}
++    AmDynInvoke* getInstance() { return FastAck::instance(); }
++    int onLoad() { return FastAck::instance()->onLoad(); }
++};
++
+--- /dev/null
++++ b/apps/fast_ack/Makefile
+@@ -0,0 +1,7 @@
++plug_in_name = fast_ack
++sbc_app_path = $(SEMSPATH)/apps/sbc
++
++module_ldflags =
++module_cflags  = -DMOD_NAME=\"$(plug_in_name)\" -I$(sbc_app_path)
++COREPATH = $(SEMSPATH)/core
++include $(COREPATH)/plug-in/Makefile.app_module
