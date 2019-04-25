@@ -1,3 +1,19 @@
+ngcp-sems (1:1.6.0-1+0~mr7.3.1.0) unstable; urgency=medium
+
+  [ Kirill Solomko ]
+  * [e3f3427] TT#53685 add header filter wildcard match support
+
+  [ Alexander Lutay ]
+  * [937e237] TT#23584 Force parallel building on jenkins
+  * [9a0a826] Revert "TT#23584 Force parallel building on jenkins"
+
+  [ Guillem Jover ]
+  * [c7f3f69] TT#23584 Honor parallel build support in the overrides
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 25 Apr 2019 14:32:10 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr7.3.0.0) unstable; urgency=medium
 
   [ Roman Romanchenko ]
