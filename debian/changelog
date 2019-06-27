@@ -1,3 +1,12 @@
+ngcp-sems (1:1.6.0-1+0~mr6.5.5.1) unstable; urgency=medium
+
+  [ Guillem Jover ]
+  * [5ab3e5e] TT#23584 Honor parallel build support in the overrides
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 27 Jun 2019 15:52:51 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr6.5.5.0) unstable; urgency=medium
 
   * New release.
