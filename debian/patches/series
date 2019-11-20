@@ -33,3 +33,4 @@ sipwise/session_timers
 sipwise/introduce_forcesdp_from_pbx.patch
 sipwise/0001-TT-34704-Fix-sems-and-sems-pbx-to-write-pid-file-whe.patch
 sipwise/0001-TT-53685-add_header_pattern_match_support.patch
+sipwise/add-vsc-to-disable_all_cf.patch
