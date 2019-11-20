@@ -1,3 +1,9 @@
+ngcp-sems (1:1.6.0-1+0~mr5.5.11.1) unstable; urgency=medium
+
+  * New release.
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 20 Nov 2019 15:07:40 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr5.5.11.0) unstable; urgency=medium
 
   * New release.
