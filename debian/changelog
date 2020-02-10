@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0-1+0~mr8.2.2.0) unstable; urgency=medium
+
+  [ Marco Capetta ]
+  * [95a5aed] TT#73957 Handle BYE after 180 with to_tag
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 10 Feb 2020 08:49:16 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr8.2.1.0) unstable; urgency=medium
 
   [ Marco Capetta ]
