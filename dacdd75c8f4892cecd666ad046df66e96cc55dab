@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "12297afe_545de6f7",
+        "filename": "debian/patches/sipwise/add_routing_module.patch",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 1000021
+      },
+      "writtenOn": "2020-06-15T11:26:21Z",
+      "side": 1,
+      "message": "13:17:54 In file included from RoutingModule.cpp:1:\n13:17:54 RoutingModule.h:5:10: fatal error: SBCCallLeg.h: No such file or directory\n13:17:54  #include \u003cSBCCallLeg.h\u003e\n13:17:54           ^~~~~~~~~~~~~~\n13:17:54 compilation terminated.\n\n:-(",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 49,
+        "endChar": 24
+      },
+      "revId": "dacdd75c8f4892cecd666ad046df66e96cc55dab",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
