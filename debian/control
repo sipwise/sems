@@ -5,6 +5,7 @@ Maintainer: Sipwise Development Team <support@sipwise.com>
 Homepage: https://www.sipwise.com/
 Standards-Version: 3.9.8
 Build-Depends:
+ boost-dev,
  debhelper-compat (= 12),
  dh-python,
  flite-dev,
