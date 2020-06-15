@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ef59ce8f_665f16d4",
+        "filename": "debian/patches/sipwise/add_routing_module.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1000039
+      },
+      "writtenOn": "2020-06-15T11:13:55Z",
+      "side": 1,
+      "message": "I guess\nCOREPATH ?\u003d../../core",
+      "revId": "9aacbac377aa10dba3ed636ed4630a57f3a87048",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    }
+  ]
+}
