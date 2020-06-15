@@ -1,0 +1,357 @@
+--- /dev/null
++++ b/apps/sbc/call_control/routing/Log.h
+@@ -0,0 +1,23 @@
++#pragma once
++
++#include <log.h>
++#include <sstream>
++
++inline std::string facility()
++{
++#ifdef LOG_FACILITY
++    return LOG_FACILITY;
++#endif
++    return "";
++}
++
++#define ENABLE_TRACE 0
++
++#define LogDebug(args) { std::stringstream s; s << facility() << ": " args << std::endl; DBG("%s", s.str().c_str()); }
++#define LogWarning(args) { std::stringstream s; s << facility() << ": " args << std::endl; WARN("%s", s.str().c_str()); }
++#define LogInfo(args) { std::stringstream s; s << facility() << ": " args << std::endl; INFO("%s", s.str().c_str()); }
++#define LogCritical(args) { std::stringstream s; s << facility() << ": " args << std::endl; CRIT("%s", s.str().c_str()); }
++#define LogError(args) { std::stringstream s; s << facility() << ": " args << std::endl; ERROR("%s", s.str().c_str()); }
++#define LogTrace(args) { if (ENABLE_TRACE) LogDebug(args); }
++
++
+--- /dev/null
++++ b/apps/sbc/call_control/routing/Makefile
+@@ -0,0 +1,8 @@
++plug_in_name = routing
++sbc_app_path = $(SEMSPATH)/apps/sbc
++
++module_ldflags = -lboost_regex
++module_cflags  = -DMOD_NAME=\"$(plug_in_name)\" -I$(sbc_app_path)
++COREPATH ?=../../core
++include $(COREPATH)/plug-in/Makefile.app_module
++
+--- /dev/null
++++ b/apps/sbc/call_control/routing/RoutingModule.cpp
+@@ -0,0 +1,223 @@
++#include "RoutingModule.h"
++#include "Log.h"
++#include "RoutingRule.h"
++
++#include <AmPlugIn.h>
++#include <AmArg.h>
++
++#include "SBCCallControlAPI.h"
++#include "SBCCallLeg.h"
++#include "SipCtrlInterface.h"
++#include <string.h>
++#include <boost/regex.hpp>
++
++#define MAX_RULES 100
++
++namespace routing
++{
++
++EXPORT_PLUGIN_CLASS_FACTORY(RoutingModuleFactory, MOD_NAME);
++
++RoutingModule* RoutingModule::_instance = 0;
++
++RoutingModule* RoutingModule::instance()
++{
++    if(!_instance)
++    {
++        _instance = new RoutingModule();
++    }
++
++    return _instance;
++}
++
++RoutingModule::RoutingModule() { }
++
++RoutingModule::~RoutingModule() { }
++
++int RoutingModule::onLoad()
++{
++    AmConfigReader cfg;
++
++    if(cfg.loadFile(AmConfig::ModConfigPath + std::string(MOD_NAME ".conf")))
++    {
++        LogInfo(<< MOD_NAME << " configuration file (" << (AmConfig::ModConfigPath + std::string(MOD_NAME ".conf")) << ") not found, assuming default configuration is fine");
++    }
++
++    // load routing rules
++    int i = 0;
++    std::string index;
++    do
++    {
++        RoutingRule r;
++        r.type = cfg.getParameter("type" + index, "");
++        r.match = cfg.getParameter("match" + index, "");
++        r.destination = cfg.getParameter("destination" + index, "");
++        r.app = cfg.getParameter("app" + index, "");
++
++        if (!r.type.empty() && !r.match.empty())
++        {
++            mRoutingRules.push_back(r);
++        }
++        else
++        {
++            LogWarning(<< "invalid rule #" << index << ", skipped");
++        }
++
++        i++;
++
++        index = int2str(i);
++    }
++    while (i < MAX_RULES);
++
++    if (i <= 0)
++    {
++        LogWarning(<< "Routring rules is not provided for " << MOD_NAME << ". Routing modules is useless in this state, please consider disabling it.");
++    }
++
++    return 0;
++}
++
++void RoutingModule::invoke(const std::string & method, const AmArg & args, AmArg & ret)
++{
++    LogDebug(<< "RoutingModule: " << method << "(" << AmArg::print(args) << ")");
++
++    if (method == "start" || method == "connect" || method == "end")
++    {
++    }
++    else if (method == "getExtendedInterfaceHandler")
++    {
++       ret.push((AmObject*)this);
++    }
++    else if(method == "_list")
++    {
++        ret.push("start");
++        ret.push("connect");
++        ret.push("end");
++        ret.push("list");
++    }
++    else
++    {
++        throw AmDynInvoke::NotImplemented(method);
++    }
++}
++
++// ------- extended call control interface -------------------
++bool RoutingModule::init(SBCCallLeg *call, const map<std::string, std::string> &values)
++{
++    return true;
++}
++
++CCChainProcessing RoutingModule::onInitialInvite(SBCCallLeg *call, AmSipRequest &req)
++{
++    return ContinueProcessing;
++}
++
++void RoutingModule::onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause &cause)
++{
++};
++
++CCChainProcessing RoutingModule::onBLegRefused(SBCCallLeg *call, const AmSipReply & reply)
++{
++    return ContinueProcessing;
++}
++
++void RoutingModule::onDestroyLeg(SBCCallLeg *call)
++{
++}
++
++CCChainProcessing RoutingModule::onInDialogRequest(SBCCallLeg *call, const AmSipRequest &req)
++{
++    LogDebug(<< "onInDialogRequest");
++
++    if (checkAndRoute(call, req))
++    {
++        LogDebug(<< "routing applied");
++    }
++
++    return ContinueProcessing;
++}
++
++CCChainProcessing RoutingModule::onInDialogReply(SBCCallLeg *call, const AmSipReply &reply)
++{
++    return ContinueProcessing;
++}
++
++void RoutingModule::onMatch(SBCCallLeg *call, const AmSipRequest & req, const RoutingRule & r)
++{
++    // route to destination if required
++    if (!r.destination.empty())
++    {
++        call->getCallProfile().outbound_proxy = r.destination;
++    }
++
++    // route to sems app if required
++    if (!r.app.empty())
++    {
++        std::string append_headers = std::string(APPNAME_HDR) + ": " + r.app + "\r\n";
++
++        std::string params = getAppParams(r.app, req);
++
++        if (!params.empty())
++        {
++            append_headers += std::string(PARAM_HDR) + ": " + params + "\r\n";
++        }
++
++        call->getCallProfile().append_headers = append_headers;
++    }
++
++}
++
++std::string RoutingModule::getAppParams(const std::string & app, const AmSipRequest & req)
++{
++    return getHeader(req.hdrs, PARAM_HDR, true);
++}
++
++bool RoutingModule::checkAndRoute(SBCCallLeg *call, const AmSipRequest & req)
++{
++    LogDebug(<< "checkAndRoute");
++    bool rc = false;
++
++    for (RoutingRule &r: mRoutingRules)
++    {
++        if (r.type == "ruri_match")
++        {
++            rc = (r.match == req.r_uri);
++        }
++        else if (r.type == "ruri_regexp")
++        {
++            boost::regex expr{r.match};
++            rc = boost::regex_match(req.r_uri, expr);
++        }
++        else if (r.type == "app_param_regexp")
++        {
++            boost::regex expr{r.match};
++            std::string paramHeader = getHeader(req.hdrs, PARAM_HDR, true);
++            rc = boost::regex_match(paramHeader, expr);
++        }
++
++        if (rc)
++        {
++            LogDebug(<< "routing rule applied: type: " << r.type << ", match: " << r.match);
++            onMatch(call, req, r);
++            break;
++        }
++    }
++
++    return rc;
++}
++
++CCChainProcessing RoutingModule::onSendRequest(SBCCallLeg *call, const AmSipRequest & req)
++{
++    return ContinueProcessing;
++}
++
++CCChainProcessing RoutingModule::onEvent(SBCCallLeg *call, AmEvent *e)
++{
++    LogDebug(<< "ExtCC: onEvent - call instance: '" << call << "' isAleg==" << (call->isALeg() ? "true":"false"));
++
++
++    return ContinueProcessing;
++}
++
++} // namsepace routing
++
+--- /dev/null
++++ b/apps/sbc/call_control/routing/RoutingModule.h
+@@ -0,0 +1,61 @@
++#pragma once
++
++#include "AmApi.h"
++#include "AmPlugIn.h"
++#include "SBCCallLeg.h"
++#include "SBCCallProfile.h"
++#include "ExtendedCCInterface.h"
++#include <vector>
++
++namespace routing
++{
++
++class RoutingRule;
++
++class RoutingModule : public AmObject, public AmDynInvoke, public ExtendedCCInterface
++{
++    static RoutingModule* _instance;
++
++    void start(const std::string & cc_name, const std::string & ltag, SBCCallProfile* call_profile, int start_ts_sec, int start_ts_usec, const AmArg & values, int timer_id, AmArg & res);
++    void connect(const std::string & cc_name, const std::string & ltag, SBCCallProfile* call_profile, const std::string & other_ltag, int connect_ts_sec, int connect_ts_usec);
++    void end(const std::string & cc_name, const std::string & ltag, SBCCallProfile* call_profile, int end_ts_sec, int end_ts_usec);
++
++public:
++    RoutingModule();
++    ~RoutingModule();
++
++    static RoutingModule *instance();
++    void invoke(const std::string & method, const AmArg & args, AmArg & ret);
++    int onLoad();
++
++    // extended call control interface
++    // --- calls
++    bool init(SBCCallLeg *call, const std::map<std::string, std::string> & values);
++    CCChainProcessing onInitialInvite(SBCCallLeg *call, AmSipRequest & req);
++    CCChainProcessing onBLegRefused(SBCCallLeg *call, const AmSipReply & reply);
++    void onDestroyLeg(SBCCallLeg *call);
++    void onStateChange(SBCCallLeg *call, const CallLeg::StatusChangeCause & cause);
++    CCChainProcessing onInDialogRequest(SBCCallLeg *call, const AmSipRequest & req);
++    CCChainProcessing onInDialogReply(SBCCallLeg *call, const AmSipReply & reply);
++    CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e);
++    CCChainProcessing onSendRequest(SBCCallLeg *call, const AmSipRequest & req);
++
++private:
++
++    std::string getAppParams(const std::string & app, const AmSipRequest & req);
++    bool checkAndRoute(SBCCallLeg *call, const AmSipRequest & req);
++    void onMatch(SBCCallLeg *call, const AmSipRequest & req, const RoutingRule & r);
++
++    std::vector<RoutingRule> mRoutingRules;
++};
++
++class RoutingModuleFactory : public AmDynInvokeFactory
++{
++    public:
++        RoutingModuleFactory(const std::string & name) : AmDynInvokeFactory(name) {}
++        AmDynInvoke *getInstance() { return RoutingModule::instance(); }
++        int onLoad() { return RoutingModule::instance()->onLoad(); }
++};
++
++} // namsepace routing
++
+--- /dev/null
++++ b/apps/sbc/call_control/routing/RoutingRule.h
+@@ -0,0 +1,17 @@
++#pragma once
++
++#include <string>
++
++namespace routing
++{
++
++struct RoutingRule
++{
++    std::string type;
++    std::string match;
++    std::string destination;
++    std::string app;
++};
++
++} // namespace routing
++
+--- /dev/null
++++ b/apps/sbc/call_control/routing/etc/routing.conf
+@@ -0,0 +1,7 @@
++#routing rules
++request_uri=sip:earlyannounce@app.local
++destination=localhost:5080
++
++request_uri1=sip:dummy@somwhere
++destination1=1.2.3.4:5678
++
