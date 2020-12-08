@@ -6,7 +6,6 @@ Homepage: https://www.sipwise.com/
 Standards-Version: 3.9.8
 Build-Depends:
  debhelper-compat (= 12),
- dh-python,
  flite-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libev-dev,
@@ -20,8 +19,6 @@ Build-Depends:
  libssl-dev,
  libxml2-dev,
  openssl,
- python-dev,
- python-sip-dev,
 
 Package: ngcp-sems
 Architecture: any
@@ -32,7 +29,6 @@ Depends:
  ngcp-prompts,
  ngcp-system-tools,
  ${misc:Depends},
- ${python:Depends},
  ${shlibs:Depends},
 Conflicts:
  sems,
