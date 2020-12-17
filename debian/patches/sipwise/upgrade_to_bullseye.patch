@@ -1,34 +1,11 @@
-Index: sems/Makefile.defs
-===================================================================
---- sems.orig/Makefile.defs
-+++ sems/Makefile.defs
-@@ -85,7 +85,10 @@ exclude_core_modules = g729 silk
+--- a/Makefile.defs
++++ b/Makefile.defs
+@@ -85,7 +85,7 @@
  # build in support for monitoring?
  #
  #
 -USE_MONITORING=yes
 +USE_MONITORING=no
-+
-+#include SBC tools into build
-+USE_SBC_TOOLS=no
  
  # Support for long debug messages? (useful for debugging SIP messages' contents)
  #
-Index: sems/apps/sbc/Makefile
-===================================================================
---- sems.orig/apps/sbc/Makefile
-+++ sems/apps/sbc/Makefile
-@@ -4,7 +4,12 @@ module_ldflags =
- module_cflags  =
- 
- extra_target = make_call_control_mods
--extra_install = install_tools install_call_control_mods
-+extra_install = install_call_control_mods
-+
-+ifeq ($(USE_SBC_TOOLS), yes)
-+extra_install += install_tools
-+endif
-+
- extra_clean = clean_call_control_mods
- 
- COREPATH ?= ../../core

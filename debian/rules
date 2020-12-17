@@ -4,7 +4,7 @@
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
 
-EXCLUDED_MODULES=conf_auth examples examples/db_announce fast_ack gateway ivr mailbox mp3 pin_collect twit webconference
+EXCLUDED_MODULES=conf_auth examples/db_announce fast_ack gateway ivr mailbox mp3 pin_collect twit webconference
 
 EXCLUDED_DSM_MODULES=mod_aws mod_py
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
@@ -16,6 +16,8 @@ export USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)"
 export APP_NAME=ngcp-sems
 export SYSTEM_SAMPLECLOCK_RATE=48000LL
 export USE_THREADPOOL=yes
+
+export PYTHON_VERSION=3
 
 # Enable parallel builds for overrides.
 NUMJOBS = 1

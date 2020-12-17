@@ -1,0 +1,914 @@
+--- a/apps/sbc/tools/sems-sbc-get-activeprofile
++++ b/apps/sbc/tools/sems-sbc-get-activeprofile
+@@ -1,7 +1,7 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ 
+-from xmlrpclib import *
++from xmlrpc.client import *
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
+-print s.di('sbc','getActiveProfile')
++print("Active calls: %d" % s.calls())
++print(s.di('sbc','getActiveProfile'))
+--- a/apps/sbc/tools/sems-sbc-get-regex-map-names
++++ b/apps/sbc/tools/sems-sbc-get-regex-map-names
+@@ -1,7 +1,7 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ s = ServerProxy('http://localhost:8090')
+-print s.di('sbc','getRegexMapNames')
++print(s.di('sbc','getRegexMapNames'))
+--- a/apps/sbc/tools/sems-sbc-list-profiles
++++ b/apps/sbc/tools/sems-sbc-list-profiles
+@@ -1,7 +1,7 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ 
+-from xmlrpclib import *
++from xmlrpc.client import *
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
+-print s.di('sbc','listProfiles')
++print("Active calls: %d" % s.calls())
++print(s.di('sbc','listProfiles'))
+--- a/apps/sbc/tools/sems-sbc-load-callcontrol-modules
++++ b/apps/sbc/tools/sems-sbc-load-callcontrol-modules
+@@ -1,12 +1,12 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 2:
+-	print "usage: %s <semicolon separated list of plugins to load>" % sys.argv[0]
++	print("usage: %s <semicolon separated list of plugins to load>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
+-print s.di('sbc','loadCallcontrolModules',sys.argv[1])
++print("Active calls: %d" % s.calls())
++print(s.di('sbc','loadCallcontrolModules',sys.argv[1]))
+--- a/apps/sbc/tools/sems-sbc-load-profile
++++ b/apps/sbc/tools/sems-sbc-load-profile
+@@ -1,13 +1,13 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 3:
+-	print "usage: %s <profile name> <full profile path>" % sys.argv[0]
++	print("usage: %s <profile name> <full profile path>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
++print("Active calls: %d" % s.calls())
+ p ={ 'name' : sys.argv[1], 'path' : sys.argv[2] }
+-print s.di('sbc','loadProfile',p)
++print(s.di('sbc','loadProfile',p))
+--- a/apps/sbc/tools/sems-sbc-reload-profile
++++ b/apps/sbc/tools/sems-sbc-reload-profile
+@@ -1,13 +1,13 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 2:
+-	print "usage: %s <profile name>" % sys.argv[0]
++	print("usage: %s <profile name>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
++print("Active calls: %d" % s.calls())
+ p ={ 'name' : sys.argv[1] }
+-print s.di('sbc','reloadProfile',p)
++print(s.di('sbc','reloadProfile',p))
+--- a/apps/sbc/tools/sems-sbc-reload-profiles
++++ b/apps/sbc/tools/sems-sbc-reload-profiles
+@@ -1,7 +1,7 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ 
+-from xmlrpclib import *
++from xmlrpc.client import *
+ s = ServerProxy('http://localhost:8090')
+-print s.calls()
+-print s.di('sbc','reloadProfiles')
++print(s.calls())
++print(s.di('sbc','reloadProfiles'))
+--- a/apps/sbc/tools/sems-sbc-set-activeprofile
++++ b/apps/sbc/tools/sems-sbc-set-activeprofile
+@@ -1,12 +1,12 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 2:
+-	print "usage: %s <profile name>" % sys.argv[0]
++	print("usage: %s <profile name>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
+-print s.di('sbc','setActiveProfile',sys.argv[1])
++print("Active calls: %d" % s.calls())
++print(s.di('sbc','setActiveProfile',sys.argv[1]))
+--- a/apps/sbc/tools/sems-sbc-set-regex-map
++++ b/apps/sbc/tools/sems-sbc-set-regex-map
+@@ -1,13 +1,13 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 3:
+-	print "usage: %s <regex map name> <full regex map path>" % sys.argv[0]
++	print("usage: %s <regex map name> <full regex map path>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
++print("Active calls: %d" % s.calls())
+ p ={ 'name' : sys.argv[1], 'file' : sys.argv[2] }
+-print s.di('sbc','setRegexMap',p)
++print(s.di('sbc','setRegexMap',p))
+--- a/apps/sbc/tools/sems-sbc-teardown-call
++++ b/apps/sbc/tools/sems-sbc-teardown-call
+@@ -1,19 +1,19 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ # -*- coding: utf-8 -*-
+ import sys
+-from xmlrpclib import *
++from xmlrpc.client import *
+ 
+ if len(sys.argv) != 2:
+-	print "usage: %s <ltag/ID of call to tear down>" % sys.argv[0]
++	print("usage: %s <ltag/ID of call to tear down>" % sys.argv[0])
+ 	sys.exit(1)
+ 
+ s = ServerProxy('http://localhost:8090')
+-print "Active calls: %d" % s.calls()
++print("Active calls: %d" % s.calls())
+ res = s.di('sbc', 'postControlCmd', sys.argv[1], "teardown")
+ 
+ if res[0] >= 200 and res[0] < 300:
+-  print "OK"
++  print("OK")
+   sys.exit(0)
+ else:
+-  print "Error: %s" % str(res)
++  print("Error: %s" % str(res))
+   sys.exit(2)
+--- a/apps/examples/db_announce/announcement.py
++++ b/apps/examples/db_announce/announcement.py
+@@ -9,62 +9,69 @@
+ # the Free Software Foundation; either version 2 of the License, or
+ # (at your option) any later version.
+ # Use, copying, modification, and distribution without written
+-# permission is not allowed. 
++# permission is not allowed.
+ 
+ import os, MySQLdb
+ 
+ from log import *
+ from ivr import *
+ 
+-APPLICATION = 'announcement'
++APPLICATION = "announcement"
++
++GREETING_MSG = "greeting_msg"
+ 
+-GREETING_MSG = 'greeting_msg'
+ 
+ class IvrDialog(IvrDialogBase):
+ 
+-    DB_HOST = 'localhost'
+-    DB_USER = 'sems'
+-    DB_PASSWD = ''
+-    DB_DB = 'sems'
++    DB_HOST = "localhost"
++    DB_USER = "sems"
++    DB_PASSWD = ""
++    DB_DB = "sems"
+ 
+     def __init__(self):
+ 
+-	try:
+-	    if config['mysql_server']:
+-		self.DB_HOST = config['mysql_server']
++        try:
++            if config["mysql_server"]:
++                self.DB_HOST = config["mysql_server"]
+         except KeyError:
+             pass
+ 
+-	try:
+-	    if config['mysql_user']:
+-		self.DB_USER = config['mysql_user']
++        try:
++            if config["mysql_user"]:
++                self.DB_USER = config["mysql_user"]
+         except KeyError:
+             pass
+ 
+-	try:
+-	    if config['mysql_passwd']:
+-		self.DB_PASSWD = config['mysql_passwd']
++        try:
++            if config["mysql_passwd"]:
++                self.DB_PASSWD = config["mysql_passwd"]
+         except KeyError:
+             pass
+ 
+-	try:
+-	    if config['mysql_db']:
+-		self.DB_DB = config['mysql_db']
++        try:
++            if config["mysql_db"]:
++                self.DB_DB = config["mysql_db"]
+         except KeyError:
+             pass
+ 
+         try:
+-            self.db = MySQLdb.connect(host=self.DB_HOST,\
+-                                      user=self.DB_USER,\
+-                                      passwd=self.DB_PASSWD,\
+-                                      db=self.DB_DB)
+-        except MySQLdb.Error, e:
+-            error(APPLICATION + ": cannot open database: " +\
+-                  str(e.args[0]) + ":" + e.args[1])
++            self.db = MySQLdb.connect(
++                host=self.DB_HOST,
++                user=self.DB_USER,
++                passwd=self.DB_PASSWD,
++                db=self.DB_DB,
++            )
++        except MySQLdb.Error as e:
++            error(
++                APPLICATION
++                + ": cannot open database: "
++                + str(e.args[0])
++                + ":"
++                + e.args[1]
++            )
+             return False
+ 
+         self.audio = dict()
+-        
+         return True
+ 
+     def onSessionStart(self, hdrs):
+@@ -72,7 +79,7 @@
+         if not self.__init__():
+             self.bye()
+             self.stopSession()
+-            
++
+         self.language = getHeader(hdrs, "P-Language")
+ 
+         if not self.language:
+@@ -83,16 +90,16 @@
+             return
+ 
+         self.enqueue(self.audio[GREETING_MSG], None)
+-        
++
+     def onEmptyQueue(self):
+ 
+         if not self.queueIsEmpty():
+             return
+-        
++
+         self.sendBye()
+ 
+         return
+-    
++
+     def onBye(self):
+ 
+         self.db.close()
+@@ -116,7 +123,17 @@
+ 
+             if start > 2:
+ 
+-                cursor.execute("SELECT audio FROM user_audio WHERE application='" + APPLICATION + "' AND message='" + msg + "' AND domain='" +  self.dialog.domain + "' AND userid='" + self.dialog.user + "'")
++                cursor.execute(
++                    "SELECT audio FROM user_audio WHERE application='"
++                    + APPLICATION
++                    + "' AND message='"
++                    + msg
++                    + "' AND domain='"
++                    + self.dialog.domain
++                    + "' AND userid='"
++                    + self.dialog.user
++                    + "'"
++                )
+ 
+                 if cursor.rowcount > 0:
+                     self.getFromTemp(cursor.fetchone()[0], msg, wav)
+@@ -125,14 +142,32 @@
+ 
+             if start > 1:
+ 
+-                cursor.execute("SELECT audio FROM domain_audio WHERE application='" + APPLICATION + "' AND message='" + msg + "' AND domain='" + self.dialog.domain + "' AND language='" + self.language + "'")
++                cursor.execute(
++                    "SELECT audio FROM domain_audio WHERE application='"
++                    + APPLICATION
++                    + "' AND message='"
++                    + msg
++                    + "' AND domain='"
++                    + self.dialog.domain
++                    + "' AND language='"
++                    + self.language
++                    + "'"
++                )
+ 
+                 if cursor.rowcount > 0:
+                     self.getFromTemp(cursor.fetchone()[0], msg, wav)
+                     cursor.close()
+                     return True
+-            
+-            cursor.execute("SELECT audio FROM default_audio WHERE application='" + APPLICATION + "' AND message='" + msg + "' AND language='" + (self.language) + "'")
++
++            cursor.execute(
++                "SELECT audio FROM default_audio WHERE application='"
++                + APPLICATION
++                + "' AND message='"
++                + msg
++                + "' AND language='"
++                + (self.language)
++                + "'"
++            )
+ 
+             if cursor.rowcount > 0:
+                 self.getFromTemp(cursor.fetchone()[0], msg, wav)
+@@ -143,11 +178,16 @@
+                 cursor.close()
+                 return False
+ 
+-        except MySQLdb.Error, e:
+-            error(APPLICATION + ": error in accessing database: " +\
+-                  str(e.args[0]) + ":" + e.args[1])
++        except MySQLdb.Error as e:
++            error(
++                APPLICATION
++                + ": error in accessing database: "
++                + str(e.args[0])
++                + ":"
++                + e.args[1]
++            )
+             return False
+-        
++
+     def getFromTemp(self, audio, msg, wav):
+ 
+         fp = os.tmpfile()
+--- a/apps/ivr/Makefile.ivr_application
++++ b/apps/ivr/Makefile.ivr_application
+@@ -9,7 +9,7 @@
+ include $(COREPATH)/../Makefile.defs
+ include $(IVRPATH)/Makefile.defs
+ 
+-# 
++#
+ ivr_modules_dir?=lib/$(APP_NAME)/ivr
+ 
+ LIB_INSTALLDIR?=$(modules_prefix)/$(ivr_modules_dir)
+@@ -35,21 +35,23 @@
+ 	rm -f ${TARBALL_PREFIX}*.tar.gz
+ 
+ .PHONY: compile
+-compile: 
++compile:
+ 	$(PY_EXE) $(IVRPATH)/py_comp -q .
+ 
+ .PHONY: install
+ install: all $(extra_install)
+ 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+-	install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
++	# note: we're ignoring those and need to skip it with py3k
++	# install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+ 
+ ifneq (,$(LIBDIR))
+-	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR} 
+-	install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}  
++	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
++	# note: we're ignoring those and need to skip it with py3k
++	# install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
+ endif
+ 
+ .PHONY: install-cfg
+-install-cfg: 
++install-cfg:
+ 	mkdir -p $(DESTDIR)$(app_cfg_target)
+ 	@set -e; \
+ 	for r in $(module_conf_files); do \
+@@ -75,16 +77,16 @@
+ 		fi ; \
+ 	done
+ 
+-uninstall: 
++uninstall:
+ 	@echo "please remove the files from $(DESTDIR)${LIB_INSTALLDIR} manually."
+ 
+-fulltest: 
+-	find | grep /Test | grep -v ".svn" | grep \\.py$$ | sed -e "s#^./##g" | bash -e - 
++fulltest:
++	find | grep /Test | grep -v ".svn" | grep \\.py$$ | sed -e "s#^./##g" | bash -e -
+ 
+-check: 
+-	find ${LIBDIR}/ | grep \\.py$$ | grep -v Test | PYTHONPATH=$(PYTHONPATH):$(IVRPATH)/moc xargs pychecker ${PYCHECKERARGS} 
++check:
++	find ${LIBDIR}/ | grep \\.py$$ | grep -v Test | PYTHONPATH=$(PYTHONPATH):$(IVRPATH)/moc xargs pychecker ${PYCHECKERARGS}
+ 
+-doccheck: 
++doccheck:
+ 	find ${LIBDIR}/  | grep \\.py$$ | grep -v Test | xargs pychecker ${PYCHECKERARGS} ${PYCHECKERDOCARGS}
+ 
+ dist: all
+--- a/apps/examples/py_sems_ex/early_media.py
++++ b/apps/examples/py_sems_ex/early_media.py
+@@ -1,113 +1,112 @@
+-import base64,time,os,sip
++import base64, time, os, sip
+ 
+ from py_sems_log import *
+ from py_sems import *
+ from py_sems_lib import *
+ 
++
+ class PySemsScript(PySemsDialog):
++    def __init__(self):
++
++        debug("***** __init__ *******")
++        PySemsDialog.__init__(self)
++        self.initial_req = None
++        self.ann = None
++        sip.settracemask(0xFFFF)
++
++    def onInvite(self, req):
++
++        print("----------------- %s ----------------" % self.__class__)
++
++        ann_file = self.getAnnounceFile(req)
++        self.ann = AmAudioFile()
++
++        try:
++            self.ann.open(ann_file)
++
++            self.initial_req = AmSipRequest(req)
++            debug("dlg.local_tag: %s" % self.dlg.local_tag)
++
++            debug("***** onInvite *******")
++            (res, sdp_reply) = self.acceptAudio(req.body, req.hdrs)
++            if res < 0:
++                self.dlg.reply(req, 500)
++
++            debug("res = %s" % repr(res))
++            debug("sdp_reply = %s" % sdp_reply)
++
++            if self.dlg.reply(req, 183, "OK", "application/sdp", sdp_reply, "") != 0:
++                self.setStopped()
++        except:
++            self.dlg.reply(req, 500, "File not found", "", "", "")
++            self.ann = None
++            self.setStopped()
++            raise
++
++    def onSessionStart(self, req):
++
++        debug("***** onSessionStart *******")
++        PySemsDialog.onSessionStart(self, req)
++
++        self.localreq = AmSipRequest(req)
++        self.setOutput(self.ann)
++
++    def onCancel(self):
++
++        debug("***** onCancel *******")
++
++        self.dlg.reply(self.initial_req, 487, "Call terminated", "", "", "")
++        self.setStopped()
++
++    def getAnnounceFile(self, req):
++
++        announce_file = (
++            config["announce_path"]
++            + req.domain
++            + "/"
++            + get_header_param(req.r_uri, "play")
++            + ".wav"
++        )
++
++        debug("trying '%s'", announce_file)
++        if os.path.exists(announce_file):
++            return announce_file
++
++        announce_file = config["announce_path"] + req.user + ".wav"
++        debug("trying '%s'", announce_file)
++        if os.path.exists(announce_file):
++            return announce_file
++
++        announce_file = config["announce_path"] + config["announce_file"]
++        debug("using default '%s'", announce_file)
++        return announce_file
++
++    def process(self, ev):
++
++        debug("*********** PySemsScript.process **************")
++        if isinstance(ev, AmAudioEvent):
++            if ev.event_id == AmAudioEvent.cleared:
++
++                debug("AmAudioEvent.cleared")
++
++                code = getHeader(self.localreq.hdrs, "P-Final-Reply-Code")
++                reason = getHeader(self.localreq.hdrs, "P-Final-Reply-Reason")
++
++                if reason == "":
++                    reason = "OK"
++
++                code_i = 400
++                try:
++                    code_i = int(code)
++                    if (code_i < 300) or (code_i > 699):
++                        debug("Invalid reply code: %d", code_i)
++                except:
++                    debug("Invalid reply code: %s", code)
+ 
+-	def __init__(self):
+-		
+-		debug("***** __init__ *******")
+-		PySemsDialog.__init__(self)
+-		self.initial_req = None
+-		self.ann = None
+-		sip.settracemask(0xFFFF)
+-
+-	def onInvite(self,req):
+-
+-
+-		print "----------------- %s ----------------" % self.__class__
+-		
+-		ann_file = self.getAnnounceFile(req)
+-		self.ann = AmAudioFile()
+-
+-		try:
+-			self.ann.open(ann_file)
+-
+-			self.initial_req = AmSipRequest(req)
+-			debug("dlg.local_tag: %s" % self.dlg.local_tag)
+-		
+-			debug("***** onInvite *******")
+-			(res,sdp_reply) = self.acceptAudio(req.body,req.hdrs)
+-			if res < 0:
+-				self.dlg.reply(req,500)
+-		
+-			debug("res = %s" % repr(res))
+-			debug("sdp_reply = %s" % sdp_reply)
+-		
+-			if self.dlg.reply(req,183,"OK","application/sdp",sdp_reply,"") <> 0:
+-				self.setStopped()
+-		except:
+-			self.dlg.reply(req,500,"File not found","","","")
+-			self.ann = None
+-			self.setStopped()
+-			raise
+-		
+-		
+-  	def onSessionStart(self,req):
+-
+-  		debug("***** onSessionStart *******")
+-		PySemsDialog.onSessionStart(self,req)
+-
+-		self.localreq = AmSipRequest(req)
+-		self.setOutput(self.ann)
+-
+-
+-	def onCancel(self):
+-		
+-		debug("***** onCancel *******")
+-
+-		self.dlg.reply(self.initial_req,487,"Call terminated","","","")
+-		self.setStopped()
+-
+-
+-	def getAnnounceFile(self,req):
+-
+-		announce_file = config["announce_path"] + req.domain + "/" + get_header_param(req.r_uri, "play") + ".wav"
+-
+-		debug("trying '%s'",announce_file)
+-		if os.path.exists(announce_file):
+-			return announce_file
+-
+-		announce_file = config["announce_path"] + req.user + ".wav"
+-		debug("trying '%s'",announce_file)
+-		if os.path.exists(announce_file):
+-			return announce_file
+-
+-		announce_file = config["announce_path"] + config["announce_file"]
+-		debug("using default '%s'",announce_file)
+-		return announce_file
+-
+-
+-	def process(self,ev):
+-
+-		debug("*********** PySemsScript.process **************")
+-		if isinstance(ev,AmAudioEvent):
+-		  if ev.event_id == AmAudioEvent.cleared:
+-
+-			debug("AmAudioEvent.cleared")
+-
+-			code = getHeader(self.localreq.hdrs,"P-Final-Reply-Code")
+-			reason = getHeader(self.localreq.hdrs,"P-Final-Reply-Reason")
+-
+-			if reason == "":
+-				reason = "OK"
+-			
+-			code_i = 400
+-			try:
+-				code_i = int(code)
+-				if (code_i < 300) or (code_i>699):
+-					debug("Invalid reply code: %d",code_i)
+-			except:
+-				debug("Invalid reply code: %s",code)
+-	
+-			debug("Replying %d %s" % (code_i, reason))
+-			self.dlg.reply(self.localreq, code_i, reason, "", "", "")
+-			self.setStopped()
+-			return
+-		
+-		PySemsDialog.process(self,ev);
+-		return
++                debug("Replying %d %s" % (code_i, reason))
++                self.dlg.reply(self.localreq, code_i, reason, "", "", "")
++                self.setStopped()
++                return
+ 
+-			
++        PySemsDialog.process(self, ev)
++        return
+--- a/apps/examples/py_sems_ex/jukecall.py
++++ b/apps/examples/py_sems_ex/jukecall.py
+@@ -1,110 +1,123 @@
+-import base64,time,os,sip
++import base64, time, os, sip
+ 
+ from py_sems_log import *
+ from py_sems import *
+ from py_sems_lib import *
+ 
++
+ class MyB2ABEvent(PySemsB2ABEvent):
+-	def __init__(self, id):
+-		PySemsB2ABEvent.__init__(self,id)
++    def __init__(self, id):
++        PySemsB2ABEvent.__init__(self, id)
++
+ 
+ class MyCalleeSession(PySemsB2ABCalleeDialog):
+-	def __init__(self, tag):
+-		debug("**** __init callee __ ****")
+-		AmB2ABCalleeSession.__init__(self, tag)
+-		self.ann=None
+-		#debug("**** tag = " + tag);
+-
+-	def onPyB2ABEvent(self, ev):
+-		debug("***************************** callee PyB2ABEvent  ************************")
+-		if isinstance(ev, MyB2ABEvent):
+-			self.ann = AmAudioFile()
+-			self.ann.open("/tmp/test.wav")
+-			self.setOutput(self.ann)
+-			return
++    def __init__(self, tag):
++        debug("**** __init callee __ ****")
++        AmB2ABCalleeSession.__init__(self, tag)
++        self.ann = None
++        # debug("**** tag = " + tag);
++
++    def onPyB2ABEvent(self, ev):
++        debug(
++            "***************************** callee PyB2ABEvent  ************************"
++        )
++        if isinstance(ev, MyB2ABEvent):
++            self.ann = AmAudioFile()
++            self.ann.open("/tmp/test.wav")
++            self.setOutput(self.ann)
++            return
++
+ 
+-			
+ class PySemsScript(PySemsB2ABDialog):
++    def __init__(self):
+ 
+-	def __init__(self):
+-		
+-		debug("***** __init__ *******")
+-		PySemsB2ABDialog.__init__(self)
+-		self.initial_user = None
+-		self.initial_domain = None
+-		self.initial_fromuri = None
+-		self.ann = None
+-		sip.settracemask(0xFFFF)
+-
+-	def onInvite(self, req):
+-		if len(req.user) < 2:
+-			self.dlg.reply(req,500,"Need a number to dial","","","")
+-			self.setStopped()
+-			return
+-
+-		ann_file = self.getAnnounceFile(req)
+-		self.ann = AmAudioFile()
+-		try:
+-			self.ann.open(ann_file)
+-		except:
+-			self.dlg.reply(req,500,"File not found","","","")
+-			self.ann = None
+-			self.setStopped()
+-			raise
+-			
+-		PySemsB2ABDialog.onInvite(self,req)
+-
+-  	def onSessionStart(self,req):
+-		self.setOutput(self.ann)
+-		self.initial_user = req.user
+-		self.initial_domain = req.domain
+-		self.initial_fromuri = req.from_uri
+-
+-	def getAnnounceFile(self,req):
+-
+-		announce_file = config["announce_path"] + req.domain + "/" + get_header_param(req.r_uri, "play") + ".wav"
+-
+-		debug("trying '%s'",announce_file)
+-		if os.path.exists(announce_file):
+-			return announce_file
+-
+-		announce_file = config["announce_path"] + req.user + ".wav"
+-		debug("trying '%s'",announce_file)
+-		if os.path.exists(announce_file):
+-			return announce_file
+-
+-		announce_file = config["announce_path"] + config["announce_file"]
+-		debug("using default '%s'",announce_file)
+-		return announce_file
+-
+-
+-	def process(self,ev):
+-
+-		debug("*********** PySemsScript.process **************")
+-		if isinstance(ev,AmAudioEvent):
+-		  if ev.event_id == AmAudioEvent.cleared:
+-			debug("AmAudioEvent.cleared")
+-			to = self.initial_user[1:len(self.initial_user)] + \
+-				"@" + self.initial_domain
+-			debug("to is " + to)
+-			debug("from is "+ self.initial_fromuri)
+-			self.connectCallee("<sip:"+to+">", "sip:"+to, \
+-				self.initial_fromuri, self.initial_fromuri)
+-			debug("connectcallee ok")
+-			return
+-		
+-		PySemsB2ABDialog.process(self,ev);
+-		return
+-
+-	def createCalleeSession(self):
+-		print self.dlg.local_tag
+-		cs = MyCalleeSession(self.dlg.local_tag)
+-		print cs
+-		return cs
+-
+-	def onDtmf(self, event, dur):
+-		debug("************ onDTMF: ********* " + str(event) + "," + str(dur))
+-		ev  = MyB2ABEvent(15)
+-		self.relayEvent(ev)
+-	
+-			
++        debug("***** __init__ *******")
++        PySemsB2ABDialog.__init__(self)
++        self.initial_user = None
++        self.initial_domain = None
++        self.initial_fromuri = None
++        self.ann = None
++        sip.settracemask(0xFFFF)
++
++    def onInvite(self, req):
++        if len(req.user) < 2:
++            self.dlg.reply(req, 500, "Need a number to dial", "", "", "")
++            self.setStopped()
++            return
++
++        ann_file = self.getAnnounceFile(req)
++        self.ann = AmAudioFile()
++        try:
++            self.ann.open(ann_file)
++        except:
++            self.dlg.reply(req, 500, "File not found", "", "", "")
++            self.ann = None
++            self.setStopped()
++            raise
++
++        PySemsB2ABDialog.onInvite(self, req)
++
++    def onSessionStart(self, req):
++        self.setOutput(self.ann)
++        self.initial_user = req.user
++        self.initial_domain = req.domain
++        self.initial_fromuri = req.from_uri
++
++    def getAnnounceFile(self, req):
++
++        announce_file = (
++            config["announce_path"]
++            + req.domain
++            + "/"
++            + get_header_param(req.r_uri, "play")
++            + ".wav"
++        )
++
++        debug("trying '%s'", announce_file)
++        if os.path.exists(announce_file):
++            return announce_file
++
++        announce_file = config["announce_path"] + req.user + ".wav"
++        debug("trying '%s'", announce_file)
++        if os.path.exists(announce_file):
++            return announce_file
++
++        announce_file = config["announce_path"] + config["announce_file"]
++        debug("using default '%s'", announce_file)
++        return announce_file
++
++    def process(self, ev):
++
++        debug("*********** PySemsScript.process **************")
++        if isinstance(ev, AmAudioEvent):
++            if ev.event_id == AmAudioEvent.cleared:
++                debug("AmAudioEvent.cleared")
++                to = (
++                    self.initial_user[1 : len(self.initial_user)]
++                    + "@"
++                    + self.initial_domain
++                )
++                debug("to is " + to)
++                debug("from is " + self.initial_fromuri)
++                self.connectCallee(
++                    "<sip:" + to + ">",
++                    "sip:" + to,
++                    self.initial_fromuri,
++                    self.initial_fromuri,
++                )
++                debug("connectcallee ok")
++                return
++
++        PySemsB2ABDialog.process(self, ev)
++        return
++
++    def createCalleeSession(self):
++        print(self.dlg.local_tag)
++        cs = MyCalleeSession(self.dlg.local_tag)
++        print(cs)
++        return cs
++
++    def onDtmf(self, event, dur):
++        debug("************ onDTMF: ********* " + str(event) + "," + str(dur))
++        ev = MyB2ABEvent(15)
++        self.relayEvent(ev)
+--- a/apps/py_sems/Makefile.py_sems_application
++++ b/apps/py_sems/Makefile.py_sems_application
+@@ -36,9 +36,11 @@
+ .PHONY: install
+ install: all
+ 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+-	install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
++	# note: we're ignoring those and need to skip it with py3k
++	#install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+ 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
+-	install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
++	# note: we're ignoring those and need to skip it with py3k
++	#install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
+ 
+ .PHONY: install-cfg
+ install-cfg: 

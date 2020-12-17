@@ -19,6 +19,8 @@ Build-Depends:
  libssl-dev,
  libxml2-dev,
  openssl,
+ python3-dev,
+ python3,
 
 Package: ngcp-sems
 Architecture: any
@@ -28,6 +30,7 @@ Depends:
  adduser,
  ngcp-prompts,
  ngcp-system-tools,
+ python3,
  ${misc:Depends},
  ${shlibs:Depends},
 Conflicts:

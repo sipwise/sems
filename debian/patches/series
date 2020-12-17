@@ -36,3 +36,4 @@ sipwise/0001-TT-53685-add_header_pattern_match_support.patch
 sipwise/add-vsc-to-disable_all_cf.patch
 sipwise/handle_bye_after_180.patch
 sipwise/upgrade_to_bullseye.patch
+sipwise/port_to_py3k.patch
