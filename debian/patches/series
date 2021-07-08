@@ -37,3 +37,4 @@ sipwise/add-vsc-to-disable_all_cf.patch
 sipwise/handle_bye_after_180.patch
 sipwise/upgrade_to_bullseye.patch
 sipwise/port_to_py3k.patch
+sipwise/db_reg_agent_auth_header.patch
