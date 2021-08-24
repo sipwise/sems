@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0-1+0~mr10.1.0.0) unstable; urgency=medium
+
+  [ Marco Capetta ]
+  * [50d4820] TT#82409 Authorization header format support
+
+  [ donat zenichev ]
+  * [5ef025a] TT#128701 Authentication from SEMS with no credentials
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 24 Aug 2021 16:53:49 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr10.0.0.0) unstable; urgency=medium
 
   * New release.
