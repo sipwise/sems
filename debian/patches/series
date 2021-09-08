@@ -39,3 +39,4 @@ sipwise/upgrade_to_bullseye.patch
 sipwise/port_to_py3k.patch
 sipwise/db_reg_agent_auth_header.patch
 sipwise/skip_outbound_auth_if_credentials_empty.patch
+sipwise/add_support_for_peering_outbound_registration.patch
