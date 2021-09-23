@@ -1,0 +1,126 @@
+--- a/core/AmConfig.cpp
++++ b/core/AmConfig.cpp
+@@ -125,6 +125,8 @@ bool         AmConfig::AcceptForkedDialo
+ bool         AmConfig::ShutdownMode            = false;
+ unsigned int AmConfig::ShutdownModeErrCode     = 503;
+ string       AmConfig::ShutdownModeErrReason   = "Server shutting down";
++
++bool         AmConfig::skip_cpslimit_emergency = true;
+   
+ string AmConfig::OptionsTranscoderOutStatsHdr; // empty by default
+ string AmConfig::OptionsTranscoderInStatsHdr; // empty by default
+@@ -458,6 +460,11 @@ int AmConfig::readConfiguration()
+       }
+   }
+ 
++  // skip_cpslimit_emergency = true - do not drop emergency calls on CPSLimit
++  // skip_cpslimit_emergency = false - drop emergency calls on CPSLimit
++  if (cfg.hasParameter("skip_cpslimit_emergency"))
++    skip_cpslimit_emergency = cfg.getParameter("skip_cpslimit_emergency")=="yes";
++
+   if(cfg.hasParameter("log_sessions"))
+     LogSessions = cfg.getParameter("log_sessions")=="yes";
+   
+--- a/core/AmConfig.h
++++ b/core/AmConfig.h
+@@ -281,6 +281,9 @@ struct AmConfig
+ 
+   static AmAudio::ResamplingImplementationType ResamplingImplementationType;
+ 
++  /* Global policy for treating emergency calls on CPSLimit triggering */
++  static bool skip_cpslimit_emergency;
++
+   /** Read global configuration file and insert values. Maybe overwritten by
+    * command line arguments */
+   static int readConfiguration();
+--- a/core/AmSessionContainer.cpp
++++ b/core/AmSessionContainer.cpp
+@@ -444,13 +444,25 @@ unsigned int AmSessionContainer::getMaxC
+   return res;
+ }
+ 
+-bool AmSessionContainer::check_and_add_cps()
++// we need the emergency_flag to mark emergency calls
++// and skip checking CPSLimit for them if the global policy is so
++// emergency_flag = True - do not run CPSLimit check for the call
++// emergency_flag = False - run CPSLimit check for the call
++bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
+ {
+   struct timeval tv, res;
+   gettimeofday(&tv,0);
+ 
+   AmLock lock(cps_mut);
+ 
++  // check global policy for dropping emergency calls
++  if (!AmConfig::skip_cpslimit_emergency && emergency_flag) {
++    emergency_flag = AmConfig::skip_cpslimit_emergency;
++    DBG("Emergency call detected, but global policy is to do the CPSLimit check (license).\n");
++  }
++
++  if (emergency_flag) DBG("Emergency call detected, skip CPSLimit check (license).\n");
++
+   while (cps_queue.size()) {
+     timersub(&tv, &cps_queue.front(), &res);
+     if (res.tv_sec >= CPS_SAMPLERATE) {
+@@ -466,7 +478,7 @@ bool AmSessionContainer::check_and_add_c
+     max_cps = cps;
+   }
+ 
+-  if( CPSLimit && cps > CPSLimit ){
++  if( CPSLimit && cps > CPSLimit && !emergency_flag){
+     DBG("cps_limit %d reached. Not creating session.\n", CPSLimit);
+     return true;
+   }
+@@ -500,7 +512,20 @@ AmSession* AmSessionContainer::createSes
+       return NULL;
+   }
+ 
+-  if (check_and_add_cps()) {
++  map<string,string> app_params;
++  parse_app_params(req.hdrs,app_params);
++
++  // look into P-App-Param list, try to find 'emergency' marker
++  emergency_flag = false;
++  map<string, string>::iterator it;
++
++  it = app_params.find(EMERGENCY_PARAM);
++  if (it != app_params.end() && (it->first == EMERGENCY_PARAM && it->second == "1")) {
++    DBG("Emergency parameter detected: <;%s=%s> .\n", it->first.c_str(), it->second.c_str());
++    emergency_flag = true;
++  }
++
++  if (check_and_add_cps(emergency_flag)) {
+       AmSipDialog::reply_error(req,AmConfig::CPSLimitErrCode, 
+ 			       AmConfig::CPSLimitErrReason);
+       return NULL;
+@@ -520,9 +545,6 @@ AmSession* AmSessionContainer::createSes
+       return NULL;
+   }
+ 
+-  map<string,string> app_params;
+-  parse_app_params(req.hdrs,app_params);
+-
+   AmSession* session = NULL;
+   if (req.method == "INVITE") {
+     if (NULL != session_params) {
+--- a/core/AmSessionContainer.h
++++ b/core/AmSessionContainer.h
+@@ -37,6 +37,8 @@
+ #include <queue>
+ #include <map>
+ 
++#define EMERGENCY_PARAM "emergency"
++
+ using std::string;
+ 
+ /**
+@@ -96,7 +98,8 @@ class AmSessionContainer : public AmThre
+   unsigned int CPSLimit;
+   unsigned int CPSHardLimit;
+ 
+-  bool check_and_add_cps();
++  bool check_and_add_cps(bool emergency_flag);
++  bool emergency_flag;
+ 
+  public:
+   static AmSessionContainer* instance();
