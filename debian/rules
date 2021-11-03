@@ -58,6 +58,3 @@ override_dh_strip:
 	test -r $(CURDIR)/debian/ngcp-sems-libsems1-dev/usr/include/sems/compat/getos && \
 	  strip --remove-section=.comment --remove-section=.note --strip-unneeded \
 	  $(CURDIR)/debian/ngcp-sems-libsems1-dev/usr/include/sems/compat/getos
-
-override_dh_dwz:
-	# Disable, as dwz cannot cope with the generated binaries.
