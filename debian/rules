@@ -49,8 +49,7 @@ override_dh_auto_install:
 		prefix=/usr \
 		cfg_target=/etc/$(APP_NAME)/
 
-override_dh_strip:
-	dh_strip
+execute_after_dh_strip:
 	# MT#7431 those binaries aren't automatically stripped
 	test -r $(CURDIR)/debian/ngcp-sems-libsems1-dev/usr/include/sems/compat/getarch && \
 	  strip --remove-section=.comment --remove-section=.note --strip-unneeded \
