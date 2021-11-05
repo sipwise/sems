@@ -1,0 +1,54 @@
+--- a/apps/dsm/mods/mod_utils/ModUtils.cpp
++++ b/apps/dsm/mods/mod_utils/ModUtils.cpp
+@@ -72,20 +72,32 @@ vector<string> utils_get_count_files(DSM
+   
+   vector<string> res;
+ 
++  unsigned int number = cnt;
++  unsigned int n = log10(number) + 1;
++  const int max = 9;
++
++  string full_number = std::to_string(number);
++  string remainder; /* what remains after 9 digits, if remains */
++  bool remainder_exists = false;
++
+   if (cnt <= 20) {
+     res.push_back(basedir+int2str(cnt)+suffix);
+     return res;
+   }
+-  
+-  for (int i=9;i>1;i--) {
+-    div_t num = div(cnt, (int)pow(10.,i));  
+-    if (num.quot) {
+-      res.push_back(basedir+int2str(int(num.quot * pow(10.,i)))+suffix);
+-    }
+-    cnt = num.rem;
++
++  if (n > max) {
++    remainder_exists = true;
++    remainder = full_number.substr(max);
++    cnt = std::stoi(remainder);
++  }
++
++  for (int i = n; i > 0; i--) {
++    int num = (int)((number % (unsigned int)pow(10, i)) / pow(10, i - 1));
++    if ( (n - i) < max )
++      res.push_back(basedir+int2str(num)+suffix); /* only push until max amount here */
+   }
+ 
+-  if (!cnt)
++  if (!remainder_exists)
+     return res;
+ 
+   if ((cnt <= 20) || (!(cnt%10))) {
+--- a/apps/dsm/mods/mod_utils/ModUtils.h
++++ b/apps/dsm/mods/mod_utils/ModUtils.h
+@@ -31,6 +31,8 @@
+ #include "AmRingTone.h"
+ #include "DSMSession.h"
+ 
++#include <string>
++
+ #define MOD_CLS_NAME SCUtilsModule
+ 
+ DECLARE_MODULE(MOD_CLS_NAME);
