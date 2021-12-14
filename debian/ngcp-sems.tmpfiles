@@ -1,4 +1,5 @@
 d /run/ngcp-sems 0755 sems sems
-d /var/cache/ngcp-sems 0755 sems sems
-d /var/cache/ngcp-sems/audio_cache 0755 sems sems
-d /var/cache/ngcp-sems/callingcard 0755 sems sems
+d /ngcp-data/cache/ngcp-sems 0755 sems sems
+d /ngcp-data/cache/ngcp-sems/audio_cache 0755 sems sems
+d /ngcp-data/cache/ngcp-sems/callingcard 0755 sems sems
+L+ /var/cache/ngcp-sems - - - - /ngcp-data/cache/ngcp-sems
