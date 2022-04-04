@@ -8,6 +8,7 @@ Rules-Requires-Root: no
 Build-Depends:
  debhelper-compat (= 13),
  flite-dev,
+ libbcg729-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libev-dev,
  libevent-dev (>= 2.1.12),
