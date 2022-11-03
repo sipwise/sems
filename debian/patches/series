@@ -42,3 +42,4 @@ sipwise/skip_outbound_auth_if_credentials_empty.patch
 sipwise/add_support_for_peering_outbound_registration.patch
 sipwise/cpslimit_detect_emergency_calls_and_let_them_pass.patch
 sipwise/dsm_modutils_fix_utils_get_count_files.patch
+sipwise/dsm_mod_curl_fix_ordered_comparison.patch
