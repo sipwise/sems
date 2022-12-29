@@ -346,7 +346,21 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   if (((reply.code < 200) || (reply.code >= 300)) &&
       (!(accept_501_reply && reply.code == 501)))
     return;
-  
+
+  // verify if B leg supports Session Timers
+  remote_timer_aware =
+      key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
+                  TIMER_OPTION_TAG);
+
+  if (!remote_timer_aware) {
+    // timer NOT supported by B leg
+    DBG("Session Timer NOT supported by leg B, removing internal session timer intervals");
+    session_timer_conf.setEnableSessionTimer("no");
+    removeTimers(s);
+    return;
+  }
+
+  // timer supported by B leg
   // determine session interval
   string sess_expires_hdr = getHeader(reply.hdrs, SIP_HDR_SESSION_EXPIRES,
 				      SIP_HDR_SESSION_EXPIRES_COMPACT, true);
