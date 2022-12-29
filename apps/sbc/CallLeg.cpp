@@ -197,7 +197,10 @@ CallLeg::CallLeg(const CallLeg* caller, AmSipDialog* p_dlg, AmSipSubscription* p
   set_sip_relay_only(false); // will be changed later on (for now we have no peer so we can't relay)
 
   // enable OA for the purpose of hold request detection
-  if (dlg) dlg->setOAEnabled(true);
+  if (dlg) {
+    dlg->setOAEnabled(true);
+    dlg->setOAForceSDP(false);
+  }
   else WARN("can't enable OA!\n");
 
   // code below taken from createCalleeSession
@@ -259,7 +262,10 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
   set_sip_relay_only(false);
 
   // enable OA for the purpose of hold request detection
-  if (dlg) dlg->setOAEnabled(true);
+  if (dlg) {
+    dlg->setOAEnabled(true);
+    dlg->setOAForceSDP(false);
+  }
   else WARN("can't enable OA!\n");
 }
     
