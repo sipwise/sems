@@ -61,6 +61,12 @@ typedef struct
 
     regex_t reminderOffPattern;
     string reminderOffAnnouncement;
+
+    regex_t blockinclirOnPattern;
+    string blockinclirOnAnnouncement;
+
+    regex_t blockinclirOffPattern;
+    string blockinclirOffAnnouncement;
 } sw_vsc_patterns_t;
 
 class SW_VscFactory: public AmSessionFactory

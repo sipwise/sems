@@ -93,6 +93,8 @@ SW_VscFactory::~SW_VscFactory()
     regfree(&m_patterns.speedDialPattern);
     regfree(&m_patterns.reminderOnPattern);
     regfree(&m_patterns.reminderOffPattern);
+    regfree(&m_patterns.blockinclirOnPattern);
+    regfree(&m_patterns.blockinclirOffPattern);
 }
 
 int SW_VscFactory::onLoad()
@@ -108,6 +110,8 @@ int SW_VscFactory::onLoad()
     string speedDialPattern;
     string reminderOnPattern;
     string reminderOffPattern;
+    string blockinclirOnPattern;
+    string blockinclirOffPattern;
 
     AmConfigReader cfg;
     if (cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf")))
@@ -226,6 +230,18 @@ int SW_VscFactory::onLoad()
     if (m_patterns.reminderOffAnnouncement.empty())
     {
         ERROR("ReminderOffAnnouncement file not set\n");
+        return -1;
+    }
+    m_patterns.blockinclirOnAnnouncement = cfg.getParameter("blockinclir_on_announcement", "");
+    if (m_patterns.blockinclirOnAnnouncement.empty())
+    {
+        ERROR("BlockinclirOnAnnouncement file not set\n");
+        return -1;
+    }
+    m_patterns.blockinclirOffAnnouncement = cfg.getParameter("blockinclir_off_announcement", "");
+    if (m_patterns.blockinclirOffAnnouncement.empty())
+    {
+        ERROR("BlockinclirOffAnnouncement file not set\n");
         return -1;
     }
 
@@ -391,6 +407,36 @@ int SW_VscFactory::onLoad()
     {
         ERROR("ReminderOffPattern failed to compile ('%s'): %s\n",
               reminderOffPattern.c_str(),
+              strerror(errno));
+        return -1;
+    }
+
+    blockinclirOnPattern = cfg.getParameter("blockinclir_on_pattern", "");
+    if (blockinclirOnPattern.empty())
+    {
+        ERROR("BlockinclirOnPattern is empty\n");
+        return -1;
+    }
+    if (regcomp(&m_patterns.blockinclirOnPattern, blockinclirOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
+    {
+        ERROR("BlockinclirOnPattern failed to compile ('%s'): %s\n",
+              blockinclirOnPattern.c_str(),
+              strerror(errno));
+        return -1;
+    }
+
+
+    blockinclirOffPattern = cfg.getParameter("blockinclir_off_pattern", "");
+    if (blockinclirOffPattern.empty())
+    {
+        ERROR("BlockinclirOffPattern is empty\n");
+        return -1;
+    }
+    if (regcomp(&m_patterns.blockinclirOffPattern, blockinclirOffPattern.c_str(),
+                REG_EXTENDED | REG_NOSUB))
+    {
+        ERROR("BlockinclirOffPattern failed to compile ('%s'): %s\n",
+              blockinclirOffPattern.c_str(),
               strerror(errno));
         return -1;
     }
@@ -1059,6 +1105,8 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     string speedDialAnnouncement;
     string reminderOnAnnouncement;
     string reminderOffAnnouncement;
+    string blockinclirOnAnnouncement;
+    string blockinclirOffAnnouncement;
 
     string uuid = getHeader(req.hdrs, "P-Caller-UUID");
     if (!uuid.length())
@@ -1174,6 +1222,22 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         ERROR("ReminderOffAnnouncement file does not exist ('%s').\n",
               reminderOffAnnouncement.c_str());
+        filename = failAnnouncement;
+        goto out;
+    }
+    blockinclirOnAnnouncement = m_patterns->audioPath + lang + m_patterns->blockinclirOnAnnouncement;
+    if (!file_exists(blockinclirOnAnnouncement))
+    {
+        ERROR("BlockinclirOnAnnouncement file does not exist ('%s').\n",
+              blockinclirOnAnnouncement.c_str());
+        filename = failAnnouncement;
+        goto out;
+    }
+    blockinclirOffAnnouncement = m_patterns->audioPath + lang + m_patterns->blockinclirOffAnnouncement;
+    if (!file_exists(blockinclirOffAnnouncement))
+    {
+        ERROR("BlockinclirOffAnnouncement file does not exist ('%s').\n",
+              blockinclirOffAnnouncement.c_str());
         filename = failAnnouncement;
         goto out;
     }
@@ -1841,6 +1905,95 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         goto out;
     }
 
+
+    // block in clir
+    if ((ret = regexec(&m_patterns->blockinclirOnPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        std::string val = "1";
+        u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            if (!insertPreference(my_handler, subId, attId, val))
+            {
+                filename = failAnnouncement;
+                goto out;
+            }
+            INFO("Successfully set VSC block_in_clir for uuid '%s'",
+                 uuid.c_str());
+        }
+        else
+        {
+            if (!updatePreferenceId(my_handler, prefId, val))
+            {
+                filename = failAnnouncement;
+                goto out;
+            }
+            INFO("Successfully updated VSC block_in_clir for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = blockinclirOnAnnouncement;
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = failAnnouncement;
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->blockinclirOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            INFO("Unnecessary VSC block_in_clir removal for uuid '%s'",
+                 uuid.c_str());
+        }
+        else if (!deletePreferenceId(my_handler, prefId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        else
+        {
+            INFO("Successfully removed block_in_clir for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = blockinclirOffAnnouncement;
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = failAnnouncement;
+        goto out;
+    }
 
 
     INFO("Unkown VSC code '%s' found", req.user.c_str());
