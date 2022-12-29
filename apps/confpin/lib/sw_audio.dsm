@@ -1,0 +1,50 @@
+-- sw_audio
+--
+-- The playFile() function plays a file with ID $audio_id from the $config.audio_cache directory.
+-- $sound_set_id is used as subdirectory under $config.audio_cache.
+-- If it doesn't exist, it is tried to be fetched from the MySQL DB, using the $audio_id.
+-- If that fails, an exception with type playFile is thrown
+--
+-- swMixInFile() mixes the file in to a mixInList setup by the conference module. it uses
+-- the $has_mixin variable to record that state, and setup the mixin if it's not there.
+--
+-- set($sw_audio_loop="true") makes the file to be looped
+
+import(mod_sys);
+import(mod_mysql);
+import(mod_conference);
+
+function swPlayFile() {
+  sets($__file_cache_path="$(config.audio_cache)/$(sound_set_id)/");
+  sets($__file_path="$(__file_cache_path)$(audio_id).wav");
+
+  if sys.file_not_exists($__file_path) {
+    if sys.file_not_exists($__file_cache_path) {
+      sys.mkdir($__file_cache_path);
+    }
+    -- connect to DB
+    if not mysql.connected() {
+      mysql.connect();
+      throwOnError();
+    }
+
+    mysql.getFileFromDB('SELECT data FROM provisioning.voip_sound_files vsf, provisioning.voip_sound_handles vsh WHERE vsh.name="$audio_id" AND vsf.set_id=$sound_set_id AND vsh.id=vsf.handle_id',$__file_path);
+    throwOnError();
+  }
+  if test($mix_file==true) {
+    conference.playMixInList($__file_path, $sw_audio_loop);
+  } else {
+    playFile($__file_path, $sw_audio_loop);
+  }
+  clear($__file_path);
+  clear($__file_cache_path);
+};
+
+function swMixInFile() {
+  set($mix_file=true);
+  if test($has_mixin!=true) {
+    conference.setupMixIn(0.5, 0);
+    set($has_mixin=true);
+  }
+  swPlayFile();
+};

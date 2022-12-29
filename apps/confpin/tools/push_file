@@ -1,0 +1,14 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+import sys
+from xmlrpclib import *
+
+if len(sys.argv) != 3:
+	print "usage: %s <prompt id> <set id>" % sys.argv[0]
+	sys.exit(1)
+
+s = ServerProxy('http://localhost:8090')
+print "Active calls: %d" % s.calls()
+#p ={ 'name' : sys.argv[1], 'path' : sys.argv[2] }
+#print s.di('sbc','loadProfile',p)
+print s.di('dsm','postDSMEvent', 'sw_audio', [['cmd', 'pushFile'],['audio_id', sys.argv[1]],['sound_set_id', sys.argv[2]]])

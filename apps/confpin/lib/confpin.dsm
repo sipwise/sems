@@ -1,0 +1,237 @@
+#[% TAGS [- -] %]
+---
+-- This DSM app
+--   * asks caller to enter pin for conference room
+--   * puts caller in conference room identified by roompin
+--
+-- Parameters (P-App-Param):
+--    confpin     - dsm app
+--    roompin     - pin from db for particular subscriber
+--    room	  - conference room consists subscriber and roompin
+--    sound_set_id - sound set to use
+--
+--  Example: P-App-Param: confpin;roompin="pin_from_db";room="$fU"_"pin_from_db";sound_set_id=3
+--
+
+import(mod_conference);
+import(mod_dlg);
+import(mod_utils);
+import(mod_groups);
+
+#include "sw_audio.dsm"
+
+function stopCall() {
+  stop(true);
+};
+
+function refuseWith500() {
+  set(connect_session=0);
+  dlg.reply(500, "Server Internal Error");
+  stop(false);
+};
+
+function enterConference() {
+    set($audio_id="conference_joined");
+    swMixInFile();
+    info(">> entering conference in room '$room'");
+    conference.setPlayoutType(adaptive);
+    conference.join($room);
+    set($joined=true);
+    groups.postEvent($room, joined);
+    groups.join($room);
+    groups.getSize($roomsize=$room);
+    if test($roomsize==1) {
+      set($audio_id="conference_first");
+      swMixInFile();
+      set($audio_id="conference_music");
+      set($sw_audio_loop="true");
+      swMixInFile();
+      clear($sw_audio_loop);
+      set($lonely_user=true);
+    }
+    info("entered conference, $roomsize people in here<<");
+};
+initial state START;
+
+transition "DB exception" START - exception / {
+  error("Error in initializing :");
+  refuseWith500();
+} -> END;
+
+transition "check for sound_set_id provisioning" START - invite; test($sound_set_id=="") / {
+  error("Error in provisioning: no sound_set_id application parameter set");
+  refuseWith500();
+} -> END;
+
+transition "Fetching File exception" START - exception; test(#type=="result") / {
+  error("error in DB query for fetching audio file:");
+  logAll(1);
+  stop(true);
+} -> END;
+
+transition "call starts" START - invite / {
+    -- process session establishment in DSM app
+    set(connect_session=0);
+    dlg.acceptInvite();
+    connectMedia();
+
+    -- connect to DB
+    mysql.connect();
+
+    if test($roompin=="")
+    {
+        info(pin is empty);
+        set($autoEnter=1);
+        repost();
+    }
+    else
+    {
+        info(">> start_pin_entry");
+        set($tryAgain=0);
+        set($pin="");
+
+        -- rfc4240
+        if test($room=="") {
+            info("room is empty");
+            dlg.reply(404,"Not found");
+        } else {
+            set($audio_id="conference_greeting");
+            swPlayFile();
+        }
+        info("start_pin_entry <<");
+    }
+} -> COLLECT_PIN;
+
+--------------------------------------------------------
+state COLLECT_PIN;
+transition "prompt ends, start collection timer" COLLECT_PIN - noAudio / setTimer(1, $config.digit_collection_timeout) -> COLLECT_PIN;
+
+transition "roompin empty, enter conference" COLLECT_PIN - test($autoEnter==1) / {
+    info(">> empty_pin");
+    enterConference();
+} -> CONFERENCE;
+
+transition "timer, short pin, too many tries" COLLECT_PIN - timer(#id==1); test(len($pin)<3); test($pin_tries==$config.pin_max_retries) / {
+    stopCall();
+} -> END;
+transition "timer, short pin, too many tries" COLLECT_PIN - timer(#id==1); test(len($pin)<3); test($pin_tries>$config.pin_max_retries) / {
+    stopCall();
+} -> END;
+transition "hash entered, short pin, too many tries" COLLECT_PIN - key(#key==11); test(len($pin)<3); test($pin_tries>$config.pin_max_retries) / {
+    stopCall();
+} -> END;
+transition "hash entered, short pin, too many tries" COLLECT_PIN - key(#key==11); test(len($pin)<3); test($pin_tries==$config.pin_max_retries) / {
+    stopCall();
+} -> END;
+
+transition "collect pin timer hit, short pin" COLLECT_PIN - timer(#id==1); test(len($pin)<3) / {
+    set($audio_id="conference_pin_wrong");
+    swPlayFile();
+    inc($pin_tries);
+} -> COLLECT_PIN;
+
+transition "hash entered, short pin" COLLECT_PIN - key(#key==11); test(len($pin)<3) / {
+    set($audio_id="conference_pin_wrong");
+    swPlayFile();
+    inc($pin_tries);
+} -> COLLECT_PIN;
+
+transition "number entered" COLLECT_PIN - key(#key<10) / {
+    -- stop prompt
+    closePlaylist(false);
+    append($pin, #key);
+    info("USER ENTERED key '#key'");
+    setTimer(1, $config.digit_collection_timeout);
+} -> COLLECT_PIN;
+
+transition "collect pin timer hit" COLLECT_PIN - timer(#id==1) -> TESTPINRESULT;
+transition "hash entered, finished pin" COLLECT_PIN - key(#key==11) / removeTimer(1) -> TESTPINRESULT;
+
+--------------------------------------------------------
+state TESTPINRESULT
+enter {
+    info("Key #key pressed, tryAgain is $tryAgain");
+    repost();
+};
+
+transition "incorrect_retry" TESTPINRESULT - test($pin!=$roompin); test($tryAgain<3) / {
+    info(">> incorrect_retry, pin '$pin', tryAgain '$tryAgain'");
+    inc($tryAgain);
+    set($pin="");
+    set($audio_id="conference_pin_wrong");
+    swPlayFile();
+    info("incorrect_retry <<");
+} -> COLLECT_PIN;
+
+transition "incorrect_no_retry" TESTPINRESULT - test($pin!=$roompin); test($tryAgain==3) / {
+    info(">> incorrect_no_retry, tryAgain '$tryAgain'");
+    set($audio_id="goodbye");
+    swPlayFile();
+    info("incorrect_no_retry <<");
+} -> PLAY_FIN;
+
+--------------------------------------------------------
+state PLAY_FIN;
+transition "bye_after_fin" PLAY_FIN - noAudio / stopCall() -> END;
+
+--------------------------------------------------------
+
+transition "correct_pin" TESTPINRESULT - test($pin==$roompin) / {
+    info(">> correct_pin");
+    enterConference();
+} -> CONFERENCE;
+
+state CONFERENCE;
+
+transition "got leave event" CONFERENCE - event(#leave==true) / {
+    logParams();
+    set($audio_id="conference_leave");
+    swMixInFile();
+} -> CONFERENCE;
+
+transition "got join event" CONFERENCE - event(#joined==true) / {
+    logParams();
+    if test($lonely_user==true) {
+      conference.flushMixInList();
+    }
+    set($audio_id="conference_join");
+    swMixInFile();
+} -> CONFERENCE;
+
+transition "kick_event" CONFERENCE - eventTest(#action==kick) / {
+    info(">> kick_event");
+    closePlaylist();
+    conference.leave();
+    set($leave=true);
+    groups.leaveAll();
+    groups.postEvent($room, leave);
+    stop(true);
+    info("kick_event <<");
+} -> END;
+
+# is this the same as kick?
+transition "leave_event" CONFERENCE - eventTest(#action==leave) / {
+    info(">> leave_event");
+    closePlaylist();
+    conference.leave();
+    set($leave=true);
+    groups.leaveAll();
+    groups.postEvent($room, leave);
+    stop(true);
+    info("leave_event <<");
+} -> END;
+
+transition "leave_conference" CONFERENCE - hangup / {
+    info(">> leave_conference");
+    closePlaylist();
+    conference.leave();
+    set($leave=true);
+    groups.leaveAll();
+    groups.postEvent($room, leave);
+    stop(false);
+    info("leave_conference <<");
+} -> END;
+
+transition "bye_recvd" (START,COLLECT_PIN,PLAY_FIN,TESTPINRESULT) - hangup / stop(false) -> END;
+
+state END;

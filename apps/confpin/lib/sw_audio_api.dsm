@@ -1,0 +1,66 @@
+-- sw_audio_api
+--
+-- this SystemDSM implements API functions to handle the prompt cache
+--
+
+import(mod_sys);
+import(mod_mysql);
+
+initial state SW_AUDIO_START;
+
+transition "server startup" SW_AUDIO_START - startup / {
+   log(2, "sw_audio cache handler started");
+   registerEventQueue("sw_audio");
+   mysql.connect();
+   logAll(3);
+} -> SW_AUDIO_WAIT_EVENT;
+
+state SW_AUDIO_WAIT_EVENT;
+
+transition "exception in server startup" (SW_AUDIO_START,SW_AUDIO_WAIT_EVENT) - exception / {
+ logAll(1);
+} -> SW_AUDIO_WAIT_EVENT;
+
+transition "server shutdown" SW_AUDIO_WAIT_EVENT - system(#type=="ServerShutdown") / {
+   log(2, "sw_audio cache handler stopping");
+   unregisterEventQueue("sw_audio");
+   stop(false);
+} -> SW_AUDIO_END;
+
+transition "clear File" SW_AUDIO_WAIT_EVENT - event(#cmd=="clearFile") / {
+  log(3, "sw_audio cache handler: clearFile");
+  logParams(3);
+  sets($__file_path="$(config.audio_cache)/#(sound_set_id)/#(audio_id).wav");
+  sys.unlink($__file_path);
+  clear($__file_path);
+}   -> SW_AUDIO_WAIT_EVENT;
+
+transition "fetch File" SW_AUDIO_WAIT_EVENT - event(#cmd=="fetchFile") / {
+  log(3, "sw_audio cache handler: fetchFile");
+  logParams(3);
+  sets($__file_path="$(config.audio_cache)/#(sound_set_id)/#(audio_id).wav");
+  mysql.getFileFromDB(SELECT data FROM provisioning.audio_files WHERE id="#audio_id",$__file_path);
+  clear($__file_path);
+}   -> SW_AUDIO_WAIT_EVENT;
+
+transition "push File" SW_AUDIO_WAIT_EVENT - event(#cmd=="pushFile") / {
+  log(3, "sw_audio cache handler: pushFile");
+  log(3, "WARNING! for debug purposes only");
+  logParams(3);
+  sets($__file_path="$(config.audio_cache)/#(sound_set_id)/#(audio_id).wav");
+  mysql.connect();
+  mysql.query(SELECT id as vsh_id FROM provisioning.voip_sound_handles where name="#audio_id");
+  logAll(3);
+  if test($db.rows==0) {
+     mysql.execute(INSERT INTO provisioning.voip_sound_handles (name) VALUES ("#audio_id"));
+    set($vsh_id=$db.insert_id);    
+  } else {
+    mysql.getResult(0);
+  };
+  log(3, $vsh_id);
+  mysql.putFileToDB('INSERT INTO provisioning.voip_sound_files (handle_id,set_id,data) VALUES ($vsh_id,#sound_set_id, "__FILE__")', $__file_path);
+  logAll(3);
+  clear($__file_path);
+}   -> SW_AUDIO_WAIT_EVENT;
+
+state SW_AUDIO_END;
