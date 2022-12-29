@@ -33,7 +33,7 @@
 using std::string;
 
 
-#define MAX_CONFIG_LINE 2048
+#define MAX_CONFIG_LINE 4096
 #define CONFIG_FILE_SUFFIX ".conf"
 
 /**
