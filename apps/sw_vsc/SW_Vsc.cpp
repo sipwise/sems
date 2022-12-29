@@ -73,6 +73,38 @@ using namespace pcrecpp;
 #define SW_VSC_DESTSET_CFT  "cft_by_vsc"
 #define SW_VSC_DESTSET_CFNA "cfna_by_vsc"
 
+#define CHECK_ANNOUNCEMENT_CONFIG(member, config_var) \
+    m_patterns.member = cfg.getParameter(config_var, ""); \
+    if (m_patterns.member.empty()) \
+    { \
+        ERROR(config_var " file not set\n"); \
+    }
+
+#define COMPILE_MATCH_PATTERN(member, config_var) \
+    member = cfg.getParameter(config_var, ""); \
+    if (member.empty()) \
+    { \
+        ERROR(config_var " is empty\n"); \
+        member = "invalid_default_value"; \
+    } \
+    if (regcomp(&m_patterns.member, member.c_str(), REG_EXTENDED | REG_NOSUB)) \
+    { \
+        ERROR(config_var " failed to compile ('%s'): %s\n", \
+              member.c_str(), \
+              strerror(errno)); \
+        return -1; \
+    }
+
+#define CHECK_ANNOUNCEMENT_PATH(member, config_var) \
+    member = m_patterns->audioPath + lang + m_patterns->member; \
+    if (m_patterns->member.empty() || !file_exists(member)) \
+    { \
+        ERROR(config_var " file does not exist ('%s').\n", \
+              member.c_str()); \
+        filename = failAnnouncement; \
+        goto out; \
+    }
+
 EXPORT_SESSION_FACTORY(SW_VscFactory, MOD_NAME);
 
 SW_VscFactory::SW_VscFactory(const string &_app_name)
@@ -154,82 +186,22 @@ int SW_VscFactory::onLoad()
     if (m_patterns.audioPath[m_patterns.audioPath.length() - 1] != '/' )
         m_patterns.audioPath += "/";
 
-    // MT#20649: don't fail if announcements are missing;
-    m_patterns.failAnnouncement = cfg.getParameter("error_announcement", "");
-    if (m_patterns.failAnnouncement.empty())
-    {
-        ERROR("error_announcement file not set\n");
-    }
-    m_patterns.unknownAnnouncement = cfg.getParameter("unknown_announcement", "");
-    if (m_patterns.unknownAnnouncement.empty())
-    {
-        ERROR("unknown_announcement file not set\n");
-    }
-    m_patterns.cfuOnAnnouncement = cfg.getParameter("cfu_on_announcement", "");
-    if (m_patterns.cfuOnAnnouncement.empty())
-    {
-        ERROR("cfu_on_announcement file not set\n");
-    }
-    m_patterns.cfuOffAnnouncement = cfg.getParameter("cfu_off_announcement", "");
-    if (m_patterns.cfuOffAnnouncement.empty())
-    {
-        ERROR("cfu_off_announcement file not set\n");
-    }
-    m_patterns.cfbOnAnnouncement = cfg.getParameter("cfb_on_announcement", "");
-    if (m_patterns.cfbOnAnnouncement.empty())
-    {
-        ERROR("cfb_on_announcement file not set\n");
-    }
-    m_patterns.cfbOffAnnouncement = cfg.getParameter("cfb_off_announcement", "");
-    if (m_patterns.cfbOffAnnouncement.empty())
-    {
-        ERROR("cfb_off_announcement file not set\n");
-    }
-    m_patterns.cftOnAnnouncement = cfg.getParameter("cft_on_announcement", "");
-    if (m_patterns.cftOnAnnouncement.empty())
-    {
-        ERROR("cft_on_announcement file not set\n");
-    }
-    m_patterns.cftOffAnnouncement = cfg.getParameter("cft_off_announcement", "");
-    if (m_patterns.cftOffAnnouncement.empty())
-    {
-        ERROR("cft_off_announcement file not set\n");
-    }
-    m_patterns.cfnaOnAnnouncement = cfg.getParameter("cfna_on_announcement", "");
-    if (m_patterns.cfnaOnAnnouncement.empty())
-    {
-        ERROR("cfna_on_announcement file not set\n");
-    }
-    m_patterns.cfnaOffAnnouncement = cfg.getParameter("cfna_off_announcement", "");
-    if (m_patterns.cfnaOffAnnouncement.empty())
-    {
-        ERROR("cfna_off_announcement file not set\n");
-    }
-    m_patterns.speedDialAnnouncement = cfg.getParameter("speed_dial_announcement", "");
-    if (m_patterns.speedDialAnnouncement.empty())
-    {
-        ERROR("speed_dial_announcement file not set\n");
-    }
-    m_patterns.reminderOnAnnouncement = cfg.getParameter("reminder_on_announcement", "");
-    if (m_patterns.reminderOnAnnouncement.empty())
-    {
-        ERROR("reminder_on_announcement file not set\n");
-    }
-    m_patterns.reminderOffAnnouncement = cfg.getParameter("reminder_off_announcement", "");
-    if (m_patterns.reminderOffAnnouncement.empty())
-    {
-        ERROR("reminder_off_announcement file not set\n");
-    }
-    m_patterns.blockinclirOnAnnouncement = cfg.getParameter("blockinclir_on_announcement", "");
-    if (m_patterns.blockinclirOnAnnouncement.empty())
-    {
-        ERROR("blockinclir_on_announcement file not set\n");
-    }
-    m_patterns.blockinclirOffAnnouncement = cfg.getParameter("blockinclir_off_announcement", "");
-    if (m_patterns.blockinclirOffAnnouncement.empty())
-    {
-        ERROR("blockinclir_off_announcement file not set\n");
-    }
+    CHECK_ANNOUNCEMENT_CONFIG(failAnnouncement,           "error_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(unknownAnnouncement,        "unknown_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfuOnAnnouncement,          "cfu_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfuOffAnnouncement,         "cfu_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfbOnAnnouncement,          "cfb_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfbOffAnnouncement,         "cfb_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cftOnAnnouncement,          "cft_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cftOffAnnouncement,         "cft_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfnaOnAnnouncement,         "cfna_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfnaOffAnnouncement,        "cfna_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(speedDialAnnouncement,      "speed_dial_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(reminderOnAnnouncement,     "reminder_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(reminderOffAnnouncement,    "reminder_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(blockinclirOnAnnouncement,  "blockinclir_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(blockinclirOffAnnouncement, "blockinclir_off_announcement");
+
 
     // We could set a default in cfg.getParameter, but we really want to log the error
     // if the pattern in question is not set:
@@ -241,189 +213,19 @@ int SW_VscFactory::onLoad()
         m_patterns.voicemailNumber = "invalid_default_value";
     }
 
-    cfuOnPattern = cfg.getParameter("cfu_on_pattern", "");
-    if (cfuOnPattern.empty())
-    {
-        ERROR("cfu_on_pattern is empty\n");
-        cfuOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfuOnPattern, cfuOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfu_on_pattern failed to compile ('%s'): %s\n",
-              cfuOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cfuOffPattern = cfg.getParameter("cfu_off_pattern", "");
-    if (cfuOffPattern.empty())
-    {
-        ERROR("cfu_off_pattern is empty\n");
-        cfuOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfuOffPattern, cfuOffPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfu_off_pattern failed to compile ('%s'): %s\n",
-              cfuOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cfbOnPattern = cfg.getParameter("cfb_on_pattern", "");
-    if (cfbOnPattern.empty())
-    {
-        ERROR("cfb_on_pattern is empty\n");
-        cfbOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfbOnPattern, cfbOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfb_on_pattern failed to compile ('%s'): %s\n",
-              cfbOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cfbOffPattern = cfg.getParameter("cfb_off_pattern", "");
-    if (cfbOffPattern.empty())
-    {
-        ERROR("cfb_off_pattern is empty\n");
-        cfbOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfbOffPattern, cfbOffPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfb_off_pattern failed to compile ('%s'): %s\n",
-              cfbOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cftOnPattern = cfg.getParameter("cft_on_pattern", "");
-    if (cftOnPattern.empty())
-    {
-        ERROR("cft_on_pattern is empty\n");
-        cftOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cftOnPattern, cftOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cft_on_pattern failed to compile ('%s'): %s\n",
-              cftOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cftOffPattern = cfg.getParameter("cft_off_pattern", "");
-    if (cftOffPattern.empty())
-    {
-        ERROR("cft_off_pattern is empty\n");
-        cftOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cftOffPattern, cftOffPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cft_off_pattern failed to compile ('%s'): %s\n",
-              cftOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cfnaOnPattern = cfg.getParameter("cfna_on_pattern", "");
-    if (cfnaOnPattern.empty())
-    {
-        ERROR("cfna_on_pattern is empty\n");
-        cfnaOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfnaOnPattern, cfnaOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfna_on_pattern failed to compile ('%s'): %s\n",
-              cfnaOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    cfnaOffPattern = cfg.getParameter("cfna_off_pattern", "");
-    if (cfnaOffPattern.empty())
-    {
-        ERROR("cfna_off_pattern is empty\n");
-        cfnaOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.cfnaOffPattern, cfnaOffPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("cfna_off_pattern failed to compile ('%s'): %s\n",
-              cfnaOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    speedDialPattern = cfg.getParameter("speed_dial_pattern", "");
-    if (speedDialPattern.empty())
-    {
-        ERROR("speed_dial_pattern is empty\n");
-        speedDialPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.speedDialPattern, speedDialPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("speed_dial_pattern failed to compile ('%s'): %s\n",
-              speedDialPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    reminderOnPattern = cfg.getParameter("reminder_on_pattern", "");
-    if (reminderOnPattern.empty())
-    {
-        ERROR("reminder_on_pattern is empty\n");
-        reminderOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.reminderOnPattern, reminderOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("reminder_on_pattern failed to compile ('%s'): %s\n",
-              reminderOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    reminderOffPattern = cfg.getParameter("reminder_off_pattern", "");
-    if (reminderOffPattern.empty())
-    {
-        ERROR("reminder_off_pattern is empty\n");
-        reminderOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.reminderOffPattern, reminderOffPattern.c_str(),
-                REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("reminder_off_pattern failed to compile ('%s'): %s\n",
-              reminderOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    blockinclirOnPattern = cfg.getParameter("blockinclir_on_pattern", "");
-    if (blockinclirOnPattern.empty())
-    {
-        ERROR("blockinclir_on_pattern is empty\n");
-        blockinclirOnPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.blockinclirOnPattern, blockinclirOnPattern.c_str(), REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("blockinclir_on_pattern failed to compile ('%s'): %s\n",
-              blockinclirOnPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
-
-    blockinclirOffPattern = cfg.getParameter("blockinclir_off_pattern", "");
-    if (blockinclirOffPattern.empty())
-    {
-        ERROR("blockinclir_off_pattern is empty\n");
-        blockinclirOffPattern = "invalid_default_value";
-    }
-    if (regcomp(&m_patterns.blockinclirOffPattern, blockinclirOffPattern.c_str(),
-                REG_EXTENDED | REG_NOSUB))
-    {
-        ERROR("blockinclir_off_pattern failed to compile ('%s'): %s\n",
-              blockinclirOffPattern.c_str(),
-              strerror(errno));
-        return -1;
-    }
+    COMPILE_MATCH_PATTERN(cfuOnPattern,          "cfu_on_pattern");
+    COMPILE_MATCH_PATTERN(cfuOffPattern,         "cfu_off_pattern");
+    COMPILE_MATCH_PATTERN(cfbOnPattern,          "cfb_on_pattern");
+    COMPILE_MATCH_PATTERN(cfbOffPattern,         "cfb_off_pattern");
+    COMPILE_MATCH_PATTERN(cftOnPattern,          "cft_on_pattern");
+    COMPILE_MATCH_PATTERN(cftOffPattern,         "cft_off_pattern");
+    COMPILE_MATCH_PATTERN(cfnaOnPattern,         "cfna_on_pattern");
+    COMPILE_MATCH_PATTERN(cfnaOffPattern,        "cfna_off_pattern");
+    COMPILE_MATCH_PATTERN(speedDialPattern,      "speed_dial_pattern");
+    COMPILE_MATCH_PATTERN(reminderOnPattern,     "reminder_on_pattern");
+    COMPILE_MATCH_PATTERN(reminderOffPattern,    "reminder_off_pattern");
+    COMPILE_MATCH_PATTERN(blockinclirOnPattern,  "blockinclir_on_pattern");
+    COMPILE_MATCH_PATTERN(blockinclirOffPattern, "blockinclir_off_pattern");
 
     return 0;
 }
@@ -1159,14 +961,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfuOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfuOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfuOnAnnouncement;
-        if (m_patterns->cfuOnAnnouncement.empty() || !file_exists(cfuOnAnnouncement))
-        {
-            ERROR("CfuOnAnnouncement file does not exist ('%s').\n",
-                  cfuOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+		CHECK_ANNOUNCEMENT_PATH(cfuOnAnnouncement, "cfu_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cfu");
         if (!attId)
@@ -1239,14 +1034,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfuOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfuOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfuOffAnnouncement;
-        if (m_patterns->cfuOffAnnouncement.empty() || !file_exists(cfuOffAnnouncement))
-        {
-            ERROR("CfuOffAnnouncement file does not exist ('%s').\n",
-                  cfuOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+		CHECK_ANNOUNCEMENT_PATH(cfuOffAnnouncement, "cfu_off_announcement");
 
         if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu"))
         {
@@ -1294,14 +1082,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfbOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfbOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfbOnAnnouncement;
-        if (m_patterns->cfbOnAnnouncement.empty() || !file_exists(cfbOnAnnouncement))
-        {
-            ERROR("CfbOnAnnouncement file does not exist ('%s').\n",
-                  cfbOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+		CHECK_ANNOUNCEMENT_PATH(cfbOnAnnouncement, "cfb_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cfb");
         if (!attId)
@@ -1374,14 +1155,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfbOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfbOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfbOffAnnouncement;
-        if (m_patterns->cfbOffAnnouncement.empty() || !file_exists(cfbOffAnnouncement))
-        {
-            ERROR("CfbOffAnnouncement file does not exist ('%s').\n",
-                  cfbOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(cfbOffAnnouncement, "cfb_off_announcement");
 
         if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb"))
         {
@@ -1429,14 +1203,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cftOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cftOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cftOnAnnouncement;
-        if (m_patterns->cftOnAnnouncement.empty() || !file_exists(cftOnAnnouncement))
-        {
-            ERROR("CftOnAnnouncement file does not exist ('%s').\n",
-                  cftOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(cftOnAnnouncement, "cft_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cft");
         if (!attId)
@@ -1547,14 +1314,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cftOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cftOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cftOffAnnouncement;
-        if (m_patterns->cftOffAnnouncement.empty() || !file_exists(cftOffAnnouncement))
-        {
-            ERROR("CftOffAnnouncement file does not exist ('%s').\n",
-                  cftOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(cftOffAnnouncement, "cft_off_announcement");
 
         if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFT, "cft"))
         {
@@ -1627,14 +1387,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfnaOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfnaOnAnnouncement = m_patterns->audioPath + lang + m_patterns->cfnaOnAnnouncement;
-        if (m_patterns->cfnaOnAnnouncement.empty() || !file_exists(cfnaOnAnnouncement))
-        {
-            ERROR("CfnaOnAnnouncement file does not exist ('%s').\n",
-                  cfnaOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(cfnaOnAnnouncement, "cfna_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cfna");
         if (!attId)
@@ -1707,14 +1460,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfnaOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        cfnaOffAnnouncement = m_patterns->audioPath + lang + m_patterns->cfnaOffAnnouncement;
-        if (m_patterns->cfnaOffAnnouncement.empty() || !file_exists(cfnaOffAnnouncement))
-        {
-            ERROR("CfnaOffAnnouncement file does not exist ('%s').\n",
-                  cfnaOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(cfnaOffAnnouncement, "cfna_off_announcement");
 
         if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna"))
         {
@@ -1762,14 +1508,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->speedDialPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        speedDialAnnouncement = m_patterns->audioPath + lang + m_patterns->speedDialAnnouncement;
-        if (m_patterns->speedDialAnnouncement.empty() || !file_exists(speedDialAnnouncement))
-        {
-            ERROR("SpeedDialAnnouncement file does not exist ('%s').\n",
-                  speedDialAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(speedDialAnnouncement, "speed_dial_announcement");
 
         string slot = string("*") + req.user.substr(4, 1);
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5,
@@ -1801,14 +1540,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->reminderOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        reminderOnAnnouncement = m_patterns->audioPath + lang + m_patterns->reminderOnAnnouncement;
-        if (m_patterns->reminderOnAnnouncement.empty() || !file_exists(reminderOnAnnouncement))
-        {
-            ERROR("ReminderOnAnnouncement file does not exist ('%s').\n",
-                  reminderOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(reminderOnAnnouncement, "reminder_on_announcement");
 
         int hour, min;
         string tim; char c_tim[6] = "";
@@ -1856,14 +1588,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->reminderOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        reminderOffAnnouncement = m_patterns->audioPath + lang + m_patterns->reminderOffAnnouncement;
-        if (m_patterns->reminderOffAnnouncement.empty() || !file_exists(reminderOffAnnouncement))
-        {
-            ERROR("ReminderOffAnnouncement file does not exist ('%s').\n",
-                  reminderOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(reminderOffAnnouncement, "reminder_off_announcement");
 
         if (!deleteReminder(my_handler, subId))
         {
@@ -1889,14 +1614,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->blockinclirOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        blockinclirOnAnnouncement = m_patterns->audioPath + lang + m_patterns->blockinclirOnAnnouncement;
-        if (m_patterns->blockinclirOnAnnouncement.empty() || !file_exists(blockinclirOnAnnouncement))
-        {
-            ERROR("BlockinclirOnAnnouncement file does not exist ('%s').\n",
-                  blockinclirOnAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(blockinclirOnAnnouncement, "blockinclir_on_announcement");
 
         std::string val = "1";
         u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
@@ -1945,14 +1663,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->blockinclirOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-        blockinclirOffAnnouncement = m_patterns->audioPath + lang + m_patterns->blockinclirOffAnnouncement;
-        if (m_patterns->blockinclirOffAnnouncement.empty() || !file_exists(blockinclirOffAnnouncement))
-        {
-            ERROR("BlockinclirOffAnnouncement file does not exist ('%s').\n",
-                  blockinclirOffAnnouncement.c_str());
-            filename = failAnnouncement;
-            goto out;
-        }
+        CHECK_ANNOUNCEMENT_PATH(blockinclirOffAnnouncement, "blockinclir_off_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
         if (!attId)
