@@ -117,6 +117,9 @@ static bool ConferenceJoinChannel(DSMConfChannel** dsm_chan,
 				  DSMSession* sc_sess,
 				  const string& channel_id, 
 				  const string& mode) {
+  DBG("changing callgroup for session to %s\n", channel_id.c_str());
+  sess->changeCallgroup(channel_id);
+
   bool connect_play = false;
   bool connect_record = false;
   if (mode.empty()) {
