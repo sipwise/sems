@@ -1,3 +1,31 @@
+From afa952009459f9a9c24ad7a649e1ba759229d128 Mon Sep 17 00:00:00 2001
+From: Donat Zenichev <dzenichev@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:30 +0100
+Subject: MT#55831 add support of SIP peering registrations based on XMLRPC requests
+
+We need to add a possibility to control (add/modify/delete) registrations
+for SIP peerings using NGCP-panel. For that to work NGCP-panel uses XMLRPC
+requests being sent towards SEMS, which in its turn takes care of work with:
+- locally cached map structures:
+* registrations / registrations_peers
+* registration_ltags / registration_ltags_peers
+* registration_timers / registration_timers_peers
+- MySQL database (our scope of interest is 'sems_registrations')
+- triggering events
+
+Main amount of work is concentrated on interaction with map structures which keep
+an actual information on registrations of either subscribers and peerings,
+and less amount of work is related to the SQL side.
+
+Basically, the main idea is to add an identifier, which will be used by
+NGCP-panel when sending XMLRPC messages to SEMS, which will let SEMS know,
+whether it's an event for a usual subscriber or a SIP peering.
+
+Also we take care of loading time, when SEMS retrieves all previously saved data
+from the DB using: peer / subscriber auth preferences and loads this to be usable.
+A new query has been added for peering type, to let peerings be loadable after restart.
+(real ticket number: TT#66577)
+
 --- a/apps/db_reg_agent/DBRegAgent.cpp
 +++ b/apps/db_reg_agent/DBRegAgent.cpp
 @@ -36,7 +36,8 @@ DEFINE_MODULE_INSTANCE(DBRegAgent, MOD_N

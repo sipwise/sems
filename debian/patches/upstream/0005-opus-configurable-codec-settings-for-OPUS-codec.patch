@@ -1,7 +1,7 @@
 From bbb13a13954da9e566b664f7916362dd0313e4d1 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 05:43:22 +0200
-Subject: [PATCH] opus: configurable codec settings for OPUS codec
+Date: Thu, 29 Dec 2022 10:13:06 +0100
+Subject: MT#55831 opus: configurable codec settings for OPUS codec
 
 opus.conf may contain an fmtp line with opus codec parameters,
 all in one line, e.g.
@@ -11,6 +11,8 @@ supported parameters:
  maxplaybackrate
  stereo
  useinbandfec
+(real ticket number: TT#13019)
+
 ---
  core/plug-in/opus/opus.c | 179 +++++++++++++++++++++++++++++++++++++++++++++--
  1 file changed, 172 insertions(+), 7 deletions(-)

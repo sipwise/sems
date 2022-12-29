@@ -1,3 +1,11 @@
+From 564d4c09263c021aa7e651edbfbd22e8b895a3bf Mon Sep 17 00:00:00 2001
+From: Jozef Kenyeres <jkenyeres@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:18 +0100
+Subject: MT#55831 fix failed relay of 200OK without SDP
+
+fix failed relay of 200OK without SDP
+(real ticket number: TT#9521)
+
 Index: sems/core/AmOfferAnswer.cpp
 ===================================================================
 --- sems.orig/core/AmOfferAnswer.cpp

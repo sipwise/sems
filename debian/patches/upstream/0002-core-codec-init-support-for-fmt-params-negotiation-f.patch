@@ -1,7 +1,7 @@
 From 03cd08e1f0f05d5477e797d5184cec61544b0e55 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@frafos.com>
-Date: Fri, 6 Mar 2015 00:49:55 +0100
-Subject: [PATCH] core:codec init: support for fmt params negotiation,
+Date: Thu, 29 Dec 2022 10:13:03 +0100
+Subject: MT#55831 core:codec init: support for fmt params negotiation,
  fmt_description changed
 
 - a codec may export with CODEC_WITH_FMT also a payload format negotiation function
@@ -16,6 +16,9 @@ Conflicts:
 
 	core/plug-in/amr/amr.c
 	core/plug-in/speex/speex.c
+
+(real ticket number: TT#13019)
+
 ---
  apps/sbc/SBCCallProfile.cpp |  5 +++--
  core/AmAudio.cpp            | 16 +++++++++-----

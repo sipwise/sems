@@ -1,3 +1,11 @@
+From 087e126e607c0ec6215cbef7fd47ab29deadd0d0 Mon Sep 17 00:00:00 2001
+From: Fabricio Santolin <fabricio.santolin-da-silva@al-enterprise.com>
+Date: Thu, 29 Dec 2022 10:14:28 +0100
+Subject: MT#55831 Authorization header format support
+
+Authorization header format support
+(real ticket number: TT#82409)
+
 --- a/apps/reg_agent/RegistrationAgent.cpp
 +++ b/apps/reg_agent/RegistrationAgent.cpp
 @@ -138,10 +138,10 @@ void RegThread::create_registration(RegI

@@ -1,10 +1,11 @@
 From 12ea81babb899cd637426afd13740dc9729ca8d3 Mon Sep 17 00:00:00 2001
 From: Roman Romanchenko <rromanchenko@sipwise.com>
-Date: Mon, 26 Mar 2018 12:47:33 +0300
-Subject: [PATCH] TT#34704 Fix sems and sems-pbx to write pid file when running
- with -E option
+Date: Thu, 29 Dec 2022 10:14:22 +0100
+Subject: MT#55831 Fix sems and sems-pbx to write pid file when running with -E option
 
  - now pid file written with -E as well
+(real ticket number: TT#34704)
+
 ---
  core/sems.cpp | 15 +++++++--------
  1 file changed, 7 insertions(+), 8 deletions(-)

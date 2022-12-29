@@ -1,7 +1,9 @@
 From b722a91680499851990c192a7023cecb0ef04609 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 00:46:14 +0200
-Subject: [PATCH] b/f: sbc: codecs: compare encoding_param only if both != 0
+Date: Thu, 29 Dec 2022 10:13:02 +0100
+Subject: MT#55831 sbc: codecs: compare encoding_param only if both != 0
+
+(real ticket number: TT#13019)
 
 ---
  apps/sbc/SBCCallLeg.cpp | 2 +-

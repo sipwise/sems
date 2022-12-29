@@ -1,7 +1,13 @@
-Description: Build the library as shared
- Otherwise we are trying to link a static library built as PIE into a
- shared library.
-Author: Guillem Jover <gjover@sipwise.com>
+From efbb87f805fcf4325060c9dbfd6c92c01537886c Mon Sep 17 00:00:00 2001
+From: Guillem Jover <gjover@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:14 +0100
+Subject: MT#55831 Build the library as shared
+
+Build the library as shared.
+Otherwise we are trying to link a static library built as PIE into a
+shared library.
+
+(real ticket number: TT#6850)
 
 ---
 

@@ -1,9 +1,14 @@
-Description: Revamp the build system
+From efbb87f805fcf4325060c9dbfd6c92c01537886e Mon Sep 17 00:00:00 2001
+From: Guillem Jover <gjover@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:16 +0100
+Subject: MT#55831 Revamp the build system
+
  - Make errors fatal, so that they do not get ignored anymore.
  - Use sane make variables that a shell will accept as valid, otherwise
    the exports do not work at all.
  - Do not use system paths when we should use in-tree ones.
-Author: Guillem Jover <gjover@sipwise.com>
+
+(real ticket number: TT#6850)
 
 ---
 

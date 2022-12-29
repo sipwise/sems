@@ -1,3 +1,12 @@
+From 5d430bb258c024f0b367f0f7d8f957ea53186234 Mon Sep 17 00:00:00 2001
+From: Victor Seva <vseva@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:01 +0100
+Subject: MT#55831 add sw_vcs module
+
+add sw_vcs module
+
+(real ticket number: MT#7349)
+
 --- /dev/null
 +++ b/apps/sw_vsc/Makefile
 @@ -0,0 +1,10 @@

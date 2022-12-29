@@ -1,8 +1,10 @@
 From 42df04a7b48e5a98ad73e003affebc77a10697d5 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 05:41:09 +0200
-Subject: [PATCH] core:amci: call codec module init function with
+Date: Thu, 29 Dec 2022 10:13:04 +0100
+Subject: MT#55831 core:amci: call codec module init function with
  mod_config_path param
+
+(real ticket number: TT#13019)
 
 ---
  core/AmPlugIn.cpp | 2 +-

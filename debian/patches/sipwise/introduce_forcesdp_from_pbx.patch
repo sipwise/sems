@@ -1,3 +1,16 @@
+From d0d4dc33c2097979deb35464749ec4601d68547b Mon Sep 17 00:00:00 2001
+From: Marco Capetta <mcapetta@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:21 +0100
+Subject: MT#55831 Fix issue if an UPDATE is received after 183
+
+If an SDP UPDATE is received after the 183, but before the 200,
+SEMS fails when it receive the final ACK. In fact SEMS tries to
+find the SDP content inside the ACK message itself.
+
+The solution is copied from sems-pbx module where the issue
+doesn't happen.
+(real ticket number: TT#43503)
+
 --- a/core/AmOfferAnswer.cpp
 +++ b/core/AmOfferAnswer.cpp
 @@ -53,7 +53,8 @@ AmOfferAnswer::AmOfferAnswer(AmSipDialog

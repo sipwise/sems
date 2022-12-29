@@ -1,3 +1,12 @@
+From 89c3172468d4bc02fb7484e20c4feae58ccd23e2 Mon Sep 17 00:00:00 2001
+From: Andrew Pogrebennyk <apogrebennyk@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:05 +0100
+Subject: MT#55831 don't create CF map if CF is denied by profile
+
+don't create CF map if CF is denied by profile
+
+(real ticket number: MT#13599)
+
 --- a/apps/sw_vsc/SW_Vsc.cpp
 +++ b/apps/sw_vsc/SW_Vsc.cpp
 @@ -1214,36 +1214,36 @@ void SW_VscDialog::onInvite(const AmSipR

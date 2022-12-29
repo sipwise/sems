@@ -1,8 +1,10 @@
 From 5ec9bf2d042f90f0f29b7de2bb215a8cf6ba7169 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Fri, 12 Aug 2016 12:35:45 +0200
-Subject: [PATCH 2/6] b/f:dsm:mod_conference:set callgroup to conference
- channel
+Date: Thu, 29 Dec 2022 10:14:10 +0100
+Subject: MT#55831 dsm:mod_conference:set callgroup to conference channel
+
+dsm:mod_conference:set callgroup to conference channel
+(real ticket number: MT#18839)
 
 ---
  apps/dsm/mods/mod_conference/ModConference.cpp | 3 +++

@@ -1,3 +1,11 @@
+From cd20d43797777716900311f95a43dc864bb546c3 Mon Sep 17 00:00:00 2001
+From: Andreas Granig <agranig@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:08 +0100
+Subject: MT#55831 Implement vsc for block_in_clir
+
+Implement vsc for block_in_clir
+(real ticket number: MT#20649)
+
 Index: sems/apps/sw_vsc/SW_Vsc.cpp
 ===================================================================
 --- sems.orig/apps/sw_vsc/SW_Vsc.cpp	2016-07-20 13:39:47.454933967 +0200

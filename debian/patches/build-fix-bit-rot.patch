@@ -1,7 +1,12 @@
-Description: Make the code build again
- Due to the build system not failing on compilation/link errors, parts of
- the code base has suffered bit rot.
-Author: Guillem Jover <gjover@sipwise.com>
+From efbb87f805fcf4325060c9dbfd6c92c01537886b Mon Sep 17 00:00:00 2001
+From: Guillem Jover <gjover@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:13 +0100
+Subject: MT#55831 Make the code build again
+
+Due to the build system not failing on compilation/link errors, parts of
+the code base has suffered bit rot.
+
+(real ticket number: TT#6850)
 
 ---
 

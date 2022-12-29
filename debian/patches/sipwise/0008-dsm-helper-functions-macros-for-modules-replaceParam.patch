@@ -1,8 +1,9 @@
 From 4ec1e1d2d06359c599d9fc551478d443934c616c Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Thu, 20 Nov 2014 19:46:49 +0100
-Subject: [PATCH 2/3] dsm: helper functions / macros for modules:
- replaceParams/SET_ERROR/CLR_ERROR
+Date: Thu, 29 Dec 2022 10:14:03 +0100
+Subject: MT#55831 dsm: helper functions / macros for modules:
+
+replaceParams/SET_ERROR/CLR_ERROR
 
 use resolveVars in module actions/condition to replace only one variable/param,
 use replaceParams to replace substrings as well,

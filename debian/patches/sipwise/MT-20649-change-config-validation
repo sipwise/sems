@@ -1,3 +1,15 @@
+From f40a8b932a1dabd664995014d2fc2c9f2bcc9722 Mon Sep 17 00:00:00 2001
+From: Andreas Granig <agranig@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:09 +0100
+Subject: MT#55831 Rework config validation to be more slack
+
+Don't bail out on missing config options, rather than using some
+invalid defaults.
+Also only check for existence of sound files in the places where
+they are needed for optimization purposes.
+Use macros to clean up redundant code.
+(real ticket number: MT#20649)
+
 Index: sems/apps/sw_vsc/SW_Vsc.cpp
 ===================================================================
 --- sems.orig/apps/sw_vsc/SW_Vsc.cpp	2016-07-21 12:55:32.091065992 +0200

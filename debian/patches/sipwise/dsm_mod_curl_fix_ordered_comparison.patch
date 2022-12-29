@@ -1,3 +1,18 @@
+From b3a3ab6f636394ea214e1f27a1d3702b8c714189 Mon Sep 17 00:00:00 2001
+From: Donat Zenichev <dzenichev@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:33 +0100
+Subject: MT#55831 DSM: ModCurl - fix ordered comparison of const ptr with 0 (CE)
+
+We don't have to compare a const char pointer with '>' / '<' operands
+agains 0.
+
+The conditional code will not get executed, if 'data->version' is null -
+but not that it will, if it's not null.
+
+We should use a classical check for null pointers agains 0 using '!=',
+this has the least potential for subtle bugs, and is guaranteed to be portable.
+(real ticket number: MT#55816)
+
 --- a/apps/dsm/mods/mod_curl/ModCurl.cpp
 +++ b/apps/dsm/mods/mod_curl/ModCurl.cpp
 @@ -41,20 +41,23 @@ SC_EXPORT(CurlModule);

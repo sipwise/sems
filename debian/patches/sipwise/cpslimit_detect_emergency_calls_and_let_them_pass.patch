@@ -1,3 +1,22 @@
+From 7ffd8f9b54c49e61deada1efc00cfced7616c275 Mon Sep 17 00:00:00 2001
+From: Donat Zenichev <dzenichev@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:31 +0100
+Subject: MT#55831 Detect emergency calls and let them pass on license limitation (SEMS CE)
+
+Remark: this commit is created as an attempt to keep PRO / CE sems repositories
+consistent in terms of the provided code and functionality.
+
+We need to have a possibility to detect emergency calls and let them
+pass through the SEMS, even if the license limitation (CPSLimit) is triggered.
+
+Also taking into account the global policy defined by the cfg parameter
+'skip_cpslimit_emergency'.
+If set to 'yes' (in the code will be treated as True)
+then we do not drop emergency calls on CPSLimit triggering.
+If set to 'no' - we treat emergency calls
+as if they were usual calls in terms of checking CPSLimit license limitation.
+(real ticket number: TT#138356)
+
 --- a/core/AmConfig.cpp
 +++ b/core/AmConfig.cpp
 @@ -125,6 +125,8 @@ bool         AmConfig::AcceptForkedDialo

@@ -1,3 +1,11 @@
+From cc61483b348ea0a5aa0c6effa0d2961aee5bcb57 Mon Sep 17 00:00:00 2001
+From: Victor Seva <vseva@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:07 +0100
+Subject: MT#55831 fix py_sems install dir properly
+
+fix py_sems install dir properly
+(real ticket number: MT#7349)
+
 --- a/apps/py_sems/Makefile.defs
 +++ b/apps/py_sems/Makefile.defs
 @@ -15,4 +15,4 @@

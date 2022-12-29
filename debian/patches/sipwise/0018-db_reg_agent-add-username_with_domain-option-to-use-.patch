@@ -1,8 +1,10 @@
 From 1f02da5c8cc9dc711ded015059ae85a5126dd269 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Fri, 13 Jan 2017 23:30:01 +0100
-Subject: [PATCH] db_reg_agent: add username_with_domain option to use auth
- user with domain part
+Date: Thu, 29 Dec 2022 10:14:11 +0100
+Subject: MT#55831 db_reg_agent: add username_with_domain option to use auth user with domain part
+
+add username_with_domain option to use auth user with domain part
+(real ticket number: MT#9306)
 
 implements M758
 ---

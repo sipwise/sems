@@ -1,3 +1,13 @@
+From e3f342754ac8c736b551c8b52376c15cb6e7f8dd Mon Sep 17 00:00:00 2001
+From: Kirill Solomko <ksolomko@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:23 +0100
+Subject: MT#55831 add header filter wildcard match support
+
+'\*' \- matches 0 or more characters
+ '?' \- matches any one character
+ for more info, refer to <fnmatch\.h>
+(real ticket number: TT#53685)
+
 --- a/apps/sbc/HeaderFilter.cpp
 +++ b/apps/sbc/HeaderFilter.cpp
 @@ -28,6 +28,7 @@

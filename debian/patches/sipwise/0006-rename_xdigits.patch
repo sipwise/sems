@@ -1,8 +1,11 @@
-commit d1f87cfcb35f4fe27078f7760e9b4a5fff8e189c
-Author: Andrew Pogrebennyk <apogrebennyk@sipwise.com>
-Date:   Thu Jan 29 12:04:00 2015 +0100
+From d1f87cfcb35f4fe27078f7760e9b4a5fff8e189c Mon Sep 17 00:00:00 2001
+From: Andrew Pogrebennyk <apogrebennyk@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:02 +0100
+Subject: MT#55831 rename prompts x1..9.wav to 1..9-and.wav
 
-    rename prompts x1..9.wav to 1..9-and.wav
+rename prompts x1..9.wav to 1..9-and.wav
+
+(real ticket number: MT#11239 MT#11219)
 
 --- a/apps/dsm/mods/mod_utils/ModUtils.cpp
 +++ b/apps/dsm/mods/mod_utils/ModUtils.cpp

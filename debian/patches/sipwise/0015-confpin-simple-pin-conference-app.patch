@@ -1,7 +1,7 @@
 From fe53372de8a97d3af08dc3e54d842a4291449190 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Fri, 20 Feb 2015 21:55:59 +0100
-Subject: [PATCH 7/7] confpin: simple pin conference app
+Date: Thu, 29 Dec 2022 10:14:04 +0100
+Subject: MT#55831 confpin: simple pin conference app
 
 ---
  apps/confpin/confpin.conf                     |  39 +++++
@@ -37,6 +37,8 @@ Subject: [PATCH 7/7] confpin: simple pin conference app
  create mode 100755 apps/confpin/tools/clear_file
  create mode 100755 apps/confpin/tools/fetch_file
  create mode 100755 apps/confpin/tools/push_file
+
+(real ticket number: MT#11241)
 
 --- /dev/null
 +++ b/apps/confpin/confpin.conf

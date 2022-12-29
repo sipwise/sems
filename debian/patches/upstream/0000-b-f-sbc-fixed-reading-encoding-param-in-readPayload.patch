@@ -1,7 +1,9 @@
 From 09dca94aa38c3e9ec5efc9b3c119fa97ce404bed Mon Sep 17 00:00:00 2001
 From: Raphael Coeffic <rco@iptel.org>
-Date: Mon, 17 Mar 2014 12:34:53 +0100
-Subject: [PATCH] b/f: sbc: fixed reading encoding param in readPayload()
+Date: Thu, 29 Dec 2022 10:13:01 +0100
+Subject: MT#55831 sbc: fixed reading encoding param in readPayload()
+
+(real ticket number: TT#13019)
 
 ---
  apps/sbc/SBCCallProfile.cpp | 2 +-

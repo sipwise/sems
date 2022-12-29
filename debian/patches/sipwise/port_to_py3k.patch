@@ -1,3 +1,46 @@
+From ef4a7b95cf479acc107792e265d626a6c23bd736 Mon Sep 17 00:00:00 2001
+From: Michael Prokop <mprokop@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:27 +0100
+Subject: MT#55831 Build and include SBC tools + examples, port to py3k
+
+Otherwise we're missing plenty of audio files in /usr/lib/ngcp-sems/audio/,
+several plugins in /usr/lib/ngcp-sems/plug-in/, as well as a bunch of binaries:
+
+* /usr/sbin/ngcp-sems-get-callproperties
+* /usr/sbin/ngcp-sems-list-active-calls
+* /usr/sbin/ngcp-sems-list-calls
+* /usr/sbin/ngcp-sems-list-finished-calls
+* /usr/sbin/ngcp-sems-sbc-get-activeprofile
+* /usr/sbin/ngcp-sems-sbc-get-regex-map-names
+* /usr/sbin/ngcp-sems-sbc-list-profiles
+* /usr/sbin/ngcp-sems-sbc-load-callcontrol-modules
+* /usr/sbin/ngcp-sems-sbc-load-profile
+* /usr/sbin/ngcp-sems-sbc-reload-profile
+* /usr/sbin/ngcp-sems-sbc-reload-profiles
+* /usr/sbin/ngcp-sems-sbc-set-activeprofile
+* /usr/sbin/ngcp-sems-sbc-set-regex-map
+* /usr/sbin/ngcp-sems-sbc-teardown-call
+* /usr/sbin/ngcp-sems-webconference-addparticipant
+* /usr/sbin/ngcp-sems-webconference-roomcreate
+* /usr/sbin/ngcp-sems-webconference-roominfo
+
+This fixes a regression introduced in commit 1619876f76d (TT#101059).
+
+Ported the python2 scripts we ship with our Debian package to python3
+(AKA py3k), fixed inconsistent use of tabs and spaces in indentation
+and indention in several files:
+
+* apps/sbc/tools/sems-sbc-*
+* apps/examples/db_announce/announcement.py
+* apps/examples/py_sems_ex/*py
+
+We're also not installing the *.pyc files (see
+apps/ivr/Makefile.ivr_application +
+apps/py_sems/Makefile.py_sems_application), they don't exist in py3k
+builds and it wouldn't make any sense to ship them in Debian packages
+anyway.
+(real ticket number: TT#105412)
+
 --- a/apps/sbc/tools/sems-sbc-get-activeprofile
 +++ b/apps/sbc/tools/sems-sbc-get-activeprofile
 @@ -1,7 +1,7 @@

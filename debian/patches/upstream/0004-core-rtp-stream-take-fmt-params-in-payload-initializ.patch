@@ -1,7 +1,9 @@
 From c7800eabce5aeb190dc57484d1b550a81035f409 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 05:42:51 +0200
-Subject: [PATCH] core:rtp stream: take fmt params in payload initialization
+Date: Thu, 29 Dec 2022 10:13:05 +0100
+Subject: MT#55831 core:rtp stream: take fmt params in payload initialization
+
+(real ticket number: TT#13019)
 
 ---
  core/AmRtpAudio.cpp  | 5 +++++

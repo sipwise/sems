@@ -1,8 +1,10 @@
 From f407e4dfec0f9e011db94b847c9f6f4b9156af93 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 05:53:04 +0200
-Subject: [PATCH] b/f:fixes c7800ea: remove leftover stacktrace in
+Date: Thu, 29 Dec 2022 10:13:07 +0100
+Subject: MT#55831 :fixes c7800ea: remove leftover stacktrace in
  setCurrentPayload
+
+(real ticket number: TT#13019)
 
 ---
  core/AmRtpAudio.cpp | 1 -

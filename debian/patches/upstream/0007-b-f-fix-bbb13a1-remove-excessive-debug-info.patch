@@ -1,7 +1,9 @@
 From 0843bee8ae90a8d3cb35efa8485332b088e49183 Mon Sep 17 00:00:00 2001
 From: Stefan Sayer <stefan.sayer@googlemail.com>
-Date: Wed, 24 Jun 2015 05:55:51 +0200
-Subject: [PATCH] b/f:fix bbb13a1: remove excessive debug info
+Date: Thu, 29 Dec 2022 10:13:08 +0100
+Subject: MT#55831 b/f:fix bbb13a1: remove excessive debug info
+
+(real ticket number: TT#13019)
 
 ---
  core/plug-in/opus/opus.c | 3 ---

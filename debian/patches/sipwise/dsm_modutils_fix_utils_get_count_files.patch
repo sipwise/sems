@@ -1,3 +1,14 @@
+From 2d0775b77c60c8536ecb49302b794a2a36a25a92 Mon Sep 17 00:00:00 2001
+From: Donat Zenichev <dzenichev@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:32 +0100
+Subject: MT#55831 dsm: ModUtils, fix the work of utils_get_count_files() (CE)
+
+We need to rework the utils_get_count_files(), because it improperly
+treats the given list of numbers, especially what relates to zeroes.
+
+Previous approach gets deprecated, and another approach is applied.
+(real ticket number: TT#143150)
+
 --- a/apps/dsm/mods/mod_utils/ModUtils.cpp
 +++ b/apps/dsm/mods/mod_utils/ModUtils.cpp
 @@ -72,20 +72,32 @@ vector<string> utils_get_count_files(DSM

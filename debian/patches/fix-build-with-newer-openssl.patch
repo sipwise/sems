@@ -1,6 +1,11 @@
-Author: Guillem Jover <gjover@sipwise.com>
-Description: Use a proper accessor instead of messing with the struc directly
- which has become opaque in latest OpenSSL versions.
+From 5634f22d2b3423b7988d7ca932846d8daa5e34f2 Mon Sep 17 00:00:00 2001
+From: Guillem Jover <gjover@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:17 +0100
+Subject: MT#55831 Use a proper accessor instead of messing with the struc directly
+
+Use a proper accessor instead of messing with the struc directly
+which has become opaque in latest OpenSSL versions.
+(real ticket number: TT#12308)
 
 ---
  apps/diameter_client/lib_dbase/tcp_comm.c |    2 +-

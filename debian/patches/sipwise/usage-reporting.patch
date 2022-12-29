@@ -1,3 +1,11 @@
+From 944cf94dcd2ad44e66b895682329ead001c72546 Mon Sep 17 00:00:00 2001
+From: Richard Fuchs <rfuchs@sipwise.com>
+Date: Thu, 29 Dec 2022 10:14:19 +0100
+Subject: MT#55831 restore reporting of number of running calls
+
+restore reporting of number of running calls
+(real ticket number: TT#27201)
+
 --- a/core/AmSession.cpp
 +++ b/core/AmSession.cpp
 @@ -49,6 +49,9 @@

@@ -1,9 +1,11 @@
 From 4b2fc5d117242c659e4df0395c6e12f4fcb75edc Mon Sep 17 00:00:00 2001
 From: Peter Lemenkov <lemenkov@gmail.com>
-Date: Fri, 8 Apr 2016 14:50:23 +0300
-Subject: [PATCH] Fix for C++11
+Date: Thu, 29 Dec 2022 10:13:09 +0100
+Subject: MT#55831 Fix for C++11
 
-Signed-off-by: Peter Lemenkov <lemenkov@gmail.com>
+Fix for C++11
+
+(real ticket number: TT#6431)
 ---
  apps/sbc/RegisterCache.cpp  | 2 +-
  apps/sbc/RegisterDialog.cpp | 2 +-
