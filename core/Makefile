@@ -117,8 +117,6 @@ $(NAME): sip_stack resample_lib core ../Makefile.defs
 
 install: all mk-install-dirs \
 	install-audio \
-	install-modules-cfg \
-	install-cfg \
 	install-bin \
 	install-modules
 
