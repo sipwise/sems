@@ -961,7 +961,11 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
     }
   }
   else {
-    if(getCallStatus() == Disconnected &&
+    if (getCallStatus() == Ringing && !getOtherId().empty() && req.method == SIP_METH_BYE) {
+        dlg->reply(req,200,"OK");
+        stopCall(&req);
+    }
+    else if(getCallStatus() == Disconnected &&
        req.method == SIP_METH_BYE) {
       // seems that we have already sent/received a BYE
       // -> we'd better terminate this ASAP
