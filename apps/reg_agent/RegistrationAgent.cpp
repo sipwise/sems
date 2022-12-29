@@ -138,10 +138,10 @@ void RegThread::create_registration(RegInfo& ri) {
       di_args.push("reg_agent");             //sess_link
       di_args.push(ri.proxy.c_str());
       di_args.push(ri.contact.c_str());
-			
+
       registrar_client_i->invoke("createRegistration", di_args, reg_handle);
       if (reg_handle.size()) 
-	ri.handle = reg_handle.get(0).asCStr();
+        ri.handle = reg_handle.get(0).asCStr();
     }
   }
 }

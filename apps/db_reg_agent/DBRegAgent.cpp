@@ -312,22 +312,24 @@ bool DBRegAgent::loadRegistrations() {
       case REG_STATUS_FAILED:  // try again
 	{
 	  createRegistration(subscriber_id,
-			     (string)row[COLNAME_USER],
-			     (string)row[COLNAME_PASS],
-			     (string)row[COLNAME_REALM],
-			     contact_uri
-			     );
+           (string)row[COLNAME_AUTH_USER],
+           (string)row[COLNAME_USER],
+           (string)row[COLNAME_PASS],
+           (string)row[COLNAME_REALM],
+           contact_uri
+           );
 	  scheduleRegistration(subscriber_id);
 	}; break;
 
       case REG_STATUS_ACTIVE:
 	{
 	  createRegistration(subscriber_id,
-			     (string)row[COLNAME_USER],
-			     (string)row[COLNAME_PASS],
-			     (string)row[COLNAME_REALM],
-			     contact_uri
-			     );
+           (string)row[COLNAME_AUTH_USER],
+           (string)row[COLNAME_USER],
+           (string)row[COLNAME_PASS],
+           (string)row[COLNAME_REALM],
+           contact_uri
+           );
 
 	  time_t dt_expiry = now_time;
 	  if (row[COLNAME_EXPIRY] != mysqlpp::null) {
@@ -368,11 +370,12 @@ bool DBRegAgent::loadRegistrations() {
 	  DBG("Scheduling Deregister of registration %ld %s@%s", subscriber_id,
 	      ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str());
 	  createRegistration(subscriber_id,
-			     (string)row[COLNAME_USER],
-			     (string)row[COLNAME_PASS],
-			     (string)row[COLNAME_REALM],
-			     contact_uri
-			     );
+           (string)row[COLNAME_AUTH_USER],
+           (string)row[COLNAME_USER],
+           (string)row[COLNAME_PASS],
+           (string)row[COLNAME_REALM],
+           contact_uri
+           );
 	  scheduleDeregistration(subscriber_id);
 	};
       }
@@ -390,12 +393,14 @@ bool DBRegAgent::loadRegistrations() {
 
 /** create registration in our list */
 void DBRegAgent::createRegistration(long subscriber_id,
-				    const string& user,
-				    const string& pass,
-				    const string& realm,
-				    const string& contact) {
+            const string& auth_user,
+            const string& user,
+            const string& pass,
+            const string& realm,
+            const string& contact) {
 
-  string auth_user = user;
+  string auth_user_temp = auth_user.empty() ? user : auth_user;
+
   string _user = user;
   if (username_with_domain && user.find('@')!=string::npos) {
     _user = user.substr(0, user.find('@'));
@@ -409,11 +414,14 @@ void DBRegAgent::createRegistration(long subscriber_id,
   string handle = AmSession::getNewId();
   SIPRegistrationInfo reg_info(realm, _user,
 			       _user, // name
-			       auth_user,
+			       auth_user_temp, // auth_user
 			       pass,
 			       outbound_proxy, // proxy
 			       contact_uri // contact
 			       );
+
+DBG(" >>> realm '%s' - user '%s' - auth_user '%s' - pass: '%s' outbound_proxy '%s' contact_uri '%s'\n",
+      realm.c_str(), _user.c_str(), auth_user.c_str(), pass.c_str(), outbound_proxy.c_str(), contact_uri.c_str());
 
   registrations_mut.lock();
   try {
@@ -471,12 +479,14 @@ void DBRegAgent::createRegistration(long subscriber_id,
 }
 
 void DBRegAgent::updateRegistration(long subscriber_id,
+				    const string& auth_user,
 				    const string& user,
 				    const string& pass,
 				    const string& realm,
 				    const string& contact) {
 
-  string auth_user = user;
+  string auth_user_temp = auth_user.empty() ? user : auth_user;
+
   string _user = user;
   if (username_with_domain && user.find('@')!=string::npos) {
     _user = user.substr(0, user.find('@'));
@@ -488,12 +498,13 @@ void DBRegAgent::updateRegistration(long subscriber_id,
     registrations_mut.unlock();
     WARN("updateRegistration - registration %ld %s@%s unknown, creating\n",
 	 subscriber_id, _user.c_str(), realm.c_str());
-    createRegistration(subscriber_id, _user, pass, realm, contact);
+    createRegistration(subscriber_id, auth_user_temp, _user, pass, realm, contact);
     scheduleRegistration(subscriber_id);
     return;
   }
 
   bool need_reregister = it->second->getInfo().domain != realm
+    || it->second->getInfo().auth_user != auth_user_temp
     || it->second->getInfo().user != _user
     || it->second->getInfo().pwd  != pass
     || it->second->getInfo().contact != contact;
@@ -502,7 +513,7 @@ void DBRegAgent::updateRegistration(long subscriber_id,
   string old_user = it->second->getInfo().user;
   it->second->setRegistrationInfo(SIPRegistrationInfo(realm, _user,
 						      _user, // name
-						      auth_user,
+						      auth_user_temp, // auth_user
 						      pass,
 						      outbound_proxy,   // proxy
 						      contact)); // contact
@@ -1097,26 +1108,32 @@ void DBRegAgent::timer_cb(RegTimer* timer, long subscriber_id, int reg_action) {
 }
 
 
-void DBRegAgent::DIcreateRegistration(int subscriber_id, const string& user, 
+void DBRegAgent::DIcreateRegistration(int subscriber_id, const string& user,
 				      const string& pass, const string& realm,
-				      const string& contact,
+				      const string& contact, const string& auth_user,
 				      AmArg& ret) {
-  DBG("DI method: createRegistration(%i, %s, %s, %s, %s)\n",
-      subscriber_id, user.c_str(),
+
+  string auth_user_temp = auth_user.empty() ? user : auth_user;
+
+  DBG("DI method: createRegistration(%i, %s, %s, %s, %s, %s)\n",
+      subscriber_id, auth_user_temp.c_str(), user.c_str(),
       pass.c_str(), realm.c_str(), contact.c_str());
 
-  createRegistration(subscriber_id, user, pass, realm, contact);
+  createRegistration(subscriber_id, auth_user_temp, user, pass, realm, contact);
   scheduleRegistration(subscriber_id);
   ret.push(200);
   ret.push("OK");
 }
 
-void DBRegAgent::DIupdateRegistration(int subscriber_id, const string& user, 
+void DBRegAgent::DIupdateRegistration(int subscriber_id, const string& user,
 				      const string& pass, const string& realm,
-				      const string& contact,
+				      const string& contact, const string& auth_user,
 				      AmArg& ret) {
-  DBG("DI method: updateRegistration(%i, %s, %s, %s)\n",
-      subscriber_id, user.c_str(),
+
+  string auth_user_temp = auth_user.empty() ? user : auth_user;
+
+  DBG("DI method: updateRegistration(%i, %s, %s, %s, %s)\n",
+      subscriber_id, auth_user_temp.c_str(), user.c_str(),
       pass.c_str(), realm.c_str());
 
   string contact_uri = contact;
@@ -1124,7 +1141,7 @@ void DBRegAgent::DIupdateRegistration(int subscriber_id, const string& user,
     contact_uri = "sip:"+ user + "@" + contact_hostport;
   }
 
-  updateRegistration(subscriber_id, user, pass, realm, contact_uri);
+  updateRegistration(subscriber_id, auth_user_temp, user, pass, realm, contact_uri);
 
   ret.push(200);
   ret.push("OK");
@@ -1157,25 +1174,35 @@ void DBRegAgent::invoke(const string& method,
 			const AmArg& args, AmArg& ret)
 {
   if (method == "createRegistration"){
-    args.assertArrayFmt("isss"); // subscriber_id, user, pass, realm
+    args.assertArrayFmt("issss"); // subscriber_id, user, pass, realm , auth_user
     string contact;
-    if (args.size() > 4) {
+    string auth_user;
+    if (args.size() == 5) {
       assertArgCStr(args.get(4));
       contact = args.get(4).asCStr();
+    } else if (args.size() > 5) {
+      assertArgCStr(args.get(4));
+      assertArgCStr(args.get(5));
+      contact = args.get(4).asCStr();
+      auth_user = args.get(5).asCStr();
     }
-    DIcreateRegistration(args.get(0).asInt(), args.get(1).asCStr(), 
-			 args.get(2).asCStr(),args.get(3).asCStr(),
-			 contact, ret);
+    DIcreateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
+        args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, ret);
   } else if (method == "updateRegistration"){
-    args.assertArrayFmt("isss"); // subscriber_id, user, pass, realm
+    args.assertArrayFmt("issss"); // subscriber_id, auth_user, user, pass, realm
     string contact;
-    if (args.size() > 4) {
+    string auth_user;
+    if (args.size() == 5) {
       assertArgCStr(args.get(4));
       contact = args.get(4).asCStr();
+    } else if (args.size() > 5) {
+      assertArgCStr(args.get(4));
+      assertArgCStr(args.get(5));
+      contact = args.get(4).asCStr();
+      auth_user = args.get(5).asCStr();
     }
     DIupdateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
-			 args.get(2).asCStr(),args.get(3).asCStr(),
-			 contact, ret);
+			 args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, ret);
   } else if (method == "removeRegistration"){
     args.assertArrayFmt("i"); // subscriber_id
     DIremoveRegistration(args.get(0).asInt(), ret);

@@ -48,9 +48,10 @@ class UACAuthCred
   string pwd;
   UACAuthCred();
   UACAuthCred(const string& realm,
-	      const string& user,
-	      const string& pwd);
+        const string& user,
+        const string& pwd);
 };
+
 
 class CredentialHolder
 : public virtual AmObject {

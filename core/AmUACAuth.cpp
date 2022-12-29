@@ -7,8 +7,6 @@ UACAuthCred::UACAuthCred(const string& realm,
 			 const string& pwd)
   : realm(realm), user(user), pwd(pwd) { }
 
-
-
 AmUACAuth::AmUACAuth() { }
 
 AmUACAuth::~AmUACAuth() { }

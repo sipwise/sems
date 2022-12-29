@@ -55,6 +55,7 @@ using std::queue;
 #define REG_STATUS_TO_BE_REMOVED_S "5"
 
 #define COLNAME_SUBSCRIBER_ID    "subscriber_id"
+#define COLNAME_AUTH_USER        "auth_user"
 #define COLNAME_USER             "user"
 #define COLNAME_PASS             "pass"
 #define COLNAME_REALM            "realm"
@@ -182,16 +183,18 @@ class DBRegAgent
 
   /** create registration in our list */
   void createRegistration(long subscriber_id,
-			  const string& user,
-			  const string& pass,
-			  const string& realm,
-			  const string& contact);
+        const string& auth_user,
+        const string& user,
+        const string& pass,
+        const string& realm,
+        const string& contact);
   /** update registration in our list */
   void updateRegistration(long subscriber_id,
-			  const string& user,
-			  const string& pass,
-			  const string& realm,
-			  const string& contact);
+        const string& auth_user,
+        const string& user,
+        const string& pass,
+        const string& realm,
+        const string& contact);
 
   /** remove registration */
   void removeRegistration(long subscriber_id);
@@ -245,12 +248,12 @@ class DBRegAgent
 
   AmDynInvoke* uac_auth_i;
 
-  void DIcreateRegistration(int subscriber_id, const string& user, 
-			    const string& pass, const string& realm,
-			    const string& contact, AmArg& ret);
+  void DIcreateRegistration(int subscriber_id, const string& user,
+          const string& pass, const string& realm,
+          const string& contact, const string& auth_user, AmArg& ret);
   void DIupdateRegistration(int subscriber_id, const string& user, 
-			    const string& pass, const string& realm,
-			    const string& contact, AmArg& ret);
+          const string& pass, const string& realm,
+          const string& contact, const string& auth_user, AmArg& ret);
   void DIremoveRegistration(int subscriber_id, AmArg& ret);
   void DIrefreshRegistration(int subscriber_id, AmArg& ret);
 
