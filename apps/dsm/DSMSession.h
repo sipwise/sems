@@ -111,6 +111,18 @@ using std::map;
     s->CLR_STRERROR;			\
   } while (0)
 
+#define SET_ERROR(s, errno, errstr)	\
+  do {					\
+    s->SET_ERRNO(errno);		\
+    s->SET_STRERROR(errstr);		\
+  } while (0)
+
+#define CLR_ERROR(s)			\
+  do {					\
+    s->CLR_ERRNO;			\
+    s->CLR_STRERROR;			\
+  } while (0)
+
 typedef map<string, string> VarMapT;
 typedef map<string, AmArg>  AVarMapT;
 
