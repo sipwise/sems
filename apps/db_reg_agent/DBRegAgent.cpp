@@ -897,9 +897,8 @@ void DBRegAgent::run() {
   DBG("running DBRegAgent thread...\n");
   shutdown_finished = false;
   while (running) {
+    waitForEventTimed(500); // 500 milliseconds
     processEvents();
-
-    usleep(1000); // 1ms
   }
 
   DBG("DBRegAgent done, removing all registrations from Event Dispatcher...\n");

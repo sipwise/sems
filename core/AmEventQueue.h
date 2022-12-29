@@ -80,6 +80,7 @@ public:
   void postEvent(AmEvent*);
   void processEvents();
   void waitForEvent();
+  void waitForEventTimed(unsigned long msec);
   void processSingleEvent();
   bool eventPending();
 
