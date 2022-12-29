@@ -1214,6 +1214,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfuOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
+        u_int64_t attId = getAttributeId(my_handler, "cfu");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        if(!checkSubscriberProfile(my_handler, profId, attId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
@@ -1231,19 +1244,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         snprintf(map_str, sizeof(mapStr), "%llu",
                  (unsigned long long int)mapId);
         mapStr = string(map_str);
-
-        u_int64_t attId = getAttributeId(my_handler, "cfu");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-
-        if(!checkSubscriberProfile(my_handler, profId, attId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
 
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
@@ -1331,6 +1331,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfbOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
+        u_int64_t attId = getAttributeId(my_handler, "cfb");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        if(!checkSubscriberProfile(my_handler, profId, attId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
@@ -1348,19 +1361,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         snprintf(map_str, sizeof(mapStr), "%llu",
                  (unsigned long long int)mapId);
         mapStr = string(map_str);
-
-        u_int64_t attId = getAttributeId(my_handler, "cfb");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-
-        if(!checkSubscriberProfile(my_handler, profId, attId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
 
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
@@ -1448,6 +1448,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cftOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
+        u_int64_t attId = getAttributeId(my_handler, "cft");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        if(!checkSubscriberProfile(my_handler, profId, attId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
         string::size_type timend = req.user.find('*', 4);
         string tim = req.user.substr(4, timend - 4);
         INFO("Extracted ringtimeout of '%s' from '%s' for uuid '%s'",
@@ -1470,19 +1483,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         snprintf(map_str, sizeof(mapStr), "%llu",
                  (unsigned long long int)mapId);
         mapStr = string(map_str);
-
-        u_int64_t attId = getAttributeId(my_handler, "cft");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-
-        if(!checkSubscriberProfile(my_handler, profId, attId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
 
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
@@ -1628,6 +1628,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfnaOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
+        u_int64_t attId = getAttributeId(my_handler, "cfna");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        if(!checkSubscriberProfile(my_handler, profId, attId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
@@ -1645,19 +1658,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         snprintf(map_str, sizeof(mapStr), "%llu",
                  (unsigned long long int)mapId);
         mapStr = string(map_str);
-
-        u_int64_t attId = getAttributeId(my_handler, "cfna");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-
-        if(!checkSubscriberProfile(my_handler, profId, attId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
 
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
