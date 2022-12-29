@@ -97,10 +97,10 @@ vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt,
   if (right) { 
    // language has single digits before 10s
     res.push_back(basedir+int2str(num.quot * 10)+suffix);
-    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
+    res.push_back(basedir+(int2str(num.rem)+"-and")+suffix);
   } else {
     // language has single digits before 10s
-    res.push_back(basedir+("x"+int2str(num.rem))+suffix);    
+    res.push_back(basedir+(int2str(num.rem)+"-and")+suffix);
     res.push_back(basedir+int2str(num.quot * 10)+suffix);
   }
 
@@ -136,10 +136,10 @@ bool utils_play_count(DSMSession* sc_sess, unsigned int cnt,
   if (right) { 
    // language has single digits before 10s
     sc_sess->playFile(basedir+int2str(num.quot * 10)+suffix, false);
-    sc_sess->playFile(basedir+("x"+int2str(num.rem))+suffix, false);    
+    sc_sess->playFile(basedir+(int2str(num.rem)+"-and")+suffix, false);
   } else {
     // language has single digits before 10s
-    sc_sess->playFile(basedir+("x"+int2str(num.rem))+suffix, false);    
+    sc_sess->playFile(basedir+(int2str(num.rem)+"-and")+suffix, false);
     sc_sess->playFile(basedir+int2str(num.quot * 10)+suffix, false);
   }
 
