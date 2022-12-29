@@ -9,7 +9,7 @@ AUDIO_FILES=$(notdir $(wildcard wav/*.wav))
 include $(COREPATH)/../Makefile.defs
 include $(IVRPATH)/Makefile.defs
 
-# 
+#
 ivr_modules_dir?=lib/$(APP_NAME)/ivr
 
 LIB_INSTALLDIR?=$(modules_prefix)/$(ivr_modules_dir)
@@ -35,21 +35,23 @@ clean:
 	rm -f ${TARBALL_PREFIX}*.tar.gz
 
 .PHONY: compile
-compile: 
+compile:
 	$(PY_EXE) $(IVRPATH)/py_comp -q .
 
 .PHONY: install
 install: all $(extra_install)
 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
-	install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+	# note: we're ignoring those and need to skip it with py3k
+	# install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
 
 ifneq (,$(LIBDIR))
-	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR} 
-	install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}  
+	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
+	# note: we're ignoring those and need to skip it with py3k
+	# install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
 endif
 
 .PHONY: install-cfg
-install-cfg: 
+install-cfg:
 	mkdir -p $(DESTDIR)$(app_cfg_target)
 	@set -e; \
 	for r in $(module_conf_files); do \
@@ -75,16 +77,16 @@ $(NAME)_audio: $(DESTDIR)$(audio_prefix)/$(audio_dir)
 		fi ; \
 	done
 
-uninstall: 
+uninstall:
 	@echo "please remove the files from $(DESTDIR)${LIB_INSTALLDIR} manually."
 
-fulltest: 
-	find | grep /Test | grep -v ".svn" | grep \\.py$$ | sed -e "s#^./##g" | bash -e - 
+fulltest:
+	find | grep /Test | grep -v ".svn" | grep \\.py$$ | sed -e "s#^./##g" | bash -e -
 
-check: 
-	find ${LIBDIR}/ | grep \\.py$$ | grep -v Test | PYTHONPATH=$(PYTHONPATH):$(IVRPATH)/moc xargs pychecker ${PYCHECKERARGS} 
+check:
+	find ${LIBDIR}/ | grep \\.py$$ | grep -v Test | PYTHONPATH=$(PYTHONPATH):$(IVRPATH)/moc xargs pychecker ${PYCHECKERARGS}
 
-doccheck: 
+doccheck:
 	find ${LIBDIR}/  | grep \\.py$$ | grep -v Test | xargs pychecker ${PYCHECKERARGS} ${PYCHECKERDOCARGS}
 
 dist: all

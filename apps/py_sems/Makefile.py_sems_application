@@ -36,9 +36,11 @@ compile:
 .PHONY: install
 install: all
 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
-	install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
+	# note: we're ignoring those and need to skip it with py3k
+	#install -m ${LIB_PERMISSIONS}  *.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}
 	install -d $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
-	install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
+	# note: we're ignoring those and need to skip it with py3k
+	#install -m ${LIB_PERMISSIONS}  ${LIBDIR}/*.pyc $(DESTDIR)${BASEDIR}/${LIB_INSTALLDIR}/${LIBDIR}
 
 .PHONY: install-cfg
 install-cfg: 
