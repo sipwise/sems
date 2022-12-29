@@ -41,20 +41,23 @@ SC_EXPORT(CurlModule);
 
 CurlModule::CurlModule() {
   if (!curl_initialized) {
+
     curl_initialized = true;
+
     if (curl_global_init(CURL_GLOBAL_ALL)) {
       ERROR("Initializing libcurl\n");
-      throw string("Initializing libcurl");
+      throw std::runtime_error("Initializing libcurl");
     }
 
     curl_version_info_data *data = curl_version_info(CURLVERSION_NOW);
-    if (data && data->version >=0) {
-      DBG("using libcurl version '%s'\n", 
-	  data->version);
+
+    if (data && 0 != data->version) {
+      DBG("using libcurl version '%s'\n", data->version);
+
       if (data->features & CURL_VERSION_SSL) {
-	DBG("libcurl with SSL version '%s'\n", data->ssl_version);
+        DBG("libcurl with SSL version '%s'\n", data->ssl_version);
       } else {
-	DBG("libcurl without SSL support\n");
+        DBG("libcurl without SSL support\n");
       }
     }
   }
