@@ -72,6 +72,9 @@ using namespace pcrecpp;
 #define SW_VSC_DESTSET_CFB  "cfb_by_vsc"
 #define SW_VSC_DESTSET_CFT  "cft_by_vsc"
 #define SW_VSC_DESTSET_CFNA "cfna_by_vsc"
+#define SW_VSC_DESTSET_CFS  "cfs_by_vsc"
+#define SW_VSC_DESTSET_CFR  "cfr_by_vsc"
+#define SW_VSC_DESTSET_CFO  "cfc_by_vsc"
 
 #define CHECK_ANNOUNCEMENT_CONFIG(member, config_var) \
     m_patterns.member = cfg.getParameter(config_var, ""); \
@@ -114,6 +117,7 @@ SW_VscFactory::SW_VscFactory(const string &_app_name)
 
 SW_VscFactory::~SW_VscFactory()
 {
+    regfree(&m_patterns.cfOffPattern);
     regfree(&m_patterns.cfuOnPattern);
     regfree(&m_patterns.cfuOffPattern);
     regfree(&m_patterns.cfbOnPattern);
@@ -131,6 +135,7 @@ SW_VscFactory::~SW_VscFactory()
 
 int SW_VscFactory::onLoad()
 {
+    string cfOffPattern;
     string cfuOnPattern;
     string cfuOffPattern;
     string cfbOnPattern;
@@ -188,6 +193,7 @@ int SW_VscFactory::onLoad()
 
     CHECK_ANNOUNCEMENT_CONFIG(failAnnouncement,           "error_announcement");
     CHECK_ANNOUNCEMENT_CONFIG(unknownAnnouncement,        "unknown_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfOffAnnouncement,          "cf_off_announcement");
     CHECK_ANNOUNCEMENT_CONFIG(cfuOnAnnouncement,          "cfu_on_announcement");
     CHECK_ANNOUNCEMENT_CONFIG(cfuOffAnnouncement,         "cfu_off_announcement");
     CHECK_ANNOUNCEMENT_CONFIG(cfbOnAnnouncement,          "cfb_on_announcement");
@@ -213,6 +219,7 @@ int SW_VscFactory::onLoad()
         m_patterns.voicemailNumber = "invalid_default_value";
     }
 
+    COMPILE_MATCH_PATTERN(cfOffPattern,          "cf_off_pattern");
     COMPILE_MATCH_PATTERN(cfuOnPattern,          "cfu_on_pattern");
     COMPILE_MATCH_PATTERN(cfuOffPattern,         "cfu_off_pattern");
     COMPILE_MATCH_PATTERN(cfbOnPattern,          "cfb_on_pattern");
@@ -398,11 +405,14 @@ u_int64_t SW_VscDialog::getSubscriberId(MYSQL *my_handler, const char *uuid,
 }
 
 u_int64_t SW_VscDialog::getPreference(MYSQL *my_handler, u_int64_t subscriberId,
-                                      u_int64_t attributeId,                                       int *foundPref,
-                                      string *value)
+                                      u_int64_t attributeId,
+                                      int *foundPref, string *value)
 {
-    MYSQL_RES *res;     MYSQL_ROW row;     char query[1024] =
-    "";     u_int64_t id;     *foundPref = 0;
+    MYSQL_RES *res;
+    MYSQL_ROW row;
+    char query[1024] = "";
+    u_int64_t id;
+    *foundPref = 0;
 
     snprintf(query, sizeof(query), SW_VSC_GET_PREFERENCE_ID,
              (unsigned long long int)subscriberId,
@@ -859,6 +869,44 @@ u_int64_t SW_VscDialog::deleteCFMap(MYSQL *my_handler, u_int64_t subscriberId,
     return 1;
 }
 
+u_int64_t SW_VscDialog::deleteCF(MYSQL *my_handler, u_int64_t subscriberId,
+                                 const char *mapName, const char *type,
+                                 int *foundPref, string *value, const char *uuid)
+{
+    if (!deleteCFMap(my_handler, subscriberId, mapName, type))
+    {
+        return 0;
+    }
+
+    u_int64_t attId = getAttributeId(my_handler, type);
+    if (!attId)
+    {
+        return 0;
+    }
+    
+    u_int64_t prefId = getPreference(my_handler, subscriberId, attId, foundPref, value);
+    if (!prefId)
+    {
+        return 0;
+    }
+    else if (!*foundPref)
+    {
+        INFO("Unnecessary VSC %s removal for uuid '%s'",
+             type, uuid);
+    }
+    else if (!deletePreferenceId(my_handler, prefId))
+    {
+        return 0;
+    }
+    else
+    {
+        INFO("Successfully removed VSC %s for uuid '%s'",
+             type, uuid);
+    }
+
+    return 1;
+}
+
 void SW_VscDialog::onInvite(const AmSipRequest &req)
 {
     /// fooooo
@@ -880,6 +928,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
     string failAnnouncement;
     string unknownAnnouncement;
+    string cfOffAnnouncement;
     string cfuOnAnnouncement;
     string cfuOffAnnouncement;
     string cfbOnAnnouncement;
@@ -958,6 +1007,96 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
     setReceiving(false);
 
+    if ((ret = regexec(&m_patterns->cfOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        u_int64_t attId, prefId;
+
+        CHECK_ANNOUNCEMENT_PATH(cfOffAnnouncement, "cf_off_announcement");
+
+        /// Remove CFU
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// Remove CFB
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// Remove CFT
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        attId = getAttributeId(my_handler, "ringtimeout");
+        if (!attId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        else if (foundPref && !deletePreferenceId(my_handler, prefId))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+        else
+        {
+            INFO("Successfully removed VSC cft ringtimeout for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        /// Remove CFNA
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// Remove CFS
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFS, "cfs", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// Remove CFR
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFR, "cfr", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// Remove CFO
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFO, "cfo", &foundPref, &prefStr, uuid.c_str()))
+        {
+            filename = failAnnouncement;
+            goto out;
+        }
+
+        /// END
+        filename = cfOffAnnouncement;
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = failAnnouncement;
+        goto out;
+    }
+
     if ((ret = regexec(&m_patterns->cfuOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
@@ -1034,40 +1173,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfuOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-		CHECK_ANNOUNCEMENT_PATH(cfuOffAnnouncement, "cfu_off_announcement");
+        CHECK_ANNOUNCEMENT_PATH(cfuOffAnnouncement, "cfu_off_announcement");
 
-        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu"))
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = failAnnouncement;
             goto out;
-        }
-        u_int64_t attId = getAttributeId(my_handler, "cfu");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        u_int64_t prefId = getPreference(my_handler, subId, attId,
-                                         &foundPref, &prefStr);
-        if (!prefId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else if (!foundPref)
-        {
-            INFO("Unnecessary VSC CFU removal for uuid '%s'",
-                 uuid.c_str());
-        }
-        else if (!deletePreferenceId(my_handler, prefId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else
-        {
-            INFO("Successfully removed VSC CFU for uuid '%s'",
-                 uuid.c_str());
         }
 
         filename = cfuOffAnnouncement;
@@ -1157,38 +1268,10 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cfbOffAnnouncement, "cfb_off_announcement");
 
-        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb"))
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = failAnnouncement;
             goto out;
-        }
-        u_int64_t attId = getAttributeId(my_handler, "cfb");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        u_int64_t prefId = getPreference(my_handler, subId, attId,
-                                         &foundPref, &prefStr);
-        if (!prefId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else if (!foundPref)
-        {
-            INFO("Unnecessary VSC CFB removal for uuid '%s'",
-                 uuid.c_str());
-        }
-        else if (!deletePreferenceId(my_handler, prefId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else
-        {
-            INFO("Successfully removed VSC CFB for uuid '%s'",
-                 uuid.c_str());
         }
 
         filename = cfbOffAnnouncement;
@@ -1316,48 +1399,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cftOffAnnouncement, "cft_off_announcement");
 
-        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFT, "cft"))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        u_int64_t attId = getAttributeId(my_handler, "cft");
-        if (!attId)
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = failAnnouncement;
             goto out;
         }
 
-        u_int64_t prefId = getPreference(my_handler, subId, attId,
-                                         &foundPref, &prefStr);
-        if (!prefId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else if (!foundPref)
-        {
-            INFO("Unnecessary VSC CFT removal for uuid '%s'",
-                 uuid.c_str());
-        }
-        else if (!deletePreferenceId(my_handler, prefId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else
-        {
-            INFO("Successfully removed VSC CFT for uuid '%s'",
-                 uuid.c_str());
-        }
-
-        attId = getAttributeId(my_handler, "ringtimeout");
+        u_int64_t attId = getAttributeId(my_handler, "ringtimeout");
         if (!attId)
         {
             filename = failAnnouncement;
             goto out;
         }
-        prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
+        u_int64_t prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
         if (!prefId)
         {
             filename = failAnnouncement;
@@ -1462,38 +1516,10 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cfnaOffAnnouncement, "cfna_off_announcement");
 
-        if (!deleteCFMap(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna"))
+        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = failAnnouncement;
             goto out;
-        }
-        u_int64_t attId = getAttributeId(my_handler, "cfna");
-        if (!attId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        u_int64_t prefId = getPreference(my_handler, subId, attId,
-                                         &foundPref, &prefStr);
-        if (!prefId)
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else if (!foundPref)
-        {
-            INFO("Unnecessary VSC CFNA removal for uuid '%s'",
-                 uuid.c_str());
-        }
-        else if (!deletePreferenceId(my_handler, prefId))
-        {
-            filename = failAnnouncement;
-            goto out;
-        }
-        else
-        {
-            INFO("Successfully removed VSC CFNA for uuid '%s'",
-                 uuid.c_str());
         }
 
         filename = cfnaOffAnnouncement;

@@ -29,6 +29,9 @@ typedef struct
     string unknownAnnouncement;
     string voicemailNumber;
 
+    regex_t cfOffPattern;
+    string cfOffAnnouncement;
+
     regex_t cfuOnPattern;
     string cfuOnAnnouncement;
 
@@ -118,6 +121,9 @@ class SW_VscDialog : public AmSession,
                           const char *mapName, const char *type);
     u_int64_t deleteCFMap(MYSQL *my_handler, u_int64_t subscriberId,
                           const char *mapName, const char *type);
+    u_int64_t deleteCF(MYSQL *my_handler, u_int64_t subscriberId,
+                       const char *mapName, const char *type,
+                       int *foundPref, string *value, const char *uuid);
 
 
 
