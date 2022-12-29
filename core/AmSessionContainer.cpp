@@ -444,12 +444,24 @@ unsigned int AmSessionContainer::getMaxCPS()
   return res;
 }
 
-bool AmSessionContainer::check_and_add_cps()
+// we need the emergency_flag to mark emergency calls
+// and skip checking CPSLimit for them if the global policy is so
+// emergency_flag = True - do not run CPSLimit check for the call
+// emergency_flag = False - run CPSLimit check for the call
+bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
 {
   struct timeval tv, res;
   gettimeofday(&tv,0);
 
   AmLock lock(cps_mut);
+
+  // check global policy for dropping emergency calls
+  if (!AmConfig::skip_cpslimit_emergency && emergency_flag) {
+    emergency_flag = AmConfig::skip_cpslimit_emergency;
+    DBG("Emergency call detected, but global policy is to do the CPSLimit check (license).\n");
+  }
+
+  if (emergency_flag) DBG("Emergency call detected, skip CPSLimit check (license).\n");
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
@@ -466,7 +478,7 @@ bool AmSessionContainer::check_and_add_cps()
     max_cps = cps;
   }
 
-  if( CPSLimit && cps > CPSLimit ){
+  if( CPSLimit && cps > CPSLimit && !emergency_flag){
     DBG("cps_limit %d reached. Not creating session.\n", CPSLimit);
     return true;
   }
@@ -500,7 +512,20 @@ AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
       return NULL;
   }
 
-  if (check_and_add_cps()) {
+  map<string,string> app_params;
+  parse_app_params(req.hdrs,app_params);
+
+  // look into P-App-Param list, try to find 'emergency' marker
+  emergency_flag = false;
+  map<string, string>::iterator it;
+
+  it = app_params.find(EMERGENCY_PARAM);
+  if (it != app_params.end() && (it->first == EMERGENCY_PARAM && it->second == "1")) {
+    DBG("Emergency parameter detected: <;%s=%s> .\n", it->first.c_str(), it->second.c_str());
+    emergency_flag = true;
+  }
+
+  if (check_and_add_cps(emergency_flag)) {
       AmSipDialog::reply_error(req,AmConfig::CPSLimitErrCode, 
 			       AmConfig::CPSLimitErrReason);
       return NULL;
@@ -519,9 +544,6 @@ AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
 
       return NULL;
   }
-
-  map<string,string> app_params;
-  parse_app_params(req.hdrs,app_params);
 
   AmSession* session = NULL;
   if (req.method == "INVITE") {

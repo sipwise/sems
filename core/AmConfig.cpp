@@ -125,6 +125,8 @@ bool         AmConfig::AcceptForkedDialogs     = true;
 bool         AmConfig::ShutdownMode            = false;
 unsigned int AmConfig::ShutdownModeErrCode     = 503;
 string       AmConfig::ShutdownModeErrReason   = "Server shutting down";
+
+bool         AmConfig::skip_cpslimit_emergency = true;
   
 string AmConfig::OptionsTranscoderOutStatsHdr; // empty by default
 string AmConfig::OptionsTranscoderInStatsHdr; // empty by default
@@ -457,6 +459,11 @@ int AmConfig::readConfiguration()
 	  MaxForwards = mf;
       }
   }
+
+  // skip_cpslimit_emergency = true - do not drop emergency calls on CPSLimit
+  // skip_cpslimit_emergency = false - drop emergency calls on CPSLimit
+  if (cfg.hasParameter("skip_cpslimit_emergency"))
+    skip_cpslimit_emergency = cfg.getParameter("skip_cpslimit_emergency")=="yes";
 
   if(cfg.hasParameter("log_sessions"))
     LogSessions = cfg.getParameter("log_sessions")=="yes";

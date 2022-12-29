@@ -281,6 +281,9 @@ struct AmConfig
 
   static AmAudio::ResamplingImplementationType ResamplingImplementationType;
 
+  /* Global policy for treating emergency calls on CPSLimit triggering */
+  static bool skip_cpslimit_emergency;
+
   /** Read global configuration file and insert values. Maybe overwritten by
    * command line arguments */
   static int readConfiguration();

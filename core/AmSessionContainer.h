@@ -37,6 +37,8 @@
 #include <queue>
 #include <map>
 
+#define EMERGENCY_PARAM "emergency"
+
 using std::string;
 
 /**
@@ -96,7 +98,8 @@ class AmSessionContainer : public AmThread
   unsigned int CPSLimit;
   unsigned int CPSHardLimit;
 
-  bool check_and_add_cps();
+  bool check_and_add_cps(bool emergency_flag);
+  bool emergency_flag;
 
  public:
   static AmSessionContainer* instance();
