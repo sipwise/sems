@@ -173,7 +173,9 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	// 				credential->realm.c_str(),
 	// 				credential->user.c_str(),
 	// 				credential->pwd.c_str());
-	if (!nonce_reuse &&
+	if ((credential->user.empty() || credential->pwd.empty()) && reply.code==407) {
+	  DBG("No credentials to pass the challenge from behalf of B2B, sending 407 transparently\n");
+	} else if (!nonce_reuse &&
 	    (((reply.code == 401) &&
 	     getHeader(ri->second.hdrs, SIP_HDR_AUTHORIZATION, true).length()) ||
 	    ((reply.code == 407) && 
