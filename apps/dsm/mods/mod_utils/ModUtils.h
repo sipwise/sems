@@ -31,6 +31,8 @@
 #include "AmRingTone.h"
 #include "DSMSession.h"
 
+#include <string>
+
 #define MOD_CLS_NAME SCUtilsModule
 
 DECLARE_MODULE(MOD_CLS_NAME);

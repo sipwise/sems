@@ -72,20 +72,32 @@ vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt,
   
   vector<string> res;
 
+  unsigned int number = cnt;
+  unsigned int n = log10(number) + 1;
+  const int max = 9;
+
+  string full_number = std::to_string(number);
+  string remainder; /* what remains after 9 digits, if remains */
+  bool remainder_exists = false;
+
   if (cnt <= 20) {
     res.push_back(basedir+int2str(cnt)+suffix);
     return res;
   }
-  
-  for (int i=9;i>1;i--) {
-    div_t num = div(cnt, (int)pow(10.,i));  
-    if (num.quot) {
-      res.push_back(basedir+int2str(int(num.quot * pow(10.,i)))+suffix);
-    }
-    cnt = num.rem;
+
+  if (n > max) {
+    remainder_exists = true;
+    remainder = full_number.substr(max);
+    cnt = std::stoi(remainder);
   }
 
-  if (!cnt)
+  for (int i = n; i > 0; i--) {
+    int num = (int)((number % (unsigned int)pow(10, i)) / pow(10, i - 1));
+    if ( (n - i) < max )
+      res.push_back(basedir+int2str(num)+suffix); /* only push until max amount here */
+  }
+
+  if (!remainder_exists)
     return res;
 
   if ((cnt <= 20) || (!(cnt%10))) {
