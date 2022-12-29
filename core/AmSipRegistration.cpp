@@ -72,8 +72,11 @@ void AmSIPRegistration::setRegistrationInfo(const SIPRegistrationInfo& _info) {
   info = _info;
 
   cred.realm = info.domain;
-  cred.user = info.user;
+  cred.user = info.auth_user.empty() ? info.user : info.auth_user;
   cred.pwd = info.pwd;
+
+	DBG("REGISTER: new credentials for registrations are: user=<%s>, pass=<%s>, realm=<%s>\n",
+	    cred.user.c_str(), cred.pwd.c_str(), cred.realm.c_str());
 
   req.user     = info.user;
   req.r_uri    = "sip:"+info.domain;

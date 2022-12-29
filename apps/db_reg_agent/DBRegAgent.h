@@ -55,6 +55,7 @@ using std::queue;
 #define REG_STATUS_TO_BE_REMOVED_S "5"
 
 #define COLNAME_SUBSCRIBER_ID    "subscriber_id"
+#define COLNAME_PEER_ID          "peer_host_id"
 #define COLNAME_AUTH_USER        "auth_user"
 #define COLNAME_USER             "user"
 #define COLNAME_PASS             "pass"
@@ -66,6 +67,11 @@ using std::queue;
 #define COLNAME_REGISTRATION_TS  "last_registration"
 #define COLNAME_LAST_CODE        "last_code"
 #define COLNAME_LAST_REASON      "last_reason"
+#define COLNAME_ID_PK            "id"
+
+#define TYPE_PEERING             "peering"
+#define TYPE_SUBSCRIBER          "subscriber"
+#define TYPE_UNDEFINED           "undefined"
 
 #define RegistrationActionEventID 117
 
@@ -75,12 +81,13 @@ struct RegistrationActionEvent : public AmEvent {
 
   enum RegAction { Register=0, Deregister };
 
-RegistrationActionEvent(RegAction action, long subscriber_id)
+RegistrationActionEvent(RegAction action, long object_id, const string& type)
   : AmEvent(RegistrationActionEventID),
-    action(action), subscriber_id(subscriber_id) { }
+    action(action), object_id(object_id), type(type) { }
 
   RegAction action;
-  long subscriber_id;
+  long object_id;
+  const string type;
 };
 
 class DBRegAgent;
@@ -120,7 +127,8 @@ class DBRegAgent
   public AmEventHandler
 {
 
-  static string joined_query;
+  static string joined_query_subscribers;
+  static string joined_query_peerings;
   static string registrations_table;
 
   static double reregister_interval;
@@ -147,9 +155,14 @@ class DBRegAgent
 
   static unsigned int error_retry_interval;
 
-  map<long, AmSIPRegistration*> registrations;
+  map<long, AmSIPRegistration*> registrations;              // usual subscribers
   map<string, long>             registration_ltags;
   map<long, RegTimer*>          registration_timers;
+
+  map<long, AmSIPRegistration*> registrations_peers;        // SIP peerings
+  map<string, long>             registration_ltags_peers;
+  map<long, RegTimer*>          registration_timers_peers;
+
   AmMutex registrations_mut;
 
   // connection used in main DBRegAgent thread
@@ -170,59 +183,62 @@ class DBRegAgent
   RegistrationTimer registration_scheduler;
   DBRegAgentProcessorThread registration_processor;
 
-  bool loadRegistrations();
+  bool loadRegistrations();         // for loading subscribers
+  bool loadRegistrationsPeerings(); // for loading peerings
 
-  void createDBRegistration(long subscriber_id, mysqlpp::Connection& conn);
-  void deleteDBRegistration(long subscriber_id, mysqlpp::Connection& conn);
+  void createDBRegistration(long object_id, const string& type, mysqlpp::Connection& conn);
+  void deleteDBRegistration(long object_id, const string& type, mysqlpp::Connection& conn);
   void updateDBRegistration(mysqlpp::Connection& db_connection,
-			    long subscriber_id, int last_code,
+			    long object_id, const string& type, int last_code,
 			    const string& last_reason,
 			    bool update_status = false, int status = 0,
 			    bool update_ts=false, unsigned int expiry = 0,
 			    bool update_contacts=false, const string& contacts = "");
 
   /** create registration in our list */
-  void createRegistration(long subscriber_id,
+    void createRegistration(long object_id,
         const string& auth_user,
         const string& user,
         const string& pass,
         const string& realm,
-        const string& contact);
+        const string& contact,
+        const string& type);
   /** update registration in our list */
   void updateRegistration(long subscriber_id,
         const string& auth_user,
         const string& user,
         const string& pass,
         const string& realm,
-        const string& contact);
+        const string& contact,
+        const string& type);
 
   /** remove registration */
-  void removeRegistration(long subscriber_id);
+  void removeRegistration(long object_id, const string& type);
 
   /** schedule this subscriber to REGISTER imminently */
-  void scheduleRegistration(long subscriber_id);
+  void scheduleRegistration(long object_id, const string& type);
 
   /** schedule this subscriber to de-REGISTER imminently*/
-  void scheduleDeregistration(long subscriber_id);
+  void scheduleDeregistration(long object_id, const string& type);
 
   /** create a timer for the registration - fixed expiry + action */
-  void setRegistrationTimer(long subscriber_id, unsigned int timeout,
-			    RegistrationActionEvent::RegAction reg_action);
+  void setRegistrationTimer(long object_id, unsigned int timeout,
+			    RegistrationActionEvent::RegAction reg_action, const string& type);
 
   /** create a registration refresh timer for that registration 
-      @param subscriber_id - ID of subscription
+      @param object_id     - ID of subscription
       @param expiry        - SIP registration expiry time
       @param reg_start_ts  - start TS of the SIP registration
       @param now_time      - current time
    */
-  void setRegistrationTimer(long subscriber_id,
-			    time_t expiry, time_t reg_start_ts, time_t now_time);
+  void setRegistrationTimer(long object_id,
+			    time_t expiry, time_t reg_start_ts, time_t now_time, const string& type);
 
   /** clear re-registration timer and remove timer object */
-  void clearRegistrationTimer(long subscriber_id);
+  void clearRegistrationTimer(long object_id, const string& type);
 
   /** remove timer object */
-  void removeRegistrationTimer(long subscriber_id);
+  void removeRegistrationTimer(long object_id, const string& type);
   
   //  void run_tests();
 
@@ -248,14 +264,14 @@ class DBRegAgent
 
   AmDynInvoke* uac_auth_i;
 
-  void DIcreateRegistration(int subscriber_id, const string& user,
+  void DIcreateRegistration(int object_id, const string& user,
           const string& pass, const string& realm,
-          const string& contact, const string& auth_user, AmArg& ret);
-  void DIupdateRegistration(int subscriber_id, const string& user, 
+          const string& contact, const string& auth_user, const string& type, AmArg& ret);
+  void DIupdateRegistration(int object_id, const string& user,
           const string& pass, const string& realm,
-          const string& contact, const string& auth_user, AmArg& ret);
-  void DIremoveRegistration(int subscriber_id, AmArg& ret);
-  void DIrefreshRegistration(int subscriber_id, AmArg& ret);
+          const string& contact, const string& auth_user, const string& type, AmArg& ret);
+  void DIremoveRegistration(int object_id, const string& type, AmArg& ret);
+  void DIrefreshRegistration(int object_id, const string& type, AmArg& ret);
 
 
  public:
@@ -271,7 +287,7 @@ class DBRegAgent
   void invoke(const string& method, 
 	      const AmArg& args, AmArg& ret);
   /** re-registration timer callback */
-  void timer_cb(RegTimer* timer, long subscriber_id, int data2);
+  void timer_cb(RegTimer* timer, long object_id, int data2, const string& type);
 
   friend class DBRegAgentProcessorThread;
 };

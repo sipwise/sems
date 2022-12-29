@@ -34,6 +34,9 @@
 #include "log.h"
 #include "AmThread.h"
 
+#include <string>
+using std::string;
+
 #define TIMER_BUCKET_LENGTH 10     // 10 sec
 #define TIMER_BUCKETS       40000  // 40000 buckets (400000 sec, 111 hrs)
 
@@ -41,7 +44,7 @@
 #define TIMER_RESOLUTION 100000
 
 class RegTimer;
-typedef void (*timer_cb)(RegTimer*, long /*data1*/,int /*data2*/);
+typedef void (*timer_cb)(RegTimer*, long /*data1*/, int /*data2*/, const string& type);
 
 class RegTimerBucket;
 
@@ -52,6 +55,7 @@ class RegTimer {
     timer_cb       cb;
     long           data1;
     int            data2;
+		string         data3;
 
     RegTimer()
       : expires(0), cb(0), data1(0), data2(0) { }

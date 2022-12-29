@@ -84,7 +84,7 @@ void RegistrationTimer::place_timer(RegTimer* timer, int bucket_index) {
 void RegistrationTimer::fire_timer(RegTimer* timer) {
   if (timer && timer->cb) {
     DBG("firing timer [%p]\n", timer);
-    timer->cb(timer, timer->data1, timer->data2);
+    timer->cb(timer, timer->data1, timer->data2, timer->data3);
   }
 }
 
