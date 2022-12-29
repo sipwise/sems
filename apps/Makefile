@@ -1,7 +1,7 @@
 COREPATH ?= ../core
 .DEFAULT_GOAL := all
 
-local_exclude_app_modules=$(exclude_app_modules)
+local_exclude_app_modules=confpin early_dbprompt mobile_push py_sems gateway twit
 
 include $(COREPATH)/../Makefile.defs
 
@@ -12,28 +12,22 @@ include $(COREPATH)/../Makefile.defs
 #   make $(app_modules)
 # else 
 #   if exclude_app_modules is set
-#     make * - $(exclude_app_modules)
+#     make * - $(exclude_app_modules) + local excludes
 #   else
 #     make * - Makefile.defs:exclude_app_modules +  local excludes
 #   
 
-ifneq ($(app_modules),)
- app_modules = $(app_modules)
-else
- ifneq ($(local_exclude_app_modules),)
-   exclude_app_modules = $(local_exclude_app_modules)
- else
-   exclude_app_modules += mp3 examples py_sems gateway jsonrpc twit db_reg_agent
+ifeq ($(app_modules),)
+ exclude_modules = $(exclude_app_modules)
+ exclude_modules += $(local_exclude_app_modules)
 
-   ifneq ($(USE_MONITORING), yes)
-   exclude_app_modules += monitoring
-   endif
-
+ ifneq ($(USE_MONITORING), yes)
+ exclude_modules += monitoring
  endif
 
  $(info local_exclude_app_modules: $(local_exclude_app_modules))
  $(info exclude_app_modules: $(exclude_app_modules))
- app_modules = $(filter-out $(subst ;, ,$(exclude_app_modules))\
+ app_modules = $(filter-out $(subst ;, ,$(exclude_modules)) \
 		$(wildcard Makefile*) CVS CMakeLists.txt, \
 		$(wildcard *) examples/tutorial/cc_acc )
 
