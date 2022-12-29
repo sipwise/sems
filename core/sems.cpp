@@ -207,11 +207,11 @@ static bool apply_args(std::map<char,string>& args)
       AmConfig::PlugInPath = it->second;
       break;
 
-#ifndef DISABLE_DAEMON_MODE
     case 'P':
       AmConfig::DaemonPidFile = it->second;
       break;
 
+#ifndef DISABLE_DAEMON_MODE
     case 'u':
       AmConfig::DaemonUid = it->second;
       break;
@@ -535,10 +535,6 @@ int main(int argc, char* argv[])
       DBG("I'm out. pid: %d", main_pid);
       return 0;
     }
-	
-    if(write_pid_file()<0) {
-      goto error;
-    }
 
 #ifdef PROPAGATE_COREDUMP_SETTINGS
     if (have_limit) {
@@ -564,6 +560,10 @@ int main(int argc, char* argv[])
 	    strerror(errno));
       /* continue, leave it open */
     };
+  }
+
+  if(write_pid_file()<0) {
+    goto error;
   }
 
 #endif /* DISABLE_DAEMON_MODE */
@@ -661,10 +661,9 @@ int main(int argc, char* argv[])
   async_file_writer::instance()->stop();
   async_file_writer::instance()->join();
 
+  unlink(AmConfig::DaemonPidFile.c_str());
+
 #ifndef DISABLE_DAEMON_MODE
-  if (AmConfig::DaemonMode) {
-    unlink(AmConfig::DaemonPidFile.c_str());
-  }
   if(fd[1]){
      main_pid = -1;
      DBG("send -1 to parent\n");
