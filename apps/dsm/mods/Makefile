@@ -25,8 +25,9 @@ all: modules
 
 .PHONY: clean
 clean:
-	-@rm -f lib/*.so
-	-@for r in $(dsm_modules) "" ; do \
+	@rm -f lib/*.so
+	@set -e; \
+	for r in $(dsm_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \
@@ -36,7 +37,8 @@ clean:
 
 .PHONY: modules
 modules:
-	-@for r in $(dsm_modules) "" ; do \
+	@set -e; \
+	for r in $(dsm_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo  "" ; \
 			echo  "" ; \
@@ -49,7 +51,8 @@ install: install-bin
 
 .PHONY: install-bin
 install-bin:
-	-@for r in $(dsm_modules) "" ; do \
+	@set -e; \
+	for r in $(dsm_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \
@@ -58,8 +61,9 @@ install-bin:
 	done
 
 .PHONY: install-cfg
-install-cfg: $(DESTDIR)$(cfg-target)
-	-@for r in $(dsm_modules) "" ; do \
+install-cfg: $(DESTDIR)$(cfg_target)
+	@set -e; \
+	for r in $(dsm_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \

@@ -12,8 +12,9 @@ all: modules
 
 .PHONY: clean
 clean:
-	-@rm -f *.so
-	-@for r in $(core_modules) "" ; do \
+	@rm -f *.so
+	@set -e; \
+	for r in $(core_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \
@@ -23,7 +24,8 @@ clean:
 
 .PHONY: modules
 modules:
-	-@for r in $(core_modules) "" ; do \
+	@set -e; \
+	for r in $(core_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo  "" ; \
 			echo  "" ; \
@@ -33,7 +35,8 @@ modules:
 
 .PHONY: install
 install:
-	-@for r in $(core_modules) "" ; do \
+	@set -e; \
+	for r in $(core_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \
@@ -42,8 +45,9 @@ install:
 	done
 
 .PHONY: install-cfg
-install-cfg: $(DESTDIR)$(cfg-target)
-	-@for r in $(core_modules) "" ; do \
+install-cfg: $(DESTDIR)$(cfg_target)
+	@set -e; \
+	for r in $(core_modules) "" ; do \
 		if [ -n "$$r" ]; then \
 			echo "" ; \
 			echo "" ; \
