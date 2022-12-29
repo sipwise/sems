@@ -52,7 +52,9 @@ bool DBRegAgent::delete_failed_deregistrations = false;
 bool DBRegAgent::save_contacts = true;
 bool DBRegAgent::db_read_contact = false;
 string DBRegAgent::contact_hostport;
+bool DBRegAgent::username_with_domain = false;
 string DBRegAgent::outbound_proxy;
+
 bool DBRegAgent::save_auth_replies = false;
 
 unsigned int DBRegAgent::error_retry_interval = 300;
@@ -145,6 +147,9 @@ int DBRegAgent::onLoad()
 
   db_read_contact =
     cfg.getParameter("db_read_contact", "no") == "yes";
+
+  username_with_domain =
+    cfg.getParameter("username_with_domain", "no") == "yes";
 
   save_auth_replies =
     cfg.getParameter("save_auth_replies", "no") == "yes";
@@ -390,15 +395,21 @@ void DBRegAgent::createRegistration(long subscriber_id,
 				    const string& realm,
 				    const string& contact) {
 
+  string auth_user = user;
+  string _user = user;
+  if (username_with_domain && user.find('@')!=string::npos) {
+    _user = user.substr(0, user.find('@'));
+  }
+
   string contact_uri = contact;
   if (contact_uri.empty() && !contact_hostport.empty()) {
-    contact_uri = "sip:"+ user + "@" + contact_hostport;
+    contact_uri = "sip:"+ _user + "@" + contact_hostport;
   }
 
   string handle = AmSession::getNewId();
-  SIPRegistrationInfo reg_info(realm, user,
-			       user, // name
-			       user, // auth_user
+  SIPRegistrationInfo reg_info(realm, _user,
+			       _user, // name
+			       auth_user,
 			       pass,
 			       outbound_proxy, // proxy
 			       contact_uri // contact
@@ -465,27 +476,33 @@ void DBRegAgent::updateRegistration(long subscriber_id,
 				    const string& realm,
 				    const string& contact) {
 
+  string auth_user = user;
+  string _user = user;
+  if (username_with_domain && user.find('@')!=string::npos) {
+    _user = user.substr(0, user.find('@'));
+  }
+
   registrations_mut.lock();
   map<long, AmSIPRegistration*>::iterator it=registrations.find(subscriber_id);
   if (it == registrations.end()) {
     registrations_mut.unlock();
     WARN("updateRegistration - registration %ld %s@%s unknown, creating\n",
-	 subscriber_id, user.c_str(), realm.c_str());
-    createRegistration(subscriber_id, user, pass, realm, contact);
+	 subscriber_id, _user.c_str(), realm.c_str());
+    createRegistration(subscriber_id, _user, pass, realm, contact);
     scheduleRegistration(subscriber_id);
     return;
   }
 
   bool need_reregister = it->second->getInfo().domain != realm
-    || it->second->getInfo().user != user
+    || it->second->getInfo().user != _user
     || it->second->getInfo().pwd  != pass
     || it->second->getInfo().contact != contact;
 
   string old_realm = it->second->getInfo().domain;
   string old_user = it->second->getInfo().user;
-  it->second->setRegistrationInfo(SIPRegistrationInfo(realm, user,
-						      user, // name
-						      user, // auth_user
+  it->second->setRegistrationInfo(SIPRegistrationInfo(realm, _user,
+						      _user, // name
+						      auth_user,
 						      pass,
 						      outbound_proxy,   // proxy
 						      contact)); // contact
@@ -493,7 +510,7 @@ void DBRegAgent::updateRegistration(long subscriber_id,
   if (need_reregister) {
     DBG("user/realm for registration %ld changed (%s@%s -> %s@%s). "
 	"Triggering immediate re-registration\n",
-	subscriber_id, old_user.c_str(), old_realm.c_str(), user.c_str(), realm.c_str());
+	subscriber_id, old_user.c_str(), old_realm.c_str(), _user.c_str(), realm.c_str());
     scheduleRegistration(subscriber_id);
   }
 }

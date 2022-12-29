@@ -65,6 +65,13 @@ specified by setting option db_read_contact=yes and providing a contact in the
 subscriber.contact column, and passing it with createRegistration/updateRegistration DI
 function.
 
+Auth username
+-------------
+If the username for authentication needs to include the domain, the option
+username_with_domain should be set to 'yes' and the auth user including the domain
+should be provisioned in the database. SEMS will strip the domain from the value of
+the 'user' column before using it as the user part when constructing To/From/contact.
+
 Database 
 --------
 There may be two separate tables, subscriptions and registrations (status). SEMS inserts

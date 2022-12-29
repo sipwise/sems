@@ -138,6 +138,8 @@ class DBRegAgent
 
   static string contact_hostport;
 
+  static bool username_with_domain;
+
   static string outbound_proxy;
 
   static bool save_auth_replies;
