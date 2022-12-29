@@ -49,6 +49,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/time.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 
 volatile unsigned int AmSession::session_num = 0;
 AmMutex AmSession::session_num_mut;
@@ -494,6 +497,14 @@ string AmSession::getNewId() {
   return id;
 }
 /* bookkeeping functions - TODO: move to monitoring */
+static inline void __update_session_count(unsigned int num) {
+  int fd = open("/proc/ngcp/check", O_RDONLY);
+  if (fd >= 0) {
+      // set calls usage
+      ioctl(fd, TCXONC, (int) num);
+      close(fd);
+  }
+}
 void AmSession::session_started() {
   struct timeval now, delta;
 
@@ -511,6 +522,8 @@ void AmSession::session_started() {
   if(session_num > max_session_num) max_session_num = session_num;
 
   session_num_mut.unlock();
+
+  __update_session_count(getSessionNum());
 }
 
 void AmSession::session_stopped() {
@@ -524,6 +537,8 @@ void AmSession::session_stopped() {
   //current session number
   session_num--;
   session_num_mut.unlock();
+
+  __update_session_count(getSessionNum());
 }
 
 unsigned int AmSession::getSessionNum() {
