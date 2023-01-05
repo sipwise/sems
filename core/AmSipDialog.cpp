@@ -65,7 +65,7 @@ AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
     offeranswer_enabled(true),
     early_session_started(false),session_started(false),
     pending_invites(0),
-    sdp_local(), sdp_remote(), force_early_announce(false)
+    sdp_local(), sdp_remote(), faked_183_as_200(false), force_early_announce(false)
 {
 }
 
@@ -406,7 +406,10 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
         /* 100-199 */
         if (reply.code < 200) {
-          DBG("ignoring provisional reply in Early state");
+
+          string announce = getHeader(reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE, true);
+          setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+
           /* we should always keep Route set for this leg updated in case
              the provisional response updates the list of routes for any reason */
           if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
@@ -415,10 +418,38 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
             setRouteSet(reply.route);
           }
 
+          /* exceptionally treat 183 with the 'P-Early-Announce: force',
+             similarly to the 200OK response, this will properly update the caller
+             with the late SDP capabilities (an early announcement),
+             which has been put on hold during the transfer
+
+             And furthermore will give the possibility to receive and forward BYE.
+
+             DSM applications using it:
+             - early_dbprompt (early_announce)
+             - pre_announce */
+          if (reply.code == 183 && !announce.empty() && getForcedEarlyAnnounce()) {
+            DBG("This is 183 with <P-Early-Announce: force>, treated exceptionally as 200OK.\n");
+
+            setStatus(Connected);
+            setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */
+
+            if (reply.to_tag.empty()) {
+              DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
+                  reply.callid.c_str());
+              sendRequest(SIP_METH_BYE);
+            }	else {
+              setRemoteTag(reply.to_tag);
+            }
+          }
+
         /* 200-299 */
         } else if(reply.code < 300) {
           setStatus(Connected);
           setRouteSet(reply.route);
+
+          /* reset faked 183, if was previously set and this is 200OK received in this leg */
+          if (getFaked183As200()) setFaked183As200(false);
 
           if (reply.to_tag.empty()) {
             DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
@@ -478,6 +509,10 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   }
 
   bool cont = true;
+
+  /* For those exceptional 183 with the 'P-Early-Announce: force'
+     we don't want to fully imitate 200OK processing, and send ACK
+     further processing with ACK is only applied to real 200OK responses */
   if ( (reply.code >= 200) && (reply.code < 300) &&
        (reply.cseq_method == SIP_METH_INVITE) ) {
 

@@ -203,6 +203,7 @@ private:
 
  public:
 
+  void sl_reply(const string &method, unsigned cseq, bool forward, int sip_code, const char *reason);
   void relayError(const string &method, unsigned cseq, bool forward, int sip_code, const char *reason);
   void relayError(const string &method, unsigned cseq, bool forward, int err_code);
 
@@ -253,6 +254,13 @@ private:
 
   /** handle BYE on other leg */
   virtual void onOtherBye(const AmSipRequest& req);
+
+  /** handle CANCEL on other leg, TT#187351
+   * This is a convertion of the BYE into the CANCEL for
+   * the other leg, because previously 183 message processing
+   * has been faked, and treated as 200OK.
+   */
+  virtual void onOtherCancel();
 
   /** 
    * Reply received from other leg has been replied 

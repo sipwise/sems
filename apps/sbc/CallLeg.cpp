@@ -504,33 +504,48 @@ void CallLeg::b2bInitial1xx(AmSipReply& reply, bool forward)
 void CallLeg::b2bInitial2xx(AmSipReply& reply, bool forward)
 {
   if (!setOther(reply.from_tag, forward)) {
-    // ignore reply which comes from non-our-peer leg?
+    /* ignore reply which comes from non-our-peer leg? */
     DBG("2xx reply received from unknown B leg, ignoring\n");
     return;
   }
 
   DBG("setting call status to connected with leg %s\n", getOtherId().c_str());
 
-  // terminate all other legs than the connected one (determined by other_id)
+  /* terminate all other legs than the connected one (determined by other_id) */
   terminateNotConnectedLegs();
 
-  // connect media with the other leg if RTP relay is enabled
+  /* connect media with the other leg if RTP relay is enabled */
   if (!other_legs.empty())
-    other_legs.begin()->releaseMediaSession(); // remove reference hold by OtherLegInfo
-  other_legs.clear(); // no need to remember the connected leg here
+    other_legs.begin()->releaseMediaSession(); /* remove reference hold by OtherLegInfo */
+  other_legs.clear(); /* no need to remember the connected leg here */
 
   onCallConnected(reply);
 
   if (!forward) {
-    // we need to generate re-INVITE based on received SDP
+    /* we need to generate re-INVITE based on received SDP
+       but only if this is not previously faked 183 as 200OK, TT#187351 */
     saveSessionDescription(reply.body);
     sendEstablishedReInvite();
-  }
-  else if (relaySipReply(reply) != 0) {
+    if (dlg->getFaked183As200()) {
+      DBG("Re-INVITE will be not send to update the leg, because there was a faked 183 as 200OK.\n");
+      //dlg->setFaked183As200(false); // should we reset upon media re-negotiation in both legs?
+                                      // but then it breaks the BYE -> CANCEL conversion.
+    } else {
+      DBG("Re-INVITE will be send to update the leg with the last media capabilities.\n");
+      sendEstablishedReInvite();
+    }
+
+  } else if (relaySipReply(reply) != 0) {
     stopCall(StatusChangeCause::InternalError);
     return;
   }
-  updateCallStatus(Connected, &reply);
+
+  /* TT#187351, do not set the leg going towards sems DSM applications
+   * to the connected state, if this has been previously faked (183 considered as 200OK)
+   * otherwise call cancelation/termination will not work properly for this leg.
+   */
+  if (!dlg->getFaked183As200() && !dlg->getForcedEarlyAnnounce())
+    updateCallStatus(Connected, &reply);
 }
 
 void CallLeg::onInitialReply(B2BSipReplyEvent *e)

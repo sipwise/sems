@@ -59,8 +59,12 @@ protected:
   // Reliable provisional reply support
   Am100rel rel100;
 
-  /* dialog variables needed to properly handle 183->200OK faking */
+  /* Needed to properly handle 183->200OK faking, when 'P-Early-Announce: force'
+   * is added into 183, and we have to treat 183 similarly to 200OK.
+   * Means, we have to embed the early media into already established media session.
+   */
   bool force_early_announce;
+  bool faked_183_as_200;
 
   int onTxReply(const AmSipRequest& req, AmSipReply& reply, int& flags);
   int onTxRequest(AmSipRequest& req, int& flags);
@@ -103,6 +107,9 @@ protected:
   bool getOAForceSDP() const { return oa.getForceSDP(); }
 
   /* getter/setter for faked 183 as 200OK responses, TT#187351 */
+  void setFaked183As200(bool value) { faked_183_as_200 = value; }
+  bool getFaked183As200() { return faked_183_as_200; }
+
   void setForcedEarlyAnnounce(bool value) { force_early_announce = value; }
   bool getForcedEarlyAnnounce() { return force_early_announce; }
 

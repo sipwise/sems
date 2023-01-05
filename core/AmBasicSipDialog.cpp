@@ -80,9 +80,8 @@ bool AmBasicSipDialog::getUACTransPending()
 
 void AmBasicSipDialog::setStatus(Status new_status) 
 {
-  DBG("setting SIP dialog status: %s->%s\n",
-      getStatusStr(), getStatusStr(new_status));
-
+  DBG("setting SIP dialog status: %s->%s. Local_tag: <%s>\n",
+      getStatusStr(), getStatusStr(new_status), getLocalTag().c_str());
   status = new_status;
 }
 

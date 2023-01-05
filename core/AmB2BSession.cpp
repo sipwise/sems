@@ -143,6 +143,20 @@ void AmB2BSession::finalize()
   AmSession::finalize();
 }
 
+void AmB2BSession::sl_reply(const string &method, unsigned cseq, bool forward, int sip_code, const char *reason)
+{
+  if (method != SIP_METH_ACK) {
+    AmSipReply n_reply;
+    n_reply.code = sip_code;
+    n_reply.reason = reason;
+    n_reply.cseq = cseq;
+    n_reply.cseq_method = method;
+    n_reply.from_tag = dlg->getLocalTag();
+    DBG("relaying stateless B2B SIP reply %d %s\n", sip_code, reason);
+    relayEvent(new B2BSipReplyEvent(n_reply, forward, method, getLocalTag()));
+  }
+}
+
 void AmB2BSession::relayError(const string &method, unsigned cseq,
 			      bool forward, int err_code)
 {
@@ -212,24 +226,34 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
 	  return;
 	}
 
-        int res = relaySip(req_ev->req);
-	if(res < 0) {
-	  // reply relayed request internally
-          relayError(req_ev->req.method, req_ev->req.cseq, true, res);
-	  return;
-	}
+      /* relay, unless it's a BYE dedicated for other leg with a faked 183 */
+      int res = 0;
+
+      if (req_ev->req.method == SIP_METH_BYE && dlg->getFaked183As200()) {
+        DBG("This BYE will not forwarded, because other leg is a faked 183 to 200OK. CANCEL required.\n");
+        /* for now just answer with 200 OK, later on we must send CANCEL to the Early stage leg */
+        sl_reply(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
+      } else {
+        res = relaySip(req_ev->req); /* most requests get here */
       }
-      
-      if( (req_ev->req.method == SIP_METH_BYE)
-	  // CANCEL is handled differently: other side has already 
-	  // sent a terminate event.
-	  //|| (req_ev->req.method == SIP_METH_CANCEL)
-	  ) {
-	
-	onOtherBye(req_ev->req);
+
+      if (res < 0) {
+        /* reply relayed request internally */
+        relayError(req_ev->req.method, req_ev->req.cseq, true, res);
+        return;
       }
     }
-    return;
+      
+    if (req_ev->req.method == SIP_METH_BYE) {
+      /* CANCEL is handled differently: other side has already
+         sent a terminate event.
+         || (req_ev->req.method == SIP_METH_CANCEL) */
+
+        if (dlg->getFaked183As200()) onOtherCancel();
+        else onOtherBye(req_ev->req);
+    }
+  }
+  return;
 
   case B2BSipReply:
     {
@@ -600,6 +624,15 @@ void AmB2BSession::onOtherBye(const AmSipRequest& req)
 {
   DBG("onOtherBye()\n");
   terminateLeg();
+}
+
+void AmB2BSession::onOtherCancel()
+{
+  DBG("The other leg will be canceled, because still in the Early stage.\n");
+
+  setStopped();
+  clearRtpReceiverRelay();
+  dlg->cancel();
 }
 
 bool AmB2BSession::onOtherReply(const AmSipReply& reply)
