@@ -65,7 +65,7 @@ AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
     offeranswer_enabled(true),
     early_session_started(false),session_started(false),
     pending_invites(0),
-    sdp_local(), sdp_remote()
+    sdp_local(), sdp_remote(), force_early_announce(false)
 {
 }
 

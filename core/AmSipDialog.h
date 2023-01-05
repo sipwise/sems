@@ -59,6 +59,9 @@ protected:
   // Reliable provisional reply support
   Am100rel rel100;
 
+  /* dialog variables needed to properly handle 183->200OK faking */
+  bool force_early_announce;
+
   int onTxReply(const AmSipRequest& req, AmSipReply& reply, int& flags);
   int onTxRequest(AmSipRequest& req, int& flags);
 
@@ -98,6 +101,10 @@ protected:
 
   void setOAForceSDP(bool force) { oa.setForceSDP(force); }
   bool getOAForceSDP() const { return oa.getForceSDP(); }
+
+  /* getter/setter for faked 183 as 200OK responses, TT#187351 */
+  void setForcedEarlyAnnounce(bool value) { force_early_announce = value; }
+  bool getForcedEarlyAnnounce() { return force_early_announce; }
 
   const AmSdp& getLocalSdp() { return oa.getLocalSdp(); }
   const AmSdp& getRemoteSdp() { return oa.getRemoteSdp(); }

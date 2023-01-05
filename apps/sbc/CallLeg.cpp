@@ -535,9 +535,34 @@ void CallLeg::b2bInitial2xx(AmSipReply& reply, bool forward)
 
 void CallLeg::onInitialReply(B2BSipReplyEvent *e)
 {
-    if (e->reply.code < 200) b2bInitial1xx(e->reply, e->forward);
-    else if (e->reply.code < 300) b2bInitial2xx(e->reply, e->forward);
-    else b2bInitialErr(e->reply, e->forward);
+  /* 100-199 */
+  if (e->reply.code < 200) {
+    string announce = getHeader(e->reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE);
+    dlg->setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+
+    /* exceptionally treat 183 with the 'P-Early-Announce: force',
+       similarly to the 200OK response, this will properly update the caller
+       with the late SDP capabilities (an early announcement),
+       which has been put on hold during the transfer
+
+       DSM applications using it:
+       - early_dbprompt (early_announce) */
+    if (e->reply.code == 183 && !announce.empty() && dlg->getForcedEarlyAnnounce()) {
+      b2bInitial2xx(e->reply, e->forward);
+    } else {
+      b2bInitial1xx(e->reply, e->forward);
+    }
+  }
+
+  /* 200-299 */
+  else if (e->reply.code < 300) {
+    b2bInitial2xx(e->reply, e->forward);
+  }
+
+  /* 300-699 */
+  else {
+    b2bInitialErr(e->reply, e->forward);
+  }
 }
 
 void CallLeg::b2bInitialErr(AmSipReply& reply, bool forward)

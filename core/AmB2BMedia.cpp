@@ -874,14 +874,18 @@ void AmB2BMedia::updateStreamPair(AudioStreamPair &pair)
 
   TRACE("updating stream in A leg\n");
   pair.a.setDtmfSink(b);
+
   if (pair.b.getInput()) pair.a.setRelayStream(NULL); // don't mix relayed RTP into the other's input
   else pair.a.setRelayStream(pair.b.getStream());
+
   if (have_a) pair.a.initStream(playout_type, a_leg_local_sdp, a_leg_remote_sdp, pair.media_idx);
 
   TRACE("updating stream in B leg\n");
   pair.b.setDtmfSink(a);
+
   if (pair.a.getInput()) pair.b.setRelayStream(NULL); // don't mix relayed RTP into the other's input
   else pair.b.setRelayStream(pair.a.getStream());
+
   if (have_b) pair.b.initStream(playout_type, b_leg_local_sdp, b_leg_remote_sdp, pair.media_idx);
 
   TRACE("audio streams updated\n");
