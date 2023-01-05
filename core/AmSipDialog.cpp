@@ -353,102 +353,122 @@ bool AmSipDialog::onRxReplySanity(const AmSipReply& reply)
 
 bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 {
-  // rfc3261 12.1
-  // Dialog established only by 101-199 or 2xx 
-  // responses to INVITE
+  /* rfc3261 12.1
+     Dialog established only by 101-199 or 2xx
+     responses to INVITE */
 
-  if(reply.cseq_method == SIP_METH_INVITE) {
+  DBG("onRxReplyStatus: reply.code = <%d>, reply.route = <%s>, status = <%d>\n",
+      reply.code, reply.route.c_str(), status);
 
-    switch(status){
+  if (reply.cseq_method == SIP_METH_INVITE) {
 
-    case Trying:
-    case Proceeding:
-      if(reply.code < 200){
-	if(reply.code == 100 || reply.to_tag.empty())
-	  setStatus(Proceeding);
-	else {
-	  setStatus(Early);
-	  setRemoteTag(reply.to_tag);
-	  setRouteSet(reply.route);
-	}
-      }
-      else if(reply.code < 300){
-	setStatus(Connected);
-	setRouteSet(reply.route);
-	if(reply.to_tag.empty()){
-	  DBG("received 2xx reply without to-tag "
-	      "(callid=%s): sending BYE\n",reply.callid.c_str());
+    switch (status) {
 
-	  send_200_ack(reply.cseq);
-	  sendRequest(SIP_METH_BYE);
-	}
-	else {
-	  setRemoteTag(reply.to_tag);
-	}
-      }
+      case Trying:
+      case Proceeding:
 
-      if(reply.code >= 300) {// error reply
-	setStatus(Disconnected);
-	setRemoteTag(reply.to_tag);
-      }
-      break;
+        DBG("This is the Proceeding stage of the dialog.\n");
 
-    case Early:
-      if(reply.code < 200){
-        DBG("ignoring provisional reply in Early state");
-        //DROP!!!
-      }
-      else if(reply.code < 300){
-	setStatus(Connected);
-	setRouteSet(reply.route);
-	if(reply.to_tag.empty()){
-	  DBG("received 2xx reply without to-tag "
-	      "(callid=%s): sending BYE\n",reply.callid.c_str());
+        /* 100-199 */
+        if (reply.code < 200) {
+          if (reply.code == 100 || reply.to_tag.empty()) {
+            setStatus(Proceeding);
+          } else {
+            setStatus(Early);
+            setRemoteTag(reply.to_tag);
+            setRouteSet(reply.route);
+          }
 
-	  sendRequest(SIP_METH_BYE);
-	}
-	else {
-	  setRemoteTag(reply.to_tag);
-	}
-      }
-      else { // error reply
-	setStatus(Disconnected);
-	setRemoteTag(reply.to_tag);
-      }
-      break;
+        /* 200-299 */
+        } else if(reply.code < 300) {
+          setStatus(Connected);
+          setRouteSet(reply.route);
 
-    case Cancelling:
-      if(reply.code >= 300){
-	// CANCEL accepted
-	DBG("CANCEL accepted, status -> Disconnected\n");
-	setStatus(Disconnected);
-      }
-      else if(reply.code < 300){
-	// CANCEL rejected
-	DBG("CANCEL rejected/too late - bye()\n");
-	setRemoteTag(reply.to_tag);
-	setStatus(Connected);
-	bye();
-	// if BYE could not be sent,
-	// there is nothing we can do anymore...
-      }
-      break;
+          if (reply.to_tag.empty()){
+            DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
+                reply.callid.c_str());
+            send_200_ack(reply.cseq);
+            sendRequest(SIP_METH_BYE);
+          } else {
+            setRemoteTag(reply.to_tag);
+          }
 
-    //case Connected: // late 200...
-    //  TODO: if reply.to_tag != getRemoteTag()
-    //        -> ACK + BYE (+absorb answer)
-    default:
-      break;
+        /* 300-699 */
+        } else {
+          setStatus(Disconnected);
+          setRemoteTag(reply.to_tag);
+        }
+        break;
+
+      case Early:
+
+        DBG("This is the Early stage of the dialog.\n");
+
+        /* 100-199 */
+        if (reply.code < 200) {
+          DBG("ignoring provisional reply in Early state");
+          /* we should always keep Route set for this leg updated in case
+             the provisional response updates the list of routes for any reason */
+          if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
+            DBG("<%d> Response code in processed, reset the Route set for the leg.\n",
+                reply.code);
+            setRouteSet(reply.route);
+          }
+
+        /* 200-299 */
+        } else if(reply.code < 300) {
+          setStatus(Connected);
+          setRouteSet(reply.route);
+
+          if (reply.to_tag.empty()) {
+            DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
+                reply.callid.c_str());
+            sendRequest(SIP_METH_BYE);
+          } else {
+            setRemoteTag(reply.to_tag);
+          }
+
+        /* 300-699 */
+        } else {
+          setStatus(Disconnected);
+          setRemoteTag(reply.to_tag);
+        }
+
+        break;
+
+      case Cancelling:
+
+        if (reply.code >= 300) { /* CANCEL accepted */
+          DBG("CANCEL accepted, status -> Disconnected\n");
+          setStatus(Disconnected);
+
+        } else if(reply.code < 300) { /* CANCEL rejected */
+          DBG("CANCEL rejected/too late - bye()\n");
+          setRemoteTag(reply.to_tag);
+          setStatus(Connected);
+          bye();
+          /* if for any reason BYE could not be sent,
+          there is nothing we can do anymore */
+        }
+
+        break;
+
+      /* case Connected: // late 200...
+         TODO: if reply.to_tag != getRemoteTag()
+                -> ACK + BYE (+absorb answer) */
+
+      default:
+        break;
     }
   }
 
-  if(status == Disconnecting){
+  if (status == Disconnecting) {
 
     DBG("?Disconnecting?: cseq_method = %s; code = %i\n",
-	reply.cseq_method.c_str(), reply.code);
+        reply.cseq_method.c_str(), reply.code);
 
-    if((reply.cseq_method == SIP_METH_BYE) && (reply.code >= 200)){
-      //TODO: support the auth case here (401/403)
+    if ((reply.cseq_method == SIP_METH_BYE) && (reply.code >= 200)) {
+      /* TODO: support the auth case here (401/403) */
       setStatus(Disconnected);
     }
   }
@@ -458,8 +478,8 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   }
 
   bool cont = true;
-  if( (reply.code >= 200) && (reply.code < 300) &&
-      (reply.cseq_method == SIP_METH_INVITE) ) {
+  if ( (reply.code >= 200) && (reply.code < 300) &&
+       (reply.cseq_method == SIP_METH_INVITE) ) {
 
     if(hdl) ((AmSipDialogEventHandler*)hdl)->onInvite2xx(reply);
 
@@ -469,7 +489,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
   return cont && rel100.onReplyIn(reply);
 }
-  
+
 void AmSipDialog::uasTimeout(AmSipTimeoutEvent* to_ev)
 {
   assert(to_ev);
