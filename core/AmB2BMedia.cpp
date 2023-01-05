@@ -970,71 +970,78 @@ void AmB2BMedia::updateStreams(bool a_leg, const AmSdp &local_sdp, const AmSdp &
       a_leg ? (a ? a->getLocalTag().c_str() : "NULL") : (b ? b->getLocalTag().c_str() : "NULL"),
       a_leg ? 'A': 'B');
 
-  /*string s;
-  local_sdp.print(s);
-  INFO("local SDP: %s\n", s.c_str());
-  remote_sdp.print(s);
-  INFO("remote SDP: %s\n", s.c_str());*/
+  /* uncomment for debug purposes
+    string s;
+    local_sdp.print(s);
+    INFO("local SDP: %s\n", s.c_str());
+    remote_sdp.print(s);
+    INFO("remote SDP: %s\n", s.c_str());
+  */
 
   AmLock lock(mutex);
-  // streams should be created already (replaceConnectionAddress called
-  // before updateLocalSdp uses/assignes their port numbers)
+  /* streams should be created already (replaceConnectionAddress called
+     before updateLocalSdp uses/assignes their port numbers) */
 
-  // save SDP: FIXME: really needed to store instead of just to use?
+  /* save SDP: FIXME: really needed to store instead of just to use? */
   if (a_leg) {
     a_leg_local_sdp = local_sdp;
     a_leg_remote_sdp = remote_sdp;
     have_a_leg_local_sdp = true;
     have_a_leg_remote_sdp = true;
-  }
-  else {
+
+  } else {
     b_leg_local_sdp = local_sdp;
     b_leg_remote_sdp = remote_sdp;
     have_b_leg_local_sdp = true;
     have_b_leg_remote_sdp = true;
   }
 
-  // create missing streams
+  /* create missing streams */
   createStreams(local_sdp); // FIXME: remote_sdp?
 
-  // compute relay mask for every stream
-  // Warning: do not apply the new mask unless the offer answer succeeds?
-  // we can safely apply the changes once we have local & remote SDP (i.e. the
-  // negotiation is finished) otherwise we might handle the RTP in a wrong way
+  /* compute relay mask for every stream
+     Warning: do not apply the new mask unless the offer answer succeeds?
+     we can safely apply the changes once we have local & remote SDP (i.e. the
+     negotiation is finished) otherwise we might handle the RTP in a wrong way */
 
   AudioStreamIterator astream = audio.begin();
   RelayStreamIterator rstream = relay_streams.begin();
+
   for (vector<SdpMedia>::const_iterator m = remote_sdp.media.begin(); m != remote_sdp.media.end(); ++m) {
     const string& connection_address = (m->conn.address.empty() ? remote_sdp.conn.address : m->conn.address);
 
     if (m->type == MT_AUDIO) {
-      // initialize relay mask in the other(!) leg and relay destination for stream in current leg
+
+      /* initialize relay mask in the other(!) leg and relay destination for stream in current leg */
       TRACE("relay payloads in direction %s\n", a_leg ? "B -> A" : "A -> B");
+
       if (a_leg) {
         astream->b.setRelayPayloads(*m, ctrl);
         astream->a.setRelayDestination(connection_address, m->port);
-      }
-      else {
+
+      } else {
         astream->a.setRelayPayloads(*m, ctrl);
         astream->b.setRelayDestination(connection_address, m->port);
       }
-      ++astream;
-    }
 
-    else {
+      ++astream;
+
+    } else {
+
       if (!canRelay(*m)) continue;
       if (rstream == relay_streams.end()) continue;
 
       RelayStreamPair& relay_stream = **rstream;
 
-      if(a_leg) {
-	DBG("updating A-leg relay_stream");
+      if (a_leg) {
+        DBG("updating A-leg relay_stream");
         updateRelayStream(&relay_stream.a, a, connection_address, *m, &relay_stream.b);
-      }
-      else {
-	DBG("updating B-leg relay_stream");
+
+      } else {
+        DBG("updating B-leg relay_stream");
         updateRelayStream(&relay_stream.b, b, connection_address, *m, &relay_stream.a);
       }
+
       ++rstream;
     }
   }
