@@ -1,3 +1,85 @@
+ngcp-sems (1:1.6.0+0~mr11.3.0.0) unstable; urgency=medium
+
+  [ Roman Romanchenko ]
+  * [7452a32] MT#55831 sems-* constant 10% CPU usage in idle Virtual environment vagrant/vmware
+  * [a532a09] MT#55831 Fix sems and sems-pbx to write pid file when running with -E option
+  * [f593f91] MT#55831 sems: fails to build against Debian/bullseye
+
+  [ Raphael Coeffic ]
+  * [7239205] MT#55831 sbc: fixed reading encoding param in readPayload()
+
+  [ Stefan Sayer ]
+  * [83ff361] MT#55831 sbc: codecs: compare encoding_param only if both != 0
+  * [abfd146] MT#55831 core:codec init: support for fmt params negotiation, fmt_description changed
+  * [737054b] MT#55831 core:amci: call codec module init function with mod_config_path param
+  * [5c5695c] MT#55831 core:rtp stream: take fmt params in payload initialization
+  * [4dd4d94] MT#55831 opus: configurable codec settings for OPUS codec
+  * [9184bab] MT#55831 :fixes c7800ea: remove leftover stacktrace in setCurrentPayload
+  * [e5207b2] MT#55831 b/f:fix bbb13a1: remove excessive debug info
+  * [206cb7a] MT#55831 dsm: helper functions / macros for modules:
+  * [2d8f0da] MT#55831 confpin: simple pin conference app
+  * [d2f32e6] MT#55831 dsm:mod_conference:set callgroup to conference channel
+  * [1e9d98b] MT#55831 db_reg_agent: add username_with_domain option to use auth user with domain part
+
+  [ Peter Lemenkov ]
+  * [d2f507a] MT#55831 Fix for C++11
+
+  [ Victor Seva ]
+  * [baa4b2e] MT#55831 add sw_vcs module
+  * [2a842ac] MT#55831 No config patch
+  * [b151729] MT#55831 fix py_sems install dir properly
+
+  [ Andrew Pogrebennyk ]
+  * [fa0e4b7] MT#55831 rename prompts x1..9.wav to 1..9-and.wav
+  * [2e1be63] MT#55831 don't create CF map if CF is denied by profile
+  * [a7ee7e3] MT#55831 increase the config line length to 4096 because of header_list
+
+  [ Andreas Granig ]
+  * [7de83e4] MT#55831 Implement vsc for block_in_clir
+  * [e66898f] MT#55831 Rework config validation to be more slack
+  * [220b46d] MT#55831 Rework config validation to be more slack (part 2)
+
+  [ Guillem Jover ]
+  * [4749334] MT#55831 Make the code build again
+  * [fa45b44] MT#55831 Build the library as shared
+  * [d3f89d4] MT#55831 Fix module exclusion logic
+  * [32beea4] MT#55831 Revamp the build system
+  * [d785557] MT#55831 Use a proper accessor instead of messing with the struc directly
+
+  [ Jozef Kenyeres ]
+  * [534be90] MT#55831 fix failed relay of 200OK without SDP
+
+  [ Richard Fuchs ]
+  * [795e859] MT#55831 restore reporting of number of running calls
+
+  [ Marco Capetta ]
+  * [fdaed98] MT#55831 NGCP refreshes the session even if STT is not supported
+  * [d45dcf1] MT#55831 Fix issue if an UPDATE is received after 183
+  * [b1c8aa3] MT#55831 Add VSC to disable all active call forwards at once
+  * [d4d1fc7] MT#55831 Handle BYE after 180 with to_tag
+
+  [ Kirill Solomko ]
+  * [aeabd1b] MT#55831 add header filter wildcard match support
+
+  [ Michael Prokop ]
+  * [b126b45] MT#55831 Build and include SBC tools + examples, port to py3k
+
+  [ Fabricio Santolin ]
+  * [f9d0927] MT#55831 Authorization header format support
+
+  [ Donat Zenichev ]
+  * [10f7927] MT#55831 Authentication from SEMS with no credentials
+  * [178a5ad] MT#55831 add support of SIP peering registrations based on XMLRPC requests
+  * [908b645] MT#55831 Detect emergency calls and let them pass on license limitation (SEMS CE)
+  * [f5b1f75] MT#55831 dsm: ModUtils, fix the work of utils_get_count_files() (CE)
+  * [2078ce5] MT#55831 DSM: ModCurl - fix ordered comparison of const ptr with 0 (CE)
+  * [cce88b5] MT#56321 core::AmB2BMedia - refactor updateStreams()
+  * [d5eaa1c] MT#56321 call_transfer: add support of 183 in failed transfers
+  * [d36870e] MT#56321 core::AmSipDialog - refactor onRxReplyStatus()
+  * [91cd45f] MT#56321 Treat 183 as 200OK (other leg), when early media forced
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 17 Jan 2023 17:45:36 +0100
+
 ngcp-sems (1:1.6.0+0~mr11.2.0.0) unstable; urgency=medium
 
   * New release.
