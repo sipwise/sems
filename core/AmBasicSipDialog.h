@@ -112,6 +112,8 @@ protected:
 
   string route;
 
+  string allow_hf;
+
   string next_hop;
   bool next_hop_1st_req;
   bool patch_ruri_next_hop;
@@ -291,6 +293,10 @@ public:
   const string& getRemoteUA() const { return remote_ua; }
   virtual void setRemoteUA(const string& new_remote_ua)
   { remote_ua = new_remote_ua; }
+
+  const string& getRemoteAllowHf() const { return allow_hf; }
+  virtual void setRemoteAllowHf(const string& new_allow_hf)
+  { allow_hf = new_allow_hf; }
 
   const string& getRouteSet() const { return route; }
   virtual void setRouteSet(const string& new_rs)

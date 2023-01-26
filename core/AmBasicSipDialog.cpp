@@ -306,43 +306,49 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
 {
   DBG("AmBasicSipDialog::onRxRequest(req = %s)\n", req.method.c_str());
 
-  if(logger && (req.method != SIP_METH_ACK)) {
-    // log only non-initial received requests, the initial one is already logged
-    // or will be logged at application level (problem with SBCSimpleRelay)
+  if (logger && (req.method != SIP_METH_ACK)) {
+    /* log only non-initial received requests, the initial one is already logged
+     * or will be logged at application level (problem with SBCSimpleRelay) */
     if (!callid.empty()) req.log(logger);
   }
 
-  if(!onRxReqSanity(req))
+  if (!onRxReqSanity(req))
     return;
-    
+
   uas_trans[req.cseq] = req;
-    
-  // target refresh requests
-  if (req.from_uri.length() && 
+
+  /* target refresh requests */
+  if (req.from_uri.length() &&
       (remote_uri.empty() ||
-       (req.method == SIP_METH_INVITE || 
-	req.method == SIP_METH_UPDATE ||
-	req.method == SIP_METH_SUBSCRIBE ||
-	req.method == SIP_METH_NOTIFY))) {
-    
-    // refresh the target
+        (req.method == SIP_METH_INVITE ||
+         req.method == SIP_METH_UPDATE ||
+         req.method == SIP_METH_SUBSCRIBE ||
+         req.method == SIP_METH_NOTIFY)
+      )
+     ) {
+
+    /* refresh the target */
     if (remote_uri != req.from_uri) {
       setRemoteUri(req.from_uri);
-      if(nat_handling && req.first_hop) {
-	string nh = req.remote_ip + ":"
-	  + int2str(req.remote_port)
-	  + "/" + req.trsp;
-	setNextHop(nh);
-	setNextHop1stReq(false);
+
+      if (nat_handling && req.first_hop) {
+        string nh = req.remote_ip + ":"
+                    + int2str(req.remote_port)
+                    + "/" + req.trsp;
+        setNextHop(nh);
+        setNextHop1stReq(false);
       }
     }
 
-    string ua = getHeader(req.hdrs,"User-Agent");
+    string ua = getHeader(req.hdrs, SIP_HDR_USER_AGENT);
     setRemoteUA(ua);
+
+    string allow = getHeader(req.hdrs, SIP_HDR_ALLOW);
+    setRemoteAllowHf(allow);
   }
-  
-  // Dlg not yet initialized?
-  if(callid.empty()){
+
+  /* Dlg not yet initialized? */
+  if (callid.empty()) {
 
     user         = req.user;
     domain       = req.domain;
@@ -355,9 +361,14 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
     setRouteSet(    req.route    );
     set1stBranch(   req.via_branch );
     setOutboundInterface( req.local_if );
+
+    if (allow_hf.empty()) { /* if Allow hf is still empty */
+      string allow = getHeader(req.hdrs, SIP_HDR_ALLOW);
+      setRemoteAllowHf(allow);
+    }
   }
 
-  if(onRxReqStatus(req) && hdl)
+  if (onRxReqStatus(req) && hdl)
     hdl->onSipRequest(req);
 }
 
@@ -584,7 +595,8 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
 			    int flags)
 {
   TransMap::const_iterator t_it = uas_trans.find(req.cseq);
-  if(t_it == uas_trans.end()){
+
+  if (t_it == uas_trans.end()) {
     ERROR("could not find any transaction matching request cseq\n");
     ERROR("request cseq=%i; reply code=%i; callid=%s; local_tag=%s; "
 	  "remote_tag=%s\n",
@@ -593,29 +605,41 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
     log_stacktrace(L_ERR);
     return -1;
   }
+
   DBG("reply: transaction found!\n");
-    
+
   AmSipReply reply;
 
   reply.code = code;
   reply.reason = reason;
   reply.tt = req.tt;
-  if((code > 100) && !(flags & SIP_FLAGS_NOTAG))
-    reply.to_tag = ext_local_tag.empty() ? local_tag : ext_local_tag;
+  if((code > 100) && !(flags & SIP_FLAGS_NOTAG)) {
+     reply.to_tag = ext_local_tag.empty() ? local_tag : ext_local_tag;
+  }
   reply.hdrs = hdrs;
   reply.cseq = req.cseq;
   reply.cseq_method = req.method;
 
-  if(body != NULL)
+  /* add/update Allow header in 200OK, if wasn't empty in previously received request */
+  if (reply.code == 200 && !allow_hf.empty()) {
+    /* make sure to remove if already added into hdrs */
+    string allow = getHeader(reply.hdrs, SIP_HDR_ALLOW);
+    if (!allow.empty()) removeHeader(reply.hdrs, SIP_HDR_ALLOW);
+
+    allow = allow_hf; /* must be added, when receiving request in AmBasicSipDialog::onRxRequest() */
+    reply.hdrs += SIP_HDR_COLSP(SIP_HDR_ALLOW) + allow + CRLF;
+  }
+
+  if (body != NULL)
     reply.body = *body;
 
-  if(onTxReply(req,reply,flags)){
+  if (onTxReply(req,reply,flags)) {
     DBG("onTxReply failed\n");
     return -1;
   }
 
   if (!(flags & SIP_FLAGS_VERBATIM)) {
-    // add Signature
+    /* add Signature */
     if (AmConfig::Signature.length())
       reply.hdrs += SIP_HDR_COLSP(SIP_HDR_SERVER) + AmConfig::Signature + CRLF;
   }
@@ -626,15 +650,15 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
   }
 
   int ret = SipCtrlInterface::send(reply,local_tag,logger);
-  if(ret){
-    ERROR("Could not send reply: code=%i; reason='%s'; method=%s;"
-	  " call-id=%s; cseq=%i\n",
-	  reply.code,reply.reason.c_str(),reply.cseq_method.c_str(),
-	  callid.c_str(),reply.cseq);
+  if (ret) {
+    ERROR("Could not send reply: code=%i; reason='%s'; method=%s; call-id=%s; cseq=%i\n",
+          reply.code,reply.reason.c_str(),
+          reply.cseq_method.c_str(),
+          callid.c_str(),
+          reply.cseq);
 
     return ret;
-  }
-  else {
+  } else {
     onReplyTxed(req,reply);
   }
 
