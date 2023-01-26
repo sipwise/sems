@@ -270,31 +270,34 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
 
 int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body)
 {
-  // assume that the payload is ok if it is not empty.
-  // (do not parse again self-generated SDP)
-  if(body.empty()){
+  DBG("AmOfferAnswer::onTxSdp()\n");
+
+  /* assume that the payload is ok if it is not empty.
+   * (do not parse again self-generated SDP) */
+  if (body.empty()) {
+    DBG("Body is empty, cannot do anything here.\n");
     return -1;
   }
 
-  switch(state) {
+  switch (state) {
 
-  case OA_None:
-  case OA_Completed:
-    setState(OA_OfferSent);
-    cseq = m_cseq;
-    break;
+    case OA_None:
+    case OA_Completed:
+      setState(OA_OfferSent);
+      cseq = m_cseq;
+      break;
 
-  case OA_OfferRecved:
-    setState(OA_Completed);
-    break;
+    case OA_OfferRecved:
+      setState(OA_Completed);
+      break;
 
-  case OA_OfferSent:
-    // There is already a pending offer!!!
-    DBG("There is already a pending offer, onTxSdp fails\n");
-    return -1;
+    case OA_OfferSent:
+      /* There is already a pending offer */
+      DBG("There is already a pending offer, onTxSdp fails\n");
+      return -1;
 
-  default:
-    break;
+    default:
+      break;
   }
 
   return 0;

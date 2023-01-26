@@ -648,6 +648,8 @@ void AmMimeBody::setHeaders(const string& hdrs)
 
 AmMimeBody* AmMimeBody::addPart(const string& content_type)
 {
+  DBG("Adding a new part to an existing body.\n");
+
   AmMimeBody* body = NULL;
   if(ct.type.empty() && ct.subtype.empty()) {
     // fill *this* body
