@@ -188,146 +188,142 @@ void AmB2BSession::relayError(const string &method, unsigned cseq, bool forward,
 void AmB2BSession::onB2BEvent(B2BEvent* ev)
 {
   DBG("AmB2BSession::onB2BEvent\n");
-  switch(ev->event_id){
 
-  case B2BSipRequest:
-    {   
-      B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
-      assert(req_ev);
+  switch (ev->event_id) {
 
-      DBG("B2BSipRequest: %s (fwd=%s)\n",
-	  req_ev->req.method.c_str(),
-	  req_ev->forward?"true":"false");
+    case B2BSipRequest:
+    {
+        B2BSipRequestEvent* req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
+        assert(req_ev);
 
-      if(req_ev->forward){
+        DBG("B2BSipRequest: %s (fwd=%s)\n", req_ev->req.method.c_str(), req_ev->forward? "true" : "false");
 
-	// Check Max-Forwards first
-	if(req_ev->req.max_forwards == 0) {
-	  relayError(req_ev->req.method,req_ev->req.cseq,
-		     true,483,SIP_REPLY_TOO_MANY_HOPS);
-	  return;
-	}
+        if (req_ev->forward) {
 
-	if (req_ev->req.method == SIP_METH_INVITE &&
-	    dlg->getUACInvTransPending()) {
-	  // don't relay INVITE if INV trans pending
-	  DBG("not sip-relaying INVITE with pending INV transaction, "
-	      "b2b-relaying 491 pending\n");
-          relayError(req_ev->req.method, req_ev->req.cseq,
-		     true, 491, SIP_REPLY_PENDING);
-	  return;
-	}
+          /* Check Max-Forwards first */
+          if (req_ev->req.max_forwards == 0) {
+            relayError(req_ev->req.method,req_ev->req.cseq, true,483,SIP_REPLY_TOO_MANY_HOPS);
+            return;
+          }
 
-	if (req_ev->req.method == SIP_METH_BYE &&
-	    dlg->getStatus() != AmBasicSipDialog::Connected) {
-	  DBG("not sip-relaying BYE in not connected dlg, b2b-relaying 200 OK\n");
-          relayError(req_ev->req.method, req_ev->req.cseq,
-		     true, 200, "OK");
-	  return;
-	}
+          if (req_ev->req.method == SIP_METH_INVITE && dlg->getUACInvTransPending()) {
+            /* don't relay INVITE if INV trans pending */
+            DBG("Not sip-relaying INVITE with pending INV transaction, b2b-relaying 491 pending\n");
+            relayError(req_ev->req.method, req_ev->req.cseq, true, 491, SIP_REPLY_PENDING);
+            return;
+          }
 
-      /* relay, unless it's a BYE dedicated for other leg with a faked 183 */
-      int res = 0;
+          if (req_ev->req.method == SIP_METH_BYE && dlg->getStatus() != AmBasicSipDialog::Connected) {
+            DBG("not sip-relaying BYE in not connected dlg, b2b-relaying 200 OK\n");
+            relayError(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
+            return;
+          }
 
-      if (req_ev->req.method == SIP_METH_BYE && dlg->getFaked183As200()) {
-        DBG("This BYE will not forwarded, because other leg is a faked 183 to 200OK. CANCEL required.\n");
-        /* for now just answer with 200 OK, later on we must send CANCEL to the Early stage leg */
-        sl_reply(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
-      } else {
-        res = relaySip(req_ev->req); /* most requests get here */
-      }
+          /* relay, unless it's a BYE dedicated for other leg with a faked 183 */
+          int res = 0;
 
-      if (res < 0) {
-        /* reply relayed request internally */
-        relayError(req_ev->req.method, req_ev->req.cseq, true, res);
-        return;
-      }
+          if (req_ev->req.method == SIP_METH_BYE && dlg->getFaked183As200()) {
+            DBG("This BYE will not forwarded, because other leg is a faked 183 to 200OK. CANCEL required.\n");
+            /* for now just answer with 200 OK, later on we must send CANCEL to the Early stage leg */
+            sl_reply(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
+          } else {
+            res = relaySip(req_ev->req); /* most requests get here */
+          }
+
+          if (res < 0) {
+            /* reply relayed request internally */
+            relayError(req_ev->req.method, req_ev->req.cseq, true, res);
+            return;
+          }
+        }
+        
+        if (req_ev->req.method == SIP_METH_BYE) {
+          /* CANCEL is handled differently: other side has already
+            sent a terminate event.
+            || (req_ev->req.method == SIP_METH_CANCEL) */
+
+          if (dlg->getFaked183As200()) onOtherCancel();
+          else onOtherBye(req_ev->req);
+        }
     }
-      
-    if (req_ev->req.method == SIP_METH_BYE) {
-      /* CANCEL is handled differently: other side has already
-         sent a terminate event.
-         || (req_ev->req.method == SIP_METH_CANCEL) */
+    return;
 
-        if (dlg->getFaked183As200()) onOtherCancel();
-        else onOtherBye(req_ev->req);
-    }
-  }
-  return;
-
-  case B2BSipReply:
+    case B2BSipReply:
     {
       B2BSipReplyEvent* reply_ev = dynamic_cast<B2BSipReplyEvent*>(ev);
       assert(reply_ev);
 
-      DBG("B2BSipReply: %i %s (fwd=%s)\n",reply_ev->reply.code,
-	  reply_ev->reply.reason.c_str(),reply_ev->forward?"true":"false");
-      DBG("B2BSipReply: content-type = %s\n",
-	  reply_ev->reply.body.getCTStr().c_str());
+      DBG("B2BSipReply: %i %s (fwd=%s)\n", reply_ev->reply.code,
+                                          reply_ev->reply.reason.c_str(),
+                                          reply_ev->forward? "true" : "false");
 
-      if(reply_ev->forward){
+      DBG("B2BSipReply: content-type = %s\n", reply_ev->reply.body.getCTStr().c_str());
 
-        std::map<int,AmSipRequest>::iterator t_req =
-	  recvd_req.find(reply_ev->reply.cseq);
+      if (reply_ev->forward) {
+        std::map<int,AmSipRequest>::iterator t_req = recvd_req.find(reply_ev->reply.cseq);
 
-	if (t_req != recvd_req.end()) {
-	  if ((reply_ev->reply.code >= 300) && (reply_ev->reply.code <= 305) &&
-	      !reply_ev->reply.contact.empty()) {
-	    // relay with Contact in 300 - 305 redirect messages
-	    AmSipReply n_reply(reply_ev->reply);
-	    n_reply.hdrs+=SIP_HDR_COLSP(SIP_HDR_CONTACT) +
-	      reply_ev->reply.contact+ CRLF;
+        if (t_req != recvd_req.end()) {
 
-	    if(relaySip(t_req->second,n_reply) < 0) {
-	      terminateOtherLeg();
-	      terminateLeg();
-	    }
-	  } else {
-	    // relay response
-	    if(relaySip(t_req->second,reply_ev->reply) < 0) {
-	      terminateOtherLeg();
-	      terminateLeg();
-	    }
-	  }
-		
-	} else {
-	  DBG("Cannot relay reply: request already replied"
-	      " (code=%u;cseq=%u;call-id=%s)",
-	      reply_ev->reply.code, reply_ev->reply.cseq,
-	      reply_ev->reply.callid.c_str());
-	}
+          if ((reply_ev->reply.code >= 300) && (reply_ev->reply.code <= 305) &&
+              !reply_ev->reply.contact.empty()) {
+            /* relay with Contact in 300 - 305 redirect messages */
+            AmSipReply n_reply(reply_ev->reply);
+            n_reply.hdrs += SIP_HDR_COLSP(SIP_HDR_CONTACT) + reply_ev->reply.contact + CRLF;
+
+            if(relaySip(t_req->second,n_reply) < 0) {
+              terminateOtherLeg();
+              terminateLeg();
+            }
+
+          } else {
+            /* relay response */
+            if (relaySip(t_req->second,reply_ev->reply) < 0) {
+              terminateOtherLeg();
+              terminateLeg();
+            }
+          }
+
+        } else {
+          DBG("Cannot relay reply: request already replied (code=%u;cseq=%u;call-id=%s)",
+            reply_ev->reply.code,
+            reply_ev->reply.cseq,
+            reply_ev->reply.callid.c_str());
+        }
+
       } else {
-	// check whether not-forwarded (locally initiated)
-	// INV/UPD transaction changed session in other leg
-	if (SIP_IS_200_CLASS(reply_ev->reply.code) &&
-	    (!reply_ev->reply.body.empty()) &&
-	    (reply_ev->reply.cseq_method == SIP_METH_INVITE ||
-	     reply_ev->reply.cseq_method == SIP_METH_UPDATE)) {
-	  if (updateSessionDescription(reply_ev->reply.body)) {
-	    if (reply_ev->reply.cseq != est_invite_cseq) {
-	      if (dlg->getUACInvTransPending()) {
-		DBG("changed session, but UAC INVITE trans pending\n");
-		// todo(?): save until trans is finished?
-		return;
-	      }
-	      DBG("session description changed - refreshing\n");
-	      sendEstablishedReInvite();
-	    } else {
-	      DBG("reply to establishing INVITE request - not refreshing\n");
-	    }
-	  }
-	}
+        /* check whether not-forwarded (locally initiated)
+        * INV/UPD transaction changed session in other leg */
+        if (SIP_IS_200_CLASS(reply_ev->reply.code) &&
+            (!reply_ev->reply.body.empty()) &&
+            (reply_ev->reply.cseq_method == SIP_METH_INVITE ||
+            reply_ev->reply.cseq_method == SIP_METH_UPDATE))
+        {
+          if (updateSessionDescription(reply_ev->reply.body)) {
+
+            if (reply_ev->reply.cseq != est_invite_cseq) {
+              if (dlg->getUACInvTransPending()) {
+                DBG("changed session, but UAC INVITE trans pending\n");
+                /* todo(?): save until trans is finished? */
+                return;
+              }
+              DBG("session description changed - refreshing\n");
+              sendEstablishedReInvite();
+            } else {
+              DBG("reply to establishing INVITE request - not refreshing\n");
+            }
+          }
+        }
       }
     }
     return;
 
-  case B2BTerminateLeg:
-    DBG("terminateLeg()\n");
-    terminateLeg();
-    break;
+    case B2BTerminateLeg:
+      DBG("terminateLeg()\n");
+      terminateLeg();
+      break;
   }
 
-  //ERROR("unknown event caught\n");
+  /* ERROR("unknown event caught\n"); */
 }
 
 bool AmB2BSession::getMappedReferID(unsigned int refer_id, 
