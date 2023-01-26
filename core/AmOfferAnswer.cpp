@@ -351,10 +351,34 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     /* let's see whether we should force SDP or not. */
 
     if (reply.cseq_method == SIP_METH_INVITE) {
-      if ((reply.code == 183) || ((reply.code >= 200) && (reply.code < 300))) {
 
-        /* either offer received or no offer at all:
-        *  -> force SDP */
+      /* TT#184101, a sequential 183, which has no SDP body, but the media session has
+         already had the local SDP and saved that.
+         Re-use it, and do not beget the 183 without SDP body */
+      if (reply.code == 183 && !sdp_local.media.empty()) {
+
+        DBG("The 183 with no SDP, but system already has local SDP for this session, re-using it..\n");
+
+        string existing_sdp;
+        sdp_local.print(existing_sdp);
+
+        if(!sdp_body){
+          if( (sdp_body = reply.body.addPart(SIP_APPLICATION_SDP)) == NULL ) {
+            DBG("AmMimeBody::addPart() failed\n");
+            return -1;
+          }
+        }
+
+        sdp_body->setPayload((const unsigned char*)existing_sdp.c_str(), existing_sdp.length());
+
+        has_sdp = true;
+        DBG("Now has_sdp has been reset to true.\n");
+
+      /* - 183 reply without SDP body, but is very first one (no SDP saved before)
+         - 200-299 responses with no SDP */
+      } else if ((reply.code == 183) || ((reply.code >= 200) && (reply.code < 300))) {
+
+        /* either offer received or no offer at all: -> force SDP */
         generate_sdp = (state == OA_OfferRecved)
                         || (state == OA_None)
                         || (state == OA_Completed);
@@ -366,6 +390,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
         /* offer received:
          *  -> force SDP */
         generate_sdp = (state == OA_OfferRecved);
+        DBG("Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
     }
   }
@@ -377,6 +402,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
         reply.cseq == cseq)
     {
       has_sdp = false;
+      DBG("Now has_sdp has been reset to false.\n");
     }
   }
 
