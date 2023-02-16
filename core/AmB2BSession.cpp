@@ -1089,93 +1089,85 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
 {
   bool processed = false;
 
-  if(ev->event_id == B2BSipReply){
+  if (ev->event_id == B2BSipReply) {
 
     AmSipReply& reply = ((B2BSipReplyEvent*)ev)->reply;
 
-    if(getOtherId().empty()){
-      //DBG("Discarding B2BSipReply from other leg (other_id empty)\n");
-      DBG("B2BSipReply: other_id empty ("
-	  "reply code=%i; method=%s; callid=%s; from_tag=%s; "
-	  "to_tag=%s; cseq=%i)\n",
-	  reply.code,reply.cseq_method.c_str(),reply.callid.c_str(),reply.from_tag.c_str(),
-	  reply.to_tag.c_str(),reply.cseq);
-      //return;
-    }
-    else if(getOtherId() != reply.from_tag){// was: local_tag
-      DBG("Dialog mismatch! (oi=%s;ft=%s)\n",
-	  getOtherId().c_str(),reply.from_tag.c_str());
+    if (getOtherId().empty()) {
+      DBG("B2BSipReply: other_id empty (reply code=%i; method=%s; callid=%s; from_tag=%s; to_tag=%s; cseq=%i)\n",
+        reply.code,reply.cseq_method.c_str(),reply.callid.c_str(),reply.from_tag.c_str(),
+        reply.to_tag.c_str(),reply.cseq);
+
+    } else if (getOtherId() != reply.from_tag) { /* was: local_tag */
+      DBG("Dialog mismatch! (oi=%s;ft=%s)\n", getOtherId().c_str(), reply.from_tag.c_str());
       return;
     }
 
     DBG("%u %s reply received from other leg\n", reply.code, reply.reason.c_str());
       
-    switch(callee_status){
-    case NoReply:
-    case Ringing:
-      if (reply.cseq == invite_req.cseq) {
+    switch (callee_status) {
+      case NoReply:
+      case Ringing:
+        if (reply.cseq == invite_req.cseq) {
 
-	if (reply.code < 200) {
+          if (reply.code < 200) {
+            if ((!sip_relay_only) &&
+                (reply.code>=180 && reply.code<=183 && (!reply.body.empty()))) {
 
-	  if ((!sip_relay_only) &&
-	      (reply.code>=180 && reply.code<=183 && (!reply.body.empty()))) {
-	    // save early media SDP
-	    updateSessionDescription(reply.body);
+              /* save early media SDP */
+              updateSessionDescription(reply.body);
 
-	    if (sip_relay_early_media_sdp) {
-	      if (reinviteCaller(reply)) {
-		ERROR("re-INVITEing caller for early session failed - "
-		      "stopping this and other leg\n");
-		terminateOtherLeg();
-		terminateLeg();
-		break;
-	      }
-	    }
+              if (sip_relay_early_media_sdp) {
+                if (reinviteCaller(reply)) {
+                  ERROR("re-INVITEing caller for early session failed - stopping this and other leg\n");
+                  terminateOtherLeg();
+                  terminateLeg();
+                  break;
+                }
+              }
+            }
 
-	  }
+            callee_status = Ringing;
 
-	  callee_status = Ringing;
+          } else if(reply.code < 300) {
 
-	} else if(reply.code < 300){
-	  
-	  callee_status  = Connected;
-	  DBG("setting callee status to connected\n");
-	  if (!sip_relay_only) {
-	    DBG("received 200 class reply to establishing INVITE: "
-		"switching to SIP relay only mode, sending re-INVITE to caller\n");
-	    sip_relay_only = true;
-	    AmSipReply n_reply = reply;
+            callee_status  = Connected;
+            DBG("setting callee status to connected\n");
 
-	    if (n_reply.body.empty() && !established_body.empty()) {
-	      DBG("callee FR without SDP, using provisional response's (18x) one\n");
-	      n_reply.body = established_body;
-	    }
+            if (!sip_relay_only) {
+              DBG("received 200 class reply to establishing INVITE: "
+                  "switching to SIP relay only mode, sending re-INVITE to caller\n");
 
-	    if (reinviteCaller(n_reply)) {
-	      ERROR("re-INVITEing caller failed - stopping this and other leg\n");
-	      terminateOtherLeg();
-	      terminateLeg();
-	    }
-	  }
-	} else {
-	  // 	DBG("received %i from other leg: other_id=%s; reply.local_tag=%s\n",
-	  // 	    reply.code,other_id.c_str(),reply.local_tag.c_str());
-	  
-	  // TODO: terminated my own leg instead? (+ clear_other())
-	  terminateOtherLeg();
-	}
+              sip_relay_only = true;
+              AmSipReply n_reply = reply;
 
-	processed = onOtherReply(reply);
-      }
+              if (n_reply.body.empty() && !established_body.empty()) {
+                DBG("callee FR without SDP, using provisional response's (18x) one\n");
+                n_reply.body = established_body;
+              }
+
+              if (reinviteCaller(n_reply)) {
+                ERROR("re-INVITEing caller failed - stopping this and other leg\n");
+                terminateOtherLeg();
+                terminateLeg();
+              }
+            }
+
+          } else {
+            /* TODO: terminated my own leg instead? (+ clear_other()) */
+            terminateOtherLeg();
+          }
+
+          processed = onOtherReply(reply);
+        }
+        break;
 	
-      break;
-	
-    default:
-      DBG("reply from callee: %u %s\n",reply.code,reply.reason.c_str());
-      break;
+      default:
+        DBG("reply from callee: %u %s\n",reply.code,reply.reason.c_str());
+        break;
     }
   }
-   
+
   if (!processed)
     AmB2BSession::onB2BEvent(ev);
 }
