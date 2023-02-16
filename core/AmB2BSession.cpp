@@ -313,6 +313,29 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             }
           }
         }
+
+        /* processing of the playback completion from DSM applications */
+        if (reply_ev->reply.code == 480 && dlg->getStatus() == AmSipDialog::Connected) {
+
+          string p_dsm_app = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP, true);
+
+          /* TT#188800, if this is a completion of the playback of one of the DSM applications,
+            (office hours, play last caller, pre announce)
+            in the session, which has had AA or a transfer before going to this DSM application,
+            then a caller is now likely in the connected state, and requires BYE, not 480 */
+          if (p_dsm_app.find("office-hours") != std::string::npos ||
+              p_dsm_app.find("pre-announce") != std::string::npos ||
+              p_dsm_app.find("play-last-caller") != std::string::npos) {
+
+            /* check the ;playback= parameter */
+            string p_dsm_app_param = get_header_param(p_dsm_app, "playback");
+            if (p_dsm_app_param == "finished") {
+              DBG("This is the end of DSM playback, the caller is in the connected state.\n");
+              DBG("Terminating the original leg with BYE, instead of 480.\n");
+              terminateLeg();
+            }
+          }
+        }
       }
     }
     return;
