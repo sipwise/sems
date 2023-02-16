@@ -76,6 +76,12 @@ protected:
   bool onRxReqStatus(const AmSipRequest& req);
 
   bool onRxReplySanity(const AmSipReply& reply);
+
+  /* this function updates the status of the dialog (AmBasicSipDialog)
+   * and sets this to: Trying, Proceeding, Cancelling, Early, Connected etc.
+   * Additionally it updates remote tags with setRemoteTag()
+   * and updates route set with setRouteSet()
+   */
   bool onRxReplyStatus(const AmSipReply& reply);
 
 

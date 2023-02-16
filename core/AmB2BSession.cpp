@@ -312,10 +312,31 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
               DBG("reply to establishing INVITE request - not refreshing\n");
             }
           }
-        }
 
-        /* processing of the playback completion from DSM applications */
-        if (reply_ev->reply.code == 480 && dlg->getStatus() == AmSipDialog::Connected) {
+        /* 183 - coming from DSM application */
+        } else if (reply_ev->reply.code == 183 &&
+                   dlg->getForcedEarlyAnnounce() &&
+                   !reply_ev->reply.body.empty()) {
+
+          if (updateSessionDescription(reply_ev->reply.body)) {
+            if (dlg->getUACInvTransPending()) {
+              DBG("changed session, but UAC INVITE trans pending\n");
+            } else {
+              DBG("Received 183 with P-Early-Announce: force, refreshing media session.\n");
+
+              setMute(true);
+              AmMediaProcessor::instance()->removeSession(this);
+
+              if (sendEstablishedReInvite() < 0) {
+                  ERROR("could not re-Invite after locally initiated request"
+                        "in B2B leg changed session (this='%s', other='%s')\n",
+                        getLocalTag().c_str(), other_id.c_str());
+              }
+            }
+          }
+
+        /* 480 - processing of the playback completion from DSM applications */
+        } else if (reply_ev->reply.code == 480 && dlg->getStatus() == AmSipDialog::Connected) {
 
           string p_dsm_app = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP, true);
 
