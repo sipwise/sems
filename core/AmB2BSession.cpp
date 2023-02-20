@@ -365,8 +365,16 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             }
           }
 
-        /* 480 - processing of the playback completion from DSM applications */
-        } else if (reply_ev->reply.code == 480 && dlg->getStatus() == AmSipDialog::Connected) {
+        /* Processing of the playback completion from DSM applications
+         * For now we only support: 480 Unavailable and 486 Busy/603 Decline.
+         * Exceptionally 487 is added, for cases like:
+         * a call to HG, where nobody answers and the timeout triggers a cancelation of all the legs.
+         */
+        } else if ((reply_ev->reply.code == 480 ||
+                    reply_ev->reply.code == 486 ||
+                    reply_ev->reply.code == 487 ||
+                    reply_ev->reply.code == 603)
+                    && dlg->getStatus() == AmSipDialog::Connected) {
 
           /* TT#188800, if this is a completion of the playback of one of the DSM applications,
             (office hours, play last caller, pre announce, early dbprompt)
