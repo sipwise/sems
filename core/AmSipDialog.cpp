@@ -41,6 +41,10 @@
 
 #include "global_defs.h"
 
+//
+// helper functions
+//
+
 static void addTranscoderStats(string &hdrs)
 {
   // add transcoder statistics into request/reply headers
@@ -60,6 +64,13 @@ static void addTranscoderStats(string &hdrs)
     hdrs += usage;
     hdrs += CRLF;
   }
+}
+
+static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
+{
+    string announce = getHeader(hdrs, SIP_HDR_P_DSM_APP);
+    string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
+    return p_dsm_app_param == DSM_VALUE_FORCE;
 }
 
 AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
@@ -409,9 +420,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
         /* 100-199 */
         if (reply.code < 200) {
 
-          string announce = getHeader(reply.hdrs, SIP_HDR_P_DSM_APP, true);
-          string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
-          setForcedEarlyAnnounce(p_dsm_app_param == DSM_VALUE_FORCE);
+          setForcedEarlyAnnounce(isDSMEarlyAnnounceForced(reply.hdrs));
 
           /* we should always keep Route set for this leg updated in case
              the provisional response updates the list of routes for any reason */
@@ -429,10 +438,11 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
              And furthermore will give the possibility to receive and forward BYE.
 
              DSM applications using it:
-             - early-dbprompt (early_announce)
+             - early-dbprompt
              - pre-announce
+             - play-last-caller
              - office-hours */
-          if (reply.code == 183 && !announce.empty() && getForcedEarlyAnnounce()) {
+          if (reply.code == 183 && getForcedEarlyAnnounce()) {
             DBG("This is 183 with <;%s=%s>, treated exceptionally as 200OK.\n", DSM_PARAM_EARLY_AN, DSM_VALUE_FORCE);
 
             setStatus(Connected);

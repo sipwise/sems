@@ -62,6 +62,23 @@ static void errCode2RelayedReply(AmSipReply &reply, int err_code, unsigned defau
   }
 }
 
+static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
+{
+    string announce = getHeader(hdrs, SIP_HDR_P_DSM_APP);
+    string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
+    return p_dsm_app_param == DSM_VALUE_FORCE;
+}
+
+static bool isDSMPlaybackFinished(const std::string &hdrs)
+{
+  /** TODO: for the future, we might also want to check
+   *  particular DSM applications, for now plays no role.
+   */
+  string p_dsm_app = getHeader(hdrs, SIP_HDR_P_DSM_APP, true);
+  string p_dsm_app_param = get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK);
+  return p_dsm_app_param == DSM_VALUE_FINISHED;
+}
+
 //
 // AmB2BSession methods
 //
@@ -296,9 +313,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
 
         /* ensure that 'P-DSM-App: <app-name>;early-announce=force' is not present */
         if (reply_ev->reply.code == 183 && !dlg->getForcedEarlyAnnounce()) {
-          string announce = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP);
-          string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
-          dlg->setForcedEarlyAnnounce(p_dsm_app_param == DSM_VALUE_FORCE);
+          dlg->setForcedEarlyAnnounce(isDSMEarlyAnnounceForced(reply_ev->reply.hdrs));
         }
 
         /* don't forget to reset the force_early_announce, if 200 OK in the same leg received */
@@ -353,24 +368,14 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
         /* 480 - processing of the playback completion from DSM applications */
         } else if (reply_ev->reply.code == 480 && dlg->getStatus() == AmSipDialog::Connected) {
 
-          string p_dsm_app = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP, true);
-
           /* TT#188800, if this is a completion of the playback of one of the DSM applications,
             (office hours, play last caller, pre announce, early dbprompt)
             in the session, which has had AA or a transfer before going to this DSM application,
             then a caller is now likely in the connected state, and requires BYE, not 480 */
-          if (p_dsm_app.find(DSM_APP_OH) != std::string::npos ||
-              p_dsm_app.find(DSM_APP_PRE_AN) != std::string::npos ||
-              p_dsm_app.find(DSM_APP_EARLYDB_PR) != std::string::npos ||
-              p_dsm_app.find(DSM_APP_P_L_CALLER) != std::string::npos) {
-
-            /* check the ;playback= parameter */
-            string p_dsm_app_param = get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK);
-            if (p_dsm_app_param == DSM_VALUE_FINISHED) {
-              DBG("This is the end of DSM playback, the caller is in the connected state.\n");
-              DBG("Terminating the original leg with BYE, instead of 480.\n");
-              terminateLeg();
-            }
+          if (isDSMPlaybackFinished(reply_ev->reply.hdrs)) {
+            DBG("This is the end of DSM playback, the caller is in the connected state.\n");
+            DBG("Terminating the original leg with BYE, instead of 480.\n");
+            terminateLeg();
           }
         }
       }
