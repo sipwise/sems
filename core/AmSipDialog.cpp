@@ -427,8 +427,9 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
              And furthermore will give the possibility to receive and forward BYE.
 
              DSM applications using it:
-             - early_dbprompt (early_announce)
-             - pre_announce */
+             - early-dbprompt (early_announce)
+             - pre-announce
+             - office-hours */
           if (reply.code == 183 && !announce.empty() && getForcedEarlyAnnounce()) {
             DBG("This is 183 with <;early-announce=force>, treated exceptionally as 200OK.\n");
 

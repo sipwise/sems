@@ -562,9 +562,10 @@ void CallLeg::onInitialReply(B2BSipReplyEvent *e)
        which has been put on hold during the transfer
 
        DSM applications using it:
-       - early_dbprompt (early_announce)
-       - pre_announce
-       - play_last_caller */
+       - early-dbprompt (early_announce)
+       - pre-announce
+       - play-last-caller
+       - office-hours */
     if (e->reply.code == 183 && !announce.empty() && dlg->getForcedEarlyAnnounce()) {
       b2bInitial2xx(e->reply, e->forward);
     } else {
