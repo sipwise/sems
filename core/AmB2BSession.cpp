@@ -291,8 +291,20 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
         }
 
       } else {
+
+        /* ensure that 'P-Early-Announce: force' is not present */
+        if (reply_ev->reply.code == 183 && !dlg->getForcedEarlyAnnounce()) {
+          string announce = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE);
+          dlg->setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+        }
+
+        /* don't forget to reset the force_early_announce, if 200 OK in the same leg received */
+        if (SIP_IS_200_CLASS(reply_ev->reply.code) && dlg->getForcedEarlyAnnounce()) {
+          dlg->setForcedEarlyAnnounce(false);
+        }
+
         /* check whether not-forwarded (locally initiated)
-        * INV/UPD transaction changed session in other leg */
+         * INV/UPD transaction changed session in other leg */
         if (SIP_IS_200_CLASS(reply_ev->reply.code) &&
             (!reply_ev->reply.body.empty()) &&
             (reply_ev->reply.cseq_method == SIP_METH_INVITE ||
