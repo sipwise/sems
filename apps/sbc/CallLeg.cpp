@@ -552,16 +552,19 @@ void CallLeg::onInitialReply(B2BSipReplyEvent *e)
 {
   /* 100-199 */
   if (e->reply.code < 200) {
-    string announce = getHeader(e->reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE);
-    dlg->setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+    string announce = getHeader(e->reply.hdrs, SIP_HDR_P_DSM_APP);
+    string p_dsm_app_param = get_header_param(announce, "early-announce");
+    dlg->setForcedEarlyAnnounce(p_dsm_app_param == "force");
 
-    /* exceptionally treat 183 with the 'P-Early-Announce: force',
+    /* exceptionally treat 183 with the 'P-DSM-App: <app-name>;early-announce=force',
        similarly to the 200OK response, this will properly update the caller
        with the late SDP capabilities (an early announcement),
        which has been put on hold during the transfer
 
        DSM applications using it:
-       - early_dbprompt (early_announce) */
+       - early_dbprompt (early_announce)
+       - pre_announce
+       - play_last_caller */
     if (e->reply.code == 183 && !announce.empty() && dlg->getForcedEarlyAnnounce()) {
       b2bInitial2xx(e->reply, e->forward);
     } else {

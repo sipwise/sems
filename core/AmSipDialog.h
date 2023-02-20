@@ -59,7 +59,7 @@ protected:
   // Reliable provisional reply support
   Am100rel rel100;
 
-  /* Needed to properly handle 183->200OK faking, when 'P-Early-Announce: force'
+  /* Needed to properly handle 183->200OK faking, when 'P-DSM-App: <app-name>;early-announce=force'
    * is added into 183, and we have to treat 183 similarly to 200OK.
    * Means, we have to embed the early media into already established media session.
    */

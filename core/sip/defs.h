@@ -54,7 +54,6 @@
 #define SIP_HDR_EVENT            "Event"
 #define SIP_HDR_SUBSCRIPTION_STATE "Subscription-State"
 #define SIP_HDR_REPLACES          "Replaces"
-#define SIP_HDR_P_EARLY_ANNOUNCE "P-Early-Announce"
 #define SIP_HDR_P_DSM_APP        "P-DSM-App"
 
 #define SIP_HDR_COL(_hdr)       _hdr ":"

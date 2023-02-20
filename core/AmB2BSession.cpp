@@ -292,10 +292,11 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
 
       } else {
 
-        /* ensure that 'P-Early-Announce: force' is not present */
+        /* ensure that 'P-DSM-App: <app-name>;early-announce=force' is not present */
         if (reply_ev->reply.code == 183 && !dlg->getForcedEarlyAnnounce()) {
-          string announce = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE);
-          dlg->setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+          string announce = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP);
+          string p_dsm_app_param = get_header_param(announce, "early-announce");
+          dlg->setForcedEarlyAnnounce(p_dsm_app_param == "force");
         }
 
         /* don't forget to reset the force_early_announce, if 200 OK in the same leg received */
@@ -334,7 +335,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             if (dlg->getUACInvTransPending()) {
               DBG("changed session, but UAC INVITE trans pending\n");
             } else {
-              DBG("Received 183 with P-Early-Announce: force, refreshing media session.\n");
+              DBG("Received 183 with <;early-announce=force>, refreshing media session.\n");
 
               setMute(true);
               AmMediaProcessor::instance()->removeSession(this);

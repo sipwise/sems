@@ -407,8 +407,9 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
         /* 100-199 */
         if (reply.code < 200) {
 
-          string announce = getHeader(reply.hdrs, SIP_HDR_P_EARLY_ANNOUNCE, true);
-          setForcedEarlyAnnounce(announce.find("force") != std::string::npos);
+          string announce = getHeader(reply.hdrs, SIP_HDR_P_DSM_APP, true);
+          string p_dsm_app_param = get_header_param(announce, "early-announce");
+          setForcedEarlyAnnounce(p_dsm_app_param == "force");
 
           /* we should always keep Route set for this leg updated in case
              the provisional response updates the list of routes for any reason */
@@ -418,7 +419,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
             setRouteSet(reply.route);
           }
 
-          /* exceptionally treat 183 with the 'P-Early-Announce: force',
+          /* exceptionally treat 183 with the 'P-DSM-App: <app-name>;early-announce=force',
              similarly to the 200OK response, this will properly update the caller
              with the late SDP capabilities (an early announcement),
              which has been put on hold during the transfer
@@ -429,7 +430,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
              - early_dbprompt (early_announce)
              - pre_announce */
           if (reply.code == 183 && !announce.empty() && getForcedEarlyAnnounce()) {
-            DBG("This is 183 with <P-Early-Announce: force>, treated exceptionally as 200OK.\n");
+            DBG("This is 183 with <;early-announce=force>, treated exceptionally as 200OK.\n");
 
             setStatus(Connected);
             setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */
@@ -510,7 +511,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
   bool cont = true;
 
-  /* For those exceptional 183 with the 'P-Early-Announce: force'
+  /* For those exceptional 183 with the 'P-DSM-App: <app-name>;early-announce=force'
      we don't want to fully imitate 200OK processing, and send ACK
      further processing with ACK is only applied to real 200OK responses */
   if ( (reply.code >= 200) && (reply.code < 300) &&
