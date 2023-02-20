@@ -39,6 +39,8 @@
 
 #include "AmB2BMedia.h" // just because of statistics
 
+#include "global_defs.h"
+
 static void addTranscoderStats(string &hdrs)
 {
   // add transcoder statistics into request/reply headers
@@ -408,8 +410,8 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
         if (reply.code < 200) {
 
           string announce = getHeader(reply.hdrs, SIP_HDR_P_DSM_APP, true);
-          string p_dsm_app_param = get_header_param(announce, "early-announce");
-          setForcedEarlyAnnounce(p_dsm_app_param == "force");
+          string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
+          setForcedEarlyAnnounce(p_dsm_app_param == DSM_VALUE_FORCE);
 
           /* we should always keep Route set for this leg updated in case
              the provisional response updates the list of routes for any reason */
@@ -431,7 +433,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
              - pre-announce
              - office-hours */
           if (reply.code == 183 && !announce.empty() && getForcedEarlyAnnounce()) {
-            DBG("This is 183 with <;early-announce=force>, treated exceptionally as 200OK.\n");
+            DBG("This is 183 with <;%s=%s>, treated exceptionally as 200OK.\n", DSM_PARAM_EARLY_AN, DSM_VALUE_FORCE);
 
             setStatus(Connected);
             setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */

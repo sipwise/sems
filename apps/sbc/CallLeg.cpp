@@ -33,6 +33,8 @@
 #include "AmRtpReceiver.h"
 #include "SBCCallRegistry.h"
 
+#include "global_defs.h"
+
 #define TRACE DBG
 
 // helper functions
@@ -553,8 +555,8 @@ void CallLeg::onInitialReply(B2BSipReplyEvent *e)
   /* 100-199 */
   if (e->reply.code < 200) {
     string announce = getHeader(e->reply.hdrs, SIP_HDR_P_DSM_APP);
-    string p_dsm_app_param = get_header_param(announce, "early-announce");
-    dlg->setForcedEarlyAnnounce(p_dsm_app_param == "force");
+    string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
+    dlg->setForcedEarlyAnnounce(p_dsm_app_param == DSM_VALUE_FORCE);
 
     /* exceptionally treat 183 with the 'P-DSM-App: <app-name>;early-announce=force',
        similarly to the 200OK response, this will properly update the caller

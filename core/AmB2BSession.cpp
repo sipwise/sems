@@ -32,6 +32,8 @@
 #include "AmUtils.h"
 #include "AmRtpReceiver.h"
 
+#include "global_defs.h"
+
 #include <assert.h>
 
 // helpers
@@ -295,8 +297,8 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
         /* ensure that 'P-DSM-App: <app-name>;early-announce=force' is not present */
         if (reply_ev->reply.code == 183 && !dlg->getForcedEarlyAnnounce()) {
           string announce = getHeader(reply_ev->reply.hdrs, SIP_HDR_P_DSM_APP);
-          string p_dsm_app_param = get_header_param(announce, "early-announce");
-          dlg->setForcedEarlyAnnounce(p_dsm_app_param == "force");
+          string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
+          dlg->setForcedEarlyAnnounce(p_dsm_app_param == DSM_VALUE_FORCE);
         }
 
         /* don't forget to reset the force_early_announce, if 200 OK in the same leg received */
@@ -335,7 +337,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             if (dlg->getUACInvTransPending()) {
               DBG("changed session, but UAC INVITE trans pending\n");
             } else {
-              DBG("Received 183 with <;early-announce=force>, refreshing media session.\n");
+              DBG("Received 183 with <;%s=%s>, refreshing media session.\n", DSM_PARAM_EARLY_AN, DSM_VALUE_FORCE);
 
               setMute(true);
               AmMediaProcessor::instance()->removeSession(this);
@@ -357,14 +359,14 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             (office hours, play last caller, pre announce, early dbprompt)
             in the session, which has had AA or a transfer before going to this DSM application,
             then a caller is now likely in the connected state, and requires BYE, not 480 */
-          if (p_dsm_app.find("office-hours") != std::string::npos ||
-              p_dsm_app.find("pre-announce") != std::string::npos ||
-              p_dsm_app.find("early-dbprompt") != std::string::npos ||
-              p_dsm_app.find("play-last-caller") != std::string::npos) {
+          if (p_dsm_app.find(DSM_APP_OH) != std::string::npos ||
+              p_dsm_app.find(DSM_APP_PRE_AN) != std::string::npos ||
+              p_dsm_app.find(DSM_APP_EARLYDB_PR) != std::string::npos ||
+              p_dsm_app.find(DSM_APP_P_L_CALLER) != std::string::npos) {
 
             /* check the ;playback= parameter */
-            string p_dsm_app_param = get_header_param(p_dsm_app, "playback");
-            if (p_dsm_app_param == "finished") {
+            string p_dsm_app_param = get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK);
+            if (p_dsm_app_param == DSM_VALUE_FINISHED) {
               DBG("This is the end of DSM playback, the caller is in the connected state.\n");
               DBG("Terminating the original leg with BYE, instead of 480.\n");
               terminateLeg();
