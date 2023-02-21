@@ -810,6 +810,13 @@ void AmMimeBody::print(string& buf) const
     for(Parts::const_iterator it = parts.begin();
 	it != parts.end(); ++it) {
 
+      if (ct.mp_boundary != NULL && ct.mp_boundary->value.at(0) == '"' && ct.mp_boundary->value.back() == '"' )
+      {
+        DBG("Stripping doublequotes at the beginning and at the end of the boundary");
+        ct.mp_boundary->value.erase(0,1);
+        ct.mp_boundary->value.erase(ct.mp_boundary->value.size() - 1);
+      }
+
       buf += "--" + (ct.mp_boundary != NULL ? ct.mp_boundary->value : string("") ) + CRLF;
       buf += SIP_HDR_CONTENT_TYPE COLSP + (*it)->getCTHdr() + CRLF;
       buf += (*it)->hdrs + CRLF;
