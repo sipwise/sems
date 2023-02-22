@@ -1,0 +1,60 @@
+From 69451581d6af69ed2c6e9492350d269b688eba45 Mon Sep 17 00:00:00 2001
+From: Daniel Grotti <dgrotti@sipwise.com>
+Date: Tue, 21 Feb 2023 17:39:42 +0100
+Subject: [PATCH] MT#56728 avoid doublequotes on SDP boundary
+
+Strip doublequotes on SDP boundary when the Content-Type header
+contains them.
+
+for example:
+Content-Type: multipart/mixed;boundary="unique-boundary-1"
+
+will now produce something like that
+
+--unique-boundary-1
+Content-Type: application/sdp
+
+v=0
+o=user1 53655765 2353687637 IN IP4 10.0.0.179
+s=-
+c=IN IP4 10.0.0.179
+t=0 0
+m=audio 30000 RTP/AVP 8
+a=rtpmap:8 PCMA/8000
+a=sendrecv
+a=rtcp:30001
+a=ptime:50
+
+--unique-boundary-1
+Content-Type: application/vnd.cirpack.isdn-ext
+Content-Disposition: signal;handling=required
+
+...
+
+and not
+--"unique-boundary-1"
+---
+ core/AmMimeBody.cpp | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/core/AmMimeBody.cpp b/core/AmMimeBody.cpp
+index 29e6820f..56eb9471 100644
+--- a/core/AmMimeBody.cpp
++++ b/core/AmMimeBody.cpp
+@@ -808,6 +808,13 @@ void AmMimeBody::print(string& buf) const
+     for(Parts::const_iterator it = parts.begin();
+ 	it != parts.end(); ++it) {
+ 
++      if (ct.mp_boundary != NULL && ct.mp_boundary->value.at(0) == '"' && ct.mp_boundary->value.back() == '"' )
++      {
++        DBG("Stripping doublequotes at the beginning and at the end of the boundary");
++        ct.mp_boundary->value.erase(0,1);
++        ct.mp_boundary->value.erase(ct.mp_boundary->value.size() - 1);
++      }
++
+       buf += "--" + (ct.mp_boundary != NULL ? ct.mp_boundary->value : string("") ) + CRLF;
+       buf += SIP_HDR_CONTENT_TYPE COLSP + (*it)->getCTHdr() + CRLF;
+       buf += (*it)->hdrs + CRLF;
+-- 
+2.30.2
+
