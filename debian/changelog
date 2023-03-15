@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0-1+0~mr10.5.5.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [b25a3ac] MT#56728 avoid doublequotes on SDP boundary
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 15 Mar 2023 16:10:16 +0100
+
 ngcp-sems (1:1.6.0-1+0~mr10.5.4.0) unstable; urgency=medium
 
   * New release.
