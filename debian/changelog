@@ -1,3 +1,26 @@
+ngcp-sems (1:1.6.0+0~mr11.3.1.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [fe57164] MT#56321 core::AmB2BSession - refactor onB2BEvent()
+  * [d11c748] MT#56321 core::AmOfferAnswer - refactor onReplyOut()
+  * [60e16ed] MT#56321 AmOfferAnswer: Re-use existing SDP for 183 with no body
+  * [ab7c185] MT#56321 core::AmOfferAnswer add logging into most important places
+  * [aec816d] MT#56321 Add 'Allow:' header to the 200OK, if present in the request
+  * [cd233e1] MT#56321 office-hours: catch the finish of the playback
+  * [b85bc42] MT#56321 AmB2BSession::onB2BEvent() - refresh caller if 183 media forced
+  * [4012dc9] MT#56321 refactor AmB2BCallerSession::onB2BEvent()
+  * [91039bb] MT#56321 Refresh caller if 183 media forced (part 2)
+  * [14ad7f8] MT#56321 Use the P-DSM-App instead of the P-Early-Announce
+  * [8195d13] MT#56321 AmB2BSession::onB2BEvent - add DSM 'early-dbprompt' processing
+  * [020cd18] MT#56321 core: introduce 'global_defs.h' header
+  * [b34b85f] MT#56321 DSM: Introduce helper functions related to DSM processing
+  * [eb60a00] MT#56321 DSM: Finishing the DSM playback, support: 486, 487 and 603
+
+  [ Daniel Grotti ]
+  * [2b49603] MT#56728 avoid doublequotes on SDP boundary
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 24 Mar 2023 13:06:03 +0100
+
 ngcp-sems (1:1.6.0+0~mr11.3.0.0) unstable; urgency=medium
 
   [ Roman Romanchenko ]
