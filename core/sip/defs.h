@@ -56,11 +56,13 @@
 #define SIP_HDR_REPLACES          "Replaces"
 #define SIP_HDR_P_DSM_APP        "P-DSM-App"
 
-#define DSM_PARAM_EARLY_AN  "early-announce"
-#define DSM_PARAM_PLAYBACK  "playback"
+#define DSM_PARAM_EARLY_AN      "early-announce"
+#define DSM_PARAM_PLAYBACK      "playback"
+#define DSM_PARAM_RESET_TOTAG   "reset-to-tag"
 
-#define DSM_VALUE_FORCE     "force"
-#define DSM_VALUE_FINISHED  "finished"
+#define DSM_VALUE_FORCE         "force"
+#define DSM_VALUE_FINISHED      "finished"
+#define DSM_VALUE_IS_SET        "1"
 
 #define SIP_HDR_COL(_hdr)       _hdr ":"
 #define SIP_HDR_COLSP(_hdr)     SIP_HDR_COL(_hdr) " "

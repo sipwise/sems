@@ -64,9 +64,8 @@ static void errCode2RelayedReply(AmSipReply &reply, int err_code, unsigned defau
 
 static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
 {
-    string announce = getHeader(hdrs, SIP_HDR_P_DSM_APP);
-    string p_dsm_app_param = get_header_param(announce, DSM_PARAM_EARLY_AN);
-    return p_dsm_app_param == DSM_VALUE_FORCE;
+  string p_dsm_app = getHeader(hdrs, SIP_HDR_P_DSM_APP, true);
+  return get_header_param(p_dsm_app, DSM_PARAM_EARLY_AN) == DSM_VALUE_FORCE;
 }
 
 static bool isDSMPlaybackFinished(const std::string &hdrs)
@@ -75,8 +74,13 @@ static bool isDSMPlaybackFinished(const std::string &hdrs)
    *  particular DSM applications, for now plays no role.
    */
   string p_dsm_app = getHeader(hdrs, SIP_HDR_P_DSM_APP, true);
-  string p_dsm_app_param = get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK);
-  return p_dsm_app_param == DSM_VALUE_FINISHED;
+  return get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK) == DSM_VALUE_FINISHED;
+}
+
+static bool isDSMToTagReset(const std::string &hdrs)
+{
+  string p_dsm_app = getHeader(hdrs, SIP_HDR_P_DSM_APP, true);
+  return get_header_param(p_dsm_app, DSM_PARAM_RESET_TOTAG) == DSM_VALUE_IS_SET;
 }
 
 //
@@ -553,12 +557,21 @@ void AmB2BSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 {
   TransMap::iterator t = relayed_req.find(reply.cseq);
   bool fwd = (t != relayed_req.end()) && (reply.code != 100);
+  bool to_tag_reset = isDSMToTagReset(reply.hdrs); /* check P-DSM-App: <app-name>;reset-to-tag=1 */
 
   DBG("onSipReply: %s -> %i %s (fwd=%s), c-t=%s\n",
       reply.cseq_method.c_str(), reply.code,reply.reason.c_str(),
       fwd?"true":"false",reply.body.getCTStr().c_str());
 
-  if(!dlg->getRemoteTag().empty() && dlg->getRemoteTag() != reply.to_tag) {    
+  if (to_tag_reset && !dlg->getRemoteTag().empty() && reply.code >= 180 && reply.code <= 183 ) {
+    DBG("onSipReply: sess %p received %i reply with remote-tag %s", this, reply.code, reply.to_tag.c_str());
+    DBG("dlg->getRemoteTag(%s)\n", dlg->getRemoteTag().c_str());
+    DBG("dlg->setRemoteTag(%s)\n", reply.to_tag.c_str());
+
+    // Overwrite the existing to RemoteTag with the received one in order to store always the last
+    dlg->setRemoteTag(reply.to_tag.c_str());
+  }
+  else if(!dlg->getRemoteTag().empty() && dlg->getRemoteTag() != reply.to_tag) {
     DBG("sess %p received %i reply with != to-tag: %s (remote-tag:%s)",
 	this, reply.code, reply.to_tag.c_str(),dlg->getRemoteTag().c_str());
     return; // drop packet
