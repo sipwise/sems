@@ -561,74 +561,74 @@ void AmB2BSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 
   DBG("onSipReply: %s -> %i %s (fwd=%s), c-t=%s\n",
       reply.cseq_method.c_str(), reply.code,reply.reason.c_str(),
-      fwd?"true":"false",reply.body.getCTStr().c_str());
+      fwd? "true" : "false", reply.body.getCTStr().c_str());
 
   if (to_tag_reset && !dlg->getRemoteTag().empty() && reply.code >= 180 && reply.code <= 183 ) {
     DBG("onSipReply: sess %p received %i reply with remote-tag %s", this, reply.code, reply.to_tag.c_str());
     DBG("dlg->getRemoteTag(%s)\n", dlg->getRemoteTag().c_str());
     DBG("dlg->setRemoteTag(%s)\n", reply.to_tag.c_str());
 
-    // Overwrite the existing to RemoteTag with the received one in order to store always the last
+    /* Overwrite the existing to RemoteTag with the received one in order to store always the last */
     dlg->setRemoteTag(reply.to_tag.c_str());
-  }
-  else if(!dlg->getRemoteTag().empty() && dlg->getRemoteTag() != reply.to_tag) {
+  } else if(!dlg->getRemoteTag().empty() && dlg->getRemoteTag() != reply.to_tag) {
     DBG("sess %p received %i reply with != to-tag: %s (remote-tag:%s)",
-	this, reply.code, reply.to_tag.c_str(),dlg->getRemoteTag().c_str());
-    return; // drop packet
+        this, reply.code, reply.to_tag.c_str(),dlg->getRemoteTag().c_str());
+    return; /* drop packet */
   }
 
   if( ((reply.cseq_method == SIP_METH_SUBSCRIBE) ||
        (reply.cseq_method == SIP_METH_NOTIFY) ||
-       (reply.cseq_method == SIP_METH_REFER))
-      && !subs->onReplyIn(req,reply) ) {
+       (reply.cseq_method == SIP_METH_REFER)) &&
+       !subs->onReplyIn(req,reply) )
+  {
     DBG("subs.onReplyIn returned false\n");
     return;
   }
 
-  if(fwd) {
+  if (fwd) {
     updateRefreshMethod(reply.hdrs);
-
     AmSipReply n_reply = reply;
     n_reply.cseq = t->second.cseq;
 
     DBG("relaying B2B SIP reply %u %s\n", n_reply.code, n_reply.reason.c_str());
     relayEvent(new B2BSipReplyEvent(n_reply, true, t->second.method, getLocalTag()));
 
-    if(reply.code >= 200) {
+    if (reply.code >= 200) {
       if ((reply.code < 300) && (t->second.method == SIP_METH_INVITE)) {
-	DBG("not removing relayed INVITE transaction yet...\n");
+        DBG("not removing relayed INVITE transaction yet...\n");
       } else {
-	//grab cseq-mqpping in case of REFER
-	if((reply.code < 300) && (reply.cseq_method == SIP_METH_REFER)) {
-	  if(subs->subscriptionExists(SingleSubscription::Subscriber,
-				      "refer",int2str(reply.cseq))) {
-	    // remember mapping for refer event package event-id
-	    insertMappedReferID(reply.cseq,t->second.cseq);
-	  }
-	}
-	relayed_req.erase(t);
+        /* grab cseq-mqpping in case of REFER */
+        if ((reply.code < 300) && (reply.cseq_method == SIP_METH_REFER)) {
+          if (subs->subscriptionExists(SingleSubscription::Subscriber, "refer",int2str(reply.cseq))) {
+            /* remember mapping for refer event package event-id */
+            insertMappedReferID(reply.cseq,t->second.cseq);
+          }
+        }
+        relayed_req.erase(t);
       }
     }
+
   } else {
     AmSession::onSipReply(req, reply, old_dlg_status);
-
     AmSipReply n_reply = reply;
-    if(est_invite_cseq == reply.cseq){
+
+    if (est_invite_cseq == reply.cseq) {
       n_reply.cseq = est_invite_other_cseq;
-    }
-    else {
-      // correct CSeq for 100 on relayed request (FIXME: why not relayed above?)
-      if (t != relayed_req.end()) n_reply.cseq = t->second.cseq;
-      else {
-        // the reply here will not have the proper cseq for the other side.
-        // We should avoid collisions of CSeqs - painful in comparsions with
-        // est_invite_cseq where are compared CSeq numbers in different
-        // directions. Under presumption that 0 is not used we can use it
-        // as 'unspecified cseq' (according to RFC 3261 this seems to be valid
-        // value so it need not to work always)
+    } else {
+      /* correct CSeq for 100 on relayed request (FIXME: why not relayed above?) */
+      if (t != relayed_req.end()) {
+        n_reply.cseq = t->second.cseq;
+      } else {
+        /* the reply here will not have the proper cseq for the other side.
+         * We should avoid collisions of CSeqs - painful in comparsions with
+         * est_invite_cseq where are compared CSeq numbers in different
+         * directions. Under presumption that 0 is not used we can use it
+         * as 'unspecified cseq' (according to RFC 3261 this seems to be valid
+         * value so it need not to work always) */
         n_reply.cseq = 0;
       }
     }
+
     DBG("relaying B2B SIP reply %u %s\n", n_reply.code, n_reply.reason.c_str());
     relayEvent(new B2BSipReplyEvent(n_reply, false, reply.cseq_method, getLocalTag()));
   }
