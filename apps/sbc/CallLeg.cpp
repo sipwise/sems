@@ -78,7 +78,7 @@ ReliableB2BEvent::~ReliableB2BEvent()
 ////////////////////////////////////////////////////////////////////////////////
 // helper functions
 
-enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection };
+enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection, RecvonlyStream };
 
 static const string sendonly("sendonly");
 static const string recvonly("recvonly");
@@ -130,16 +130,16 @@ static MediaActivity getMediaActivity(const SdpMedia &m, MediaActivity default_v
 
 static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
 {
-  // set defaults from session parameters and attributes
-  // inactive/sendonly/sendrecv/recvonly may be given as session attributes,
-  // connection can be given for session as well
+  /* set defaults from session parameters and attributes
+   * inactive/sendonly/sendrecv/recvonly may be given as session attributes,
+   * connection can be given for session as well */
   bool connection_active = connectionActive(sdp.conn, false /* empty connection like inactive? */);
   MediaActivity session_activity = getMediaActivity(sdp.attributes, Sendrecv);
 
   for (std::vector<SdpMedia>::iterator m = sdp.media.begin(); 
       m != sdp.media.end(); ++m) 
   {
-    if (m->port == 0) continue; // this stream is disabled, handle like inactive (?)
+    if (m->port == 0) continue; /* this stream is disabled, handle like inactive (?) */
     if (!connectionActive(m->conn, connection_active)) {
       method = ZeroedConnection;
       continue;
@@ -153,14 +153,17 @@ static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
         method = InactiveStream;
         continue;
 
-      case Recvonly: // ?
+      case Recvonly:
+        method = RecvonlyStream;
+        continue;
+
       case Sendrecv:
-        return false; // media stream is active
+        return false; /* media stream is active */
     }
   }
 
   if (sdp.media.empty()) {
-    // no streams in the SDP, needed to set method somehow
+    /* no streams in the SDP, needed to set the method somehow */
     if (!connection_active) method = ZeroedConnection;
     else {
       switch (session_activity) {
@@ -173,15 +176,19 @@ static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
           break;
 
         case Recvonly:
+          method = RecvonlyStream;
+          break;
+
+        /* well, no stream is something like InactiveStream, isn't it? */
         case Sendrecv:
-          method = InactiveStream; // well, no stream is something like InactiveStream, isn't it?
+          method = InactiveStream;
           break;
 
       }
     }
   }
 
-  return true; // no active stream was found
+  return true;
 }
 
 static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
@@ -1645,23 +1652,27 @@ void CallLeg::adjustOffer(AmSdp &sdp)
 {
   if (hold != PreserveHoldStatus) {
     DBG("local hold/unhold request");
-    // locally generated hold/unhold requests that already contain correct
-    // hold/resume bodies and need not to be altered via createHoldRequest
-    // hold/resumeRequested is already called
-  }
-  else {
-    // handling B2B SDP, check for hold/unhold
+    /* locally generated hold/unhold requests that already contain correct
+     * hold/resume bodies and need not to be altered via createHoldRequest
+     * hold/resumeRequested is already called */
 
+  } else {
+    /* handling B2B SDP, check for hold/unhold */
     HoldMethod hm;
-    // if hold request, transform to requested kind of hold and remember that hold
-    // was requested with this offer
+
+    /* if hold request, transform to requested kind of hold and remember that hold
+     * was requested with this offer */
     if (isHoldRequest(sdp, hm)) {
-      DBG("B2b hold request");
-      holdRequested();
+      DBG("%s: B2b hold request", getLocalTag().c_str());
+
+      /* true only for 'sendonly */
+      if (hm != RecvonlyStream)
+        holdRequested(); /* looks like it handles only MoH */
+
       alterHoldRequest(sdp);
       hold = HoldRequested;
-    }
-    else {
+
+    } else {
       if (on_hold) {
         DBG("B2b resume request");
         resumeRequested();
