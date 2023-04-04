@@ -39,18 +39,17 @@ using std::vector;
 enum FilterType { Transparent=0, Whitelist, Blacklist, Undefined };
 
 struct FilterEntry {
-  FilterType filter_type;
-  set<string> filter_list;
+    FilterType filter_type;
+    set<string> filter_list;
 
-  bool operator==(const FilterEntry& rhs) const {
-    return (filter_type == rhs.filter_type) &&
-    (filter_list == rhs.filter_list);
-  }
-
+    bool operator==(const FilterEntry& rhs) const {
+      return (filter_type == rhs.filter_type) &&
+             (filter_list == rhs.filter_list);
+    }
 };
 
 bool readFilter(AmConfigReader& cfg, const char* cfg_key_filter, const char* cfg_key_list,
-		vector<FilterEntry>& filter_list, bool keep_transparent_entry);
+    vector<FilterEntry>& filter_list, bool keep_transparent_entry);
 
 /** string to Filter type, Undefined if not found */
 FilterType String2FilterType(const char* ft);
@@ -59,8 +58,8 @@ FilterType String2FilterType(const char* ft);
 bool isActiveFilter(FilterType ft);
 
 const char* FilterType2String(FilterType ft);
-int skip_header(const std::string& hdr, size_t start_pos, 
-		 size_t& name_end, size_t& val_begin, size_t& val_end, size_t& hdr_end);
+int skip_header(const std::string& hdr, size_t start_pos,
+    size_t& name_end, size_t& val_begin, size_t& val_end, size_t& hdr_end);
 int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list);
 
 #endif
