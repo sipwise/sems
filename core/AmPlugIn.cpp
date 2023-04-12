@@ -30,9 +30,7 @@
 #include "AmConfig.h"
 #include "AmApi.h"
 #include "AmUtils.h"
-//#include "AmSdp.h"
 #include "AmSipDispatcher.h"
-//#include "AmServer.h"
 
 #include "amci/amci.h"
 #include "amci/codecs.h"
@@ -92,14 +90,24 @@ amci_codec_t _codec_tevent = {
   tevent_samples2bytes
 };
 
-amci_payload_t _payload_tevent = { 
+amci_payload_t _payload_tevent = {
   -1,
   "telephone-event",
-  8000, // telephone-event has always SR 8000 
+  8000, /* telephone-event has always SR 8000 */
   8000,
   -1,
   CODEC_TELEPHONE_EVENT,
   -1 
+};
+
+amci_payload_t _payload_tevent_opus = {
+  -1,
+  "telephone-event",
+  48000,
+  48000,
+  -1,
+  CODEC_TELEPHONE_EVENT,
+  -1
 };
 
 AmPlugIn* AmPlugIn::_instance=0;
@@ -160,6 +168,7 @@ void AmPlugIn::init() {
   addCodec(&_codec_pcm16);
   addCodec(&_codec_tevent);
   addPayload(&_payload_tevent);
+  addPayload(&_payload_tevent_opus); /* OPUS requires own tel event frequency */
 }
 
 int AmPlugIn::load(const string& directory, const string& plugins)
@@ -416,18 +425,22 @@ string AmPlugIn::getSdpFormatParameters(int codec_id, bool is_offer, const strin
 }
 
 int AmPlugIn::getDynPayload(const string& name, int rate, int encoding_param) const {
-  // find a dynamic payload by name/rate and encoding_param (channels, if > 0)
-  for(std::map<int, amci_payload_t*>::const_iterator pl_it = payloads.begin();
+  /* find a dynamic payload by name/rate and encoding_param (channels, if > 0) */
+  for (std::map<int, amci_payload_t*>::const_iterator pl_it = payloads.begin();
       pl_it != payloads.end(); ++pl_it)
-    if( (!strcasecmp(name.c_str(),pl_it->second->name)
-	 && (rate == pl_it->second->advertised_sample_rate)) ) {
-      if ((encoding_param > 0) && (pl_it->second->channels > 0) && 
-	  (encoding_param != pl_it->second->channels))
-	continue;
-	  
-      return pl_it->first;
-    }
-  // not found
+  {
+      if ((!strcasecmp(name.c_str(),pl_it->second->name) &&
+          (rate == pl_it->second->advertised_sample_rate)))
+      {
+        if ((encoding_param > 0) && (pl_it->second->channels > 0) &&
+            (encoding_param != pl_it->second->channels))
+        {
+          continue;
+        }
+        return pl_it->first;
+      }
+  }
+  /* not found */
   return -1;
 }
 
