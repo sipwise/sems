@@ -966,20 +966,20 @@ void CallLeg::resumeAccepted()
   DBG("%s: resuming held, unmuting media session %p(%s)\n", getLocalTag().c_str(), ms, !a_leg ? "A" : "B");
 }
 
-// was for caller only
+/* was for caller only */
 void CallLeg::onInvite(const AmSipRequest& req)
 {
-  // do not call AmB2BSession::onInvite(req); we changed the behavior
-  // this method is not called for re-INVITEs because once connected we are in
-  // sip_relay_only mode and the re-INVITEs are relayed instead of processing
-  // (see AmB2BSession::onSipRequest)
+  /* do not call AmB2BSession::onInvite(req); we changed the behavior
+   * this method is not called for re-INVITEs because once connected we are in
+   * sip_relay_only mode and the re-INVITEs are relayed instead of processing
+   * (see AmB2BSession::onSipRequest) */
 
-  if (call_status == Disconnected) { // for initial INVITE only
-    est_invite_cseq = req.cseq; // remember initial CSeq
-    // initialize RTP relay
+  if (call_status == Disconnected) { /* for initial INVITE only */
+    est_invite_cseq = req.cseq; /* remember initial CSeq */
+    /* initialize RTP relay */
 
-    // relayed INVITE - we need to add the original INVITE to
-    // list of received (relayed) requests
+    /* relayed INVITE - we need to add the original INVITE to
+     * list of received (relayed) requests */
     recvd_req.insert(std::make_pair(req.cseq, req));
   }
 }
@@ -987,20 +987,20 @@ void CallLeg::onInvite(const AmSipRequest& req)
 void CallLeg::onSipRequest(const AmSipRequest& req)
 {
   TRACE("%s: SIP request %d %s received in %s state\n",
-      getLocalTag().c_str(),
-      req.cseq, req.method.c_str(), callStatus2str(call_status));
+        getLocalTag().c_str(), req.cseq,
+        req.method.c_str(), callStatus2str(call_status));
 
-  // we need to handle cases if there is no other leg (for example call parking)
-  // Note that setting sip_relay_only to false in this case doesn't solve the
-  // problem because AmB2BSession always tries to relay the request into the
-  // other leg.
+  /* we need to handle cases if there is no other leg (for example call parking)
+   * Note that setting sip_relay_only to false in this case doesn't solve the
+   * problem because AmB2BSession always tries to relay the request into the
+   * other leg. */
   if ((getCallStatus() == Disconnected || getCallStatus() == Disconnecting)
         && getOtherId().empty())
   {
     TRACE("handling request %s in disconnected state", req.method.c_str());
 
-    // this is not correct but what is?
-    // handle reINVITEs within B2B call with no other leg
+    /* this is not correct but what is?
+     * handle reINVITEs within B2B call with no other leg */
     if (req.method == SIP_METH_INVITE && dlg->getStatus() == AmBasicSipDialog::Connected) {
       try {
         dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
@@ -1008,29 +1008,30 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
       catch(...) {
         ERROR("exception when handling INVITE in disconnected state");
         dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-        // stop the call?
+        /* stop the call? */
       }
+    } else {
+      AmSession::onSipRequest(req);
     }
-    else AmSession::onSipRequest(req);
 
-    if (req.method == SIP_METH_BYE) {
-      stopCall(&req); // is this needed?
-    }
-  }
-  else {
+    /* is this needed? */
+    if (req.method == SIP_METH_BYE)
+      stopCall(&req);
+
+  } else {
     if (getCallStatus() == Ringing && !getOtherId().empty() && req.method == SIP_METH_BYE) {
-        dlg->reply(req,200,"OK");
+        dlg->reply(req, 200, "OK");
         stopCall(&req);
-    }
-    else if(getCallStatus() == Disconnected &&
-       req.method == SIP_METH_BYE) {
-      // seems that we have already sent/received a BYE
-      // -> we'd better terminate this ASAP
-      //    to avoid other confusions...
-      dlg->reply(req,200,"OK");
-    }
-    else
+
+    } else if(getCallStatus() == Disconnected && req.method == SIP_METH_BYE) {
+      /* seems that we have already sent/received a BYE
+       * -> we'd better terminate this ASAP
+       *    to avoid other confusions... */
+      dlg->reply(req, 200, "OK");
+
+    } else {
       AmB2BSession::onSipRequest(req);
+    }
   }
 }
 
