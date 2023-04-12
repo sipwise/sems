@@ -256,7 +256,7 @@ int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list) {
     if (!hdrs.length() || ! filter_list.size())
         return 0;
 
-    DBG("applying %zd header filters\n", filter_list.size());
+    DBG("Applying '%zd' header filters\n", filter_list.size());
 
     for (vector<FilterEntry>::const_iterator fe = filter_list.begin();
         fe != filter_list.end(); fe++)
@@ -286,8 +286,8 @@ int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list) {
 
             string hdr_value = hdrs.substr(val_begin, val_end - val_begin);
 
-            DBG("hdr name parsed: '%s'\n", hdr_name.c_str());
-            DBG("hdr value parsed: '%s'\n", hdr_value.c_str());
+            /* DBG("hdr name parsed: '%s'\n", hdr_name.c_str()); */
+            /* DBG("hdr value parsed: '%s'\n", hdr_value.c_str()); */
 
             for (set<string>::iterator it = headerfilter_list.begin();
                 it != headerfilter_list.end(); ++it)
@@ -302,7 +302,7 @@ int inplaceHeaderFilter(string& hdrs, const vector<FilterEntry>& filter_list) {
                 DBG("erasing header '%s' by filter '%s'\n", hdr_name.c_str(), FilterType2String(f_type));
                 hdrs.erase(start_pos, hdr_end-start_pos);
             } else {
-                DBG("header accepted '%s' by filter '%s'\n", hdr_name.c_str(), FilterType2String(f_type));
+                /* DBG("header accepted '%s' by filter '%s'\n", hdr_name.c_str(), FilterType2String(f_type)); */
                 start_pos = hdr_end;
             }
         }
