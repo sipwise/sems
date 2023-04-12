@@ -73,6 +73,16 @@ static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
     return p_dsm_app_param == DSM_VALUE_FORCE;
 }
 
+static bool isDSMPlaybackFinished(const std::string &hdrs)
+{
+  /** TODO: for the future, we might also want to check
+   *  particular DSM applications, for now plays no role.
+   */
+  string p_dsm_app = getHeader(hdrs, SIP_HDR_P_DSM_APP, true);
+  string p_dsm_app_param = get_header_param(p_dsm_app, DSM_PARAM_PLAYBACK);
+  return p_dsm_app_param == DSM_VALUE_FINISHED;
+}
+
 AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
   : AmBasicSipDialog(h),oa(this),rel100(this,h),
     offeranswer_enabled(true),
@@ -384,12 +394,49 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
         /* 100-199 */
         if (reply.code < 200) {
+          setForcedEarlyAnnounce(isDSMEarlyAnnounceForced(reply.hdrs));
+
           if (reply.code == 100 || reply.to_tag.empty()) {
             setStatus(Proceeding);
           } else {
             setStatus(Early);
             setRemoteTag(reply.to_tag);
             setRouteSet(reply.route);
+          }
+
+          /* we should always keep Route set for this leg updated in case
+             the provisional response updates the list of routes for any reason */
+          if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
+            DBG("<%d> Response code is processed, reset the Route set for the leg.\n",
+                reply.code);
+            setRouteSet(reply.route);
+          }
+
+          /* exceptionally treat 183 with the 'P-DSM-App: <app-name>;early-announce=force',
+             similarly to the 200OK response, this will properly update the caller
+             with the late SDP capabilities (an early announcement),
+             which has been put on hold during the transfer
+
+             And furthermore will give the possibility to receive and forward BYE.
+
+             DSM applications using it:
+             - early-dbprompt
+             - pre-announce
+             - play-last-caller
+             - office-hours */
+          if (reply.code == 183 && getForcedEarlyAnnounce()) {
+            DBG("This is 183 with <;%s=%s>, treated exceptionally as 200OK.\n", DSM_PARAM_EARLY_AN, DSM_VALUE_FORCE);
+
+            setStatus(Connected);
+            setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */
+
+            if (reply.to_tag.empty()) {
+              DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
+                  reply.callid.c_str());
+              sendRequest(SIP_METH_BYE);
+            }	else {
+              setRemoteTag(reply.to_tag);
+            }
           }
 
         /* 200-299 */
@@ -425,7 +472,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
           /* we should always keep Route set for this leg updated in case
              the provisional response updates the list of routes for any reason */
           if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
-            DBG("<%d> Response code in processed, reset the Route set for the leg.\n",
+            DBG("<%d> Response code is processed, reset the Route set for the leg.\n",
                 reply.code);
             setRouteSet(reply.route);
           }
@@ -463,7 +510,8 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
           setRouteSet(reply.route);
 
           /* reset faked 183, if was previously set and this is 200OK received in this leg */
-          if (getFaked183As200()) setFaked183As200(false);
+          if (getFaked183As200())
+            setFaked183As200(false);
 
           if (reply.to_tag.empty()) {
             DBG("received 2xx reply without to-tag (callid=%s): sending BYE\n",
@@ -498,9 +546,22 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
         break;
 
-      /* case Connected: // late 200...
-         TODO: if reply.to_tag != getRemoteTag()
-                -> ACK + BYE (+absorb answer) */
+      /* TODO: if reply.to_tag != getRemoteTag()
+       *       -> ACK + BYE (+absorb answer) */
+      case Connected:
+
+        DBG("This is the Connected stage of the dialog.\n");
+
+        /* treat 4XX class of responses for the faked connected state of the dlg
+         * as those which finilize a DSM playback (check additionally P-DSM-App header)
+         */
+        if ((reply.code > 400 && reply.code < 500) &&
+            getFaked183As200() && isDSMPlaybackFinished(reply.hdrs))
+        {
+          setStatus(Disconnected);
+        }
+
+        break;
 
       default:
         break;
@@ -508,9 +569,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   }
 
   if (status == Disconnecting) {
-
-    DBG("?Disconnecting?: cseq_method = %s; code = %i\n",
-        reply.cseq_method.c_str(), reply.code);
+    DBG("Disconnecting: cseq_method = %s; code = %i\n", reply.cseq_method.c_str(), reply.code);
 
     if ((reply.cseq_method == SIP_METH_BYE) && (reply.code >= 200)) {
       /* TODO: support the auth case here (401/403) */
