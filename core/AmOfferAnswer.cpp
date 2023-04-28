@@ -268,7 +268,7 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
   return err_code;
 }
 
-int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body)
+int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body, bool force_no_sdp_update)
 {
   DBG("AmOfferAnswer::onTxSdp()\n");
 
@@ -283,12 +283,14 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body)
 
     case OA_None:
     case OA_Completed:
-      setState(OA_OfferSent);
+      if (!force_no_sdp_update)
+        setState(OA_OfferSent);
       cseq = m_cseq;
       break;
 
     case OA_OfferRecved:
-      setState(OA_Completed);
+      if (!force_no_sdp_update)
+        setState(OA_Completed);
       break;
 
     case OA_OfferSent:
@@ -336,8 +338,8 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
     }
   }
 
-  if(has_sdp && (onTxSdp(req.cseq,req.body) != 0)){
-    DBG("onTxSdp() failed\n");
+  if (has_sdp && (onTxSdp(req.cseq,req.body) != 0)) {
+    WARN("onTxSdp() failed\n");
     return -1;
   }
 
@@ -347,8 +349,25 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
 int AmOfferAnswer::onReplyOut(AmSipReply& reply)
 {
   AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
+
   bool generate_sdp = sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
+  bool force_no_sdp_update = false;   /* for sequential 183 responses with similar SDP body (version)  */
+
+  /* check whether 183 has same SDP version it has had before. Then it doesn't change leg's OA state */
+  if (has_sdp && !generate_sdp &&
+      reply.cseq_method == SIP_METH_INVITE && reply.code == 183)
+  {
+    AmSdp parser_sdp;
+    if (parser_sdp.parse((const char*)sdp_body->getPayload())) {
+      WARN("SDP parsing for the coming reply failed (cannot create AmSdp object).\n");
+    } else {
+      force_no_sdp_update = (sdp_local.origin.sessV == parser_sdp.origin.sessV);
+      if (force_no_sdp_update)
+        DBG("Forcing no OA state update (no SDP changes, same session version: was <%llu>, now is <%llu>).\n",
+            sdp_local.origin.sessV, parser_sdp.origin.sessV);
+    }
+  }
 
   if (!has_sdp && !generate_sdp) {
     /* let's see whether we should force SDP or not. */
@@ -441,12 +460,12 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     }
   }
 
-  if (has_sdp && (onTxSdp(reply.cseq,reply.body) != 0)) {
-    DBG("onTxSdp() failed\n");
+  if (has_sdp && (onTxSdp(reply.cseq, reply.body, force_no_sdp_update) != 0)) {
+    WARN("onTxSdp() failed\n");
     return -1;
   }
 
-  if((reply.code >= 300) && (reply.cseq == cseq)) {
+  if ((reply.code >= 300) && (reply.cseq == cseq)) {
     /* final error reply -> cleanup OA state */
     DBG("after %u reply to %s: resetting OA state\n", reply.code, reply.cseq_method.c_str());
     clearTransitionalState();
