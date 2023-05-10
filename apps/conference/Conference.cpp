@@ -382,7 +382,7 @@ AmSession* ConferenceFactory::onRefer(const AmSipRequest& req, const string& app
 ConferenceDialog::ConferenceDialog(const string& conf_id,
 				   AmConferenceChannel* dialout_channel)
   : conf_id(conf_id), 
-    channel(0),
+    channel(nullptr),
     play_list(this),
     dialout_channel(dialout_channel),
     state(CS_normal),

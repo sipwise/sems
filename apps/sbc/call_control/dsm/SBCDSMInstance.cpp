@@ -203,8 +203,8 @@ void SBCDSMInstance::onStateChange(SBCCallLeg *call, const CallLeg::StatusChange
   VarMapT event_params;
 
   event_params["SBCCallStatus"] = call->getCallStatusStr();
-  auto_ptr<DSMSipRequest> dsm_request;
-  auto_ptr<DSMSipReply> dsm_reply;
+  unique_ptr<DSMSipRequest> dsm_request;
+  unique_ptr<DSMSipReply> dsm_reply;
 
   switch (cause.reason) {
   case CallLeg::StatusChangeCause::SipReply:

@@ -88,7 +88,7 @@ class AnnRecorderDialog : public AmSession,
   AmPromptCollection& prompts;
   AmPlaylist playlist;
   // we need only one separator in queue
-  auto_ptr<AmPlaylistSeparator> playlist_separator;
+  unique_ptr<AmPlaylistSeparator> playlist_separator;
 
   AmAudioFile wav_file;
   std::map<string, string> params;
@@ -97,7 +97,7 @@ class AnnRecorderDialog : public AmSession,
 
   AmDynInvoke* msg_storage;
 
-  std::auto_ptr<UACAuthCred> cred;
+  std::unique_ptr<UACAuthCred> cred;
 
   enum AnnRecorderState {
     S_WAIT_START,

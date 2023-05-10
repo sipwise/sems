@@ -98,7 +98,7 @@ class SW_VscDialog : public AmSession,
 
     sw_vsc_patterns_t *m_patterns;
 
-    std::auto_ptr<UACAuthCred> cred;
+    std::unique_ptr<UACAuthCred> cred;
 
     u_int64_t getAttributeId(MYSQL *my_handler, const char *attribute);
     u_int64_t getSubscriberId(MYSQL *my_handler, const char *uuid,
