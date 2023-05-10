@@ -5,7 +5,6 @@
 # supported parameters:
 #  play, repeat, duration, delay
 
-
 from log import *
 from ivr import *
 
@@ -44,7 +43,7 @@ class IvrDialog(IvrDialogBase):
 				self.delay=int(param[6:len(param)])
 			elif (param.startswith("duration=")):
 				self.duration=int(param[9:len(param)])
-		
+
 		resource = urlparse(self.play)
 		if (resource[0] == "http"):
 			self.delete_onbye = True
@@ -61,16 +60,15 @@ class IvrDialog(IvrDialogBase):
 
 		if (int(self.duration) > 0):
 			self.setTimer(TIMEOUT_TIMER_ID, self.duration/1000)
-			
+
 		self.enqueue(self.announcement, None)
-		
-		
+
 	def onBye(self):
 		self.stopSession()
 		self.cleanup()
 
 	def onEmptyQueue(self):
- 		if (self.repeat_left>0):
+		if (self.repeat_left > 0):
 			if (int(self.delay) > 0):
 				self.setTimer(DELAY_TIMER_ID, int(self.delay)/1000)
 			else:
@@ -100,5 +98,3 @@ class IvrDialog(IvrDialogBase):
 			unlink(self.filename)
 			debug("cleanup..." + self.filename + " deleted.")
 		self.removeTimers()
-
-
