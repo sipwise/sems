@@ -502,7 +502,10 @@ int main(int argc, char* argv[])
       /* parent process => wait for result from child*/
       for(int i=0;i<2;i++){
         DBG("waiting for child[%d] response\n", i);
-        (void)read(fd[0], &pid, sizeof(int));
+
+        if (read(fd[0], &pid, sizeof(int)) == -1)
+          WARN("Cannot read from the given fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[0], strerror(errno));
+
         if(pid<0){
           ERROR("Child [%d] return an error: %d\n", i, pid);
           close(fd[0]);
@@ -513,12 +516,17 @@ int main(int argc, char* argv[])
       DBG("all children return OK. bye world!\n");
       close(fd[0]);
       return 0;
-    }else {
+    } else {
       /* child */
-      close(fd[0]);
+      if (close(fd[0]) == -1)
+        WARN("Cannot properly close the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[0], strerror(errno));
+
       main_pid = getpid();
       DBG("hi world! I'm child [%d]\n", main_pid);
-      (void)write(fd[1], &main_pid, sizeof(int));
+
+      if (write(fd[1], &main_pid, sizeof(int)) == -1)
+        WARN("Cannot properly write a data to the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[1], strerror(errno));
+
     }
     /* become session leader to drop the ctrl. terminal */
     if (setsid()<0){
@@ -626,8 +634,13 @@ int main(int argc, char* argv[])
   #ifndef DISABLE_DAEMON_MODE
   if(fd[1]) {
     DBG("hi world! I'm main child [%d]\n", main_pid);
-    (void)write(fd[1], &main_pid, sizeof(int));
-    close(fd[1]); fd[1] = 0;
+    if (write(fd[1], &main_pid, sizeof(int)) == -1)
+      WARN("Cannot properly write a data to the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[1], strerror(errno));
+
+    if (close(fd[1]) == -1)
+      WARN("Cannot properly close the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[1], strerror(errno));
+
+    fd[1] = 0;
   }
   #endif
 
@@ -665,10 +678,14 @@ int main(int argc, char* argv[])
 
 #ifndef DISABLE_DAEMON_MODE
   if(fd[1]){
-     main_pid = -1;
-     DBG("send -1 to parent\n");
-     (void)write(fd[1], &main_pid, sizeof(int));
-     close(fd[1]);
+    main_pid = -1;
+    DBG("send -1 to parent\n");
+
+    if (write(fd[1], &main_pid, sizeof(int)) == -1)
+      WARN("Cannot properly write a data to the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[1], strerror(errno));
+
+    if (close(fd[1]) == -1)
+      WARN("Cannot properly close the fd: '%d', errno: '%s'. You probably want to take care of that.\n", fd[1], strerror(errno));
   }
 #endif
 
