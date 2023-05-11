@@ -29,7 +29,7 @@ struct parser_state
   }
 
   void reset_hdr_parser() {
-    memset(&hdr,0,sizeof(sip_header));
+    hdr = {}; //memset(&hdr, 0, sizeof(sip_header));
     st = saved_st = 0;
     beg = c;
   }
