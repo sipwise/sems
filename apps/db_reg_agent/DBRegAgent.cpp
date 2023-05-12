@@ -290,8 +290,8 @@ bool DBRegAgent::loadRegistrations() {
       string type = TYPE_SUBSCRIBER;
       long object_id = row[COLNAME_SUBSCRIBER_ID];
 
-      if (object_id == NULL || object_id == 0) {
-        WARN("REGISTER: object_id is NULL or 0 for this subscriber, skipping..\n");
+      if (object_id == 0) {
+        WARN("REGISTER: object_id is 0 for this subscriber, skipping..\n");
         continue;
       }
 
@@ -415,7 +415,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
       string type = TYPE_PEERING;
       long object_id = row[COLNAME_PEER_ID];
 
-      if (object_id == NULL || object_id == 0) {
+      if (object_id == 0) {
         WARN("REGISTER: object_id is NULL or 0 for this peering, skipping..\n");
         continue;
       }
