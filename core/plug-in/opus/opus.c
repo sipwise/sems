@@ -186,7 +186,8 @@ static char* read_param(char* input, const char *param, char** param_value)
   if (*(input+param_size) != '=')
     return input;
 
-  input=param_size+1;
+  /* move by the param_size + 1 */
+  input += (param_size + 1);
 
   /* Found and discarded a matching parameter */
   *param_value = input;
