@@ -295,7 +295,7 @@ bool DBRegAgent::loadRegistrations() {
         continue;
       }
 
-			DBG("REGISTER: Triggering for subscriber with object_id=<%d>\n", object_id);
+			DBG("REGISTER: Triggering for subscriber with object_id=<%ld>\n", object_id);
 
       string contact_uri;
       if (db_read_contact && row[COLNAME_CONTACT] != mysqlpp::null) {
@@ -420,7 +420,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
         continue;
       }
 
-      DBG("REGISTER: Triggering for peering with object_id=<%d>\n", object_id);
+      DBG("REGISTER: Triggering for peering with object_id=<%ld>\n", object_id);
 
       string contact_uri;
       if (db_read_contact && row[COLNAME_CONTACT] != mysqlpp::null) {
