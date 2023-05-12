@@ -50,7 +50,6 @@ static const WebRtc_Word32 kRPointsQ10[100] = {
   13175,  13258,  13323,  13290,  13296,  13335,  13113,  13255,  13347,  13355,
   13298,  13247,  13313,  13155,  13267,  13313,  13374,  13446,  13525,  13609};
 
-
 /* cdf array for encoder bandwidth (12 vs 16 kHz) indicator */
 static const WebRtc_UWord16 kOneBitEqualProbCdf[3] = {
   0, 32768, 65535 };
@@ -65,11 +64,6 @@ static const WebRtc_UWord16 kOneBitEqualProbInitIndex[1] = {1};
 
 /* coefficients for the stepwise rate estimation */
 
-
-static const WebRtc_Word32 acnQ10 =  426;
-static const WebRtc_Word32 bcnQ10 = -581224;
-static const WebRtc_Word32 ccnQ10 =  722631;
-static const WebRtc_Word32 lbcnQ10 = -402874;
 #define DPMIN_Q10     -10240 // -10.00 in Q10
 #define DPMAX_Q10      10240 // 10.00 in Q10
 #define MINBITS_Q10    10240  /* 10.0 in Q10 */
