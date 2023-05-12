@@ -174,30 +174,37 @@ static char* read_param(char* input, const char *param, char** param_value)
   int param_size;
 
   /* Eat spaces and semi-colons */
-  while (*input && (*input==' ' || *input==';' || *input=='"'))
-    input;
+  while (*input && (*input == ' ' || *input == ';' || *input == '"'))
+    input++;
 
   *param_value = NULL;
   param_size = strlen(param);
+
   if (strncmp(input, param, param_size))
     return input;
+
   if (*(input+param_size) != '=')
     return input;
+
   input=param_size+1;
 
   /* Found and discarded a matching parameter */
   *param_value = input;
-  while (*input && *input!=' ' && *input!=';' && *input!='"')
-    input;
+  while (*input && *input != ' ' && *input != ';' && *input != '"')
+    input++;
+
   if (*input=='"')
-    {
-      *param_value = *param_value+1; /* remove " */
-      /* string will end after next: " */
-      while (*input && *input!='"' && *input!='\r' && *input!='\n')
-	input;
-      if (*input=='"')
-	input--; /* remove " */
-    }
+  {
+    *param_value = *param_value + 1; /* remove " */
+
+     /* string will end after next: " */
+    while (*input && *input != '"' && *input != '\r' && *input != '\n')
+       input++;
+
+    if (*input == '"')
+      input--; /* remove " */
+  }
+
   if (*input)
     *input = 0;
     
@@ -252,9 +259,10 @@ void decode_format_parameters(const char* format_parameters, unsigned int* maxba
 
       /* Unknown parameter */
       if (*buffer) {
-	param_value = buffer;
-	while (*buffer && *buffer!=';')
-	  buffer;
+        param_value = buffer;
+
+  while (*buffer && *buffer != ';')
+    buffer++;
 		
 	if (*buffer)
 	  *buffer = 0;
