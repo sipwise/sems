@@ -307,16 +307,8 @@
                    memLfTbl[subcount], SUBL, CB_NSTAGES);
 
                /* update memory */
-
-               memcpy(mem, mem+SUBL, (CB_MEML-SUBL)*sizeof(float));
-               memcpy(mem+CB_MEML-SUBL,
-
-
-
-
-
-                   &decresidual[(start+1+subframe)*SUBL],
-                   SUBL*sizeof(float));
+               memmove(mem, mem+SUBL, (CB_MEML-SUBL)*sizeof(float));
+               memcpy(mem+CB_MEML-SUBL, &decresidual[(start+1+subframe)*SUBL], SUBL*sizeof(float));
                memset(weightState, 0, LPC_FILTERORDER*sizeof(float));
 
                subcount++;
@@ -386,10 +378,8 @@
 
                /* update memory */
 
-               memcpy(mem, mem+SUBL, (CB_MEML-SUBL)*sizeof(float));
-               memcpy(mem+CB_MEML-SUBL,
-                   &reverseDecresidual[subframe*SUBL],
-                   SUBL*sizeof(float));
+               memmove(mem, mem+SUBL, (CB_MEML-SUBL)*sizeof(float));
+               memcpy(mem+CB_MEML-SUBL, &reverseDecresidual[subframe*SUBL], SUBL*sizeof(float));
                memset(weightState, 0, LPC_FILTERORDER*sizeof(float));
 
                subcount++;
