@@ -75,7 +75,7 @@ static const WebRtc_Word32 lbcnQ10 = -402874;
 #define MINBITS_Q10    10240  /* 10.0 in Q10 */
 #define IS_SWB_12KHZ       1
 
-__inline WebRtc_UWord32 stepwise(WebRtc_Word32 dinQ10) {
+static __inline WebRtc_UWord32 stepwise(WebRtc_Word32 dinQ10) {
 
   WebRtc_Word32 ind, diQ10, dtQ10;
 
@@ -92,8 +92,7 @@ __inline WebRtc_UWord32 stepwise(WebRtc_Word32 dinQ10) {
   return kRPointsQ10[ind];
 }
 
-
-__inline short log2_Q10_B( int x )
+static __inline short log2_Q10_B( int x )
 {
   int zeros;
   short frac;
@@ -102,8 +101,6 @@ __inline short log2_Q10_B( int x )
   frac = ((unsigned int)(x << zeros) & 0x7FFFFFFF) >> 21;
   return (short) (((31 - zeros) << 10) + frac);
 }
-
-
 
 /* compute correlation from power spectrum */
 static void WebRtcIsac_FindCorrelation(WebRtc_Word32 *PSpecQ12, WebRtc_Word32 *CorrQ7)
