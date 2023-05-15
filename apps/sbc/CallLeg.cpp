@@ -78,7 +78,7 @@ ReliableB2BEvent::~ReliableB2BEvent()
 ////////////////////////////////////////////////////////////////////////////////
 // helper functions
 
-enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection, RecvonlyStream };
+enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection, RecvonlyStream, None };
 
 static const string sendonly("sendonly");
 static const string recvonly("recvonly");
@@ -1659,7 +1659,7 @@ void CallLeg::adjustOffer(AmSdp &sdp)
 
   } else {
     /* handling B2B SDP, check for hold/unhold */
-    HoldMethod hm;
+    HoldMethod hm = None;
 
     /* if hold request, transform to requested kind of hold and remember that hold
      * was requested with this offer */
