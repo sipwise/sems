@@ -116,7 +116,8 @@ struct SdpPayload
   {}
 
   SdpPayload(int pt) 
-    : payload_type(pt), 
+    : type(-1),
+      payload_type(pt),
       clock_rate(-1), 
       encoding_param(-1) 
   {}
