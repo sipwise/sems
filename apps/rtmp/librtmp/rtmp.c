@@ -1703,7 +1703,6 @@ SendFCUnpublish(RTMP *r)
 
 SAVC(publish);
 SAVC(live);
-SAVC(record);
 
 static int
 SendPublish(RTMP *r)
@@ -2851,7 +2850,6 @@ int RTMP_ReadPacket(RTMP *r, RTMPPacket *packet)
   uint8_t hbuf[RTMP_MAX_HEADER_SIZE] = { 0 };
   unsigned char *header = hbuf;
   int nSize, hSize, nToRead, nChunk;
-  int didAlloc = FALSE;
 
   RTMP_Log(RTMP_LOGDEBUG2, "%s: fd=%d", __FUNCTION__, r->m_sb.sb_socket);
 
@@ -2959,7 +2957,6 @@ int RTMP_ReadPacket(RTMP *r, RTMPPacket *packet)
 	  RTMP_Log(RTMP_LOGDEBUG, "%s, failed to allocate packet", __FUNCTION__);
 	  return FALSE;
 	}
-      didAlloc = TRUE;
       packet->m_headerType = (hbuf[0] & 0xc0) >> 6;
     }
 
