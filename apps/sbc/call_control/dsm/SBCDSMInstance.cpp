@@ -52,7 +52,7 @@ SBCDSMInstance::SBCDSMInstance(SBCCallLeg *call, const VarMapT& values)
     appBundle = it->second;
 
   if (startDiagName.empty()) {
-    throw string("DSM SBC call control "DSM_SBC_CCVAR_START_DIAG" parameter not set (see call profile)'");
+    throw string("DSM SBC call control " DSM_SBC_CCVAR_START_DIAG " parameter not set (see call profile)'");
   }
   
   map<string,string> config_vars;
