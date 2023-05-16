@@ -400,10 +400,13 @@ namespace XmlRpc {
   std::string XmlRpcValue::timeToXml() const
   {
     struct tm* t = _value.asTime;
-    char buf[20];
-    snprintf(buf, sizeof(buf)-1, "%4d%02d%02dT%02d:%02d:%02d",
-             t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-    buf[sizeof(buf)-1] = 0;
+    char buf[18];
+
+    if (snprintf(buf, sizeof(buf), "%04d%02d%02dT%02d:%02d:%02d",
+                (1900 + t->tm_year), t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec) < 0)
+    {
+      XmlRpcUtil::log(2,"timeToXml: issues while trying to write data.");
+    }
 
     std::string xml = VALUE_TAG;
     xml += DATETIME_TAG;
