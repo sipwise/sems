@@ -56,7 +56,6 @@ install-cfg:
 	@set -e; \
 	for r in $(module_conf_files); do \
 			echo installing $$r ;  \
-			$(INSTALL_TOUCH) $(DESTDIR)$(app_cfg_target)$$r ; \
 			sed -e "s#/usr/.*lib/sems/audio/#$(audio_target)#g" \
 			-e "s#/usr/.*lib/sems/plug-in/#$(modules_target)#g" \
 			-e "s#/usr/.*etc/sems/#$(app_cfg_target)#g" \
@@ -72,7 +71,6 @@ $(NAME)_audio: $(DESTDIR)$(audio_prefix)/$(audio_dir)
 	@set -e; \
 	for f in $(AUDIO_FILES) ; do \
 		if [ -n "wav/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(audio_prefix)/$(audio_dir)$(NAME)/$$f; \
 			$(INSTALL_AUDIO) wav/$$f $(DESTDIR)$(audio_prefix)/$(audio_dir)$(NAME)/$$f; \
 		fi ; \
 	done

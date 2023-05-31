@@ -320,8 +320,6 @@ INSTALL ?= install
 TAR ?= tar
 endif
 
-INSTALL_TOUCH = touch          # used to create the file first (good to
-                               #  make solaris install work)
 INSTALL_CFG = $(INSTALL) -m 644
 INSTALL_BIN = $(INSTALL) -m 755
 INSTALL_MODULES = $(INSTALL) -m 755
@@ -337,7 +335,7 @@ export start_script
 export cfg_prefix bin_prefix modules_prefix doc_prefix audio_prefix lib_prefix
 export cfg_dir bin_dir modules_dir audio_dir lib_dir doc_dir man_dir
 export bin_target cfg_target app_cfg_target modules_target audio_target lib_target
-export INSTALL TAR INSTALL_TOUCH INSTALL_CFG INSTALL_BIN INSTALL_MODULES INSTALL_DOC INSTALL_AUDIO
+export INSTALL TAR INSTALL_CFG INSTALL_BIN INSTALL_MODULES INSTALL_DOC INSTALL_AUDIO
 export APP_NAME
 
 export USE_SPANDSP LIBSPANDSP_STATIC LIBSPANDSP_LDIR 

@@ -136,7 +136,6 @@ install-cfg: $(DESTDIR)$(cfg_target) $(DESTDIR)$(app_cfg_target)
 		$(INSTALL_CFG) etc/app_mapping.conf.sample $(DESTDIR)$(app_cfg_target)app_mapping.conf
 
 install-bin: $(DESTDIR)$(bin_prefix)/$(bin_dir)
-		$(INSTALL_TOUCH) $(DESTDIR)$(bin_prefix)/$(bin_dir)$(NAME)
 		$(INSTALL_BIN) $(NAME) $(DESTDIR)$(bin_prefix)/$(bin_dir)
 
 install-modules: $(PLUGIN_DIR) $(DESTDIR)$(modules_prefix)/$(modules_dir)
@@ -148,7 +147,6 @@ install-modules-cfg: $(PLUGIN_DIR)
 install-audio: $(DESTDIR)$(audio_prefix)/$(audio_dir)
 	for f in $(AUDIO_FILES) ; do \
 		if [ -n "wav/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(audio_prefix)/$(audio_dir)$$f; \
 			$(INSTALL_AUDIO) wav/$$f $(DESTDIR)$(audio_prefix)/$(audio_dir)$$f; \
 		fi ; \
 	done

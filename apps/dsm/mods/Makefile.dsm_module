@@ -39,7 +39,6 @@ clean: $(extra_clean)
 install: all $(extra_install)
 	mkdir -p $(DESTDIR)$(lib_prefix)/$(lib_dir)/dsm
 	if [ -f "$(lib_name)" ]; then \
-	 $(INSTALL_TOUCH) $(DESTDIR)$(lib_prefix)/$(lib_dir)/dsm/; \
 	 $(INSTALL_MODULES) $(lib_name) $(DESTDIR)$(lib_prefix)/$(lib_dir)/dsm/; \
 	fi
 
@@ -49,7 +48,6 @@ install-cfg:
 	@set -e; \
 	for r in $(module_conf_files); do \
 			echo installing $$r ;  \
-			$(INSTALL_TOUCH) $(DESTDIR)$(cfg_target)$$r ; \
 			sed -e "s#/usr/.*lib/sems/audio/#$(audio_target)#g" \
 			-e "s#/usr/.*lib/sems/plug-in/#$(modules_target)#g" \
 			-e "s#/usr/.*lib/sems/ivr/#$(lib_target)ivr/#g" \
@@ -68,7 +66,6 @@ $(plug_in_name)_audio: $(DESTDIR)$(audio_prefix)/$(audio_dir)
 	@set -e; \
 	for f in $(AUDIO_FILES) ; do \
 		if [ -n "wav/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(audio_prefix)/$(audio_dir)$(plug_in_name)/$$f; \
 			$(INSTALL_AUDIO) wav/$$f $(DESTDIR)$(audio_prefix)/$(audio_dir)$(plug_in_name)/$$f; \
 		fi ; \
 	done
@@ -79,7 +76,6 @@ $(plug_in_name)_lib:
 	@set -e; \
 	for f in $(EXTRA_LIB_FILES) ; do \
 		if [ -n "$(EXTRA_LIB_DIR)/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(lib_prefix)/$(lib_dir)/$(plug_in_name)/$$f; \
 			$(INSTALL_AUDIO) $(EXTRA_LIB_DIR)$$f $(DESTDIR)$(lib_prefix)/$(lib_dir)/$(plug_in_name)/$$f; \
 		fi ; \
 	done

@@ -39,7 +39,6 @@ clean: $(extra_clean)
 .PHONY: install
 install: all $(extra_install) $(DESTDIR)$(modules_prefix)/$(modules_dir)
 	if [ -f "$(lib_name)" ]; then \
-	 $(INSTALL_TOUCH) $(DESTDIR)$(modules_prefix)/$(modules_dir)/$(lib_name) ; \
 	 $(INSTALL_MODULES) $(lib_name) $(DESTDIR)$(modules_prefix)/$(modules_dir); \
 	fi
 
@@ -48,7 +47,6 @@ install-cfg: $(DESTDIR)$(app_cfg_target)
 	@set -e; \
 	for r in $(module_conf_files); do \
 			echo installing $$r ;  \
-			$(INSTALL_TOUCH) $(DESTDIR)$(app_cfg_target)$$r ; \
 			sed -e "s#/usr/.*lib/sems/audio/#$(audio_target)#g" \
 			-e "s#/usr/.*lib/sems/plug-in/#$(modules_target)#g" \
 			-e "s#/usr/.*lib/sems/ivr/#$(lib_target)ivr/#g" \
@@ -67,7 +65,6 @@ $(plug_in_name)_audio: $(DESTDIR)$(audio_prefix)/$(audio_dir)
 	@set -e; \
 	for f in $(AUDIO_FILES) ; do \
 		if [ -n "wav/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(audio_prefix)/$(audio_dir)$(plug_in_name)/$$f; \
 			$(INSTALL_AUDIO) wav/$$f $(DESTDIR)$(audio_prefix)/$(audio_dir)$(plug_in_name)/$$f; \
 		fi ; \
 	done
@@ -78,7 +75,6 @@ $(plug_in_name)_lib:
 	@set -e; \
 	for f in $(EXTRA_LIB_FILES) ; do \
 		if [ -n "$(EXTRA_LIB_DIR)/$$f" ]; then \
-			$(INSTALL_TOUCH) $(DESTDIR)$(lib_prefix)/$(lib_dir)/$(plug_in_name)/$$f; \
 			$(INSTALL_AUDIO) $(EXTRA_LIB_DIR)$$f $(DESTDIR)$(lib_prefix)/$(lib_dir)/$(plug_in_name)/$$f; \
 		fi ; \
 	done
