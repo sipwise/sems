@@ -256,7 +256,7 @@
 
        /* update state */
 
-       if (PLI) {
+       if (PLI == 1) {
            iLBCdec_inst->prevLag = lag;
            iLBCdec_inst->per=max_per;
        }
