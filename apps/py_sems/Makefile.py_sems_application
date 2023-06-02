@@ -22,7 +22,7 @@ PYCHECKERDOCARGS = --classdoc --funcdoc
 module_conf_files =  $(notdir $(wildcard etc/*.conf))
 
 .PHONY: all
-all: clean compile
+all: compile
 
 .PHONY: clean
 clean:
@@ -30,7 +30,7 @@ clean:
 	rm -f ${TARBALL_PREFIX}*.tar.gz
 
 .PHONY: compile
-compile: 
+compile: clean
 	python${PYTHON_VERSION} $(PYSEMSPATH)/py_comp -q .
 
 .PHONY: install

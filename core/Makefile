@@ -115,10 +115,8 @@ $(NAME): sip_stack resample_lib core ../Makefile.defs
 	$(LD) -o $(NAME) $(OBJS) $(LDFLAGS) $(EXTRA_LDFLAGS)
 
 
-install: all mk-install-dirs \
-	install-audio \
-	install-bin \
-	install-modules
+install: mk-install-dirs
+	$(MAKE) install-audio install-bin install-modules
 
 
 # note: on solaris 8 sed: ? or \(...\)* (a.s.o) do not work
@@ -135,10 +133,10 @@ install-cfg: $(DESTDIR)$(cfg_target) $(DESTDIR)$(app_cfg_target)
 
 		$(INSTALL_CFG) etc/app_mapping.conf.sample $(DESTDIR)$(app_cfg_target)app_mapping.conf
 
-install-bin: $(DESTDIR)$(bin_prefix)/$(bin_dir)
+install-bin: $(NAME) $(DESTDIR)$(bin_prefix)/$(bin_dir)
 		$(INSTALL_BIN) $(NAME) $(DESTDIR)$(bin_prefix)/$(bin_dir)
 
-install-modules: $(PLUGIN_DIR) $(DESTDIR)$(modules_prefix)/$(modules_dir)
+install-modules: modules $(PLUGIN_DIR) $(DESTDIR)$(modules_prefix)/$(modules_dir)
 	$(MAKE) -C $(PLUGIN_DIR) install
 
 install-modules-cfg: $(PLUGIN_DIR) 

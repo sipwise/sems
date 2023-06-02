@@ -68,7 +68,7 @@ modules:
 install: install-bin
 
 .PHONY: install-bin
-install-bin:
+install-bin: modules
 	@set -e; \
 	for r in $(app_modules) "" ; do \
 		if [ -n "$$r" ]; then \

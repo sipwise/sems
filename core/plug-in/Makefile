@@ -34,7 +34,7 @@ modules:
 	done 
 
 .PHONY: install
-install:
+install: modules
 	@set -e; \
 	for r in $(core_modules) "" ; do \
 		if [ -n "$$r" ]; then \

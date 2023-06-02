@@ -40,7 +40,7 @@ modules:
 install: install-bin install-cfg
 
 .PHONY: install-bin
-install-bin:
+install-bin: modules
 	@set -e; \
 	for r in $(cc_modules) "" ; do \
 		if [ -n "$$r" ]; then \

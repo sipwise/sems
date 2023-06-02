@@ -5,11 +5,11 @@ include $(COREPATH)/../Makefile.defs
 
 sems_tools = sems-logfile-callextract
 
-install: $(sems_tools) install_tools
+install: install_tools
 
 make_tools: $(sems_tools)
 
-install_tools: $(DESTDIR)$(bin_prefix)/$(bin_dir)
+install_tools: make_tools $(DESTDIR)$(bin_prefix)/$(bin_dir)
 	@set -e; \
 	for r in $(sems_tools)  ; do \
 		x=`echo $$r | sed s/sems-/$(APP_NAME)-/g` ; \

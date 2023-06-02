@@ -1,7 +1,7 @@
 
 all: participant.py conftable.py callbox.py account.py
 
-install:
+install: all
 	cp *.py tablet/conf
 
 %.py: %.ui
