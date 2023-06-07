@@ -1196,6 +1196,9 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
 }
 
 void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
+
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
     DBG("force_receive_dtmf %sabled for [%p]\n", enabled?"en":"dis", &(*j)->a);
@@ -1217,7 +1220,8 @@ void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
 
 /** set receving of RTP/relay streams (not receiving=drop incoming packets) */
 void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
-  AmLock lock(mutex); // TODO: is this necessary?
+
+  AmLock lock(mutex);
 
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1237,6 +1241,9 @@ void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
 }
 
 void AmB2BMedia::pauseRelay() {
+
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = true;
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1251,6 +1258,9 @@ void AmB2BMedia::pauseRelay() {
 }
 
 void AmB2BMedia::restartRelay() {
+
+  AmLock lock(mutex);
+
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = false;
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1277,6 +1287,9 @@ void AudioStreamData::debug()
 // print debug info
 void AmB2BMedia::debug()
 {
+
+  AmLock lock(mutex);
+
   // walk through all the streams
   DBG("B2B media session %p ('%s' <-> '%s'):",
       this,
