@@ -78,7 +78,8 @@
 
 #define SIP_IS_200_CLASS(code)  ((code >= 200) && (code < 300))
 
-#define SIP_APPLICATION_SDP     "application/sdp"
+#define SIP_APPLICATION_SDP             "application/sdp"
+#define SIP_APPLICATION_CSTA_XML        "application/csta+xml"
 
 #define SIP_REPLY_SERVER_INTERNAL_ERROR "Server Internal Error"
 #define SIP_REPLY_BAD_EXTENSION         "Bad Extension"

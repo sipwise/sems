@@ -126,11 +126,19 @@ int AmOfferAnswer::onRequestIn(const AmSipRequest& req)
       req.method == SIP_METH_UPDATE || 
       req.method == SIP_METH_ACK ||
       req.method == SIP_METH_PRACK) &&
-     !req.body.empty() ) {
-
+     !req.body.empty() )
+  {
     const AmMimeBody* sdp_body = req.body.hasContentType(SIP_APPLICATION_SDP);
-    if(sdp_body)
+    const AmMimeBody * csta_body = req.body.hasContentType(SIP_APPLICATION_CSTA_XML);
+
+    /* if application/sdp present */
+    if(sdp_body) {
       err_code = onRxSdp(req.cseq,*sdp_body,&err_txt);
+    /* if both application/sdp and application/csta+xml are not present */
+    } else if (!csta_body) {
+      err_code = 400;
+      err_txt = "unsupported content type";
+    }
   }
 
   if(checkStateChange()){
@@ -168,43 +176,42 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
   if((reply.cseq_method == SIP_METH_INVITE || 
       reply.cseq_method == SIP_METH_UPDATE || 
       reply.cseq_method == SIP_METH_PRACK) &&
-     !reply.body.empty() ) {
-
+     !reply.body.empty() )
+  {
     const AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
-    if(sdp_body) {
+    const AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
-      if(((state == OA_Completed) ||
-	  (state == OA_OfferRecved)) &&
-	 (reply.cseq == cseq)) {
-	
-	DBG("ignoring subsequent SDP reply within the same transaction\n");
-	DBG("this usually happens when 183 and 200 have SDP\n");
+    if (sdp_body || csta_body) {
 
-	/* Make sure that session is started when 200 OK is received */
-	if (reply.code == 200) dlg->onSdpCompleted();
+      if (((state == OA_Completed) ||
+          (state == OA_OfferRecved)) &&
+          (reply.cseq == cseq))
+      {
+        DBG("ignoring subsequent SDP reply within the same transaction\n");
+        DBG("this usually happens when 183 and 200 have SDP\n");
 
-      }
-      else {
-	saveState();
-	err_code = onRxSdp(reply.cseq,reply.body,&err_txt);
-	checkStateChange();
+        /* Make sure that session is started when 200 OK is received */
+        if (reply.code == 200) dlg->onSdpCompleted();
+
+      } else {
+        saveState();
+        err_code = onRxSdp(reply.cseq,reply.body,&err_txt);
+        checkStateChange();
       }
     }
   }
 
-  if( (reply.code >= 300) &&
-      (reply.cseq == cseq) ) {
-    // final error reply -> cleanup OA state
-    DBG("after %u reply to %s: resetting OA state\n",
-	reply.code, reply.cseq_method.c_str());
+  if ((reply.code >= 300) &&
+      (reply.cseq == cseq))
+  {
+    /* final error reply -> cleanup OA state */
+    DBG("after %u reply to %s: resetting OA state\n", reply.code, reply.cseq_method.c_str());
     clearTransitionalState();
   }
 
-
-  if(err_code){
-    // TODO: only if initial INVITE (if re-INV, app should decide)
-    DBG("error %i (%s) with SDP received in %i reply: sending ACK+BYE\n",
-	err_code,err_txt?err_txt:"none",reply.code);
+  if (err_code) {
+    /* TODO: only if initial INVITE (if re-INV, app should decide) */
+    DBG("error %i (%s) with SDP received in %i reply: sending ACK+BYE\n", err_code, err_txt ? err_txt : "none", reply.code);
     dlg->bye();
   }
 
@@ -219,14 +226,16 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
   int err_code = 0;
   assert(err_txt);
 
-  const AmMimeBody *sdp = body.hasContentType("application/sdp");
+  /* check if we have a body */
+  const AmMimeBody *sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
+  const AmMimeBody *csta_body = body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
-  if (sdp == NULL) {
+  if (sdp_body == NULL) {
     err_code = 400;
     *err_txt = "sdp body part not found";
   }
  
-  if (sdp_remote.parse((const char*)sdp->getPayload())) {
+  if (sdp_remote.parse((const char*)body.getPayload())) {
     err_code = 400;
     *err_txt = "session description parsing failed";
   }
@@ -308,13 +317,16 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body, bool for
 int AmOfferAnswer::onRequestOut(AmSipRequest& req)
 {
   AmMimeBody* sdp_body = req.body.hasContentType(SIP_APPLICATION_SDP);
+  AmMimeBody* csta_body = req.body.hasContentType(SIP_APPLICATION_CSTA_XML);
+
   bool generate_sdp = sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
+  bool has_csta = csta_body && csta_body->getLen();
 
-  if (!sdp_body &&
-      ((req.method == SIP_METH_PRACK) ||
-       (req.method == SIP_METH_ACK))
-      && (state == OA_OfferRecved)) {
+  if ((!sdp_body && !csta_body) &&
+      ((req.method == SIP_METH_PRACK) || (req.method == SIP_METH_ACK)) &&
+      (state == OA_OfferRecved))
+  {
     generate_sdp = true;
     sdp_body = req.body.addPart(SIP_APPLICATION_SDP);
   }
@@ -338,7 +350,9 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
     }
   }
 
-  if (has_sdp && (onTxSdp(req.cseq,req.body) != 0)) {
+  if ((has_sdp || (has_csta && req.method != SIP_METH_INFO)) &&
+      (onTxSdp(req.cseq,req.body) != 0))
+  {
     WARN("onTxSdp() failed\n");
     return -1;
   }
@@ -349,10 +363,12 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
 int AmOfferAnswer::onReplyOut(AmSipReply& reply)
 {
   AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
+  AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
+  bool force_no_sdp_update = false;   /* for sequential 183 responses with similar SDP body (version)  */
   bool generate_sdp = sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
-  bool force_no_sdp_update = false;   /* for sequential 183 responses with similar SDP body (version)  */
+  bool has_csta = csta_body && csta_body->getLen();
 
   /* check whether 183 has same SDP version it has had before. Then it doesn't change leg's OA state */
   if (has_sdp && !generate_sdp &&
@@ -369,7 +385,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     }
   }
 
-  if (!has_sdp && !generate_sdp) {
+  if (!has_sdp && !has_csta && !generate_sdp) {
     /* let's see whether we should force SDP or not. */
 
     if (reply.cseq_method == SIP_METH_INVITE) {
@@ -460,7 +476,9 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     }
   }
 
-  if (has_sdp && (onTxSdp(reply.cseq, reply.body, force_no_sdp_update) != 0)) {
+  if ((has_sdp || (has_csta && reply.cseq_method != SIP_METH_INFO)) &&
+      (onTxSdp(reply.cseq, reply.body, force_no_sdp_update) != 0))
+  {
     WARN("onTxSdp() failed\n");
     return -1;
   }
