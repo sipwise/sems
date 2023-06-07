@@ -568,10 +568,15 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
     }
   }
 
-  if (status == Disconnecting) {
-    DBG("Disconnecting: cseq_method = %s; code = %i\n", reply.cseq_method.c_str(), reply.code);
+  if (status == Disconnecting || status == Cancelling) {
+    DBG("%s: cseq_method = %s; code = %i\n",
+        status == Disconnecting ? "Disconnecting" : "Cancelling",
+        reply.cseq_method.c_str(), reply.code);
 
-    if ((reply.cseq_method == SIP_METH_BYE) && (reply.code >= 200)) {
+    if (((status == Disconnecting && reply.cseq_method == SIP_METH_BYE) ||
+         (status == Cancelling && reply.cseq_method == SIP_METH_CANCEL)) &&
+        (reply.code >= 200))
+    {
       /* TODO: support the auth case here (401/403) */
       setStatus(Disconnected);
     }
