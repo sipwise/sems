@@ -342,9 +342,6 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
 
     string ua = getHeader(req.hdrs, SIP_HDR_USER_AGENT);
     setRemoteUA(ua);
-
-    string allow = getHeader(req.hdrs, SIP_HDR_ALLOW);
-    setRemoteAllowHf(allow);
   }
 
   /* Dlg not yet initialized? */
@@ -361,11 +358,6 @@ void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
     setRouteSet(    req.route    );
     set1stBranch(   req.via_branch );
     setOutboundInterface( req.local_if );
-
-    if (allow_hf.empty()) { /* if Allow hf is still empty */
-      string allow = getHeader(req.hdrs, SIP_HDR_ALLOW);
-      setRemoteAllowHf(allow);
-    }
   }
 
   if (onRxReqStatus(req) && hdl)
@@ -620,14 +612,10 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
   reply.cseq = req.cseq;
   reply.cseq_method = req.method;
 
-  /* add/update Allow header in 200OK, if wasn't empty in previously received request */
-  if (reply.code == 200 && !allow_hf.empty()) {
-    /* make sure to remove if already added into hdrs */
-    string allow = getHeader(reply.hdrs, SIP_HDR_ALLOW);
-    if (!allow.empty()) removeHeader(reply.hdrs, SIP_HDR_ALLOW);
-
-    allow = allow_hf; /* must be added, when receiving request in AmBasicSipDialog::onRxRequest() */
-    reply.hdrs += SIP_HDR_COLSP(SIP_HDR_ALLOW) + allow + CRLF;
+   /* Add Allow header in 200OK with default Allow, if it is empty */
+  if (reply.code == 200 && getHeader(reply.hdrs, SIP_HDR_ALLOW).empty()) {
+    /* Add default Allow list, supporting all major methods */
+    reply.hdrs += SIP_HDR_ALLOW_FULL CRLF;
   }
 
   if (body != NULL)

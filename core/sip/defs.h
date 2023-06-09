@@ -49,6 +49,7 @@
 #define SIP_HDR_PROXY_AUTHENTICATE "Proxy-Authenticate"
 #define SIP_HDR_WWW_AUTHENTICATE "WWW-Authenticate"
 #define SIP_HDR_ALLOW            "Allow"
+#define SIP_HDR_ALLOW_FULL       "Allow: INVITE,ACK,OPTIONS,CANCEL,BYE,UPDATE,PRACK,INFO,SUBSCRIBE,NOTIFY,REFER,MESSAGE,PUBLISH"
 #define SIP_HDR_RETRY_AFTER      "Retry-After"
 #define SIP_HDR_ACCEPT           "Accept"
 #define SIP_HDR_EVENT            "Event"
