@@ -4,6 +4,9 @@
 
 #include <errno.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 DRedisConfig::DRedisConfig(const string& host, unsigned int port,
 			 bool unix_socket, bool full_logging, 
 			 bool use_transactions, int connect_timeout)
@@ -30,6 +33,15 @@ void DRedisConnection::disconnect()
 {
   if(redis_context) {
     DBG("disconnecting from Redis...");
+
+    int socketFd = redis_context->fd;
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+
+    if (getsockname(socketFd, (struct sockaddr*)&addr, &len) == 0 && addr.sin_family == AF_INET) {
+         DBG("Freeing an ephemeral port used by this redis connection: '%u'\n", (unsigned int)ntohs(addr.sin_port));
+    }
+
     redisFree(redis_context);
     redis_context = NULL;
   }
@@ -55,6 +67,16 @@ bool DRedisConnection::connect()
     ERROR("REDIS Connection error: %s\n", redis_context->errstr);
     disconnect();
     return false;
+  }
+
+  if (redis_context != NULL) {
+    int socketFd = redis_context->fd;
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+
+    if (getsockname(socketFd, (struct sockaddr*)&addr, &len) == 0 && addr.sin_family == AF_INET) {
+         DBG("Allocated an ephemeral port for this redis connection: '%u'\n", (unsigned int)ntohs(addr.sin_port));
+    }
   }
 
   return true;
