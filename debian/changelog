@@ -1,3 +1,71 @@
+ngcp-sems (1:1.6.0+0~mr11.5.0.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [a25f480] MT#56321 DSM: Introduce processing of the ';reset-to-tag=' parameter
+  * [1df4312] MT#56321 core::AmB2BSession - refactor onSipReply()
+  * [b79fc7a] MT#56321 Implement 'recvonly' beginning on-hold
+  * [29400e4] MT#56321 Refactor the HeaderFilter.cpp
+  * [d7db3e4] MT#56321 HeaderFilter: add multi-line headers parsing
+  * [85238b3] MT#56321 Refactor the core::AmRtpStream init() function
+  * [e6dfce5] MT#56321 Refactoring of AmSdp.cpp
+  * [a284135] MT#56321 AmPlugin: add _payload_tevent_opus to supported payloads
+  * [f8a1bd2] MT#56321 HeaderFilter: remove superfluous logging
+  * [0bd7fa6] MT#56321 Refactor: core::CallLeg::onSipRequest()
+  * [1a22e0a] MT#56321 Force Early Announce: add support for the `Proceeding` state
+  * [84a0c3e] MT#57256 Do not change OA state of similar 183 SDP
+  * [13ff635] MT#57391 sems (CE): eliminate the `auto_ptr` usage (deprecated in C++11)
+  * [551ff86] MT#57393 python: fix the `Missing parentheses in call to 'print'
+  * [3627c0d] MT#57394 Apps: fix `inconsistent use of tabs and spaces in indentation`
+  * [6fea97d] MT#57398 deprecate pkg/deb/{jessie,precise,trusty,wheezy}
+  * [ddde01c] MT#57402 warning: specified bound 16 equals destination size
+  * [793bb59] MT#57403 warning: this 'if' clause does not guard his statement..
+  * [e550db0] MT#57404 warning: format '%llu' expects argument of type 'long long unsigned int'
+  * [687050c] MT#57405 warning: ignoring return value of 'int pipe(int*)'
+  * [a18d614] MT#57407 warning: this 'if' clause does not guard... (AmSdp.cpp)
+  * [678730d] MT#57408 warning: clearing an object of non-trivial type
+  * [e79e20c] MT#57409 warning: '<anonymous>' may be used uninitialized in this function
+  * [7f5a4bd] MT#57410 warning: ignoring return value of 'int pipe(int*)' (tcp_trsp.cpp)
+  * [1a25a84] MT#57411 warning: ignoring return value in `main()` (sems.cpp)
+  * [7d75005] MT#57415 ilbc: accessing 428 bytes at offsets 0 and 160 overlaps
+  * [898ebae] MT#57417 'WebRtcSpl_NormU32' is static but used in inline function 'log2_Q10_B'
+  * [7e0153a] MT#57419 defined but not used (entropy_coding.c)
+  * [a241f56] MT#57422 statement with no effect, cycles in the opus.c
+  * [1b91d67] MT#57422 Properly move the pointer in the `read_param()`
+  * [f0961c7] MT#57423 NULL used in arithmetic (DBRegAgent.cpp)
+  * [d1474f6] MT#57424 format '%d' expects argument of type 'int', but argument 4 has type 'long int'
+  * [d4ca1ec] MT#57429 compiler can assume that the address of 'req' will never be NULL
+  * [020a164] MT#57432 field precision specifier '.*' expects argument of type 'int'
+  * [23a917d] MT#57434 invalid suffix on literal; C++11 requires a space
+  * [b9196fa] MT#57435 self-comparison always evaluates to true (XmlRpcValue.cpp)
+  * [42b9ad1] MT#57436 directive output may be truncated
+  * [ff4a390] MT#57439 fix the bit flag comparison in `JsonRpcServer::processMessage()`
+  * [0e1bd88] MT#57440 in `RTMP_ReadPacket()` variable 'didAlloc' set but not used
+  * [d626afc] MT#57441 invalid suffix on literal; C++11 requires a space (SBC.cpp)
+  * [c37a8cc] MT#57442 'hm' may be used uninitialized in this function (adjustOffer.cpp)
+  * [4bec183] MT#57445 '.SdpPayload::type' may be used uninitialized in this function
+  * [9937f85] MT#57446 invalid suffix on literal; C++11 requires a space
+  * [d985a94] MT#57436 intimeToXml: properly manage the buf size and `snprintf()`
+  * [623036f] MT#57501 'max_per' may be used uninitialized
+  * [1cacd5c] MT#57501 the comparison will always evaluate as 'false' (fft.c)
+  * [285fb7e] MT#57437 Upstream: apps/ivr fix for Python3.10 and higher
+  * [f3d48dd] MT#57437 Upstream: support for body content type application/csta+xml
+  * [9eb1efb] MT#57437 Upstream: increased libevent version
+  * [7127606] MT#57437 Upstream: Handle responses to SIP_METH_CANCEL in Cancelling state
+  * [561b8ba] MT#57437 Upstream: Support looking up aliased interface names
+  * [d7d9d26] MT#57437 Upstream: fixed parsing of sip uri
+  * [7e9971f] MT#57437 Upstream: Fixed NOTIFY to URI
+  * [a4d32f4] MT#57437 Upstream: added `lock(mutex)` calls in order to avoid crash
+  * [f0efd81] MT#57254 dsm/mod_redis: print ephemeral TCP port (connect/disconnect)
+
+  [ Guillem Jover ]
+  * [ed5872e] MT#56184 build: Stop using INSTALL_TOUCH before installing the targets
+  * [f3a48f2] MT#56184 build: Fix parallel building
+
+  [ Daniel Grotti ]
+  * [cdcbbb7] MT#57562 sems (CE): Add Allow header in 200 OK when empty
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 26 Jun 2023 14:12:54 +0200
+
 ngcp-sems (1:1.6.0+0~mr11.4.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
