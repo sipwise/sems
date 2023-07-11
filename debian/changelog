@@ -1,3 +1,9 @@
+ngcp-sems (1:1.6.0+0~mr11.4.2.0) unstable; urgency=medium
+
+  * New release.
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 11 Jul 2023 17:52:05 +0200
+
 ngcp-sems (1:1.6.0+0~mr11.4.1.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
