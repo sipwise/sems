@@ -128,6 +128,41 @@ static MediaActivity getMediaActivity(const SdpMedia &m, MediaActivity default_v
   return Inactive;
 }
 
+static MediaActivity getMediaActivity(const SdpMedia &m)
+{
+  if (m.send) {
+    if (m.recv) return Sendrecv;
+    else return Sendonly;
+  }
+  else {
+    if (m.recv) return Recvonly;
+  }
+  return Inactive;
+}
+
+/**
+ * Checks, whether SDP of given type has sendonly / recvonly / inactive
+ */
+static bool isSDPBodyHold(const AmSdp &sdp)
+{
+  /* if no meidas present, take into consideration the session level */
+  if (sdp.media.empty() &&
+      getMediaActivity(sdp.attributes, Sendrecv) != Sendrecv)
+  {
+      return true;
+  }
+
+  for (std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
+        m != sdp.media.end(); ++m)
+  {
+    /* only resume audio streams */
+    if (m->isAudio() && getMediaActivity(*m) != Sendrecv)
+      return true;
+  }
+
+  return false;
+}
+
 static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
 {
   /* set defaults from session parameters and attributes
@@ -1674,7 +1709,7 @@ void CallLeg::adjustOffer(AmSdp &sdp)
       hold = HoldRequested;
 
     } else {
-      if (on_hold) {
+      if (on_hold || isSDPBodyHold(sdp)) {
         DBG("B2b resume request");
         resumeRequested();
         alterResumeRequest(sdp);

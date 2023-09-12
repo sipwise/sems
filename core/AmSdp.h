@@ -204,6 +204,11 @@ struct SdpMedia
    */
   void calcAnswer(const AmPayloadProvider* payload_prov, 
 		  SdpMedia& answer) const;
+
+  /**
+   * Attribute management
+   */
+  bool isAudio() const { return type == MT_AUDIO; }
 };
 
 /**
