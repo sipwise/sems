@@ -158,7 +158,7 @@ bool UACAuth::onSipRequest(const AmSipRequest& req)
 }
 
 bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply, 
-			 AmBasicSipDialog::Status old_dlg_status)
+                         AmBasicSipDialog::Status old_dlg_status)
 {
   bool processed = false;
   if (reply.code==407 || reply.code==401) {
@@ -179,7 +179,8 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	    (((reply.code == 401) &&
 	     getHeader(ri->second.hdrs, SIP_HDR_AUTHORIZATION, true).length()) ||
 	    ((reply.code == 407) && 
-	     getHeader(ri->second.hdrs, SIP_HDR_PROXY_AUTHORIZATION, true).length()))) {
+	     getHeader(ri->second.hdrs, SIP_HDR_PROXY_AUTHORIZATION, true).length())))
+  {
 	  DBG("Authorization failed!\n");
 	} else {
 	  nonce_reuse = false;
@@ -210,23 +211,29 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	      hdrs += result;
 
 	    if (dlg->getStatus() < AmSipDialog::Connected && 
-		ri->second.method != SIP_METH_BYE) {
-	      // reset remote tag so remote party 
-	      // thinks its new dlg
-	      dlg->setRemoteTag(string());
+          ri->second.method != SIP_METH_BYE)
+      {
+        /* reset remote tag, so that the remote party
+          * considers it as a new dlg.
+          *
+          * Apart PRACK authentication, which requires To-tag to be presented (if given before). */
+        if (reply.cseq_method != SIP_METH_PRACK)
+          dlg->setRemoteTag(string());
 
-	      if (AmConfig::ProxyStickyAuth) {
-		// update remote URI to resolved IP
-		size_t hpos = dlg->getRemoteUri().find("@");
-		if (hpos != string::npos && reply.remote_ip.length()) {
-		  string remote_uri = dlg->getRemoteUri().substr(0, hpos+1) 
-		    + reply.remote_ip + ":"+int2str(reply.remote_port);
-		  dlg->setRemoteUri(remote_uri);
-		  DBG("updated remote URI to '%s'\n", remote_uri.c_str());
-		}
-	      }
+        if (AmConfig::ProxyStickyAuth) {
+          /* update remote URI to resolved IP */
+          size_t hpos = dlg->getRemoteUri().find("@");
+          if (hpos != string::npos && reply.remote_ip.length()) {
+            string remote_uri = dlg->getRemoteUri().substr(0, hpos+1) +
+                                reply.remote_ip +
+                                ":" +
+                                int2str(reply.remote_port);
 
-	    }
+            dlg->setRemoteUri(remote_uri);
+            DBG("updated remote URI to '%s'\n", remote_uri.c_str());
+          }
+        }
+      }
 
 	    int flags = SIP_FLAGS_VERBATIM | SIP_FLAGS_NOAUTH;
 	    size_t skip = 0, pos1, pos2, hdr_start;

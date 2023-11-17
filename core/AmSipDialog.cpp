@@ -383,6 +383,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   DBG("onRxReplyStatus: reply.code = <%d>, reply.route = <%s>, status = <%d>\n",
       reply.code, reply.route.c_str(), status);
 
+  /* INVITE */
   if (reply.cseq_method == SIP_METH_INVITE) {
 
     switch (status) {
@@ -565,6 +566,19 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
       default:
         break;
+    }
+
+  /* PRACK */
+  } else if (reply.cseq_method == SIP_METH_PRACK) {
+    /* do not update call leg status for transactions not involving INVITE.
+     * In this case just update the to-tag and route set */
+    if (!reply.to_tag.empty()) {
+      DBG("Updating remote tag (to tag) to: '%s'.\n", reply.to_tag.c_str());
+      setRemoteTag(reply.to_tag);
+    }
+    if (!reply.route.empty()) {
+      DBG("Updating route set to: '%s'.\n", reply.route.c_str());
+      setRouteSet(reply.route);
     }
   }
 
