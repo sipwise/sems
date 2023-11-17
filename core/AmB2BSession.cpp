@@ -883,69 +883,83 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
     updateLocalBody(body);
   }
 
+  /* all methods apart ACK */
   if (req.method != "ACK") {
     relayed_req[dlg->cseq] = req;
 
     const string* hdrs = &req.hdrs;
     string m_hdrs;
 
-    // translate RAck for PRACK
+    /* translate RAck for PRACK */
     if (req.method == SIP_METH_PRACK && req.rseq) {
       TransMap::iterator t;
-      for (t=relayed_req.begin(); t != relayed_req.end(); t++) {
-	if (t->second.cseq == req.rack_cseq) {
-	  m_hdrs = req.hdrs +
-	    SIP_HDR_COLSP(SIP_HDR_RACK) + int2str(req.rseq) +
-	    " " + int2str(t->first) + " " + req.rack_method + CRLF;
-	  hdrs = &m_hdrs;
-	  break;
-	}
+
+      for (t=relayed_req.begin(); t != relayed_req.end(); t++)
+      {
+        if (t->second.cseq == req.rack_cseq) {
+          m_hdrs = req.hdrs +
+                   SIP_HDR_COLSP(SIP_HDR_RACK) +
+                   int2str(req.rseq) +
+                   " " +
+                   int2str(t->first) +
+                   " " +
+                   req.rack_method +
+                   CRLF;
+          hdrs = &m_hdrs;
+          break;
+        }
       }
+
       if (t==relayed_req.end()) {
-	WARN("Transaction with CSeq %d not found for translating RAck cseq\n",
-	     req.rack_cseq);
+        WARN("Transaction with CSeq %d not found for translating RAck cseq\n", req.rack_cseq);
       }
     }
 
     DBG("relaying SIP request %s %s\n", req.method.c_str(), req.r_uri.c_str());
+
     int err = dlg->sendRequest(req.method, &body, *hdrs, SIP_FLAGS_VERBATIM);
+
     if(err < 0){
       ERROR("dlg->sendRequest() failed\n");
       return err;
     }
 
     if ((req.method == SIP_METH_INVITE ||
-	 req.method == SIP_METH_UPDATE) &&
-	!req.body.empty()) {
+        req.method == SIP_METH_UPDATE) &&
+        !req.body.empty())
+    {
       saveSessionDescription(req.body);
     }
 
   } else {
-    //its a (200) ACK 
-    TransMap::iterator t = relayed_req.begin(); 
+    /* all other methods (most probably 200OK for ACK) */
+    TransMap::iterator t = relayed_req.begin();
 
-    while (t != relayed_req.end()) {
+    while (t != relayed_req.end())
+    {
       if (t->second.cseq == req.cseq)
-	break;
+      break;
       t++;
-    } 
+    }
+
     if (t == relayed_req.end()) {
       ERROR("transaction for ACK not found in relayed requests\n");
-      // FIXME: local body (if updated) should be discarded here
+      /* FIXME: local body (if updated) should be discarded here */
       return -1;
     }
 
     DBG("sending relayed 200 ACK\n");
-    int err = dlg->send_200_ack(t->first, &body,
-			       req.hdrs, SIP_FLAGS_VERBATIM);
+
+    int err = dlg->send_200_ack(t->first, &body, req.hdrs, SIP_FLAGS_VERBATIM);
     if(err < 0) {
       ERROR("dlg->send_200_ack() failed\n");
       return err;
     }
 
     if (!req.body.empty() &&
-	(t->second.method == SIP_METH_INVITE)) {
-    // delayed SDP negotiation - save SDP
+        (t->second.method == SIP_METH_INVITE))
+    {
+      /* delayed SDP negotiation - save SDP */
       saveSessionDescription(req.body);
     }
 
