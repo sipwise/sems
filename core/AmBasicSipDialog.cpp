@@ -694,58 +694,65 @@ int AmBasicSipDialog::sendRequest(const string& method,
   req.method = method;
   req.r_uri = remote_uri;
 
+  DBG("sendRequest: remote_uri='%s'; callid='%s'; cseq='%i'; from_tag='%s'; to_tag='%s';\n",
+      remote_uri.c_str(),
+      callid.c_str(),
+      cseq,
+      (!ext_local_tag.empty() ? ext_local_tag.c_str() : local_tag.c_str()),
+      (!remote_tag.empty() ? remote_tag.c_str() : ""));
+
   req.from = SIP_HDR_COLSP(SIP_HDR_FROM) + local_party;
-  if(!ext_local_tag.empty())
+  if (!ext_local_tag.empty()) {
     req.from += ";tag=" + ext_local_tag;
-  else if(!local_tag.empty())
+  } else if(!local_tag.empty()) {
     req.from += ";tag=" + local_tag;
-    
+  }
+
   req.to = SIP_HDR_COLSP(SIP_HDR_TO) + remote_party;
-  if(!remote_tag.empty()) 
+  if (!remote_tag.empty())
     req.to += ";tag=" + remote_tag;
-    
+
   req.cseq = cseq;
   req.callid = callid;
-    
   req.hdrs = hdrs;
-
   req.route = getRoute();
 
-  if(body != NULL) {
+  if (body != NULL) {
     req.body = *body;
   }
 
-  if(onTxRequest(req,flags) < 0)
+  if (onTxRequest(req,flags) < 0) {
     return -1;
+  }
 
   if (!(flags & SIP_FLAGS_NOCONTACT)) {
     req.contact = getContactHdr();
   }
 
   if (!(flags & SIP_FLAGS_VERBATIM)) {
-    // add Signature
+    /* add Signature */
     if (AmConfig::Signature.length())
       req.hdrs += SIP_HDR_COLSP(SIP_HDR_USER_AGENT) + AmConfig::Signature + CRLF;
   }
 
   int send_flags = 0;
-  if(patch_ruri_next_hop && remote_tag.empty()) {
+  if (patch_ruri_next_hop && remote_tag.empty()) {
     send_flags |= TR_FLAG_NEXT_HOP_RURI;
   }
 
-  if((flags & SIP_FLAGS_NOBL) ||
-     !remote_tag.empty()) {
+  if ((flags & SIP_FLAGS_NOBL) || !remote_tag.empty()) {
     send_flags |= TR_FLAG_DISABLE_BL;
   }
 
   int res = SipCtrlInterface::send(req, local_tag,
-				   remote_tag.empty() || !next_hop_1st_req ?
-				   next_hop : "",
-				   outbound_interface,
-				   send_flags,logger);
-  if(res) {
+                                    remote_tag.empty() || !next_hop_1st_req ?
+                                    next_hop : "",
+                                    outbound_interface,
+                                    send_flags,logger);
+
+  if (res) {
     ERROR("Could not send request: method=%s; call-id=%s; cseq=%i\n",
-	  req.method.c_str(),req.callid.c_str(),req.cseq);
+    req.method.c_str(),req.callid.c_str(),req.cseq);
     return res;
   }
 
