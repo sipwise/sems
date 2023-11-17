@@ -267,11 +267,13 @@ int _SipCtrlInterface::cancel(trans_ticket* tt, const string& dialog_id,
 }
 
 int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
-			    const string& next_hop, int out_interface,
-			    unsigned int flags, msg_logger* logger)
+                            const string& next_hop,
+							int out_interface,
+                            unsigned int flags,
+							msg_logger* logger)
 {
-    if(req.method == "CANCEL")
-	return cancel(&req.tt, dialog_id, req.cseq, req.hdrs);
+    if (req.method == "CANCEL")
+        return cancel(&req.tt, dialog_id, req.cseq, req.hdrs);
 
     sip_msg* msg = new sip_msg();
     
@@ -281,96 +283,89 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     msg->u.request->method_str = stl2cstr(req.method);
     msg->u.request->ruri_str = stl2cstr(req.r_uri);
 
-    // To
-    // From
-    // Call-ID
-    // CSeq
-    // Contact
-    // Max-Forwards
+    /* To
+     * From
+     * Call-ID
+     * CSeq
+     * Contact
+     * Max-Forwards */
     
-    char* c = (char*)req.from.c_str();
-    int err = parse_headers(msg,&c,c+req.from.length());
+    char * c = (char*)req.from.c_str();
+    int err = parse_headers(msg, &c, (c + req.from.length()));
 
     c = (char*)req.to.c_str();
-    err = err || parse_headers(msg,&c,c+req.to.length());
+    err = err || parse_headers(msg, &c, (c + req.to.length()));
 
-    if(err){
-	ERROR("Malformed To or From header\n");
-	delete msg;
-	return -1;
+    if (err) {
+        ERROR("Malformed To or From header\n");
+        delete msg;
+        return -1;
     }
 
-    string cseq = int2str(req.cseq)
-	+ " " + req.method;
+    string cseq = int2str(req.cseq) + " " + req.method;
 
-    msg->cseq = new sip_header(0,SIP_HDR_CSEQ,stl2cstr(cseq));
+    msg->cseq = new sip_header(0, SIP_HDR_CSEQ, stl2cstr(cseq));
     msg->hdrs.push_back(msg->cseq);
 
-    msg->callid = new sip_header(0,SIP_HDR_CALL_ID,stl2cstr(req.callid));
+    msg->callid = new sip_header(0, SIP_HDR_CALL_ID, stl2cstr(req.callid));
     msg->hdrs.push_back(msg->callid);
 
-    if(!req.contact.empty()){
-
-	c = (char*)req.contact.c_str();
-	err = parse_headers(msg,&c,c+req.contact.length());
-	if(err){
-	    ERROR("Malformed Contact header\n");
-	    delete msg;
-	    return -1;
-	}
-    }
-    
-    if(!req.route.empty()){
-	
- 	c = (char*)req.route.c_str();
-	err = parse_headers(msg,&c,c+req.route.length());
-	
-	if(err){
-	    ERROR("Route headers parsing failed\n");
-	    ERROR("Faulty headers were: <%s>\n",req.route.c_str());
-	    delete msg;
-	    return -1;
-	}
+    if (!req.contact.empty()) {
+        c = (char*)req.contact.c_str();
+        err = parse_headers(msg,&c,c+req.contact.length());
+        if (err) {
+            ERROR("Malformed Contact header\n");
+            delete msg;
+            return -1;
+        }
     }
 
-    if(req.max_forwards < 0) {
-	req.max_forwards = AmConfig::MaxForwards;
+    if (!req.route.empty()) {
+        c = (char*)req.route.c_str();
+        err = parse_headers(msg,&c,c+req.route.length());
+        if (err) {
+            ERROR("Route headers parsing failed\n");
+            ERROR("Faulty headers were: <%s>\n",req.route.c_str());
+            delete msg;
+            return -1;
+        }
+    }
+
+    if (req.max_forwards < 0) {
+        req.max_forwards = AmConfig::MaxForwards;
     }
 
     string mf = int2str(req.max_forwards);
-    msg->hdrs.push_back(new sip_header(0,SIP_HDR_MAX_FORWARDS,stl2cstr(mf)));
+    msg->hdrs.push_back(new sip_header(0, SIP_HDR_MAX_FORWARDS, stl2cstr(mf)));
 
-    if(!req.hdrs.empty()) {
-	
- 	c = (char*)req.hdrs.c_str();
-	
- 	err = parse_headers(msg,&c,c+req.hdrs.length());
-	
-	if(err){
-	    ERROR("Additional headers parsing failed\n");
-	    ERROR("Faulty headers were: <%s>\n",req.hdrs.c_str());
-	    delete msg;
-	    return -1;
-	}
+    if (!req.hdrs.empty()) {
+        c = (char*)req.hdrs.c_str();
+        err = parse_headers(msg, &c, (c + req.hdrs.length()));
+        if (err) {
+            ERROR("Additional headers parsing failed\n");
+            ERROR("Faulty headers were: <%s>\n",req.hdrs.c_str());
+            delete msg;
+            return -1;
+        }
     }
 
     string body;
     string content_type;
 
-    if(!req.body.empty()){
-	content_type = req.body.getCTHdr();
-	msg->content_type = new sip_header(0,SIP_HDR_CONTENT_TYPE,
-					   stl2cstr(content_type));
-	msg->hdrs.push_back(msg->content_type);
-	req.body.print(body);
-	msg->body = stl2cstr(body);
+    if (!req.body.empty()) {
+        content_type = req.body.getCTHdr();
+        msg->content_type = new sip_header(0,SIP_HDR_CONTENT_TYPE, stl2cstr(content_type));
+        msg->hdrs.push_back(msg->content_type);
+        req.body.print(body);
+        msg->body = stl2cstr(body);
     }
 
     int res = trans_layer::instance()->send_request(msg,&req.tt,
-						    stl2cstr(dialog_id),
-						    stl2cstr(next_hop),
-						    out_interface,
-						    flags,logger);
+                                                    stl2cstr(dialog_id),
+                                                    stl2cstr(next_hop),
+                                                    out_interface,
+                                                    flags,
+                                                    logger);
     delete msg;
 
     return res;
