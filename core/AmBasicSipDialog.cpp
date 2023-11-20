@@ -129,8 +129,17 @@ string AmBasicSipDialog::getContactUri()
 string AmBasicSipDialog::getRoute() 
 {
   string res;
+  string route_first_element;
 
-  if(!outbound_proxy.empty() && (force_outbound_proxy || remote_tag.empty())){
+  if (!route.empty()) {
+    route_first_element = route.substr(0, route.find(','));
+  }
+
+  // Do no add outbound_proxy if it's already the top most Route
+  if(!outbound_proxy.empty() &&
+    (force_outbound_proxy || remote_tag.empty()) &&
+    route_first_element.find(outbound_proxy) == std::string::npos)
+  {
     res += "<" + outbound_proxy + ";lr>";
 
     if(!route.empty()) {
