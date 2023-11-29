@@ -1,3 +1,16 @@
+ngcp-sems (1:1.6.0+0~mr12.2.0.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [4a5942d] MT#58584 Core refactoring in `core::_SipCtrlInterface::send()`
+  * [b0305db] MT#58584 Core refactoring in `core::AmB2BSession::relaySip()`
+  * [51f57d7] MT#58584 Add more logging to `core::AmBasicSipDialog::sendRequest()`
+  * [83634a2] MT#58584 Properly update remote tag and route set for PRACK
+
+  [ Daniel Grotti ]
+  * [f563667] MT#58584 Do not add outbound_proxy in Route if exist
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 29 Nov 2023 13:38:32 +0100
+
 ngcp-sems (1:1.6.0+0~mr12.1.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
