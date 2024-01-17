@@ -737,20 +737,21 @@ void AmB2BMedia::createStreams(const AmSdp &sdp)
 }
 
 void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg, 
-					  const string& relay_address,
-					  const string& relay_public_address)
+                                          const string& relay_address,
+                                          const string& relay_public_address)
 {
   AmLock lock(mutex);
 
-  SdpConnection orig_conn = parser_sdp.conn; // needed for the 'quick workaround' for non-audio media
+  /* needed for the 'quick workaround' for non-audio media */
+  SdpConnection orig_conn = parser_sdp.conn;
 
-  // place relay_address in connection address
+  /* place relay_address in connection address */
   if (!parser_sdp.conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
     parser_sdp.conn.address = relay_public_address;
     DBG("new connection address: %s",parser_sdp.conn.address.c_str());
   }
 
-  // we need to create streams if they are not already created
+  /* we need to create streams if they are not already created */
   createStreams(parser_sdp);
 
   string replaced_ports;
@@ -759,97 +760,119 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
   RelayStreamIterator relay_stream_it = relay_streams.begin();
 
   std::vector<SdpMedia>::iterator it = parser_sdp.media.begin();
-  for (; it != parser_sdp.media.end() ; ++it) {
-  
-    // FIXME: only UDP streams are handled for now
+
+  for (; it != parser_sdp.media.end() ; ++it)
+  {
+    /* normal audio sreams
+     * FIXME: only UDP streams are handled for now */
     if (it->type == MT_AUDIO) {
 
-      if( audio_stream_it == audio.end() ){
-	// strange... we should actually have a stream for this media line...
-	DBG("audio media line does not have coresponding audio stream...\n");
-	continue;
+      if (audio_stream_it == audio.end()) {
+        /* we should actually have a stream for this media line. */
+        DBG("audio media line does not have coresponding audio stream...\n");
+        continue;
       }
 
-      if(it->port) { // if stream active
-	if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
-	  it->conn.address = relay_public_address;
-	  DBG("new stream connection address: %s",it->conn.address.c_str());
-	}
-	try {
-	  if (a_leg) {
-	    audio_stream_it->a.setLocalIP(relay_address);
-	    it->port = audio_stream_it->a.getLocalPort();
+      /* if stream active */
+      if (it->port) {
+        if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
+          it->conn.address = relay_public_address;
+          DBG("new stream connection address: %s",it->conn.address.c_str());
+        }
+
+        try
+        {
+          if (a_leg) {
+            audio_stream_it->a.setLocalIP(relay_address);
+            it->port = audio_stream_it->a.getLocalPort();
             replaceRtcpAttr(*it, relay_address, audio_stream_it->a.getLocalRtcpPort());
-	  }
-	  else {
-	    audio_stream_it->b.setLocalIP(relay_address);
-	    it->port = audio_stream_it->b.getLocalPort();
+          } else {
+            audio_stream_it->b.setLocalIP(relay_address);
+            it->port = audio_stream_it->b.getLocalPort();
             replaceRtcpAttr(*it, relay_address, audio_stream_it->b.getLocalRtcpPort());
-	  }
-	  if(!replaced_ports.empty()) replaced_ports += "/";
-	  replaced_ports += int2str(it->port);
-	} catch (const string& s) {
-	  ERROR("setting port: '%s'\n", s.c_str());
-	  throw string("error setting RTP port\n");
-	}
+          }
+
+          if (!replaced_ports.empty())
+          {
+            replaced_ports += "/";
+          }
+          replaced_ports += int2str(it->port);
+
+        } catch (const string& s) {
+          ERROR("setting port: '%s'\n", s.c_str());
+          throw string("error setting RTP port\n");
+        }
       }
       ++audio_stream_it;
-    }
-    else if(canRelay(*it)) {
 
-      if( relay_stream_it == relay_streams.end() ){
-	// strange... we should actually have a stream for this media line...
-	DBG("media line does not have a coresponding relay stream...\n");
-	continue;
+    /* other types, check if we can relay it */
+    } else if (canRelay(*it)) {
+
+      if (relay_stream_it == relay_streams.end()) {
+        /* we should actually have a stream for this media line */
+        DBG("media line does not have a coresponding relay stream...\n");
+        continue;
       }
 
-      if(it->port) { // if stream active
-	if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
-	  it->conn.address = relay_public_address;
-	  DBG("new stream connection address: %s",it->conn.address.c_str());
-	}
-	try {
-	  if (a_leg) {
-	    if(!(*relay_stream_it)->a.hasLocalSocket()){
-	      (*relay_stream_it)->a.setLocalIP(relay_address);
-	    }
-	    it->port = (*relay_stream_it)->a.getLocalPort();
+      /* if stream active */
+      if (it->port) {
+        if (!it->conn.address.empty() && (parser_sdp.conn.address != zero_ip)) {
+          it->conn.address = relay_public_address;
+          DBG("new stream connection address: %s",it->conn.address.c_str());
+        }
+
+        try
+        {
+          if (a_leg) {
+            if (!(*relay_stream_it)->a.hasLocalSocket()) {
+              (*relay_stream_it)->a.setLocalIP(relay_address);
+            }
+
+            it->port = (*relay_stream_it)->a.getLocalPort();
             replaceRtcpAttr(*it, relay_address, (*relay_stream_it)->a.getLocalRtcpPort());
-	  }
-	  else {
-	    if(!(*relay_stream_it)->b.hasLocalSocket()){
-	      (*relay_stream_it)->b.setLocalIP(relay_address);
-	    }
-	    it->port = (*relay_stream_it)->b.getLocalPort();
+          } else {
+            if (!(*relay_stream_it)->b.hasLocalSocket()) {
+              (*relay_stream_it)->b.setLocalIP(relay_address);
+            }
+
+            it->port = (*relay_stream_it)->b.getLocalPort();
             replaceRtcpAttr(*it, relay_address, (*relay_stream_it)->b.getLocalRtcpPort());
-	  }
-	  if(!replaced_ports.empty()) replaced_ports += "/";
-	  replaced_ports += int2str(it->port);
-	} catch (const string& s) {
-	  ERROR("setting port: '%s'\n", s.c_str());
-	  throw string("error setting RTP port\n");
-	}
+          }
+
+          if (!replaced_ports.empty()) {
+            replaced_ports += "/";
+          }
+          replaced_ports += int2str(it->port);
+
+        } catch (const string& s) {
+          ERROR("setting port: '%s'\n", s.c_str());
+          throw string("error setting RTP port\n");
+        }
       }
       ++relay_stream_it;
-    }
-    else {
-      // quick workaround to allow direct connection of non-supported streams (i.e.
-      // those which are not relayed or transcoded): propagate connection
-      // address - might work but need not (to be tested with real clients
-      // instead of simulators)
-      if (it->conn.address.empty()) it->conn = orig_conn;
+
+    /* inactive stream */
+    } else {
+      /* quick workaround to allow direct connection of non-supported streams (i.e.
+       * those which are not relayed or transcoded): propagate connection
+       * address - might work but need not (to be tested with real clients
+       * instead of simulators) */
+      if (it->conn.address.empty()) {
+        it->conn = orig_conn;
+      }
       continue;
     }
   }
 
   if (it != parser_sdp.media.end()) {
-    // FIXME: create new streams here?
+    /* FIXME: create new streams here? */
     WARN("trying to relay SDP with more media lines than "
-	 "relay streams initialized (%zu)\n",audio.size()+relay_streams.size());
+         "relay streams initialized (%zu)\n", audio.size() + relay_streams.size());
   }
 
   DBG("replaced connection address in SDP with %s:%s.\n",
-      relay_public_address.c_str(), replaced_ports.c_str());
+      relay_public_address.c_str(),
+      replaced_ports.c_str());
 }
       
 static const char* 
