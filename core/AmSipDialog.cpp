@@ -688,6 +688,26 @@ int AmSipDialog::bye(const string& hdrs, int flags)
         send_200_ack(*it);
       }
 
+      /* handle case with force early announce (leg is in pseudo-connected state),
+       * but indeed on the SIP level, leg has never seen 2XX response */
+      if (getFaked183As200()) {
+        setFaked183As200(false); /* reset faked state */
+
+        for (TransMap::reverse_iterator t = uac_trans.rbegin();
+            t != uac_trans.rend();
+            t++)
+        {
+          if (t->second.method == SIP_METH_INVITE || t->second.method == SIP_METH_BYE) {
+            setStatus(Cancelling);
+            return SipCtrlInterface::cancel(&t->second.tt, local_tag,
+                                            t->first, t->second.hdrs + hdrs);
+          }
+        }
+        /* if faked state doesn't find required transaction,
+         * it's going to a usual way of handling with BYE */
+      }
+
+      /* usual handling */
       if (status != Disconnecting) {
         setStatus(Disconnected);
         return sendRequest(SIP_METH_BYE, NULL, hdrs, flags);
