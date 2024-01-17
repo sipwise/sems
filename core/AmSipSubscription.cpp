@@ -115,27 +115,30 @@ AmSipSubscription::newSingleSubscription(SingleSubscription::Role role,
 SingleSubscription* AmSipSubscription::makeSubscription(const AmSipRequest& req,
 							bool uac)
 {
-  SingleSubscription::Role role = 
-    uac ? 
-    SingleSubscription::Subscriber : 
-    SingleSubscription::Notifier;
-
   string event;
   string id;
 
-  if(req.method == SIP_METH_SUBSCRIBE) {
+  SingleSubscription::Role role = uac ?
+                                  SingleSubscription::Subscriber :
+                                  SingleSubscription::Notifier;
+
+  /* SUBSCRIBE */
+  if (req.method == SIP_METH_SUBSCRIBE) {
     // fetch Event-HF
     event = getHeader(req.hdrs,SIP_HDR_EVENT,true);
     id = get_header_param(event,"id");
     event = strip_header_params(event);
-  }
-  else if(req.method == SIP_METH_REFER) {
+
+  /* REFER */
+  } else if(req.method == SIP_METH_REFER) {
     //TODO: fetch Refer-Sub-HF (RFC 4488)
     event = "refer";
     id = int2str(req.cseq);
-  } 
-  else {
-    DBG("subscription are only created by SUBSCRIBE or REFER requests\n");
+
+  /* other */
+  } else {
+    DBG("subscription are only created by SUBSCRIBE or REFER requests. This one: '%s'\n",
+          req.method.c_str());
     // subscription are only created by SUBSCRIBE or REFER requests
     // and we do not support unsolicited NOTIFYs
     return NULL;
