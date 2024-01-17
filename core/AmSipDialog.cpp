@@ -664,75 +664,85 @@ AmSipRequest* AmSipDialog::getUASPendingInv()
 
 int AmSipDialog::bye(const string& hdrs, int flags)
 {
-    switch(status){
+    switch (status) {
 
     case Disconnecting:
-    case Connected: {
-      // collect INVITE UAC transactions
+    case Connected:
+    {
+      /* collect INVITE UAC transactions */
       vector<unsigned int> ack_trans;
-      for (TransMap::iterator it=uac_trans.begin(); it != uac_trans.end(); it++) {
-	if (it->second.method == SIP_METH_INVITE){
-	  ack_trans.push_back(it->second.cseq);
-	}
+      for (TransMap::iterator it = uac_trans.begin();
+          it != uac_trans.end();
+          it++)
+      {
+        if (it->second.method == SIP_METH_INVITE) {
+        ack_trans.push_back(it->second.cseq);
+        }
       }
-      // finish any UAC transaction before sending BYE
-      for (vector<unsigned int>::iterator it=
-	     ack_trans.begin(); it != ack_trans.end(); it++) {
-	send_200_ack(*it);
+
+      /* finish any UAC transaction before sending BYE */
+      for (vector<unsigned int>::iterator it = ack_trans.begin();
+          it != ack_trans.end();
+          it++)
+      {
+        send_200_ack(*it);
       }
 
       if (status != Disconnecting) {
-	setStatus(Disconnected);
-	return sendRequest(SIP_METH_BYE, NULL, hdrs, flags);
+        setStatus(Disconnected);
+        return sendRequest(SIP_METH_BYE, NULL, hdrs, flags);
       } else {
-	return 0;
+        return 0;
       }
     }
 
     case Trying:
     case Proceeding:
     case Early:
-	if(getUACInvTransPending())
-	    return cancel();
-	else {  
-	    for (TransMap::iterator it=uas_trans.begin();
-		 it != uas_trans.end(); it++) {
-	      if (it->second.method == SIP_METH_INVITE){
-		// let quit this call by sending final reply
-		return reply(it->second,
-			     487,"Request terminated");
-	      }
-	    }
+      if (getUACInvTransPending()) {
+        return cancel();
+      } else {
+        for (TransMap::iterator it = uas_trans.begin();
+             it != uas_trans.end();
+             it++)
+        {
+          if (it->second.method == SIP_METH_INVITE) {
+            /* let quit this call by sending final reply */
+            return reply(it->second, 487, "Request terminated");
+          }
+        }
 
-	    // missing AmSipRequest to be able
-	    // to send the reply on behalf of the app.
-	    ERROR("ignoring bye() in %s state: "
-		  "no UAC transaction to cancel or UAS transaction to reply.\n",
-		  getStatusStr());
-	    setStatus(Disconnected);
-	}
-	return 0;
+        /* missing AmSipRequest to be able
+         * to send the reply on behalf of the app. */
+        ERROR("ignoring bye() in %s state: "
+              "no UAC transaction to cancel or UAS transaction to reply.\n",
+              getStatusStr());
+        setStatus(Disconnected);
+      }
+      return 0;
 
     case Cancelling:
-      for (TransMap::iterator it=uas_trans.begin();
-	   it != uas_trans.end(); it++) {
-	if (it->second.method == SIP_METH_INVITE){
-	  // let's quit this call by sending final reply
-	  return reply(it->second, 487,"Request terminated");
-	}
+      for (TransMap::iterator it = uas_trans.begin();
+          it != uas_trans.end();
+          it++)
+      {
+        if (it->second.method == SIP_METH_INVITE){
+          /* let's quit this call by sending final reply */
+          return reply(it->second, 487,"Request terminated");
+        }
       }
 
-      // missing AmSipRequest to be able
-      // to send the reply on behalf of the app.
-      DBG("ignoring bye() in %s state: no UAS transaction to reply",getStatusStr());
+      /* missing AmSipRequest to be able
+       * to send the reply on behalf of the app. */
+      DBG("ignoring bye() in %s state: no UAS transaction to reply", getStatusStr());
       setStatus(Disconnected);
       return 0;
 
     default:
-        DBG("bye(): we are not connected "
-	    "(status=%s). do nothing!\n",getStatusStr());
-	return 0;
-    }	
+      DBG("bye(): we are not connected "
+          "(status=%s). do nothing!\n", getStatusStr());
+      return 0;
+    }
 }
 
 int AmSipDialog::reinvite(const string& hdrs,  
