@@ -249,7 +249,7 @@ void AmMediaProcessorThread::run()
 
       uint64_t diff = next_tick - now;
 
-      if(diff > 2000) // 2 ms
+      if(diff)
         usleep(diff);
     }
 
