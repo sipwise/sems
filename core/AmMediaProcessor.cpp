@@ -250,15 +250,21 @@ void AmMediaProcessorThread::run()
       uint64_t diff = next_tick - now;
 
       if(diff)
-        usleep(diff);
+        events.waitForEventTimed(diff / 1000);
     }
 
-    processAudio(ts);
     events.processEvents();
-    processDtmfEvents();
 
-    ts = (ts + WC_INC) & WALLCLOCK_MASK;
-    next_tick += tick;
+    // recheck time as we may have been woken up too soon
+    now = gettimeofday_us();
+
+    if (now >= next_tick) {
+      processAudio(ts);
+      processDtmfEvents();
+
+      ts = (ts + WC_INC) & WALLCLOCK_MASK;
+      next_tick += tick;
+    }
   }
 }
 
