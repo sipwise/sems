@@ -263,7 +263,11 @@ void AmMediaProcessorThread::run()
       processDtmfEvents();
 
       ts = (ts + WC_INC) & WALLCLOCK_MASK;
-      next_tick += tick;
+
+      // advance to next tick in increments of "tick":
+      // mathematical equivalent of: while (now >= next_tick) next_tick += tick;
+      uint64_t ticks = (now - next_tick) / tick + 1;
+      next_tick += tick * ticks;
     }
   }
 }
