@@ -230,31 +230,27 @@ void AmMediaProcessorThread::on_stop()
 void AmMediaProcessorThread::run()
 {
   stop_requested = false;
-  struct timeval now,next_tick,diff,tick;
 
   // wallclock time
   unsigned long long ts = 0;//4294417296;
 
-  tick.tv_sec  = 0;
-  tick.tv_usec = 1000*WC_INC_MS;
+  // everything else in microseconds
+  uint64_t tick = 1000*WC_INC_MS;
 
-  gettimeofday(&now,NULL);
-  timeradd(&tick,&now,&next_tick);
+  uint64_t now = gettimeofday_us();
+
+  uint64_t next_tick = now + tick;
     
   while(!stop_requested.get()){
 
-    gettimeofday(&now,NULL);
+    now = gettimeofday_us();
 
-    if(timercmp(&now,&next_tick,<)){
+    if(now < next_tick){
 
-      struct timespec sdiff,rem;
-      timersub(&next_tick,&now,&diff);
+      uint64_t diff = next_tick - now;
 
-      sdiff.tv_sec  = diff.tv_sec;
-      sdiff.tv_nsec = diff.tv_usec * 1000;
-
-      if(sdiff.tv_nsec > 2000000) // 2 ms
-	nanosleep(&sdiff,&rem);
+      if(diff > 2000) // 2 ms
+        usleep(diff);
     }
 
     processAudio(ts);
@@ -262,7 +258,7 @@ void AmMediaProcessorThread::run()
     processDtmfEvents();
 
     ts = (ts + WC_INC) & WALLCLOCK_MASK;
-    timeradd(&tick,&next_tick,&next_tick);
+    next_tick += tick;
   }
 }
 

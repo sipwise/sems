@@ -34,6 +34,8 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <sys/socket.h>
+#include <stdint.h>
+#include <sys/time.h>
 
 #include <string>
 using std::string;
@@ -289,6 +291,13 @@ void cvt_hex(HASH bin, HASHHEX hex);
 
 /** get an MD5 hash of a string */
 string calculateMD5(const string& input);
+
+/** return current time (unixtime / wall clock) as scalar microseconds */
+inline uint64_t gettimeofday_us() {
+  struct timeval now_tv;
+  gettimeofday(&now_tv,NULL);
+  return now_tv.tv_sec * 1000000LL + now_tv.tv_usec;
+}
 
 #endif
 
