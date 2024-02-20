@@ -249,8 +249,12 @@ void AmMediaProcessorThread::run()
 
       uint64_t diff = next_tick - now;
 
-      if(diff)
-        events.waitForEventTimed(diff / 1000);
+      if(diff) {
+        if (sessions.empty())
+          events.waitForEventTimed(500); // 0.5 s
+        else
+          events.waitForEventTimed(diff / 1000);
+      }
     }
 
     events.processEvents();
