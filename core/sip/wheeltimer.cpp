@@ -84,8 +84,7 @@ void _wheeltimer::run()
       sdiff.tv_sec = diff.tv_sec;
       sdiff.tv_nsec = diff.tv_usec * 1000;
 
-      if(sdiff.tv_nsec > 2000000) // 2 ms 
-	nanosleep(&sdiff,&rem);
+      nanosleep(&sdiff,&rem);
     }
     //else {
     //printf("missed one tick\n");
