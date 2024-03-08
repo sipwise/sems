@@ -88,8 +88,12 @@ void _wheeltimer::run()
     //printf("missed one tick\n");
     //}
 
-    turn_wheel();
-    next_tick += tick;
+    now = gettimeofday_us();
+
+    while (now >= next_tick) {
+      turn_wheel();
+      next_tick += tick;
+    }
   }
 }
 
