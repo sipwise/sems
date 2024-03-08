@@ -128,6 +128,7 @@ class _wheeltimer:
     u_int32_t wall_clock; // 32 bits
 
     void turn_wheel();
+    void process_events();
     void update_wheel(int wheel);
 
     void place_timer(timer* t);

@@ -94,6 +94,8 @@ void _wheeltimer::run()
       turn_wheel();
       next_tick += tick;
     }
+
+    process_events();
   }
 }
 
@@ -140,6 +142,12 @@ void _wheeltimer::turn_wheel()
     // Update existing timer entries
     update_wheel(i);
 	
+    //check for expired timer to process
+    process_current_timers();
+}
+
+void _wheeltimer::process_events()
+{
     // Swap the lists for timer insertion/deletion requests
     reqs_m.lock();
     reqs_process.swap(reqs_backlog);
@@ -156,8 +164,8 @@ void _wheeltimer::turn_wheel()
 	    delete_timer(rq.t);
 	}
     }
-	
-    //check for expired timer to process
+
+    //check for expired timer to process in case we just added some
     process_current_timers();
 }
 
