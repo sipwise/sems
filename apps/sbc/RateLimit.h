@@ -11,7 +11,7 @@ class DynRateLimit
   u_int32_t last_update;
   int counter;
 
-  unsigned int time_base;
+  unsigned int time_base_ms;
 
   void update_limit(int rate, int peak);
 
@@ -21,7 +21,7 @@ public:
 
   virtual ~DynRateLimit() {}
 
-  unsigned int getTimeBase() const { return time_base; }
+  unsigned int getTimeBase() const { return time_base_ms * 20; /* 20 ms increments */ }
 
   /**
    * rate: units/time_base
@@ -30,8 +30,8 @@ public:
    */
   bool limit(unsigned int rate, unsigned int peak, unsigned int size);
 
-  /** Get last update timestamp (wheeltimer::wallclock ticks) */
-  u_int32_t getLastUpdate() { return last_update; }
+private:
+  static u_int32_t wall_clock_ms();
 };
 
 class RateLimit
