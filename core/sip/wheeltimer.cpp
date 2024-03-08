@@ -30,8 +30,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <stdint.h>
+#include <unistd.h>
 
 #include "AmThread.h"
+#include "AmUtils.h"
 #include "wheeltimer.h"
 
 #include "log.h"
@@ -64,34 +67,29 @@ void _wheeltimer::remove_timer(timer* t)
 
 void _wheeltimer::run()
 {
-  struct timeval now,next_tick,diff,tick;
+  uint64_t now, next_tick, diff, tick; // microseconds
 
-  tick.tv_sec = 0;
-  tick.tv_usec = TIMER_RESOLUTION;
+  tick = TIMER_RESOLUTION;
   
-  gettimeofday(&now, NULL);
-  timeradd(&tick,&now,&next_tick);
+  now = gettimeofday_us();
+  next_tick = now + tick;
 
   while(true){
 
-    gettimeofday(&now,NULL);
+    now = gettimeofday_us();
 
-    if(timercmp(&now,&next_tick,<)){
+    if(now < next_tick){
 
-      struct timespec sdiff,rem;
-      timersub(&next_tick, &now,&diff);
+      diff = next_tick - now;
       
-      sdiff.tv_sec = diff.tv_sec;
-      sdiff.tv_nsec = diff.tv_usec * 1000;
-
-      nanosleep(&sdiff,&rem);
+      usleep(diff);
     }
     //else {
     //printf("missed one tick\n");
     //}
 
     turn_wheel();
-    timeradd(&tick,&next_tick,&next_tick);
+    next_tick += tick;
   }
 }
 
