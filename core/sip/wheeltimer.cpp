@@ -171,6 +171,8 @@ void _wheeltimer::process_current_timers()
 
 	t->next = NULL;
 	t->prev = NULL;
+	t->disarm();
+	num_timers--;
 
 	t->fire();
 
@@ -188,7 +190,8 @@ inline bool less_ts(unsigned int t1, unsigned int t2)
 
 void _wheeltimer::place_timer(timer* t)
 {
-    t->arm_absolute(wall_clock);
+    if (t->arm_absolute(wall_clock))
+	num_timers++;
 
     if(less_ts(t->get_absolute_expiry(),wall_clock)){
 
@@ -234,8 +237,10 @@ void _wheeltimer::add_timer_to_wheel(timer* t, int wheel, unsigned int pos)
 
 void _wheeltimer::delete_timer(timer* t)
 {
-    if(t->prev)
+    if(t->prev) {
 	t->prev->next = t->next;
+	num_timers--;
+    }
 
     if(t->next)
 	((timer*)t->next)->prev = t->prev;

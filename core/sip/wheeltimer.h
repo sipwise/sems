@@ -118,6 +118,7 @@ class _wheeltimer:
 
     //the timer wheel
     base_timer wheels[WHEELS][ELMTS_PER_WHEEL];
+    unsigned int num_timers;
 
     // request backlog lock (insert/remove)
     AmMutex               reqs_m;
