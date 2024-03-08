@@ -50,6 +50,10 @@ void _wheeltimer::insert_timer(timer* t)
     //add new timer to user request list
     reqs_m.lock();
     reqs_backlog.push_back(timer_req(t,true));
+    // Wake up worker thread: This triggers turn_wheel() based on how many ticks have passed,
+    // and in turn brings wall_clock up to date. Finally the events queue is processed, which
+    // adds the timer to the wheel based on the now-updated wall_clock.
+    reqs_cond.set(true);
     reqs_m.unlock();
 }
 
@@ -62,6 +66,12 @@ void _wheeltimer::remove_timer(timer* t)
     //add timer to remove to user request list
     reqs_m.lock();
     reqs_backlog.push_back(timer_req(t,false));
+    // Wake up worker thread: This is needed because the events queue is processed after
+    // expired timers are fired, and because the worker thread would otherwise continue to
+    // sleep, possibly until the next timer expires, which may be the one we want to remove.
+    // IOW we want to make sure events are processed before timers are fired, in case the
+    // timer we want to remove now is one of the timers that would be fired next.
+    reqs_cond.set(true);
     reqs_m.unlock();
 }
 
@@ -82,7 +92,8 @@ void _wheeltimer::run()
 
       diff = next_tick - now;
       
-      usleep(diff);
+      // Sleep up to diff ms, but wake up early if something is added to reqs_backlog
+      reqs_cond.wait_for_to(diff / 1000);
     }
     //else {
     //printf("missed one tick\n");
@@ -148,8 +159,9 @@ void _wheeltimer::turn_wheel()
 
 void _wheeltimer::process_events()
 {
-    // Swap the lists for timer insertion/deletion requests
+    // Swap the lists for timer insertion/deletion requests and reset wake condition
     reqs_m.lock();
+    reqs_cond.set(false);
     reqs_process.swap(reqs_backlog);
     reqs_m.unlock();
 

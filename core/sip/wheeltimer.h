@@ -122,6 +122,7 @@ class _wheeltimer:
 
     // request backlog lock (insert/remove)
     AmMutex               reqs_m;
+    AmCondition<bool>     reqs_cond; // to wake up worker thread when a request is added
     std::deque<timer_req> reqs_backlog;
     std::deque<timer_req> reqs_process;
 
