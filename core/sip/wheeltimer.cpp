@@ -91,9 +91,13 @@ void _wheeltimer::run()
     if(now < next_tick){
 
       diff = next_tick - now;
-      
-      // Sleep up to diff ms, but wake up early if something is added to reqs_backlog
-      reqs_cond.wait_for_to(diff / 1000);
+
+      // Sleep up to diff ms OR up to 0.5 seconds if there are no timers,
+      // but wake up early if something is added to reqs_backlog
+      if (num_timers)
+	reqs_cond.wait_for_to(diff / 1000);
+      else
+	reqs_cond.wait_for_to(500); // 0.5 s
     }
     //else {
     //printf("missed one tick\n");
