@@ -50,7 +50,6 @@ bool blacklist_bucket::insert(const bl_addr& addr, unsigned int duration /* ms *
 {
   wheeltimer* wt = wheeltimer::instance();
   unsigned int expires = duration / (TIMER_RESOLUTION/1000);
-  expires += wt->wall_clock;
 
   bl_timer* t = new bl_timer(addr,expires);
   bl_entry* bl_e = new bl_entry(t);

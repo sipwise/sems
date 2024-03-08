@@ -176,8 +176,6 @@ void _AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double t
     expires = timeout*1000.0*1000.0 / (double)TIMER_RESOLUTION;
   }
 
-  expires += wall_clock;
-
   user_timers_mut.lock();
   app_timer* t = erase_timer(eventqueue_name, timer_id);
   if (NULL != t) {
@@ -218,7 +216,6 @@ void _AmAppTimer::removeTimers(const string& eventqueue_name)
 void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
 {
   unsigned int expires = timeout*1000.0*1000.0 / (double)TIMER_RESOLUTION;
-  expires += wall_clock;
 
   direct_app_timer* dt = new direct_app_timer(t,expires);
   if(!dt) return;

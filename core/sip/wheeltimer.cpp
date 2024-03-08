@@ -187,7 +187,9 @@ inline bool less_ts(unsigned int t1, unsigned int t2)
 
 void _wheeltimer::place_timer(timer* t)
 {
-    if(less_ts(t->expires,wall_clock)){
+    t->arm_absolute(wall_clock);
+
+    if(less_ts(t->get_absolute_expiry(),wall_clock)){
 
 	// we put the late ones at the beginning of next wheel turn
 	add_timer_to_wheel(t,0,((1<<BITS_PER_WHEEL)-1) & wall_clock);
@@ -201,7 +203,7 @@ void _wheeltimer::place_timer(timer* t)
 void _wheeltimer::place_timer(timer* t, int wheel)
 {
     unsigned int pos;
-    unsigned int clock_mask = t->expires ^ wall_clock;
+    unsigned int clock_mask = t->get_absolute_expiry() ^ wall_clock;
 
     for(; wheel; wheel--){
 
@@ -213,7 +215,7 @@ void _wheeltimer::place_timer(timer* t, int wheel)
     }
 
     // we went down to wheel 0
-    pos = (t->expires >> (wheel*BITS_PER_WHEEL)) & ((1<<BITS_PER_WHEEL)-1);
+    pos = (t->get_absolute_expiry() >> (wheel*BITS_PER_WHEEL)) & ((1<<BITS_PER_WHEEL)-1);
     add_timer_to_wheel(t,wheel,pos);
 }
 

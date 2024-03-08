@@ -203,7 +203,7 @@ void trans_timer::fire()
 	bucket->lock();
 	if(bucket->exist(t)){
 	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%i, t=%i\n",
-		timer_name(type),t,expires,wheeltimer::instance()->wall_clock);
+		timer_name(type),t,expires,wheeltimer::instance()->get_wall_clock());
 
 	    trans_timer* tt = t->get_timer(this->type & 0xFFFF);
 	    if(tt != this) {
@@ -241,7 +241,6 @@ void sip_trans::reset_timer(unsigned int timer_type, unsigned int expire_delay /
     wheeltimer* wt = wheeltimer::instance();
 
     unsigned int expires = expire_delay / (TIMER_RESOLUTION/1000);
-    expires += wt->wall_clock;
     
     DBG("New timer of type %s at time=%i (repeated=%i)\n",
 	timer_name(timer_type),expires,timer_type>>16);

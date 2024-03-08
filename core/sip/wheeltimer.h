@@ -59,21 +59,46 @@ class timer: public base_timer
 {
 public:
     base_timer*  prev;
-    u_int32_t    expires;
 
     timer() 
 	: base_timer(),
-	  prev(0), expires(0) 
+	  prev(0), expires(0), expires_rel(0)
     {}
 
     timer(unsigned int expires)
         : base_timer(),
-	  prev(0), expires(expires)
+	  prev(0), expires(0), expires_rel(expires)
     {}
 
     ~timer(); 
 
     virtual void fire()=0;
+
+    // returns true if timer was not armed before
+    // return false and does nothing otherwise
+    bool arm_absolute(u_int32_t wall_clock)
+    {
+	if (expires)
+	    return false;
+	expires = expires_rel + wall_clock;
+	return true;
+    }
+
+    void disarm()
+    {
+	expires = 0;
+    }
+
+    u_int32_t get_absolute_expiry()
+    {
+	return expires;
+    }
+
+protected:
+    u_int32_t    expires; // absolute, set after arming timer
+
+private:
+    u_int32_t    expires_rel; // relative
 };
 
 #include "singleton.h"
@@ -99,6 +124,8 @@ class _wheeltimer:
     std::deque<timer_req> reqs_backlog;
     std::deque<timer_req> reqs_process;
 
+    u_int32_t wall_clock; // 32 bits
+
     void turn_wheel();
     void update_wheel(int wheel);
 
@@ -119,7 +146,6 @@ protected:
 
 public:
     //clock reference
-    volatile u_int32_t wall_clock; // 32 bits
     struct _uc {
 	int64_t get()
 	{
@@ -127,6 +153,12 @@ public:
 	}
     };
     _uc unix_clock;
+
+    // for debugging/logging only!
+    u_int32_t get_wall_clock()
+    {
+	return wall_clock;
+    }
 
     void insert_timer(timer* t);
     void remove_timer(timer* t);
