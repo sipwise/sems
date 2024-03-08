@@ -42,18 +42,6 @@ timer::~timer()
     // DBG("timer::~timer(this=%p)\n",this);
 }
 
-_wheeltimer::_wheeltimer()
-    : wall_clock(0)
-{
-    struct timeval now;
-    gettimeofday(&now,NULL);
-    unix_clock.set(now.tv_sec);
-}
-
-_wheeltimer::~_wheeltimer()
-{
-}
-
 void _wheeltimer::insert_timer(timer* t)
 {
     //add new timer to user request list
@@ -102,9 +90,6 @@ void _wheeltimer::run()
     //else {
     //printf("missed one tick\n");
     //}
-
-    gettimeofday(&now,NULL);
-    unix_clock.set(now.tv_sec);
 
     turn_wheel();
     timeradd(&tick,&next_tick,&next_tick);

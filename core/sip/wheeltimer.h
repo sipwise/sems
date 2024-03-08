@@ -32,6 +32,7 @@
 
 #include "../AmThread.h"
 #include <sys/types.h>
+#include <time.h>
 #include <deque>
 
 #include "atomic_types.h"
@@ -113,17 +114,19 @@ protected:
     void run();
     void on_stop(){}
 
-    _wheeltimer();
-    ~_wheeltimer();
+    _wheeltimer()
+	: wall_clock(0) {}
 
 public:
     //clock reference
     volatile u_int32_t wall_clock; // 32 bits
-#ifdef __LP64__
-    atomic_int64 unix_clock; // 64 bits
-#else
-    atomic_int unix_clock; // 32 bits
-#endif
+    struct _uc {
+	int64_t get()
+	{
+	    return time(NULL);
+	}
+    };
+    _uc unix_clock;
 
     void insert_timer(timer* t);
     void remove_timer(timer* t);
