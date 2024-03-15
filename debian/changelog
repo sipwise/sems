@@ -1,3 +1,30 @@
+ngcp-sems (1:1.6.0+0~mr12.4.0.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [0df85df] MT#59089 `AmB2BMedia::replaceConnectionAddress` code refactoring
+  * [241ca6a] MT#59022 `AmSipDialog::bye()` code refactoring
+  * [2763f18] MT#59022 Handle faked legs during B2BTerminateLeg properly
+  * [8d3912b] MT#59077 Extend logging in `AmSipSubscription::makeSubscription()`
+
+  [ Richard Fuchs ]
+  * [2b53f6c] MT#40962 change media timer math to ints
+  * [b733d3c] MT#40962 remove 2 ms sleep exemption
+  * [38cc845] MT#40962 replace usleep with waitForEventTimed
+  * [1a0b944] MT#40962 advance ticks mathematically
+  * [096a1f3] MT#40962 increase idle sleep time
+  * [eeae1d1] MT#40962 refactor wheeltimer::unix_clock
+  * [e33e002] MT#40962 decouple RateLimit from AmAppTimer
+  * [59503ea] MT#40962 make wheeltimer::wall_clock private
+  * [1490c93] MT#40962 remove 2 ms exemption
+  * [2542042] MT#40962 change wheel timer math to ints
+  * [7bf2f9c] MT#40962 allow for varying sleep times
+  * [1873c57] MT#40962 track number of timers
+  * [2043114] MT#40962 split up events from timers
+  * [390bf44] MT#40962 use condition variable for events
+  * [84fc2cc] MT#40962 increase idle sleep time
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 15 Mar 2024 08:50:17 +0100
+
 ngcp-sems (1:1.6.0+0~mr12.3.0.0) unstable; urgency=medium
 
   * New release.
