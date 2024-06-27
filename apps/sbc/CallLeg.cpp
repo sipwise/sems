@@ -163,7 +163,7 @@ static bool isSDPBodyHold(const AmSdp &sdp)
   return false;
 }
 
-static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
+static bool isHoldRequest(const AmSdp &sdp, HoldMethod &method)
 {
   /* set defaults from session parameters and attributes
    * inactive/sendonly/sendrecv/recvonly may be given as session attributes,
@@ -171,8 +171,8 @@ static bool isHoldRequest(AmSdp &sdp, HoldMethod &method)
   bool connection_active = connectionActive(sdp.conn, false /* empty connection like inactive? */);
   MediaActivity session_activity = getMediaActivity(sdp.attributes, Sendrecv);
 
-  for (std::vector<SdpMedia>::iterator m = sdp.media.begin(); 
-      m != sdp.media.end(); ++m) 
+  for (std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
+      m != sdp.media.end(); ++m)
   {
     if (m->port == 0) continue; /* this stream is disabled, handle like inactive (?) */
     if (!connectionActive(m->conn, connection_active)) {
