@@ -210,6 +210,96 @@ void AmB2BSession::relayError(const string &method, unsigned cseq, bool forward,
   }
 }
 
+void AmB2BSession::createFakeReply(AmMimeBody *sdp,   AmMimeBody& reply_body) {
+
+  int rtp_int_tmp = getRtpInterface();
+  string rtp_local_ip = AmConfig::RTP_Ifs[rtp_int_tmp].LocalIP;
+
+  AmSdp s;
+
+  if (!sdp || s.parse((const char*)sdp->getPayload())) {
+    /* no offer in the INVITE (or can't be parsed), we have to append fake offer
+       into the reply */
+    s.version = 0;
+    s.origin.user = "sems";
+    s.sessionName = "sems";
+    s.conn.network = NT_IN;
+    s.conn.addrType = AT_V4;
+
+    /* MT#55582, removed.
+    s.conn.address = "0.0.0.0";
+    */
+
+    /* re-fill the empty connection address with the media_ip */
+    if (s.conn.address.empty()) s.conn.address = rtp_local_ip;
+
+    s.media.push_back(SdpMedia());
+    SdpMedia &m = s.media.back();
+    m.type = MT_AUDIO;
+    m.transport = TP_RTPAVP;
+    m.send = false;
+    m.recv = false;
+    m.payloads.push_back(SdpPayload(0));
+  }
+
+  /* MT#55582, removed, because in case of generating a faked reply
+   during the media session refreshment (e.g. call pickup after the AA),
+   it leads to a held media session
+
+  if (!s.conn.address.empty()) s.conn.address = "0.0.0.0";
+  for (vector<SdpMedia>::iterator i = s.media.begin(); i != s.media.end(); ++i) {
+    //i->port = 0;
+    if (!i->conn.address.empty()) i->conn.address = "0.0.0.0";
+  }*/
+
+  /* re-fill the empty connection address with the media_ip */
+  if (s.conn.address.empty()) {
+    s.conn.address = rtp_local_ip;
+    DBG("RTP Connection address was empty, and has been rested to: <%s>\n", s.conn.address.c_str());
+  }
+
+  /* same here, but for the rest media sessions in SDP */
+  for (vector<SdpMedia>::iterator i = s.media.begin(); i != s.media.end(); ++i) {
+    if (i->conn.address.empty()) i->conn.address = rtp_local_ip;
+  }
+
+  string body_str;
+  s.print(body_str);
+  reply_body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  try {
+    updateLocalBody(reply_body);
+  } catch (...) { /* throw ? */  }
+
+  DBG("created pending INVITE reply body: %s\n", body_str.c_str());
+}
+
+void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
+{
+  // reply the INVITE with fake 200 reply
+
+  AmMimeBody *sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
+  AmMimeBody body;
+
+  createFakeReply(sdp, body);
+
+  DBG("Replying to pending invite with 200 OK\n");
+  dlg->reply(*invite, 200, "OK", &body);
+}
+
+void AmB2BSession::acceptPendingInviteB2B(AmSipRequest& invite)
+{
+  AmMimeBody *sdp = invite.body.hasContentType(SIP_APPLICATION_SDP);
+  AmSipReply n_reply;
+  createFakeReply(sdp, n_reply.body);
+  n_reply.code = 200;
+  n_reply.reason = "OK";
+  n_reply.cseq = invite.cseq;
+  n_reply.cseq_method = SIP_METH_INVITE;
+  n_reply.from_tag = dlg->getLocalTag();
+  DBG("Relaying B2B-event (fake 200 OK)\n");
+  relayEvent(new B2BSipReplyEvent(n_reply, true, SIP_METH_INVITE, getLocalTag()));
+}
+
 void AmB2BSession::onB2BEvent(B2BEvent* ev)
 {
   DBG("AmB2BSession::onB2BEvent\n");

@@ -207,6 +207,15 @@ private:
   /** send a relayed SIP Reply */
   int relaySip(const AmSipRequest& orig, const AmSipReply& reply);
 
+  /** generate fake body (c=0.0.0.0) reply */
+  void createFakeReply(AmMimeBody *sdp,   AmMimeBody& reply_body);
+
+  /** generate 200 SIP reply on a pending INVITE (uses fake body) */
+  virtual void acceptPendingInvite(AmSipRequest *invite);
+
+  /** generate 200 B2B reply on a pending INVITE (uses fake body) */
+  void acceptPendingInviteB2B(AmSipRequest& invite);
+
  public:
 
   void sl_reply(const string &method, unsigned cseq, bool forward, int sip_code, const char *reason);
