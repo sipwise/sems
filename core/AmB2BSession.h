@@ -158,6 +158,12 @@ private:
   /** CSeq map for REFER subscriptions */
   map<unsigned int, unsigned int> refer_id_map;
 
+  // we have to use the same "o=" line with potentially increasing session version in SDP
+  SdpOrigin sdp_origin;
+  AmSdp     previous_sdp;
+  unsigned long long previous_origin_sessId;
+  unsigned long long previous_origin_sessV;
+
  protected:
   /** Tell if the session should
    *  process SIP request itself
@@ -299,6 +305,11 @@ private:
   /** update remote connection in relay_streams */
   void updateRelayStreams(const AmMimeBody& body,
 			  AmSdp& parser_sdp);
+
+  /** set locally used SDP origin */
+  void setSdpOrigin(const SdpOrigin &o) { sdp_origin = o; }
+  /** set SDP origin in local body */
+  void updateLocalSdpOrigin(AmSdp& sdp);
 
   /** replace connection with our address */
   void updateLocalBody(AmMimeBody& body);

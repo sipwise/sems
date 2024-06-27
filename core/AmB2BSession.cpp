@@ -100,7 +100,9 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     enable_dtmf_rtp_detection(false),
     rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
     est_invite_cseq(0),est_invite_other_cseq(0),
-    media_session(NULL)
+    media_session(NULL),
+    previous_origin_sessId(0),
+    previous_origin_sessV(0)
 {
   if(!subs) subs = new AmSipSubscription(dlg,this);
 }
@@ -515,6 +517,56 @@ void AmB2BSession::updateLocalSdp(AmSdp &sdp)
   media_session->replaceConnectionAddress(sdp, a_leg, localMediaIP(), advertisedIP());
 }
 
+void AmB2BSession::updateLocalSdpOrigin(AmSdp& sdp) {
+  // fix SDP origin
+  if (sdp_origin.conn.address.empty()) {
+    // remember this origin for whole dialog lifetime
+    sdp_origin = sdp.origin;
+    previous_sdp = sdp;
+    previous_origin_sessId = sdp.origin.sessId;
+    previous_origin_sessV = sdp.origin.sessV;
+    DBG("Remembering initial SDP Origin (Id %s V %s)\n",
+	longlong2str(sdp.origin.sessId).c_str(), longlong2str(sdp.origin.sessV).c_str());
+  }
+  else {
+    bool sdp_changed = false;
+    // check if Origin Id/Version has changed
+    if ((sdp.origin.sessV != previous_origin_sessV) ||
+       (sdp.origin.sessId != previous_origin_sessId)){
+      sdp_changed = true;
+      // remember for next time
+      previous_origin_sessId = sdp.origin.sessId;
+      previous_origin_sessV = sdp.origin.sessV;
+    }
+    // use remembered SDP origin
+    sdp.origin = sdp_origin;
+    // check if SDP has changed (apart from origin)
+    if (!sdp_changed) {
+      // comparing the AmSdp objects may be unsafe (intialized members...),
+      // so comparing resulting SDP string
+      string s_sdp; string s_previous_sdp;
+      sdp.print(s_sdp); previous_sdp.print(s_previous_sdp);
+      if (!(s_sdp == s_previous_sdp)) {
+       sdp_changed = true;
+      }
+    }
+    // ...and increase version if changed
+    if (sdp_changed) {
+      // increase version
+      sdp_origin.sessV++;
+      // update origin
+      sdp.origin = sdp_origin;
+      // remember the current SDP for the next time
+      previous_sdp = sdp;
+      DBG("SDP changed; updating Origin (Id %s V %s)\n",
+	  longlong2str(sdp.origin.sessId).c_str(), longlong2str(sdp.origin.sessV).c_str());
+    } else {
+      DBG("SDP unchanged; keeping Origin (Id %s V %s)\n",
+	  longlong2str(sdp.origin.sessId).c_str(), longlong2str(sdp.origin.sessV).c_str());
+    }
+  }
+}
+
 void AmB2BSession::updateLocalBody(AmMimeBody& body)
 {
   AmMimeBody *sdp = body.hasContentType(SIP_APPLICATION_SDP);
@@ -527,6 +579,7 @@ void AmB2BSession::updateLocalBody(AmMimeBody& body)
   }
 
   updateLocalSdp(parser_sdp);
+  updateLocalSdpOrigin(parser_sdp);
 
   // regenerate SDP
   string n_body;
