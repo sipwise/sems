@@ -112,6 +112,8 @@ protected:
   void setOAForceSDP(bool force) { oa.setForceSDP(force); }
   bool getOAForceSDP() const { return oa.getForceSDP(); }
 
+  bool oaExpectingOffer();
+
   /* getter/setter for faked 183 as 200OK responses, TT#187351 */
   void setFaked183As200(bool value) { faked_183_as_200 = value; }
   bool getFaked183As200() { return faked_183_as_200; }

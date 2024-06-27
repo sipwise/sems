@@ -223,6 +223,12 @@ void AmSipDialog::setOAState(AmOfferAnswer::OAState n_st) {
   oa.setState(n_st);
 }
 
+/** are we expecting to receive an SDP offer? */
+bool AmSipDialog::oaExpectingOffer() {
+  return oa.getState() == AmOfferAnswer::OA_None ||
+    oa.getState() == AmOfferAnswer::OA_Completed;
+}
+
 void AmSipDialog::setRel100State(Am100rel::State rel100_state) {
   DBG("setting 100rel state for '%s' to %i\n", local_tag.c_str(), rel100_state);
   rel100.setState(rel100_state);

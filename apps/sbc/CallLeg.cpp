@@ -1789,9 +1789,7 @@ void CallLeg::updateLocalSdp(AmSdp &sdp)
 
   // FIXME: repeated SDP (183, 200) will cause false match in OA_Completed
   // (need not to be expected with re-INVITEs asking for hold)
-  if (dlg->getOAState() == AmOfferAnswer::OA_None ||
-      dlg->getOAState() == AmOfferAnswer::OA_Completed)
-  {
+  if (dlg->oaExpectingOffer()) {
     // handling offer
     adjustOffer(sdp);
   }
