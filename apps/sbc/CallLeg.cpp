@@ -788,9 +788,28 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
   clearRtpReceiverRelay();
   relayed_req.clear();
 
+  // the Re-INVITE to be used
+  SessionUpdate *u =
+    new Reinvite(ev->hdrs, ev->body, /* establishing = */ true, ev->relayed_invite, ev->r_cseq);
+
   // check if we aren't processing INVITE now (BLF ringing call pickup)
   AmSipRequest *invite = dlg->getUASPendingInv();
-  if (invite) acceptPendingInvite(invite);
+  bool is_pending_call = (NULL != invite);
+  if (is_pending_call) {
+    TRACE("INVITE pending - planning session update with SDP from INVITE+replaces for later for ltag %s",
+	  getLocalTag().c_str());
+    pending_updates.push_back(u);
+    DBG("INVITE pending - accepting with fake SDP\n");
+    // remember SDP origin of the other side for our requests
+    AmMimeBody *sdp = ev->body.hasContentType(SIP_APPLICATION_SDP);
+    if (sdp) {
+      AmSdp parsed_sdp;
+      if (parsed_sdp.parse((const char*)sdp->getPayload()) == 0) {
+        saveLocalSdpOrigin(parsed_sdp);
+      }
+    }
+    acceptPendingInvite(invite);
+  }
 
   setOtherId(ev->session_tag);
   if (ev->role == ReconnectLegEvent::A) a_leg = true;

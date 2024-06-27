@@ -517,8 +517,8 @@ void AmB2BSession::updateLocalSdp(AmSdp &sdp)
   media_session->replaceConnectionAddress(sdp, a_leg, localMediaIP(), advertisedIP());
 }
 
-void AmB2BSession::updateLocalSdpOrigin(AmSdp& sdp) {
-  // fix SDP origin
+void AmB2BSession::saveLocalSdpOrigin(const AmSdp& sdp)
+{
   if (sdp_origin.conn.address.empty()) {
     // remember this origin for whole dialog lifetime
     sdp_origin = sdp.origin;
@@ -527,6 +527,13 @@ void AmB2BSession::updateLocalSdpOrigin(AmSdp& sdp) {
     previous_origin_sessV = sdp.origin.sessV;
     DBG("Remembering initial SDP Origin (Id %s V %s)\n",
 	longlong2str(sdp.origin.sessId).c_str(), longlong2str(sdp.origin.sessV).c_str());
+  }
+}
+
+void AmB2BSession::updateLocalSdpOrigin(AmSdp& sdp) {
+  // fix SDP origin
+  if (sdp_origin.conn.address.empty()) {
+    saveLocalSdpOrigin(sdp);
   }
   else {
     bool sdp_changed = false;

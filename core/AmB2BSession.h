@@ -306,8 +306,8 @@ private:
   void updateRelayStreams(const AmMimeBody& body,
 			  AmSdp& parser_sdp);
 
-  /** set locally used SDP origin */
-  void setSdpOrigin(const SdpOrigin &o) { sdp_origin = o; }
+  /** set locally used SDP origin (if none saved yet) */
+  void saveLocalSdpOrigin(const AmSdp& sdp);
   /** set SDP origin in local body */
   void updateLocalSdpOrigin(AmSdp& sdp);
 
