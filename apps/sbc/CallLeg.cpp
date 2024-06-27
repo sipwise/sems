@@ -447,18 +447,49 @@ void CallLeg::onB2BEvent(B2BEvent* ev)
         if (dynamic_cast<ApplyPendingUpdatesEvent*>(ev)) applyPendingUpdate();
         break;
 
-
-    case B2BSipRequest:
+    case B2BSipRequest: {
+      B2BSipRequestEvent *req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
       if (!sip_relay_only) {
-        // disable forwarding of relayed request if we are not connected [yet]
-        // (only we known that, the B leg has just delayed information about being
-        // connected to us and thus it can't set)
-        // Need not to be done if we have only one possible B leg so instead of
-        // checking call_status we can check if sip_relay_only is set or not
-        B2BSipRequestEvent *req_ev = dynamic_cast<B2BSipRequestEvent*>(ev);
+        /** disable forwarding of relayed request if we are not connected [yet]
+         *  (only we known that, the B leg has just delayed information about being
+         *  connected to us and thus it can't set)
+         *  Need not to be done if we have only one possible B leg so instead of
+         *  checking call_status we can check if sip_relay_only is set or not
+         */
         if (req_ev) req_ev->forward = false;
+      } else {
+        if (req_ev && req_ev->forward) {
+          /* in case of already ongoing negotiation in the other leg */
+          if (req_ev->req.method == SIP_METH_INVITE && dlg->getUACInvTransPending()) {
+            if (AmConfig::send_491_on_pending_session_leg) {
+              /** do not send right away one more re-INVITE towards it,
+               *  just delay the current leg, which sent us re-INVITE, with with a 491 response.
+               */
+              DBG("Cannot forward INVITE into another leg, already present pending session with it!\n");
+              AmB2BSession::relayError(req_ev->req.method, req_ev->req.cseq, true, 491, SIP_REPLY_PENDING);
+              return;
+            } else {
+              /** send a fake 200OK to the one who initiated media re-negotiation,
+               *  in order to let it be sure the re-negotiation is completed, and then
+               *  after a while, when an opposite leg is done with its pending transaction(s),
+               *  propose it new media attributes. This behavior, however, can trigger issues with non
+               *  matched ACK for the faked 200OK, in case B2B establishes other transactions
+               *  within the period till ACK is received (for the fake 200OK).
+               */
+              DBG("Pending UAC INVITE transaction, planning session update (Reinvite) for later.\n");
+              pending_updates.push_back(new Reinvite(req_ev->req.hdrs,
+                                          req_ev->req.body, /* establishing = */ false,
+                                          /* relayed */ false, /* r_cseq */ 0));
+              DBG("For now replying with fake 200 OK.\n");
+              acceptPendingInviteB2B(req_ev->req);
+              return;
+            }
+          }
+        }
       }
       // continue handling in AmB2bSession
+      AmB2BSession::onB2BEvent(ev);
+    } break;
 
     default:
       AmB2BSession::onB2BEvent(ev);

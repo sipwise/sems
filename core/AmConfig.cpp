@@ -128,7 +128,9 @@ unsigned int AmConfig::ShutdownModeErrCode     = 503;
 string       AmConfig::ShutdownModeErrReason   = "Server shutting down";
 
 bool         AmConfig::skip_cpslimit_emergency = true;
-  
+
+bool         AmConfig::send_491_on_pending_session_leg = false;
+
 string AmConfig::OptionsTranscoderOutStatsHdr; // empty by default
 string AmConfig::OptionsTranscoderInStatsHdr; // empty by default
 string AmConfig::TranscoderOutStatsHdr; // empty by default
@@ -465,6 +467,11 @@ int AmConfig::readConfiguration()
   // skip_cpslimit_emergency = false - drop emergency calls on CPSLimit
   if (cfg.hasParameter("skip_cpslimit_emergency"))
     skip_cpslimit_emergency = cfg.getParameter("skip_cpslimit_emergency")=="yes";
+
+  // send_491_on_pending_session_leg = true - generate 491 Pending, on pending transaction
+  // send_491_on_pending_session_leg = false - generate a fake 200OK, on pending transaction
+  if (cfg.hasParameter("send_491_on_pending_session_leg"))
+    send_491_on_pending_session_leg = cfg.getParameter("send_491_on_pending_session_leg")=="yes";
 
   if(cfg.hasParameter("log_sessions"))
     LogSessions = cfg.getParameter("log_sessions")=="yes";

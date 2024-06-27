@@ -285,6 +285,19 @@ struct AmConfig
   /* Global policy for treating emergency calls on CPSLimit triggering */
   static bool skip_cpslimit_emergency;
 
+  /** Defines whether we send 491 upon receiving re-INVITE in one leg,
+   *  meanwhile in an opposite leg there is still pending transaction.
+   *  Example: ACK hasn't been received in A leg, meanwhile in the B leg
+   *  remote SIP point already sends us re-INVITE to re-negotiate the media.
+   *  - if true, 491 is sent on the re-INVITE, and it's meant, remote point
+   *    re-sends re-INVITE slightly later again.
+   *  - if false, a fake 200OK is generated towards remote side as an answer
+   *    to re-INVITE, and for another leg media updates are scheduled
+   *    for later time (after its handshake is finished for e.g.)
+   *  By default: generate fake 200OK.
+   */
+  static bool send_491_on_pending_session_leg;
+
   /** Read global configuration file and insert values. Maybe overwritten by
    * command line arguments */
   static int readConfiguration();
