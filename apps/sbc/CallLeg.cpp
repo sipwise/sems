@@ -461,7 +461,13 @@ void CallLeg::onB2BEvent(B2BEvent* ev)
         if (req_ev && req_ev->forward) {
           /* in case of already ongoing negotiation in the other leg */
           if (req_ev->req.method == SIP_METH_INVITE && dlg->getUACInvTransPending()) {
-            if (AmConfig::send_491_on_pending_session_leg) {
+            /* if P-Force-491 is present, then it always marks a skip of 491 usage
+             * for overlapping invite transactions (for the same other leg).
+             * It's in use by the pick-up functionality, where two competing transactions
+             * are sent towards caller to update his media capabilities */
+            string p_force_491 = getHeader(req_ev->req.hdrs, SIP_HDR_P_FORCE_491, true);
+
+            if (AmConfig::send_491_on_pending_session_leg && p_force_491 != "0") {
               /** do not send right away one more re-INVITE towards it,
                *  just delay the current leg, which sent us re-INVITE, with with a 491 response.
                */
@@ -819,14 +825,16 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
   clearRtpReceiverRelay();
   relayed_req.clear();
 
-  // the Re-INVITE to be used
-  SessionUpdate *u =
-    new Reinvite(ev->hdrs, ev->body, /* establishing = */ true, ev->relayed_invite, ev->r_cseq);
-
   // check if we aren't processing INVITE now (BLF ringing call pickup)
   AmSipRequest *invite = dlg->getUASPendingInv();
   bool is_pending_call = (NULL != invite);
   if (is_pending_call) {
+    // the Re-INVITE to be used
+    string hdrs = ev->hdrs;
+    if (ev->relayed_invite)
+      hdrs += SIP_HDR_COLSP(SIP_HDR_P_FORCE_491) "0" CRLF;
+    SessionUpdate *u = new Reinvite(hdrs, ev->body, true, ev->relayed_invite, ev->r_cseq);
+
     TRACE("INVITE pending - planning session update with SDP from INVITE+replaces for later for ltag %s",
 	  getLocalTag().c_str());
     pending_updates.push_back(u);
@@ -864,8 +872,12 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
 		  "to", dlg->getRemoteParty().c_str(),
 		  "ruri", dlg->getRemoteUri().c_str());
 
-  updateSession(new Reinvite(ev->hdrs, ev->body,
-        /* establishing = */ true, ev->relayed_invite, ev->r_cseq));
+  if (!is_pending_call) {
+    TRACE("updating session with SDP from INVITE+replaces for ltag %s", getLocalTag().c_str());
+    // the Re-INVITE to be used
+    SessionUpdate *u = new Reinvite(ev->hdrs, ev->body, true, ev->relayed_invite, ev->r_cseq);
+    updateSession(u);
+  }
 }
 
 void CallLeg::onB2BReplace(ReplaceLegEvent *e)

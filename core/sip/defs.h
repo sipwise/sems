@@ -56,6 +56,7 @@
 #define SIP_HDR_SUBSCRIPTION_STATE "Subscription-State"
 #define SIP_HDR_REPLACES          "Replaces"
 #define SIP_HDR_P_DSM_APP        "P-DSM-App"
+#define SIP_HDR_P_FORCE_491      "P-Force-491"
 
 #define DSM_PARAM_EARLY_AN      "early-announce"
 #define DSM_PARAM_PLAYBACK      "playback"
