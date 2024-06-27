@@ -240,7 +240,8 @@ CallLeg::CallLeg(const CallLeg* caller, AmSipDialog* p_dlg, AmSipSubscription* p
   : AmB2BSession(caller->getLocalTag(),p_dlg,p_subs),
     call_status(Disconnected),
     on_hold(false),
-    hold(PreserveHoldStatus)
+    hold(PreserveHoldStatus),
+    hold_method_requested(NonHold)
 {
   a_leg = !caller->a_leg; // we have to be the complement
 
@@ -300,7 +301,8 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
   : AmB2BSession("",p_dlg,p_subs),
     call_status(Disconnected),
     on_hold(false),
-    hold(PreserveHoldStatus)
+    hold(PreserveHoldStatus),
+    hold_method_requested(NonHold)
 {
   a_leg = true;
 
@@ -1126,7 +1128,22 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
        *    to avoid other confusions... */
       dlg->reply(req, 200, "OK");
 
-    } else {
+    }
+    else
+    {
+      /** only for requests which put the call on hold.
+       *  Remember that we have to answer to the one, who puts on hold,
+       *  with the 'inactive' back (as soon as the on hold is accepted with the 200OK
+       *  by the other side of the call) in case the on hold was requested using 'inactive'
+       */
+      AmSdp sdp;
+      hm hold_method;
+      if (req.method == SIP_METH_INVITE && retrieveAmSdp(req.body, sdp)) {
+        /* case when remote side puts us on hold */
+        if (isOnHoldRequested(sdp, hold_method)) updateHoldMethod(hold_method);
+        /* it's likely sendrecv - then make sure 'hold_method_requested' is kept updated */
+        else hold_method_requested = NonHold;
+      }
       AmB2BSession::onSipRequest(req);
     }
   }
@@ -1395,6 +1412,41 @@ void CallLeg::updateCallStatus(CallStatus new_status, const StatusChangeCause &c
 
   setCallStatus(new_status);
   onCallStatusChange(cause);
+}
+
+void CallLeg::updateHoldMethod(const hm &hm)
+{
+  switch (hm)
+  {
+    case SendonlyStream: hold_method_requested = SendonlyHold; break;
+    case InactiveStream: hold_method_requested = InactiveHold; break;
+    case ZeroedConnection: hold_method_requested = ZeroedHold; break;
+    default: hold_method_requested = NonHold;
+  }
+  DBG("hold_method_requested is set to: <%d> for LT <%s>\n",
+      hold_method_requested, getLocalTag().c_str());
+}
+bool CallLeg::isOnHoldRequested(const AmSdp &sdp, hm &method)
+{
+  if (isHoldRequest(sdp, (HoldMethod&)method)) {
+    DBG("This request puts the call on hold\n");
+    return true;
+  }
+  return false;
+}
+bool CallLeg::retrieveAmSdp(const AmMimeBody &mSdp, AmSdp &sdp)
+{
+  AmMimeBody t_sdp_body = mSdp;
+  AmMimeBody * sdp_body = t_sdp_body.hasContentType(SIP_APPLICATION_SDP);
+  if (!sdp_body) {
+    DBG("Failed to parse SDP body while retrieving into AmSdp!\n");
+    return false;
+  }
+  if (sdp.parse((const char *)sdp_body->getPayload())) {
+    DBG("Failed to parse SDP body while retrieving into AmSdp!\n");
+    return false;
+  }
+  return true; /* parsed successfully */
 }
 
 void CallLeg::addExistingCallee(const string &session_tag, ReconnectLegEvent *ev)
@@ -1794,10 +1846,39 @@ void CallLeg::updateLocalSdp(AmSdp &sdp)
     adjustOffer(sdp);
   }
 
-  if (hold == PreserveHoldStatus && !on_hold) {
-    // store non-hold SDP to be able to resumeHeld
-    non_hold_sdp = sdp;
+  /** make sure to answer with the 'sendonly' / 'inactive' to the one who previously
+   *  requested the on-hold, in order to meet RFC requirements:
+   *  - 'sendonly' must be faced with the 'recvonly' sent back as an answer
+   *  - 'inactive' must be faced with the 'inactive' sent back as an answer
+   *  This block is only needed for cases, when MoH is emulated on the SEMS directly.
+   */
+  else if (hold == PreserveHoldStatus && hold_method_requested != NonHold)
+  {
+    for (std::vector<SdpMedia>::iterator m = sdp.media.begin();
+         m != sdp.media.end(); ++m)
+    {
+      if (m->isAudio()) {
+        switch(hold_method_requested)
+        {
+          case SendonlyHold:
+            m->send = false; /* make sure to answer with the recvonly, if the on hold */
+            m->recv = true;  /* was perviously requested using a=sendonly  */
+            DBG("On hold has been previously requested and must be held further\n");
+            DBG("This SDP is prepared to be sent with the a=recvonly\n");
+            break;
+          case InactiveHold:
+            m->send = false; /* make sure to answer with the inactive, if the on hold */
+            m->recv = false; /* was perviously requested using a=inactive */
+            DBG("On hold has been previously requested and must be held further\n");
+            DBG("This SDP is prepared to be sent with the a=inactive\n");
+            break;
+        }
+      }
+    }
   }
+
+  /* store non-hold SDP to be able to resumeHeld */
+  if (hold == PreserveHoldStatus && !on_hold) non_hold_sdp = sdp;
 
   AmB2BSession::updateLocalSdp(sdp);
 }
