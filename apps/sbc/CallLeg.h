@@ -141,8 +141,30 @@ class CallLeg: public AmB2BSession
 
     bool on_hold; // remote is on hold
     AmSdp non_hold_sdp;
-    enum { HoldRequested, ResumeRequested, PreserveHoldStatus } hold;
-    enum { NonHold, InactiveHold, SendonlyHold, ZeroedHold } hold_method_requested;
+
+    /**
+     * TODO: clear thing around hold out.
+     * what is the difference between holdType and HoldMethod?
+     * This can probably be merged into one type later.
+     */
+    enum holdAction {
+      HoldRequested,
+      ResumeRequested,
+      PreserveHoldStatus
+    } hold;
+    enum holdType {
+      NonHold,
+      InactiveHold,
+      SendonlyHold,
+      ZeroedHold
+    } hold_type_requested;
+    enum holdMethod {
+      SendonlyStream,
+      InactiveStream,
+      ZeroedConnection,
+      RecvonlyStream,
+      None
+    };
 
     // queue of session update operations, first element is possibly the one
     // being in progress
@@ -190,21 +212,15 @@ class CallLeg: public AmB2BSession
 
     void updateCallStatus(CallStatus new_status, const StatusChangeCause &cause = StatusChangeCause());
 
-    /** TODO: bring 'enum HoldMethod' from the .cpp file inside the CallLeg class definition.
-     *  Currently this is a rude implementation which creates obstacles,
-     *  and forces us to have a duplicate (hm) here in the class, when we want to have it as param.
-     *  Additionally we have to constantly cast HoldMethod -> hm while working with them.
-     */
-    enum hm { SendonlyStream, InactiveStream, ZeroedConnection };
+    bool isHoldRequest(const AmSdp &sdp, holdMethod &method);
     /** keep the method, which was used to put the call
      *  on hold, in the SDP offer received (most likely in re-INVITE)
      */
-    void updateHoldMethod(const hm &hm);
+    void updateHoldMethod(const holdMethod &hm);
     /* check if this request assumes call to be put on hold,
      * this in internal class'es implementation.
-     * hm - hold method (SendonlyStream, InactiveStream, ZeroedConnection)
      */
-    bool isOnHoldRequested(const AmSdp &sdp, hm &hm);
+    bool isOnHoldRequested(const AmSdp &sdp, holdMethod &hm);
     /* set AmSdp based on AmMimeBody */
     bool retrieveAmSdp(const AmMimeBody &mSdp, AmSdp &sdp);
 

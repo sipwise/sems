@@ -75,17 +75,14 @@ ReliableB2BEvent::~ReliableB2BEvent()
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// helper functions
-
-enum HoldMethod { SendonlyStream, InactiveStream, ZeroedConnection, RecvonlyStream, None };
-
 static const string sendonly("sendonly");
 static const string recvonly("recvonly");
 static const string sendrecv("sendrecv");
 static const string inactive("inactive");
-
 static const string zero_connection("0.0.0.0");
+
+////////////////////////////////////////////////////////////////////////////////
+// helper functions
 
 /** returns true if connection is avtive.
  * Returns given default_value if the connection address is empty to cope with
@@ -163,69 +160,6 @@ static bool isSDPBodyHold(const AmSdp &sdp)
   return false;
 }
 
-static bool isHoldRequest(const AmSdp &sdp, HoldMethod &method)
-{
-  /* set defaults from session parameters and attributes
-   * inactive/sendonly/sendrecv/recvonly may be given as session attributes,
-   * connection can be given for session as well */
-  bool connection_active = connectionActive(sdp.conn, false /* empty connection like inactive? */);
-  MediaActivity session_activity = getMediaActivity(sdp.attributes, Sendrecv);
-
-  for (std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
-      m != sdp.media.end(); ++m)
-  {
-    if (m->port == 0) continue; /* this stream is disabled, handle like inactive (?) */
-    if (!connectionActive(m->conn, connection_active)) {
-      method = ZeroedConnection;
-      continue;
-    }
-    switch (getMediaActivity(*m, session_activity)) {
-      case Sendonly:
-        method = SendonlyStream;
-        continue;
-
-      case Inactive:
-        method = InactiveStream;
-        continue;
-
-      case Recvonly:
-        method = RecvonlyStream;
-        continue;
-
-      case Sendrecv:
-        return false; /* media stream is active */
-    }
-  }
-
-  if (sdp.media.empty()) {
-    /* no streams in the SDP, needed to set the method somehow */
-    if (!connection_active) method = ZeroedConnection;
-    else {
-      switch (session_activity) {
-        case Sendonly:
-          method = SendonlyStream;
-          break;
-
-        case Inactive:
-          method = InactiveStream;
-          break;
-
-        case Recvonly:
-          method = RecvonlyStream;
-          break;
-
-        /* well, no stream is something like InactiveStream, isn't it? */
-        case Sendrecv:
-          method = InactiveStream;
-          break;
-
-      }
-    }
-  }
-
-  return true;
-}
-
 static bool isDSMEarlyAnnounceForced(const std::string &hdrs)
 {
   string announce = getHeader(hdrs, SIP_HDR_P_DSM_APP);
@@ -241,7 +175,7 @@ CallLeg::CallLeg(const CallLeg* caller, AmSipDialog* p_dlg, AmSipSubscription* p
     call_status(Disconnected),
     on_hold(false),
     hold(PreserveHoldStatus),
-    hold_method_requested(NonHold)
+    hold_type_requested(NonHold)
 {
   a_leg = !caller->a_leg; // we have to be the complement
 
@@ -302,7 +236,7 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
     call_status(Disconnected),
     on_hold(false),
     hold(PreserveHoldStatus),
-    hold_method_requested(NonHold)
+    hold_type_requested(NonHold)
 {
   a_leg = true;
 
@@ -336,6 +270,59 @@ CallLeg::~CallLeg()
   }
 
   SBCCallRegistry::removeCall(getLocalTag());
+}
+
+bool CallLeg::isHoldRequest(const AmSdp &sdp, holdMethod &method)
+{
+  /* set defaults from session parameters and attributes
+   * inactive/sendonly/sendrecv/recvonly may be given as session attributes,
+   * connection can be given for session as well */
+  bool connection_active = connectionActive(sdp.conn, false /* empty connection like inactive? */);
+  MediaActivity session_activity = getMediaActivity(sdp.attributes, Sendrecv);
+  for (std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
+      m != sdp.media.end(); ++m)
+  {
+    if (m->port == 0) continue; /* this stream is disabled, handle like inactive (?) */
+    if (!connectionActive(m->conn, connection_active)) {
+      method = ZeroedConnection;
+      continue;
+    }
+    switch (getMediaActivity(*m)) {
+      case Sendonly:
+        method = SendonlyStream;
+        continue;
+      case Inactive:
+        method = InactiveStream;
+        continue;
+      case Recvonly:
+        method = RecvonlyStream;
+        continue;
+      case Sendrecv:
+        return false; /* media stream is active */
+    }
+  }
+  if (sdp.media.empty()) {
+    /* no streams in the SDP, needed to set the method somehow */
+    if (!connection_active) method = ZeroedConnection;
+    else {
+      switch (session_activity) {
+        case Sendonly:
+          method = SendonlyStream;
+          break;
+        case Inactive:
+          method = InactiveStream;
+          break;
+        case Recvonly:
+          method = RecvonlyStream;
+          break;
+        /* well, no stream is something like InactiveStream, isn't it? */
+        case Sendrecv:
+          method = InactiveStream;
+          break;
+      }
+    }
+  }
+  return true;
 }
 
 void CallLeg::terminateOtherLeg()
@@ -1128,21 +1115,19 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
        *    to avoid other confusions... */
       dlg->reply(req, 200, "OK");
 
-    }
-    else
-    {
+    } else {
       /** only for requests which put the call on hold.
        *  Remember that we have to answer to the one, who puts on hold,
        *  with the 'inactive' back (as soon as the on hold is accepted with the 200OK
        *  by the other side of the call) in case the on hold was requested using 'inactive'
        */
       AmSdp sdp;
-      hm hold_method;
+      holdMethod hold_method;
       if (req.method == SIP_METH_INVITE && retrieveAmSdp(req.body, sdp)) {
         /* case when remote side puts us on hold */
         if (isOnHoldRequested(sdp, hold_method)) updateHoldMethod(hold_method);
-        /* it's likely sendrecv - then make sure 'hold_method_requested' is kept updated */
-        else hold_method_requested = NonHold;
+        /* it's likely sendrecv - then make sure 'hold_type_requested' is kept updated */
+        else hold_type_requested = NonHold;
       }
       AmB2BSession::onSipRequest(req);
     }
@@ -1414,21 +1399,22 @@ void CallLeg::updateCallStatus(CallStatus new_status, const StatusChangeCause &c
   onCallStatusChange(cause);
 }
 
-void CallLeg::updateHoldMethod(const hm &hm)
+void CallLeg::updateHoldMethod(const holdMethod &hm)
 {
   switch (hm)
   {
-    case SendonlyStream: hold_method_requested = SendonlyHold; break;
-    case InactiveStream: hold_method_requested = InactiveHold; break;
-    case ZeroedConnection: hold_method_requested = ZeroedHold; break;
-    default: hold_method_requested = NonHold;
+    case SendonlyStream: hold_type_requested = SendonlyHold; break;
+    case InactiveStream: hold_type_requested = InactiveHold; break;
+    case ZeroedConnection: hold_type_requested = ZeroedHold; break;
+    default: hold_type_requested = NonHold;
   }
-  DBG("hold_method_requested is set to: <%d> for LT <%s>\n",
-      hold_method_requested, getLocalTag().c_str());
+  DBG("hold_type_requested is set to: <%d> for LT <%s>\n",
+      hold_type_requested, getLocalTag().c_str());
 }
-bool CallLeg::isOnHoldRequested(const AmSdp &sdp, hm &method)
+
+bool CallLeg::isOnHoldRequested(const AmSdp &sdp, holdMethod &method)
 {
-  if (isHoldRequest(sdp, (HoldMethod&)method)) {
+  if (isHoldRequest(sdp, (holdMethod&)method)) {
     DBG("This request puts the call on hold\n");
     return true;
   }
@@ -1808,7 +1794,7 @@ void CallLeg::adjustOffer(AmSdp &sdp)
 
   } else {
     /* handling B2B SDP, check for hold/unhold */
-    HoldMethod hm = None;
+    holdMethod hm = None;
 
     /* if hold request, transform to requested kind of hold and remember that hold
      * was requested with this offer */
@@ -1852,13 +1838,13 @@ void CallLeg::updateLocalSdp(AmSdp &sdp)
    *  - 'inactive' must be faced with the 'inactive' sent back as an answer
    *  This block is only needed for cases, when MoH is emulated on the SEMS directly.
    */
-  else if (hold == PreserveHoldStatus && hold_method_requested != NonHold)
+  else if (hold == PreserveHoldStatus && hold_type_requested != NonHold)
   {
     for (std::vector<SdpMedia>::iterator m = sdp.media.begin();
          m != sdp.media.end(); ++m)
     {
       if (m->isAudio()) {
-        switch(hold_method_requested)
+        switch(hold_type_requested)
         {
           case SendonlyHold:
             m->send = false; /* make sure to answer with the recvonly, if the on hold */
