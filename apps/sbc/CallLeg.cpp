@@ -1882,19 +1882,23 @@ void CallLeg::offerRejected()
 
 void CallLeg::createResumeRequest(AmSdp &sdp)
 {
-  // use stored non-hold SDP
-  // Note: this SDP doesn't need to be correct, but established_body need not to
-  // be good enough for unholding (might be held already with zero conncetions)
-  if (!non_hold_sdp.media.empty()) sdp = non_hold_sdp;
-  else {
-    // no stored non-hold SDP
+  /* use stored non-hold SDP (saved last time when putting on hold,
+   * `updateLocalSdp()` takes care of it).
+   *
+   * Note: this SDP doesn't need to be correct, but established_body need not to
+   * be good enough for unholding (might be held already with zero conncetions) */
+  /* keep sessV incremented each time sending SDP offer (hold/resume) */
+  non_hold_sdp.origin.sessV++;
+  if (!non_hold_sdp.media.empty()) {
+    sdp = non_hold_sdp;
+  } else {
+    /* no stored non-hold SDP */
     ERROR("no stored non-hold SDP, but local resume requested\n");
-    // TODO: try to use established_body here and mark properly
-
-    // if no established body exist
+    /* TODO: try to use established_body here and mark properly
+     * if no established body exist */
     throw string("not implemented");
   }
-  // do not touch the sdp otherwise (use directly B2B SDP)
+  /* do not touch the sdp otherwise (use directly B2B SDP) */
 }
 
 void CallLeg::debug()

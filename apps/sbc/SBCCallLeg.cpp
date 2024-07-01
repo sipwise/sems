@@ -1826,11 +1826,13 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 
   AmMimeBody *s = established_body.hasContentType(SIP_APPLICATION_SDP);
   if (s) sdp.parse((const char*)s->getPayload());
+
   if (sdp.media.empty()) {
     // established SDP is not valid! generate complete fake
     sdp.version = 0;
     sdp.origin.user = "sems";
     sdp.sessionName = "sems";
+    /* TODO: how about sessV ? */
     sdp.conn.network = NT_IN;
     sdp.conn.addrType = AT_V4;
     sdp.conn.address = "0.0.0.0";
@@ -1842,6 +1844,9 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
     m.send = false;
     m.recv = false;
     m.payloads.push_back(SdpPayload(0));
+  } else {
+      /* increase sessV */
+      sdp.origin.sessV++;
   }
 
   AmB2BMedia *ms = getMediaSession();
