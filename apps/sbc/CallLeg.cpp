@@ -982,6 +982,7 @@ int CallLeg::putOnHoldImpl()
   AmSdp sdp;
   createHoldRequest(sdp);
   updateLocalSdp(sdp);
+  updateLocalSdpOrigin(sdp);
 
   AmMimeBody body;
   sdp2body(sdp, body);
@@ -1011,6 +1012,7 @@ int CallLeg::resumeHeldImpl()
       return -1;
     }
     updateLocalSdp(sdp);
+    updateLocalSdpOrigin(sdp);
 
     AmMimeBody body(established_body);
     sdp2body(sdp, body);
@@ -1889,6 +1891,8 @@ void CallLeg::createResumeRequest(AmSdp &sdp)
    * be good enough for unholding (might be held already with zero conncetions) */
   /* keep sessV incremented each time sending SDP offer (hold/resume) */
   non_hold_sdp.origin.sessV++;
+  DBG("Increasing session version in SDP origin line to %lld", non_hold_sdp.origin.sessV);
+
   if (!non_hold_sdp.media.empty()) {
     sdp = non_hold_sdp;
   } else {
