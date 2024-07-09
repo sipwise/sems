@@ -1847,7 +1847,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
   } else {
       /* increase sessV */
       sdp.origin.sessV++;
-      TRACE("Increasing session version in SDP origin line to %llu", sdp.origin.sessV);
+      TRACE("Increasing session version in SDP origin line to %s", uint128ToStr(sdp.origin.sessV).c_str());
   }
 
   AmB2BMedia *ms = getMediaSession();

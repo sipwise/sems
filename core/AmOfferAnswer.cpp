@@ -28,6 +28,7 @@
 
 #include "AmOfferAnswer.h"
 #include "AmSipDialog.h"
+#include "AmUtils.h"
 #include "AmSipHeaders.h"
 #include "log.h"
 
@@ -380,8 +381,8 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     } else {
       force_no_sdp_update = (sdp_local.origin.sessV == parser_sdp.origin.sessV);
       if (force_no_sdp_update)
-        DBG("Forcing no OA state update (no SDP changes, same session version: was <%llu>, now is <%llu>).\n",
-            sdp_local.origin.sessV, parser_sdp.origin.sessV);
+        DBG("Forcing no OA state update (no SDP changes, same session version: was <%s>, now is <%s>).\n",
+            uint128ToStr(sdp_local.origin.sessV).c_str(), uint128ToStr(parser_sdp.origin.sessV).c_str());
     }
   }
 

@@ -28,6 +28,8 @@
 #ifndef __SdpParser__
 #define __SdpParser__
 
+#include <stdio.h>
+
 #include <string>
 #include <map>
 #include <vector>
@@ -81,8 +83,8 @@ struct SdpConnection
 struct SdpOrigin
 {
   string user;
-  unsigned long long sessId;
-  unsigned long long sessV;
+  __uint128_t sessId;
+  __uint128_t sessV;
   SdpConnection conn;
 
   SdpOrigin() : user(), conn() {}

@@ -56,6 +56,18 @@
 
 static char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
 
+string uint128ToStr(__uint128_t val)
+{
+    std::string result;
+    /* support 0 values */
+    if (val == 0)
+      return "0";
+    while (val != 0) {
+        result.insert(result.begin(), '0' + (val % 10));
+        val /= 10;
+    }
+    return result;
+}
 
 string ull2str(unsigned long long val)
 {
@@ -373,6 +385,27 @@ bool str2long(char*& str, long& result, char sep)
  error_char:
   DBG("str2long: unexpected char 0x%x in %s\n", *str, init);
   return false;
+}
+
+bool str2uint128(const string& str, __uint128_t & result)
+{
+  char* s = (char*)str.c_str();
+  result = str2uint128(s);
+  return (result ? true : false);
+}
+
+__uint128_t str2uint128(const char* str) {
+    __uint128_t result = 0;
+    while (*str) {
+        if (*str < '0' || *str > '9') {
+            DBG("Invalid character in string '%s'\n", str);
+            result = 0;
+            break;
+        }
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+    return result;
 }
 
 // long int could probably be the same size as int

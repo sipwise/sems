@@ -64,6 +64,11 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
  */
 string ull2str(unsigned long long val);
 
+/**
+ * Convert an unsigned int128 to a string.
+ */
+string uint128ToStr(__uint128_t val);
+
 /** 
  * Convert an int to a string. 
  */
@@ -169,6 +174,20 @@ bool str2long(const string& str, long& result);
  * @return true on success
  */
 bool str2long(char*& str, long& result, char sep = ' ');
+
+/**
+ * Convert a string to a unsigned int128.
+ * @param str    [in]  string to convert.
+ * @param result [out] result unsinged int128.
+ * @return true on success.
+ */
+bool str2uint128(const string& str, __uint128_t & result);
+/**
+ * Convert a char array to a unsigned int128.
+ * @param str    [in]  string to convert.
+ * @return 0 (failed) or converted unsigned int128 value.
+ */
+__uint128_t str2uint128(const char* str);
 
 /**
  * Convert a string to a unsigned long long int.

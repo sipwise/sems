@@ -315,8 +315,8 @@ int AmSdp::parse(const char* _sdp_msg)
 void AmSdp::print(string& body) const
 {
   string out_buf = "v="+int2str(version)+"\r\n"
-    "o="+origin.user+" "+ulonglong2str(origin.sessId)+" "+
-    ulonglong2str(origin.sessV)+" IN ";
+    "o="+origin.user+" "+uint128ToStr(origin.sessId)+" "+
+    uint128ToStr(origin.sessV)+" IN ";
 
   if (!origin.conn.address.empty())
     if (origin.conn.address.find(".") != std::string::npos)
@@ -1285,7 +1285,7 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
           break;
         }
         string id(origin_line, int(next-origin_line)-1);
-        str2ull(id, origin.sessId);
+        str2uint128(id, origin.sessId);
         origin_line = next;
         origin_st = VERSION_ST;
         break;
@@ -1300,7 +1300,7 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
           break;
         }
         string version(origin_line, int(next-origin_line)-1);
-        str2ull(version, origin.sessV);
+        str2uint128(version, origin.sessV);
         origin_line = next;
         origin_st = NETTYPE;
         break;

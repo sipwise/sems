@@ -161,8 +161,8 @@ private:
   // we have to use the same "o=" line with potentially increasing session version in SDP
   SdpOrigin sdp_origin;
   AmSdp     previous_sdp;
-  unsigned long long previous_origin_sessId;
-  unsigned long long previous_origin_sessV;
+  __uint128_t previous_origin_sessId;
+  __uint128_t previous_origin_sessV;
 
  protected:
   /** Tell if the session should
