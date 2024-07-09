@@ -59,6 +59,11 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
 
 /** @file AmUtils.h */
 
+/**
+ * Convert an unsigned unsigned long long to a string.
+ */
+string ull2str(unsigned long long val);
+
 /** 
  * Convert an int to a string. 
  */
@@ -78,6 +83,11 @@ string long2str(long int val);
  * Convert a long long to a string. 
  */
 string longlong2str(long long int val);
+
+/**
+ * Convert a unsigned long long to a string.
+ */
+string ulonglong2str(unsigned long long val);
 
 /** 
  * Convert a a byte to a string using hexdecimal representation.
@@ -159,6 +169,23 @@ bool str2long(const string& str, long& result);
  * @return true on success
  */
 bool str2long(char*& str, long& result, char sep = ' ');
+
+/**
+ * Convert a string to a unsigned long long int.
+ * @param str    [in]  string to convert.
+ * @param result [out] result integer.
+ * @return true if on success (!!!).
+ */
+bool str2ull(const string& str, unsigned long long& result);
+
+/**
+ * Internal version of preceeding 'std2ull' method.
+ * @param str    [in,out] gets incremented until sep char or error occurs
+ * @param result [out] result of the function
+ * @param sep    [in] character seprating the number to convert and the next token
+ * @return true on success
+ */
+bool str2ull(char*& str, unsigned long long& result, char sep = ' ');
 
 /* translates string value into bool, returns false on error */
 bool str2bool(const string &s, bool &dst);

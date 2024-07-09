@@ -380,7 +380,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
     } else {
       force_no_sdp_update = (sdp_local.origin.sessV == parser_sdp.origin.sessV);
       if (force_no_sdp_update)
-        DBG("Forcing no OA state update (no SDP changes, same session version: was <%u>, now is <%u>).\n",
+        DBG("Forcing no OA state update (no SDP changes, same session version: was <%llu>, now is <%llu>).\n",
             sdp_local.origin.sessV, parser_sdp.origin.sessV);
     }
   }

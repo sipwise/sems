@@ -57,6 +57,13 @@
 static char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
 
 
+string ull2str(unsigned long long val)
+{
+  char buffer[64] = {0};
+  sprintf(buffer, "%llu", val);
+  return string((char*)(buffer));
+}
+
 string int2str(unsigned int val)
 {
   char buffer[64] = {0};
@@ -96,6 +103,7 @@ string signed2str(T val, T (*abs_func) (T), DT (*div_func) (T, T))
 string int2str(int val) { return signed2str<int, div_t>(val, abs, div); }
 string long2str(long int val) { return signed2str<long, ldiv_t>(val, labs, ldiv); }
 string longlong2str(long long int val) { return signed2str<long long, lldiv_t>(val, llabs, lldiv); }
+string ulonglong2str(unsigned long long val) { return ull2str(val); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };
 static char _int2hex_lookup_l[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','a','b','c','d','e','f' };
@@ -364,6 +372,61 @@ bool str2long(char*& str, long& result, char sep)
   return false;
  error_char:
   DBG("str2long: unexpected char 0x%x in %s\n", *str, init);
+  return false;
+}
+
+// long int could probably be the same size as int
+bool str2ull(const string& str, unsigned long long& result)
+{
+  char* s = (char*)str.c_str();
+  return str2ull(s,result);
+}
+
+bool str2ull(char*& str, unsigned long long& result, char sep)
+{
+  unsigned long long ret=0;
+  int i=0;
+  char* init = str;
+  long sign = 1;
+
+  for(; (*str != '\0') && (*str == ' '); str++);
+
+  if (*str == '-') {
+    sign = -1;
+    str++;
+    for(; (*str != '\0') && (*str == ' '); str++);
+  }
+
+  for(; *str != '\0';str++){
+    if ( (*str <= '9' ) && (*str >= '0') ){
+      ret=ret*10+*str-'0';
+      i++;
+      if (i>20) goto error_digits;
+    } else {
+
+      bool eol = false;
+      switch(*str){
+      case 0xd:
+      case 0xa:
+      case 0x0:
+	eol = true;
+      }
+
+      if( (*str != sep) && !eol )
+	goto error_char;
+
+      break;
+    }
+  }
+
+  result = ret * sign;
+  return true;
+
+ error_digits:
+  DBG("str2ull: too many digits in [%s]\n", init);
+  return false;
+ error_char:
+  DBG("str2ull: unexpected char 0x%x in %s\n", *str, init);
   return false;
 }
 
