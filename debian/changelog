@@ -1,3 +1,22 @@
+ngcp-sems (1:1.6.0+0~mr12.5.1.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [f333ea4] MT#60408 Update core: SDP origin manipulation fix
+  * [50248f7] MT#60408 Update core and CallLeg: SDP origin manipulation fix
+  * [731b041] MT#60408 core: add functions to accept pending invites
+  * [cb48c87] MT#60408 Introduce an optional behavior on pending transaction
+  * [08e3ad9] MT#59446 Do not pend call leg update for pick up case
+  * [ad96f45] MT#60408 CallLeg: `isHoldRequest()` has to deal with const sdp
+  * [b21a430] MT#60408 CallLeg: use dedicated fund to check expecting offer
+  * [c0452f5] MT#60408 Answer with 'inactive' when 'inactive' requested during the on hold
+  * [faf99ab] MT#59851 CallLeg: Refactor hold related things
+  * [e80aebf] MT#59867 putOnHoldImpl: `createHoldRequest()` sessV increment
+  * [760ef73] MT#60297 Save SDP origin after call is held/resumed
+  * [ced4a52] MT#56772 AmSdp: covert sessId / sessV to llu
+  * [f343df5] MT#60480 Limitation of origin id/ver to 64bits (unsigned long long)
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Sun, 28 Jul 2024 12:04:36 +0200
+
 ngcp-sems (1:1.6.0+0~mr12.5.0.0) unstable; urgency=medium
 
   * New release.
