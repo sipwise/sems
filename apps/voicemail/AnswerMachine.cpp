@@ -854,7 +854,7 @@ void AnswerMachineDialog::onSessionStart()
   }
 #else
   if (announce_fp) {
-    if (a_greeting.fpopen(DEFAULT_TYPE"."DEFAULT_AUDIO_EXT, 
+    if (a_greeting.fpopen(DEFAULT_TYPE "." DEFAULT_AUDIO_EXT,
 			  AmAudioFile::Read, announce_fp) ||
 	a_beep.open(add2path(AnswerMachineFactory::AnnouncePath,1, "beep.wav"),
 		    AmAudioFile::Read))
