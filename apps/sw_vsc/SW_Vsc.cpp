@@ -1,5 +1,5 @@
-#include <pcrecpp.h>
-using namespace pcrecpp;
+#include <re2/re2.h>
+using namespace re2;
 
 #include "SW_Vsc.h"
 #include "AmConfig.h"
@@ -574,7 +574,6 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
     my_ulonglong num_rows;
     MYSQL_RES *res;
     MYSQL_ROW row;
-    RE *re;
 
     if (req.user.compare(0, 1, "*", 1) == 0)
     {
@@ -695,24 +694,21 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
                 return 0;
             }
 
-            re = new RE(row[0]);
-            if (re == NULL || re->error().length() > 0)
+            RE2 re(row[0]);
+            if (re.error().length() > 0)
             {
                 ERROR("A callee rewrite rule match pattern ('%s') failed to compile: %s\n",
-                      row[0], (re ? re->error().c_str() : "unknown"));
-                if (re) delete re;
+                      row[0], re.error().c_str());
                 mysql_free_result(res);
                 return 0;
             }
-            if (re->Replace(row[1], &num))
+            if (RE2::Replace(&num, re, row[1]))
             {
                 INFO("The callee rewrite rule pattern ('%s' and '%s') for subscriber id %llu and domain id %llu matched, result is '%s'\n",
                      row[0], row[1], (unsigned long long int)subId,
                      (unsigned long long int)domId, num.c_str());
-                delete re;
                 break;
             }
-            delete re;
         }
 
         mysql_free_result(res);
@@ -731,22 +727,18 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
         if (!getPreference(my_handler, subId, ccAttId, &foundPref, &ccStr))
             return 0;
 
-        re = new RE("\\$avp\\(s:caller_ac\\)");
-        if (re->GlobalReplace(acStr, &num))
+        if (RE2::GlobalReplace(&num, "\\$avp\\(s:caller_ac\\)", acStr))
         {
             INFO("Successfully replaced $avp(s:caller_ac) by preference value '%s' for subscriber id %llu and domain id %llu",
                  acStr.c_str(), (unsigned long long int)subId,
                  (unsigned long long int)domId);
         }
-        delete re;
-        re = new RE("\\$avp\\(s:caller_cc\\)");
-        if (re->GlobalReplace(ccStr, &num))
+        if (RE2::GlobalReplace(&num, "\\$avp\\(s:caller_cc\\)", ccStr))
         {
             INFO("Successfully replaced $avp(s:caller_cc) by preference value '%s' for subscriber id %llu and domain id %llu",
                  ccStr.c_str(), (unsigned long long int)subId,
                  (unsigned long long int)domId);
         }
-        delete re;
 
         INFO("Final normalized number is '%s' for subscriber id %llu and domain id %llu",
              num.c_str(), (unsigned long long int)subId,
