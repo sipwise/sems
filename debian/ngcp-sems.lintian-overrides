@@ -1,2 +1,3 @@
 ngcp-sems: possible-gpl-code-linked-with-openssl
 ngcp-sems: init.d-script-not-included-in-package etc/init.d/ngcp-sems
+ngcp-sems: service-file-is-not-a-file [lib/systemd/system/sems.service]
