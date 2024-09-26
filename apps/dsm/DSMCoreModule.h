@@ -135,6 +135,8 @@ DEF_ACTION_1P(SCUnregisterEventQueueAction);
 
 DEF_ACTION_2P(SCCreateSystemDSMAction);
 
+DEF_ACTION_3P(SCGetErrorCodePlaybackAction);
+
 DEF_ACTION_1P(SCTrackObjectAction);
 DEF_ACTION_1P(SCReleaseObjectAction);
 DEF_ACTION_1P(SCFreeObjectAction);

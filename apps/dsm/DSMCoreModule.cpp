@@ -124,6 +124,8 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("unregisterEventQueue", SCUnregisterEventQueueAction);
   DEF_CMD("createSystemDSM", SCCreateSystemDSMAction);
 
+  DEF_CMD("getErrorCodePlayback", SCGetErrorCodePlaybackAction);
+
   if (cmd == "DI") {
     SCDIAction * a = new SCDIAction(params, false);
     a->name = from_str;
@@ -1004,6 +1006,34 @@ EXEC_ACTION_START(SCArrayIndexAction) {
     sc_sess->var["index"] = res;
     DBG("set $index=%s\n", res.c_str());
   }
+} EXEC_ACTION_END;
+
+CONST_ACTION_3P(SCGetErrorCodePlaybackAction, ',', false);
+EXEC_ACTION_START(SCGetErrorCodePlaybackAction) {
+  string source_value = resolveVars(par1, sess, sc_sess, event_params);
+  string pattern = resolveVars(par2, sess, sc_sess, event_params);
+  string destination_variable = (par3.length() && par3[0] == '$') ? par3.substr(1) : par3;
+  string result; /* empty by default */
+	size_t pos = 0;
+	size_t end_pos;
+  /* parses strings like "var1:val1,var2:val2,var3:val3" */
+  while ((end_pos = source_value.find(',', pos)) != std::string::npos || pos < source_value.size())
+  {
+    string pair = source_value.substr(pos, end_pos - pos);
+    size_t separator_pos = pair.find(':');
+    if (separator_pos != std::string::npos) {
+      string current_var = pair.substr(0, separator_pos);
+      string current_val = pair.substr(separator_pos + 1);
+      if (current_var == pattern) {
+        result = current_val;
+        break;
+      }
+    }
+    pos = (end_pos == std::string::npos) ? source_value.size() : end_pos + 1;
+  }
+  /* rewrite only if we got something */
+  if (!result.empty())
+    sc_sess->var[destination_variable] = result;
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCAppendAction,',', false);
