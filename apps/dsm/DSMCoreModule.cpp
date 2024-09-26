@@ -124,6 +124,8 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("unregisterEventQueue", SCUnregisterEventQueueAction);
   DEF_CMD("createSystemDSM", SCCreateSystemDSMAction);
 
+  DEF_CMD("removeFromString", SCRemovePatternAction);
+
   DEF_CMD("getErrorCodePlayback", SCGetErrorCodePlaybackAction);
 
   if (cmd == "DI") {
@@ -1007,6 +1009,20 @@ EXEC_ACTION_START(SCArrayIndexAction) {
     DBG("set $index=%s\n", res.c_str());
   }
 } EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCRemovePatternAction, ',', false);
+EXEC_ACTION_START(SCRemovePatternAction) {
+  string source_name = (par1.length() && par1[0] == '$') ? par1.substr(1) : par1;
+  string source_value = resolveVars(par1, sess, sc_sess, event_params);
+  string pattern = par2;
+  size_t pos = std::string::npos;
+  while ((pos = source_value.find(pattern)) != std::string::npos)
+  {
+    source_value.erase(pos, pattern.length());
+  }
+  sc_sess->var[source_name] = source_value;
+} EXEC_ACTION_END;
+
 
 CONST_ACTION_3P(SCGetErrorCodePlaybackAction, ',', false);
 EXEC_ACTION_START(SCGetErrorCodePlaybackAction) {
