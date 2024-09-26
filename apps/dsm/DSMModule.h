@@ -130,6 +130,19 @@ class SCStrArgAction
 		 map<string,string>* event_params);			\
   };									\
 
+#define DEF_ACTION_3P(CL_Name)						\
+  class CL_Name								\
+  : public DSMAction {							\
+    string par1;							\
+    string par2;							\
+    string par3;							\
+  public:								\
+    CL_Name(const string& arg);						\
+    bool execute(AmSession* sess, DSMSession* sc_sess,			\
+		 DSMCondition::EventType event,				\
+		 map<string,string>* event_params);			\
+  };
+
 /* bool xsplit(const string& arg, char sep, bool optional, string& par1, string& par2); */
 
 #define SPLIT_ARGS(sep, optional)					\
@@ -197,12 +210,120 @@ class SCStrArgAction
       return;								\
     }
 
+#define SPLIT_ARGS3(sep, optional)					\
+    size_t p = 0;							\
+    size_t p2 = 0;							\
+    char last_c = ' ';							\
+    bool quot=false;							\
+    char quot_c = ' ';							\
+    bool sep_found = false;						\
+    bool sep_found2 = false;						\
+									\
+    while (p<arg.size()) {						\
+      if (quot) {							\
+	if (last_c != '\\' && arg[p]==quot_c)				\
+	  quot=false;							\
+      } else {								\
+	if (last_c != '\\'  && (arg[p]=='\'' || arg[p]=='\"')) {	\
+	  quot = true;							\
+	  quot_c = arg[p];						\
+	} else {							\
+	  if (arg[p] == sep) {						\
+	    sep_found = true;						\
+	    break;							\
+	  }								\
+	}								\
+      }									\
+      p++;								\
+      last_c = arg[p];							\
+    }									\
+									\
+	p2 = p;								\
+									\
+	p2++;								\
+    while (p2<arg.size()) {						\
+      if (quot) {							\
+	if (last_c != '\\' && arg[p2]==quot_c)				\
+	  quot=false;							\
+      } else {								\
+	if (last_c != '\\'  && (arg[p2]=='\'' || arg[p2]=='\"')) {	\
+	  quot = true;							\
+	  quot_c = arg[p2];						\
+	} else {							\
+	  if (arg[p2] == sep) {						\
+	    sep_found2 = true;						\
+	    break;							\
+	  }								\
+	}								\
+      }									\
+      p2++;								\
+      last_c = arg[p2];							\
+    }									\
+									\
+    if ((!optional) && (!sep_found || !sep_found2)) {					\
+      ERROR("expected three parameters separated with '%c' in expression '%s' for %s\n", \
+	    sep,arg.c_str(),typeid(this).name());			\
+      return;								\
+    }									\
+									\
+    par1 = trim(arg.substr(0, p), " \t");				\
+    if (sep_found) 							\
+      par2 = trim(arg.substr((p + 1), (p2 - (p + 1))), " \t");				\
+									\
+    if (par1.length() && par1[0]=='\'') {				\
+      par1 = trim(par1, "\'");						\
+      size_t rpos = 0;							\
+      while ((rpos=par1.find("\\\'")) != string::npos)			\
+	par1.erase(rpos, 1);						\
+    } else if (par1.length() && par1[0]=='\"') {			\
+      par1 = trim(par1, "\"");						\
+      size_t rpos = 0;							\
+      while ((rpos=par1.find("\\\"")) != string::npos)			\
+	par1.erase(rpos, 1);						\
+    }									\
+									\
+    if (par2.length() && par2[0]=='\'') {				\
+      par2 = trim(par2, "\'");						\
+      size_t rpos = 0;							\
+      while ((rpos=par2.find("\\\'")) != string::npos)			\
+	par2.erase(rpos, 1);						\
+    } else if (par2.length() && par2[0]=='\"') {			\
+      par2 = trim(par2, "\"");						\
+      size_t rpos = 0;							\
+      while ((rpos=par2.find("\\\"")) != string::npos)			\
+	par2.erase(rpos, 1);						\
+    }									\
+									\
+    if (sep_found2) 							\
+      par3 = trim(arg.substr(p2 + 1), " \t");				\
+									\
+    if (par3.length() && par3[0]=='\'') {				\
+      par3 = trim(par3, "\'");						\
+      size_t rpos = 0;							\
+      while ((rpos=par3.find("\\\'")) != string::npos)			\
+	par3.erase(rpos, 1);						\
+    } else if (par3.length() && par3[0]=='\"') {			\
+      par3 = trim(par3, "\"");						\
+      size_t rpos = 0;							\
+      while ((rpos=par3.find("\\\"")) != string::npos)			\
+	par3.erase(rpos, 1);						\
+    }									\
+									\
+    if ((!optional) && ((par1.empty())||(par2.empty())||(par3.empty()))) {		\
+      ERROR("expected three parameters separated with '%c' in expression '%s' for %s\n", \
+	    sep,arg.c_str(),typeid(this).name());			\
+      return;								\
+    }
 
 #define CONST_ACTION_2P(CL_name, _sep, _optional)			\
   CL_name::CL_name(const string& arg) {					\
     SPLIT_ARGS(_sep, _optional);					\
   }
 
+#define CONST_ACTION_3P(CL_name, _sep, _optional)			\
+  CL_name::CL_name(const string& arg) {					\
+    SPLIT_ARGS3(_sep, _optional);					\
+  }
 
 #define EXEC_ACTION_START(act_name)					\
   bool act_name::execute(AmSession* sess, DSMSession* sc_sess,		\
@@ -260,10 +381,29 @@ void splitCmd(const string& from_str,
 	       map<string,string>* event_params);			\
   };
 
+#define DEF_CONDITION_3P(cond_name)					\
+  class cond_name							\
+  : public DSMCondition {						\
+    string par1;							\
+    string par2;							\
+    string par3;							\
+    bool inv;								\
+  public:								\
+    cond_name(const string& arg, bool inv);				\
+    bool match(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event, \
+	       map<string,string>* event_params);			\
+  };
+
 #define CONST_CONDITION_2P(cond_name, _sep, _optional)			\
   cond_name::cond_name(const string& arg, bool inv)			\
   : inv(inv) {								\
     SPLIT_ARGS(_sep, _optional);					\
+  }
+
+#define CONST_CONDITION_3P(cond_name, _sep, _optional)			\
+  cond_name::cond_name(const string& arg, bool inv)			\
+  : inv(inv) {								\
+    SPLIT_ARGS3(_sep, _optional);					\
   }
 
 #define MATCH_CONDITION_START(cond_clsname)				\
