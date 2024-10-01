@@ -1,3 +1,24 @@
+ngcp-sems (1:1.6.0+0~mr13.0.1.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [1c16d82] MT#60408 Don't use register storage class for READ_NUMBER
+  * [fd44b75] MT#60408 ModCurl: Switch from deprecated form of API
+  * [6105668] MT#60408 SdpMedia: initialize port and nports to 0
+  * [672fc20] MT#60408 AmSdp praser: Don't use register storage class
+  * [00fef0f] MT#60408 AmUriParser: Don't use register storage class
+  * [752d17f] MT#60408 AnswerMachine: add a space between literal and string macro
+  * [98664eb] MT#61102 DSM: add handling of 3 parameters function
+  * [b9c825c] MT#61102 DSM: Add new function 'getErrorCodePlayback()'
+  * [fa2b78c] MT#59962 DSM: Add new function 'removeFromString()'
+
+  [ Guillem Jover ]
+  * [5ed6ce4] MT#60923 Switch from PCRE to RE2
+
+  [ Michael Prokop ]
+  * [8c5fb69] MT#60916 lintian: ignore service-file-is-not-a-file for sems.service
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 01 Oct 2024 10:02:14 +0200
+
 ngcp-sems (1:1.6.0+0~mr13.0.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
