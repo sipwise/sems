@@ -255,7 +255,7 @@ private:
   /** send re-INVITE with established session description 
    *  @return 0 on success
    */
-  int sendEstablishedReInvite();
+  int sendEstablishedReInvite(const std::string &hdrs = "");
 
   /** do session refresh */
   bool refresh(int flags = 0);

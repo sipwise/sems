@@ -989,7 +989,7 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
   return false;
 }
 
-int AmB2BSession::sendEstablishedReInvite() {  
+int AmB2BSession::sendEstablishedReInvite(const std::string &hdrs) {
   if (established_body.empty()) {
     ERROR("trying to re-INVITE with saved description, but none saved\n");
     return -1;
@@ -1000,7 +1000,7 @@ int AmB2BSession::sendEstablishedReInvite() {
   try {
     AmMimeBody body(established_body); // contains only SDP
     updateLocalBody(body);
-    return dlg->reinvite("", &body, SIP_FLAGS_VERBATIM);
+    return dlg->reinvite(hdrs, &body, SIP_FLAGS_VERBATIM);
   } catch (const string& s) {
     ERROR("sending established SDP reinvite: %s\n", s.c_str());
   }
