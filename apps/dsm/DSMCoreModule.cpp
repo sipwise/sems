@@ -143,6 +143,7 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("B2B.connectCallee", SCB2BConnectCalleeAction);
   DEF_CMD("B2B.terminateOtherLeg", SCB2BTerminateOtherLegAction);
   DEF_CMD("B2B.sendReinvite", SCB2BReinviteAction);
+  DEF_CMD("B2B.sendEstablishedReinvite", SCB2BSendEstablishedReinviteAction);
   DEF_CMD("B2B.enableEarlyMediaRelay", SCB2BEnableEarlyMediaRelayAction);
   DEF_CMD("B2B.addHeader", SCB2BAddHeaderAction);
   DEF_CMD("B2B.getHeaderRequest", SCB2BGetHeaderRequestAction);
@@ -1536,6 +1537,15 @@ CONST_ACTION_2P(SCB2BReinviteAction,',', true);
 EXEC_ACTION_START(SCB2BReinviteAction) {
   bool updateSDP = par1=="true";
   sess->sendReinvite(updateSDP, par2);
+} EXEC_ACTION_END;
+
+EXEC_ACTION_START(SCB2BSendEstablishedReinviteAction) {
+  AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
+  if (NULL != b2b_sess) {
+    b2b_sess->sendEstablishedReInvite();
+  } else {
+    ERROR("internal: Session object is not B2B session (huh?), not reinviting\n");
+  }
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCB2BEnableEarlyMediaRelayAction) {

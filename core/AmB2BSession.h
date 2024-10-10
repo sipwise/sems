@@ -252,11 +252,13 @@ private:
   void onSessionTimeout();
   void onNoAck(unsigned int cseq);
 
+ public:
   /** send re-INVITE with established session description 
    *  @return 0 on success
    */
   int sendEstablishedReInvite(const std::string &hdrs = "");
 
+ protected:
   /** do session refresh */
   bool refresh(int flags = 0);
 
