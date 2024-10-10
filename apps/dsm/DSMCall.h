@@ -75,6 +75,7 @@ public:
 
   void onStart();
   void onInvite(const AmSipRequest& req);
+  void onInvite2xx(const AmSipReply& reply);
   void onOutgoingInvite(const string& headers);
   void onRinging(const AmSipReply& reply);
   void onEarlySessionStart();
@@ -157,6 +158,8 @@ public:
   void B2BclearHeaders();
   void B2BaddHeader(const string& hdr);
   void B2BremoveHeader(const string& hdr);
+  void B2BgetHeaderRequest(const string& hdr, string& out);
+  void B2BgetHeaderReply(const string& hdr, string& out);
 };
 
 class DSMCallCalleeSession : public AmB2BCalleeSession,

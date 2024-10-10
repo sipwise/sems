@@ -129,6 +129,11 @@ void DSMCall::onInvite(const AmSipRequest& req) {
     AmB2BCallerSession::onInvite(req);
 }
 
+void DSMCall::onInvite2xx(const AmSipReply& reply) {
+  last_200_reply = reply;
+  AmB2BSession::onInvite2xx(reply);
+}
+
 void DSMCall::onOutgoingInvite(const string& headers) {
   if (!process_invite) {
     // re-INVITE sent out
@@ -334,6 +339,8 @@ void DSMCall::onSipReply(const AmSipRequest& req,
 			 const AmSipReply& reply, 
 			 AmBasicSipDialog::Status old_dlg_status) 
 {
+  /* update last reply for further usage with header getters */
+  last_200_reply = reply;
 
   if (checkVar(DSM_ENABLE_REPLY_EVENTS, DSM_TRUE)) {
     map<string, string> params;
@@ -936,6 +943,14 @@ void DSMCall::B2BaddHeader(const string& hdr) {
   if (invite_req.hdrs.length()>2 && 
       invite_req.hdrs.substr(invite_req.hdrs.length()-2) != "\r\n")
     invite_req.hdrs+="\r\n";
+}
+
+void DSMCall::B2BgetHeaderRequest(const string& hdr_name, string& out) {
+  out = getHeader(invite_req.hdrs, hdr_name, true);
+}
+
+void DSMCall::B2BgetHeaderReply(const string& hdr_name, string& out) {
+  out = getHeader(last_200_reply.hdrs, hdr_name, true);
 }
 
 void DSMCall::B2BclearHeaders() {

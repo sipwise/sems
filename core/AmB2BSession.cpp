@@ -713,6 +713,9 @@ void AmB2BSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
       reply.cseq_method.c_str(), reply.code,reply.reason.c_str(),
       fwd? "true" : "false", reply.body.getCTStr().c_str());
 
+  /* update last reply for further usage with header getters */
+  last_200_reply = reply;
+
   if (to_tag_reset && !dlg->getRemoteTag().empty() && reply.code >= 180 && reply.code <= 183 ) {
     DBG("onSipReply: sess %p received %i reply with remote-tag %s", this, reply.code, reply.to_tag.c_str());
     DBG("dlg->getRemoteTag(%s)\n", dlg->getRemoteTag().c_str());
@@ -807,6 +810,10 @@ void AmB2BSession::onInvite2xx(const AmSipReply& reply)
 {
   TransMap::iterator it = relayed_req.find(reply.cseq);
   bool req_fwded = it != relayed_req.end();
+
+  /* update last reply for further usage with header getters */
+  last_200_reply = reply;
+
   if(!req_fwded) {
     DBG("req not fwded\n");
     AmSession::onInvite2xx(reply);
@@ -1298,6 +1305,9 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
   if (ev->event_id == B2BSipReply) {
 
     AmSipReply& reply = ((B2BSipReplyEvent*)ev)->reply;
+
+    /* update last reply for further usage with header getters */
+    last_200_reply = reply;
 
     if (getOtherId().empty()) {
       DBG("B2BSipReply: other_id empty (reply code=%i; method=%s; callid=%s; from_tag=%s; to_tag=%s; cseq=%i)\n",

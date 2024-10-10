@@ -90,6 +90,12 @@ class SystemDSM
   /** set headers of outgoing INVITE */
    void B2BsetHeaders(const string& hdr, bool replaceCRLF);
 
+  /** get header from request */
+   void B2BgetHeaderRequest(const string& hdr, string& out);
+
+  /** get header from reply */
+   void B2BgetHeaderReply(const string& hdr, string& out);
+
   /** set headers of outgoing INVITE */
    void B2BclearHeaders();
 

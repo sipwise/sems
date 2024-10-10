@@ -186,6 +186,8 @@ private:
   unsigned int est_invite_cseq;
   unsigned int est_invite_other_cseq;
 
+  AmSipReply last_200_reply;
+
   /** SUBSCRIBE/NOTIFY handling */
   AmSipSubscription* subs;
 

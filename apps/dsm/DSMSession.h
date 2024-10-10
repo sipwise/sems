@@ -187,6 +187,12 @@ class DSMSession {
   /** release ownership of object from this session instance */
   virtual void releaseOwnership(DSMDisposable* d) = 0;
 
+  /** get header from request */
+  virtual void B2BgetHeaderRequest(const string& hdr, string& out) = 0;
+
+  /** get header from reply */
+  virtual void B2BgetHeaderReply(const string& hdr, string& out) = 0;
+
   /* holds variables which are accessed by $varname */
   VarMapT var;
 

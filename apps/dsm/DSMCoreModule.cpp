@@ -145,6 +145,8 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("B2B.sendReinvite", SCB2BReinviteAction);
   DEF_CMD("B2B.enableEarlyMediaRelay", SCB2BEnableEarlyMediaRelayAction);
   DEF_CMD("B2B.addHeader", SCB2BAddHeaderAction);
+  DEF_CMD("B2B.getHeaderRequest", SCB2BGetHeaderRequestAction);
+  DEF_CMD("B2B.getHeaderReply", SCB2BGetHeaderReplyAction);
   DEF_CMD("B2B.removeHeader", SCB2BRemoveHeaderAction);
   DEF_CMD("B2B.clearHeaders", SCB2BClearHeadersAction);
   DEF_CMD("B2B.setHeaders", SCB2BSetHeadersAction);
@@ -1546,6 +1548,42 @@ EXEC_ACTION_START(SCB2BAddHeaderAction) {
   string val = resolveVars(arg, sess, sc_sess, event_params);
   DBG("adding B2B header '%s'\n", val.c_str());
   sc_sess->B2BaddHeader(val);
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCB2BGetHeaderRequestAction,',', false);
+EXEC_ACTION_START(SCB2BGetHeaderRequestAction) {
+  string hdr_name = resolveVars(par1, sess, sc_sess, event_params);
+  string destination_variable = (par2.length() && par2[0] == '$') ? par2.substr(1) : par2;
+  string result;
+
+  if (hdr_name.empty() || destination_variable.empty())
+    throw DSMException("core", "cause", "parameters missing");
+
+  sc_sess->B2BgetHeaderRequest(hdr_name, result);
+
+  /* write only if we got something */
+  if (!result.empty())
+    sc_sess->var[destination_variable] = result;
+  else
+    DBG("No header with name '%s' found.\n", hdr_name.c_str());
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCB2BGetHeaderReplyAction,',', false);
+EXEC_ACTION_START(SCB2BGetHeaderReplyAction) {
+  string hdr_name = resolveVars(par1, sess, sc_sess, event_params);
+  string destination_variable = (par2.length() && par2[0] == '$') ? par2.substr(1) : par2;
+  string result;
+
+  if (hdr_name.empty() || destination_variable.empty())
+    throw DSMException("core", "cause", "parameters missing");
+
+  sc_sess->B2BgetHeaderReply(hdr_name, result);
+
+  /* write only if we got something */
+  if (!result.empty())
+    sc_sess->var[destination_variable] = result;
+  else
+    DBG("No header with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCB2BRemoveHeaderAction) {

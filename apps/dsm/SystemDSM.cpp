@@ -221,6 +221,8 @@ NOT_IMPLEMENTED(B2BsetRelayEarlyMediaSDP(bool enabled));
 NOT_IMPLEMENTED(B2BsetHeaders(const string& hdr, bool replaceCRLF));
 NOT_IMPLEMENTED(B2BclearHeaders());
 NOT_IMPLEMENTED(B2BaddHeader(const string& hdr));
+NOT_IMPLEMENTED(B2BgetHeaderRequest(const string& hdr, string& out));
+NOT_IMPLEMENTED(B2BgetHeaderReply(const string& hdr, string& out));
 NOT_IMPLEMENTED(B2BremoveHeader(const string& hdr));
 
 #undef NOT_IMPLEMENTED

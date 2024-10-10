@@ -123,6 +123,8 @@ class SBCDSMInstance
   void B2BsetHeaders(const string& hdr, bool replaceCRLF);
   void B2BclearHeaders();
   void B2BaddHeader(const string& hdr);
+  void B2BgetHeaderRequest(const string& hdr, string& out);
+  void B2BgetHeaderReply(const string& hdr, string& out);
   void B2BremoveHeader(const string& hdr);
 
   void transferOwnership(DSMDisposable* d);
