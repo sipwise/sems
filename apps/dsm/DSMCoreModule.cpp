@@ -1541,8 +1541,10 @@ EXEC_ACTION_START(SCB2BReinviteAction) {
 
 EXEC_ACTION_START(SCB2BSendEstablishedReinviteAction) {
   AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
+  string hdrs = resolveVars(arg, sess, sc_sess, event_params);
+
   if (NULL != b2b_sess) {
-    b2b_sess->sendEstablishedReInvite();
+    b2b_sess->sendEstablishedReInvite(hdrs);
   } else {
     ERROR("internal: Session object is not B2B session (huh?), not reinviting\n");
   }
