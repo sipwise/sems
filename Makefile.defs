@@ -87,6 +87,11 @@ exclude_core_modules = g729 silk
 #
 USE_MONITORING=no
 
+# are we compiling for the test environment?
+# if so, then this will exclude a list of applications
+# which require a linkage with remote unvisible to us libraries.
+TEST_ENVIRONMENT ?= no
+
 # Support for long debug messages? (useful for debugging SIP messages' contents)
 #
 # disable for slight performance gain
