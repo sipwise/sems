@@ -6,6 +6,10 @@ include $(COREPATH)/../Makefile.defs
 
 exclude_dsm_modules ?= mod_mysql mod_aws mod_curl mod_xml mod_py
 
+ifeq ($(TEST_ENVIRONMENT), yes)
+  exclude_dsm_modules += mod_swrating
+endif
+
 ifneq ($(USE_MONITORING), yes)
 exclude_dsm_modules += mod_monitoring
 endif
