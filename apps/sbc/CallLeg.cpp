@@ -1860,6 +1860,11 @@ void CallLeg::updateLocalSdp(AmSdp &sdp)
             DBG("On hold has been previously requested and must be held further\n");
             DBG("This SDP is prepared to be sent with the a=inactive\n");
             break;
+          case ZeroedHold:
+            DBG("On hold has been previously requested, but will be not held further (zeroed hold)\n");
+            break;
+          default:
+            break; /* do nothing, this handles the compiler's warning that NonHold is not mentioned in switch */
         }
       }
     }
