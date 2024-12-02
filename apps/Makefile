@@ -24,7 +24,7 @@ ifeq ($(app_modules),)
  endif
 
  ifeq ($(TEST_ENVIRONMENT),yes)
-  exclude_app_modules = ann_b2b announce_transfer announcement annrecorder callback callqueues conference confpin conf_auth diameter_client dimanagedha early_announce early_dbprompt examples examples/tutorial/cc_acc gateway ivr jsonrpc mailbox memcachedstore mobile_push mp3 msg_storage mwi pin_collect precoded_announce py_sems rtmp twit voicebox voicemail webconference sw_rating
+  exclude_app_modules = ann_b2b announce_transfer announcement annrecorder callback callqueues conference confpin conf_auth diameter_client dimanagedha early_announce early_dbprompt examples examples/tutorial/cc_acc gateway ivr jsonrpc mailbox memcachedstore mobile_push mp3 msg_storage mwi pin_collect precoded_announce py_sems rtmp twit voicebox voicemail webconference sw_rating sw_vsc
  endif
 
  exclude_modules = $(exclude_app_modules)
