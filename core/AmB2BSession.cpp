@@ -1419,6 +1419,22 @@ void AmB2BCallerSession::onInvite(const AmSipRequest& req)
   AmB2BSession::onInvite(req);
 }
 
+void AmB2BCallerSession::onInviteKeepSDP(const AmSipRequest& req)
+{
+  /* save SDP body to re-use if newer request has no SDP */
+  AmMimeBody previous_body(invite_req.body);
+  invite_req = req;
+
+  if (invite_req.body.empty() && !previous_body.empty()) {
+     invite_req.body = previous_body;
+     DBG("Currently processed INVITE has no SDP body, use the one from previous offer.\n");
+  }
+
+  est_invite_cseq = req.cseq;
+
+  AmB2BSession::onInvite(req);
+}
+
 void AmB2BCallerSession::onInvite2xx(const AmSipReply& reply)
 {
   invite_req.cseq = reply.cseq;

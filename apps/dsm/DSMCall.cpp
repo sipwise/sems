@@ -98,11 +98,19 @@ void DSMCall::onStart()
 
 void DSMCall::onInvite(const AmSipRequest& req) {
   // make B2B dialogs work in onInvite as well
+
+  /* save SDP body to re-use if newer request has no SDP */
+  AmMimeBody previous_body(invite_req.body);
   invite_req = req;
+
+  if (invite_req.body.empty() && !previous_body.empty()) {
+    invite_req.body = previous_body;
+    DBG("Currently processed INVITE has no SDP body, use the one from previous offer.\n");
+  }
 
   if (!process_invite) {
     // re-INVITEs
-    AmB2BCallerSession::onInvite(req);
+    AmB2BCallerSession::onInviteKeepSDP(req);
     return;
   }
   process_invite = false;
@@ -126,7 +134,7 @@ void DSMCall::onInvite(const AmSipRequest& req) {
   }    
 
   if (run_session_invite) 
-    AmB2BCallerSession::onInvite(req);
+    AmB2BCallerSession::onInviteKeepSDP(req);
 }
 
 void DSMCall::onInvite2xx(const AmSipReply& reply) {

@@ -434,6 +434,7 @@ class AmB2BCallerSession: public AmB2BSession
 
   // @see AmSession
   void onInvite(const AmSipRequest& req);
+  void onInviteKeepSDP(const AmSipRequest& req); /* keeps previous SDP if given INVITE has empty SDP */
   void onInvite2xx(const AmSipReply& reply);
   void onCancel(const AmSipRequest& req);
   void onBye(const AmSipRequest& req);
