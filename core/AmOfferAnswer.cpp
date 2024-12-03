@@ -361,7 +361,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   return 0;
 }
 
-int AmOfferAnswer::onReplyOut(AmSipReply& reply)
+int AmOfferAnswer::onReplyOut(AmSipReply& reply, bool no_sdp_generation)
 {
   AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
   AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
@@ -418,9 +418,10 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
       } else if ((reply.code == 183) || ((reply.code >= 200) && (reply.code < 300))) {
 
         /* either offer received or no offer at all: -> force SDP */
-        generate_sdp = (state == OA_OfferRecved)
+        generate_sdp =  !no_sdp_generation &&
+                        ((state == OA_OfferRecved)
                         || (state == OA_None)
-                        || (state == OA_Completed);
+                        || (state == OA_Completed));
       }
 
     } else if (reply.cseq_method == SIP_METH_UPDATE) {
@@ -473,7 +474,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply)
   } else if (sdp_body && has_sdp) {
     /* update local SDP copy */
     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
-      ERROR("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+      WARN("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
     }
   }
 
