@@ -1,3 +1,25 @@
+ngcp-sems (1:1.6.0+0~mr13.1.1.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [bfa8ac0] MT#61140 DSM: add getters for headers
+  * [f7d7436] MT#61140 sendEstablishedReInvite: add `hdrs` param
+  * [670d708] MT#61140 DSM: add `B2B.sendEstablishedReinvite()`
+  * [d1a2224] MT#61140 DSM: `sendEstablishedReinvite()` add hdrs support
+  * [3b04b8e] MT#59962 early_dbprompt: add Makefile
+  * [2e53585] MT#59962 mobile_push: add Makefile
+  * [c33c2cf] MT#59962 Makefile.defs: add TEST_ENVIRONMENT variable
+  * [4eb5a1e] MT#59962 apps: improve Makefile
+  * [a6f708f] MT#59962 apps: dsm, exclude mod_py
+  * [8a26804] MT#59962 apps: dsm, exclude mod_swrating
+  * [289a452] MT#57501 enumeration value 'NonHold' not handled in switch
+  * [f9edcce] MT#59962 sw_vsc: Fix compilation warnings
+  * [63b3f4d] MT#59962 apps: exclude sw_vsc
+  * [f97ff25] MT#61574 DSM: re-use previous SDP if new given empty
+  * [129b407] MT#61574 AmOfferAnswer: don't generate SDP answer if offer empty
+  * [9284cb8] MT#60666 c++: add standard 20 to be used
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 09 Dec 2024 11:29:04 +0100
+
 ngcp-sems (1:1.6.0+0~mr13.1.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
