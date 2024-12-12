@@ -1,1 +1,1 @@
-lib/systemd/system/ngcp-sems.service lib/systemd/system/sems.service
+usr/lib/systemd/system/ngcp-sems.service usr/lib/systemd/system/sems.service
