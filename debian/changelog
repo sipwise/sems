@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0+0~mr13.2.1.0) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [9f4746b] MT#61751 Install systemd service file in /usr
+
+  [ Guillem Jover ]
+  * [c2c16af] MT#61639 Remove obsolete and unused libsems-dev package
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 28 Jan 2025 15:16:53 +0100
+
 ngcp-sems (1:1.6.0+0~mr13.2.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
