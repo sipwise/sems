@@ -68,6 +68,8 @@ using std::map;
 
 #define DSM_B2B_CALLID       "b2b_callid"
 
+#define DSM_B2B_BUILD_PAI_FROM_HDR       "b2b_build_pai_from_hdr"
+
 #define DSM_AVAR_REQUEST "request"
 #define DSM_AVAR_REPLY   "reply"
 

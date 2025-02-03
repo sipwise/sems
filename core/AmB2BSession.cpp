@@ -1326,6 +1326,15 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
       case Ringing:
         if (reply.cseq == invite_req.cseq) {
 
+          /* get possibly passed headers for updates towards caller */
+          string hdrs;
+          map<string,string>::const_iterator hdrs_it;
+          hdrs_it = ((B2BSipReplyEvent*)ev)->params.find("hdrs");
+          if (hdrs_it != ((B2BSipReplyEvent*)ev)->params.end()) {
+            hdrs = hdrs_it->second;
+            DBG("Got some headers, which can later be used for re-inviting the caller: '%s'\n", hdrs.c_str());
+          }
+
           if (reply.code < 200) {
             if ((!sip_relay_only) &&
                 (reply.code>=180 && reply.code<=183 && (!reply.body.empty()))) {
@@ -1334,7 +1343,7 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
               updateSessionDescription(reply.body);
 
               if (sip_relay_early_media_sdp) {
-                if (reinviteCaller(reply)) {
+                if (reinviteCaller(reply, hdrs)) {
                   ERROR("re-INVITEing caller for early session failed - stopping this and other leg\n");
                   terminateOtherLeg();
                   terminateLeg();
@@ -1362,7 +1371,7 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
                 n_reply.body = established_body;
               }
 
-              if (reinviteCaller(n_reply)) {
+              if (reinviteCaller(reply, hdrs)) {
                 ERROR("re-INVITEing caller failed - stopping this and other leg\n");
                 terminateOtherLeg();
                 terminateLeg();
@@ -1500,11 +1509,11 @@ void AmB2BCallerSession::connectCallee(const string& remote_party,
   callee_status = NoReply;
 }
 
-int AmB2BCallerSession::reinviteCaller(const AmSipReply& callee_reply)
+int AmB2BCallerSession::reinviteCaller(const AmSipReply& callee_reply, const string& hdrs)
 {
   return dlg->sendRequest(SIP_METH_INVITE,
 			 &callee_reply.body,
-			 "" /* hdrs */, SIP_FLAGS_VERBATIM);
+			 hdrs, SIP_FLAGS_VERBATIM);
 }
 
 void AmB2BCallerSession::createCalleeSession() {

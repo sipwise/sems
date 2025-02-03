@@ -404,7 +404,7 @@ class AmB2BCallerSession: public AmB2BSession
   // Callee Status
   CalleeStatus callee_status;
   
-  int  reinviteCaller(const AmSipReply& callee_reply);
+  int  reinviteCaller(const AmSipReply& callee_reply, const string& hdrs = "");
 
  protected:
   AmSipRequest invite_req;
