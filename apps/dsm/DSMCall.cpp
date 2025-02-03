@@ -633,20 +633,37 @@ void DSMCall::process(AmEvent* event)
     }
   }
 
+  /* add some additional headers for DSM triggered updates (triggered by replies) */
   B2BEvent* b2b_ev = dynamic_cast<B2BEvent*>(event);
-  if (b2b_ev) {
+  if (b2b_ev && b2b_ev->event_id == B2BSipReply) {
     string pai_from_hdr = getVar(DSM_B2B_BUILD_PAI_FROM_HDR);
-    if (b2b_ev->event_id == B2BSipReply && !pai_from_hdr.empty()) {
+
+    string mark_dsm = getVar(DSM_B2B_MARK_DSM_FOR_UPDATES);
+    string hdrs;
+
+    /* add P-Asserted-Identity */
+    if (!pai_from_hdr.empty()) {
       string pai_value;
       B2BgetHeaderReply(pai_from_hdr, pai_value);
+
       DBG("Building '%s' value from header '%s'.\n", SIP_HDR_P_ASSERTED_IDENTITY, pai_from_hdr.c_str());
+
       if (!pai_value.empty()) {
         DBG("Passing '%s' with value '%s' to B2BSipReply handling.\n", SIP_HDR_P_ASSERTED_IDENTITY, pai_value.c_str());
         /* CRLF required later for reinviteCaller(), dlg->sendRequest() */
-        b2b_ev->params["hdrs"] = SIP_HDR_COLSP(SIP_HDR_P_ASSERTED_IDENTITY) + pai_value + CRLF;
+        hdrs += SIP_HDR_COLSP(SIP_HDR_P_ASSERTED_IDENTITY) + pai_value + CRLF;
       } else {
         DBG("Impossible to get the value of '%s'.\n", pai_from_hdr.c_str());
       }
+    }
+    /* add P-DSM-App */
+    if (!mark_dsm.empty()) {
+      DBG("Passing '%s' with value '%s' to B2BSipReply handling.\n", SIP_HDR_P_DSM_APP, mark_dsm.c_str());
+      hdrs += SIP_HDR_COLSP(SIP_HDR_P_DSM_APP) + mark_dsm + CRLF;
+    }
+    /* add headers if any */
+    if (!hdrs.empty()) {
+        b2b_ev->params["hdrs"] = hdrs;
     }
   }
 
