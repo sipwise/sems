@@ -1123,12 +1123,20 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
        */
       AmSdp sdp;
       holdMethod hold_method;
+
       if (req.method == SIP_METH_INVITE && retrieveAmSdp(req.body, sdp)) {
-        /* case when remote side puts us on hold */
-        if (isOnHoldRequested(sdp, hold_method)) updateHoldMethod(hold_method);
-        /* it's likely sendrecv - then make sure 'hold_type_requested' is kept updated */
-        else hold_type_requested = NonHold;
+
+        /* remember the hold status (we want to catch recvonly state of hold),
+         * in order to be able to ignore it gracefully during ongoing MoH towards this leg.
+         */
+        bool already_recvonly_hold = (on_hold && hold_type_requested == NonHold);
+
+        /* in case this INVITE puts on hold, update the method */
+        hold_method = updateHoldMethod(sdp);
+
+        /* TODO: do we really need it? There is no MoH handling in this version of SEMS */
       }
+
       AmB2BSession::onSipRequest(req);
     }
   }
@@ -1399,17 +1407,33 @@ void CallLeg::updateCallStatus(CallStatus new_status, const StatusChangeCause &c
   onCallStatusChange(cause);
 }
 
-void CallLeg::updateHoldMethod(const holdMethod &hm)
+CallLeg::holdMethod CallLeg::updateHoldMethod(const AmSdp &sdp)
 {
-  switch (hm)
+  holdMethod hold_method = None;
+  /* just get the hold method */
+  isHoldRequest(sdp, hold_method);
+  /* SendRecv are considered as NonHold */
+  hold_type_requested = NonHold;
+  switch (hold_method)
   {
-    case SendonlyStream: hold_type_requested = SendonlyHold; break;
-    case InactiveStream: hold_type_requested = InactiveHold; break;
-    case ZeroedConnection: hold_type_requested = ZeroedHold; break;
-    default: hold_type_requested = NonHold;
+    case SendonlyStream:
+      hold_type_requested = SendonlyHold;
+      break;
+    case InactiveStream:
+      hold_type_requested = InactiveHold;
+      break;
+    case ZeroedConnection:
+      hold_type_requested = ZeroedHold;
+      break;
+    case RecvonlyStream:
+      hold_type_requested = NonHold;
+      break;
   }
-  DBG("hold_type_requested is set to: <%d> for LT <%s>\n",
-      hold_type_requested, getLocalTag().c_str());
+  if (hold_type_requested != NonHold) {
+    DBG("hold_type_requested is set to: <%d> for LT <%s>\n",
+        hold_type_requested, getLocalTag().c_str());
+  }
+  return hold_method;
 }
 
 bool CallLeg::isOnHoldRequested(const AmSdp &sdp, holdMethod &method)

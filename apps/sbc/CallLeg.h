@@ -213,10 +213,10 @@ class CallLeg: public AmB2BSession
     void updateCallStatus(CallStatus new_status, const StatusChangeCause &cause = StatusChangeCause());
 
     bool isHoldRequest(const AmSdp &sdp, holdMethod &method);
-    /** keep the method, which was used to put the call
-     *  on hold, in the SDP offer received (most likely in re-INVITE)
+    /* updates `hold_type_requested`.
+     * returns `holdMethod` based on given SDP.
      */
-    void updateHoldMethod(const holdMethod &hm);
+    holdMethod updateHoldMethod(const AmSdp &sdp);
     /* check if this request assumes call to be put on hold,
      * this in internal class'es implementation.
      */
