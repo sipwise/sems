@@ -1436,14 +1436,6 @@ CallLeg::holdMethod CallLeg::updateHoldMethod(const AmSdp &sdp)
   return hold_method;
 }
 
-bool CallLeg::isOnHoldRequested(const AmSdp &sdp, holdMethod &method)
-{
-  if (isHoldRequest(sdp, (holdMethod&)method)) {
-    DBG("This request puts the call on hold\n");
-    return true;
-  }
-  return false;
-}
 bool CallLeg::retrieveAmSdp(const AmMimeBody &mSdp, AmSdp &sdp)
 {
   AmMimeBody t_sdp_body = mSdp;

@@ -217,10 +217,7 @@ class CallLeg: public AmB2BSession
      * returns `holdMethod` based on given SDP.
      */
     holdMethod updateHoldMethod(const AmSdp &sdp);
-    /* check if this request assumes call to be put on hold,
-     * this in internal class'es implementation.
-     */
-    bool isOnHoldRequested(const AmSdp &sdp, holdMethod &hm);
+
     /* set AmSdp based on AmMimeBody */
     bool retrieveAmSdp(const AmMimeBody &mSdp, AmSdp &sdp);
 
