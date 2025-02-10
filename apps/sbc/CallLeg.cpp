@@ -1817,13 +1817,10 @@ void CallLeg::adjustOffer(AmSdp &sdp)
     if (isHoldRequest(sdp, hm)) {
       DBG("%s: B2b hold request", getLocalTag().c_str());
 
-      /* true only for 'sendonly */
-      if (hm != RecvonlyStream)
-        holdRequested(); /* looks like it handles only MoH */
+      holdRequested(); /* it handles only MoH's hook */
 
       alterHoldRequest(sdp);
       hold = HoldRequested;
-
     } else {
       if (on_hold || isSDPBodyHold(sdp)) {
         DBG("B2b resume request");
