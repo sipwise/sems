@@ -315,10 +315,8 @@ bool CallLeg::isHoldRequest(const AmSdp &sdp, holdMethod &method)
         case Recvonly:
           method = RecvonlyStream;
           return false; /* recvonly cannot provide moh */
-        /* well, no stream is something like InactiveStream, isn't it? */
         case Sendrecv:
-          method = InactiveStream;
-          break;
+          return false; /* media stream is active */
       }
     }
   }
