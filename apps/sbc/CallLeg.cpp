@@ -138,23 +138,27 @@ static MediaActivity getMediaActivity(const SdpMedia &m)
 }
 
 /**
- * Checks, whether SDP of given type has sendonly / recvonly / inactive
+ * Checks, whether SDP of given type has sendonly / inactive
  */
 static bool isSDPBodyHold(const AmSdp &sdp)
 {
   /* if no meidas present, take into consideration the session level */
-  if (sdp.media.empty() &&
-      getMediaActivity(sdp.attributes, Sendrecv) != Sendrecv)
+  if (sdp.media.empty())
   {
-      return true;
+      MediaActivity session_activity = getMediaActivity(sdp.attributes, Sendrecv);
+      if (session_activity != Sendrecv && session_activity != Recvonly)
+        return true;
   }
 
   for (std::vector<SdpMedia>::const_iterator m = sdp.media.begin();
         m != sdp.media.end(); ++m)
   {
     /* only resume audio streams */
-    if (m->isAudio() && getMediaActivity(*m) != Sendrecv)
-      return true;
+    if (m->isAudio()) {
+      MediaActivity media_activity = getMediaActivity(*m);
+      if (media_activity != Sendrecv && media_activity != Recvonly)
+        return true;
+    }
   }
 
   return false;
