@@ -3,6 +3,10 @@
 [Sipwise](http://www.sipwise.com/) SEMS stands for SIP Express Media Server,
 but that's not all it is.
 
+[Sipwise](http://www.sipwise.com/) SEMS is originally a fork of a well known [SEMS open source project](https://github.com/sems-server)
+but over the course of time we went far away from it realizing our own ideas and making SEMS project alive and active.
+Our project is fully GPL license compatible implementation.
+
 [Sipwise](http://www.sipwise.com/) SEMS primarily is a B2B service,
 which is mainly considered to be used in VoIP setups based on SIP protocol signaling.
 And still it is quite agnostic in terms of which other software
