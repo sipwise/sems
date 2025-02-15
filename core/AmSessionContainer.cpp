@@ -45,7 +45,7 @@ _MONITORING_DECLARE_INTERFACE(AmSessionContainer);
 
 AmSessionContainer::AmSessionContainer()
   : _run_cond(false), _container_closed(false), enable_unclean_shutdown(false),
-    CPSLimit(0), CPSHardLimit(0), max_cps(0)
+    CPSLimit(0), CPSHardLimit(0), max_cps(0), cps_samplerate(5)
 {
 }
 
@@ -399,14 +399,14 @@ void AmSessionContainer::setCPSSoftLimit(unsigned int percent)
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
-    if (res.tv_sec >= CPS_SAMPLERATE) {
+    if (res.tv_sec >= cps_samplerate) {
       cps_queue.pop();
     }   
     else {
       break;
     }
   }
-  CPSLimit = ((float)percent / 100) * ((float)cps_queue.size() / CPS_SAMPLERATE);
+  CPSLimit = (static_cast<float>(percent) / 100) * (static_cast<float>(cps_queue.size()) / cps_samplerate);
   if(0 == CPSLimit) CPSLimit = 1;
 }
 
@@ -425,7 +425,7 @@ unsigned int AmSessionContainer::getAvgCPS()
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
-    if (res.tv_sec >= CPS_SAMPLERATE) {
+    if (res.tv_sec >= cps_samplerate) {
       cps_queue.pop();
     }   
     else {
@@ -433,7 +433,7 @@ unsigned int AmSessionContainer::getAvgCPS()
     }
   }
 
-  return (float)cps_queue.size() / CPS_SAMPLERATE;
+  return static_cast<float>(cps_queue.size()) / cps_samplerate;
 }
 
 unsigned int AmSessionContainer::getMaxCPS()
@@ -465,7 +465,7 @@ bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
-    if (res.tv_sec >= CPS_SAMPLERATE) {
+    if (res.tv_sec >= cps_samplerate) {
       cps_queue.pop();
     }   
     else {
@@ -473,7 +473,7 @@ bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
     }
   }
 
-  unsigned int cps = (float)cps_queue.size() / CPS_SAMPLERATE;
+  unsigned int cps = static_cast<float>(cps_queue.size()) / cps_samplerate;
   if (cps > max_cps) {
     max_cps = cps;
   }

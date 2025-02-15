@@ -93,7 +93,7 @@ class AmSessionContainer : public AmThread
   /** Mutex to protect the cps container */
   AmMutex      cps_mut;
 
-  enum { CPS_SAMPLERATE = 5 };
+  const float cps_samplerate;
 
   unsigned int CPSLimit;
   unsigned int CPSHardLimit;
@@ -197,7 +197,7 @@ class AmSessionContainer : public AmThread
   pair<unsigned int, unsigned int> getCPSLimit();
 
   /**
-   * Gets the timeaverage of calls per second in the last CPS_SAMPLERATE sec window
+   * Gets the timeaverage of calls per second in the last cps_samplerate sec window
    */
   unsigned int getAvgCPS();
   /**
