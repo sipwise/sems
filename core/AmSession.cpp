@@ -516,7 +516,7 @@ void AmSession::session_started() {
   avg_last_timestamp = now;
 
   //current session number
-  session_num++;
+  session_num = session_num + 1;
 
   //maximum session number
   if(session_num > max_session_num) max_session_num = session_num;
@@ -535,7 +535,7 @@ void AmSession::session_stopped() {
   avg_session_num += session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec);
   avg_last_timestamp = now;
   //current session number
-  session_num--;
+  session_num = session_num - 1;
   session_num_mut.unlock();
 
   __update_session_count(getSessionNum());
