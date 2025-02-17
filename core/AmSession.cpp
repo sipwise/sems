@@ -53,10 +53,10 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 
-volatile unsigned int AmSession::session_num = 0;
+unsigned int AmSession::session_num = 0;
 AmMutex AmSession::session_num_mut;
-volatile unsigned int AmSession::max_session_num = 0;
-volatile unsigned long long AmSession::avg_session_num = 0;
+unsigned int AmSession::max_session_num = 0;
+unsigned long long AmSession::avg_session_num = 0;
 
 struct timeval get_now() {
   struct timeval res;

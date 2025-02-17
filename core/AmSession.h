@@ -115,9 +115,9 @@ private:
   static void session_started();
   static void session_stopped();
 
-  static volatile unsigned int session_num;
-  static volatile unsigned int max_session_num;
-  static volatile unsigned long long avg_session_num;
+  static unsigned int session_num;
+  static unsigned int max_session_num;
+  static unsigned long long avg_session_num;
   static AmMutex session_num_mut;
 
   friend class AmMediaProcessor;
