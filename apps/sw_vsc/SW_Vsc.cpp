@@ -301,7 +301,7 @@ u_int64_t SW_VscDialog::getAttributeId(MYSQL *my_handler, const char *attribute)
     res = mysql_store_result(my_handler);
     if (mysql_num_rows(res) != 1)
     {
-        ERROR("Found invalid number of id entries for attribute '%s': %lu",
+        ERROR("Found invalid number of id entries for attribute '%s': %llu",
               attribute, mysql_num_rows(res));
         return 0;
     }
@@ -381,7 +381,7 @@ u_int64_t SW_VscDialog::getSubscriberId(MYSQL *my_handler, const char *uuid,
     res = mysql_store_result(my_handler);
     if (mysql_num_rows(res) != 1)
     {
-        ERROR("Found invalid number of id entries for uuid '%s': %lu",
+        ERROR("Found invalid number of id entries for uuid '%s': %llu",
               uuid , mysql_num_rows(res));
         return 0;
     }
@@ -434,7 +434,7 @@ u_int64_t SW_VscDialog::getPreference(MYSQL *my_handler, u_int64_t subscriberId,
     }
     if (mysql_num_rows(res) != 1)
     {
-        ERROR("Found invalid number of id entries for subscriber id '%llu' and attribute id '%llu': %lu",
+        ERROR("Found invalid number of id entries for subscriber id '%llu' and attribute id '%llu': %llu",
               (unsigned long long int)subscriberId,
               (unsigned long long int)attributeId, mysql_num_rows(res));
         mysql_free_result(res);
