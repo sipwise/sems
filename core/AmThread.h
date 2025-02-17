@@ -46,7 +46,7 @@ class AmMutex
   pthread_mutex_t m;
 
 public:
-  AmMutex(bool recursive = false);
+  AmMutex();
   ~AmMutex();
   void lock();
   void unlock();

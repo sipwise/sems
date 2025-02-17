@@ -57,7 +57,7 @@ class _AmAppTimer
   AmMutex user_timers_mut;
   TimerQueues user_timers;
 
-  AmMutex direct_timers_mut;
+  std::recursive_mutex direct_timers_mut;
   DirectTimers direct_timers;
 
   /** creates timer object and inserts it into our container */

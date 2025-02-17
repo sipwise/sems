@@ -20,7 +20,7 @@ Possible issue:
 */
 
 async_file::async_file(unsigned int buf_len)
-  : AmMutex(true), fifo_buffer(buf_len),
+  : fifo_buffer(buf_len),
     evbase(NULL),closed(false),error(false),write_thresh(MIN_WRITE_SIZE)
 {
   if (buf_len <= MIN_WRITE_SIZE) {
@@ -41,7 +41,7 @@ async_file::~async_file()
 
 int async_file::write(const void* buf, unsigned int len)
 {
-  lock_guard<AmMutex> _l(*this);
+  lock_guard<std::recursive_mutex> _l(*this);
   if(closed) return Closed;
   if(error)  return Error;
 
@@ -58,7 +58,7 @@ int async_file::write(const void* buf, unsigned int len)
 
 int async_file::writev(const struct iovec *iov, int iovcnt)
 {
-  lock_guard<AmMutex> _l(*this);
+  lock_guard<std::recursive_mutex> _l(*this);
   if(closed) return Closed;
   if(error)  return Error;
 
@@ -75,7 +75,7 @@ int async_file::writev(const struct iovec *iov, int iovcnt)
 
 void async_file::close()
 {
-  lock_guard<AmMutex> _l(*this);
+  lock_guard<std::recursive_mutex> _l(*this);
   closed = true;
   event_active(ev_write, 0, 0);
 }
@@ -120,6 +120,6 @@ void async_file::write_cycle()
 
 unsigned int async_file::get_buffered_bytes()
 {
-  lock_guard<AmMutex> _l(*this);
+  lock_guard<std::recursive_mutex> _l(*this);
   return fifo_buffer::get_buffered_bytes();
 }

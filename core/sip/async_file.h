@@ -6,7 +6,7 @@
 
 class async_file
   : protected fifo_buffer,
-    public AmMutex
+    public std::recursive_mutex
 {
   struct event_base* evbase;
   struct event*    ev_write;

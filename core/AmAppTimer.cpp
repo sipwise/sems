@@ -69,7 +69,7 @@ public:
 };
 
 _AmAppTimer::_AmAppTimer()
-  : direct_timers_mut(true)
+  : direct_timers_mut()
 {
 }
 
