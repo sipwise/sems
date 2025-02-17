@@ -302,6 +302,7 @@ bool CallLeg::isHoldRequest(const AmSdp &sdp, holdMethod &method)
         method = RecvonlyStream;
         return false; /* recvonly cannot provide moh */
       case Sendrecv:
+        method = None;
         return false; /* media stream is active */
     }
   }
@@ -320,6 +321,7 @@ bool CallLeg::isHoldRequest(const AmSdp &sdp, holdMethod &method)
           method = RecvonlyStream;
           return false; /* recvonly cannot provide moh */
         case Sendrecv:
+          method = None;
           return false; /* media stream is active */
       }
     }
