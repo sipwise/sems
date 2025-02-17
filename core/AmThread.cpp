@@ -111,10 +111,9 @@ void AmThread::start()
 
 void AmThread::stop()
 {
-  _m_td.lock();
+  lock_guard<AmMutex> _l(_m_td);
 
   if(is_stopped()){
-    _m_td.unlock();
     return;
   }
 
@@ -138,12 +137,10 @@ void AmThread::stop()
   DBG("Thread %lu (%lu) finished detach.\n", (unsigned long int) _pid, (unsigned long int) _td);
 
   //pthread_cancel(_td);
-
-  _m_td.unlock();
 }
 
 void AmThread::cancel() {
-  _m_td.lock();
+  lock_guard<AmMutex> _l(_m_td);
 
   int res;
   if ((res = pthread_cancel(_td)) != 0) {
@@ -152,8 +149,6 @@ void AmThread::cancel() {
     DBG("Thread %lu is canceled.\n", (unsigned long int) _pid);
     _stopped.set(true);
   }
-
-  _m_td.unlock();
 }
 
 void AmThread::join()

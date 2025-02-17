@@ -105,7 +105,7 @@ int cf_msg_logger::log(const char* buf, int len,
   string src = addr2str(src_ip);
   string dst = addr2str(dst_ip);
 
-  AmLock _l(*(AmMutex*)excl_fp);
+  lock_guard<exclusive_file> _l(*excl_fp);
 
   write_src_dst(src);
   write_src_dst(dst);

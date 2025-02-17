@@ -34,6 +34,9 @@
 #include <errno.h>
 
 #include <queue>
+#include <mutex>
+
+using std::lock_guard;
 
 /**
  * \brief C++ Wrapper class for pthread mutex
@@ -47,21 +50,6 @@ public:
   ~AmMutex();
   void lock();
   void unlock();
-};
-
-/**
- * \brief  Simple lock class
- */
-class AmLock
-{
-  AmMutex& m;
-public:
-  AmLock(AmMutex& _m) : m(_m) {
-    m.lock();
-  }
-  ~AmLock(){
-    m.unlock();
-  }
 };
 
 /**

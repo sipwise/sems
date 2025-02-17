@@ -244,7 +244,7 @@ int tcp_trsp_socket::check_connection()
 int tcp_trsp_socket::send(const sockaddr_storage* sa, const char* msg, 
 			  const int msg_len, unsigned int flags)
 {
-  AmLock _l(sock_mut);
+  lock_guard<AmMutex> _l(sock_mut);
 
   if(closed || (check_connection() < 0))
     return -1;
@@ -309,7 +309,7 @@ void tcp_trsp_socket::on_read(short ev)
       return;
     }
 
-    AmLock _l(sock_mut);
+    lock_guard<AmMutex> _l(sock_mut);
     DBG("on_read (connected = %i)",connected);
 
     bytes = ::read(sd,get_input(),get_input_free_space());
@@ -426,7 +426,7 @@ int tcp_trsp_socket::parse_input()
 
 void tcp_trsp_socket::on_write(short ev)
 {
-  AmLock _l(sock_mut);
+  lock_guard<AmMutex> _l(sock_mut);
 
   DBG("on_write (connected = %i)",connected);
   if(!connected) {

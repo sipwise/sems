@@ -202,7 +202,7 @@ void run_log_hooks(int level, pid_t pid, pthread_t tid, const char* func, const 
  */
 void register_log_hook(AmLoggingFacility* fac)
 {
-  AmLock lock(log_hooks_mutex);
+  lock_guard<AmMutex> lock(log_hooks_mutex);
   log_hooks.push_back(fac);
 }
 

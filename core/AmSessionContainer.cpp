@@ -381,7 +381,7 @@ bool AmSessionContainer::postEvent(const string& local_tag,
 
 void AmSessionContainer::setCPSLimit(unsigned int limit)
 {
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
   CPSLimit = CPSHardLimit = limit;
 }
 
@@ -395,7 +395,7 @@ void AmSessionContainer::setCPSSoftLimit(unsigned int percent)
   struct timeval tv, res;
   gettimeofday(&tv,0);
 
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
@@ -412,7 +412,7 @@ void AmSessionContainer::setCPSSoftLimit(unsigned int percent)
 
 pair<unsigned int, unsigned int> AmSessionContainer::getCPSLimit()
 {
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
   return pair<unsigned int, unsigned int>(CPSHardLimit, CPSLimit);
 }
 
@@ -421,7 +421,7 @@ unsigned int AmSessionContainer::getAvgCPS()
   struct timeval tv, res;
   gettimeofday(&tv,0);
 
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
 
   while (cps_queue.size()) {
     timersub(&tv, &cps_queue.front(), &res);
@@ -438,7 +438,7 @@ unsigned int AmSessionContainer::getAvgCPS()
 
 unsigned int AmSessionContainer::getMaxCPS()
 {
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
   unsigned int res = max_cps;
   max_cps = 0;
   return res;
@@ -453,7 +453,7 @@ bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
   struct timeval tv, res;
   gettimeofday(&tv,0);
 
-  AmLock lock(cps_mut);
+  lock_guard<AmMutex> lock(cps_mut);
 
   // check global policy for dropping emergency calls
   if (!AmConfig::skip_cpslimit_emergency && emergency_flag) {

@@ -44,7 +44,7 @@ void B2BMediaStatistics::incCodecWriteUsage(const string &codec_name)
 {
   if (codec_name.empty()) return;
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   map<string, int>::iterator i = codec_write_usage.find(codec_name);
   if (i != codec_write_usage.end()) i->second++;
   else codec_write_usage[codec_name] = 1;
@@ -54,7 +54,7 @@ void B2BMediaStatistics::decCodecWriteUsage(const string &codec_name)
 {
   if (codec_name.empty()) return;
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   map<string, int>::iterator i = codec_write_usage.find(codec_name);
   if (i != codec_write_usage.end()) {
     if (i->second > 0) i->second--;
@@ -65,7 +65,7 @@ void B2BMediaStatistics::incCodecReadUsage(const string &codec_name)
 {
   if (codec_name.empty()) return;
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   map<string, int>::iterator i = codec_read_usage.find(codec_name);
   if (i != codec_read_usage.end()) i->second++;
   else codec_read_usage[codec_name] = 1;
@@ -75,7 +75,7 @@ void B2BMediaStatistics::decCodecReadUsage(const string &codec_name)
 {
   if (codec_name.empty()) return;
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   map<string, int>::iterator i = codec_read_usage.find(codec_name);
   if (i != codec_read_usage.end()) {
     if (i->second > 0) i->second--;
@@ -96,7 +96,7 @@ void B2BMediaStatistics::reportCodecWriteUsage(string &dst)
 
   bool first = true;
   dst.clear();
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   for (map<string, int>::iterator i = codec_write_usage.begin();
       i != codec_write_usage.end(); ++i) 
   {
@@ -117,7 +117,7 @@ void B2BMediaStatistics::reportCodecReadUsage(string &dst)
 
   bool first = true;
   dst.clear();
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   for (map<string, int>::iterator i = codec_read_usage.begin();
       i != codec_read_usage.end(); ++i) 
   {
@@ -135,7 +135,7 @@ void B2BMediaStatistics::getReport(const AmArg &args, AmArg &ret)
   AmArg read_usage;
 
   { // locked area
-    AmLock lock(mutex);
+    lock_guard<AmMutex> lock(mutex);
 
     for (map<string, int>::iterator i = codec_write_usage.begin();
         i != codec_write_usage.end(); ++i) 
@@ -548,7 +548,7 @@ bool AmB2BMedia::releaseReference() {
 
 void AmB2BMedia::changeSession(bool a_leg, AmB2BSession *new_session)
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   changeSessionUnsafe(a_leg, new_session);
 }
 
@@ -610,7 +610,7 @@ void AmB2BMedia::changeSessionUnsafe(bool a_leg, AmB2BSession *new_session)
 int AmB2BMedia::writeStreams(unsigned long long ts, unsigned char *buffer)
 {
   int res = 0;
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     if (i->a.writeStream(ts, buffer, i->b) < 0) { res = -1; break; }
     if (i->b.writeStream(ts, buffer, i->a) < 0) { res = -1; break; }
@@ -620,7 +620,7 @@ int AmB2BMedia::writeStreams(unsigned long long ts, unsigned char *buffer)
 
 void AmB2BMedia::processDtmfEvents()
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     i->a.processDtmfEvents();
     i->b.processDtmfEvents();
@@ -632,7 +632,7 @@ void AmB2BMedia::processDtmfEvents()
 
 void AmB2BMedia::sendDtmf(bool a_leg, int event, unsigned int duration_ms)
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   if(!audio.size())
     return;
 
@@ -648,7 +648,7 @@ void AmB2BMedia::sendDtmf(bool a_leg, int event, unsigned int duration_ms)
 void AmB2BMedia::clearAudio(bool a_leg)
 {
   TRACE("clear %s leg audio\n", a_leg ? "A" : "B");
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     // remove streams from AmRtpReceiver first! (always both?)
@@ -685,7 +685,7 @@ void AmB2BMedia::clearAudio(bool a_leg)
 
 void AmB2BMedia::clearRTPTimeout()
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
     i->a.clearRTPTimeout();
@@ -740,7 +740,7 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
                                           const string& relay_address,
                                           const string& relay_public_address)
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   /* needed for the 'quick workaround' for non-audio media */
   SdpConnection orig_conn = parser_sdp.conn;
@@ -1005,7 +1005,7 @@ void AmB2BMedia::updateStreams(bool a_leg, const AmSdp &local_sdp, const AmSdp &
     INFO("remote SDP: %s\n", s.c_str());
   */
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   /* streams should be created already (replaceConnectionAddress called
      before updateLocalSdp uses/assignes their port numbers) */
 
@@ -1101,7 +1101,7 @@ bool AmB2BMedia::replaceOffer(AmSdp &sdp, bool a_leg)
   TRACE("replacing offer with a local one\n");
   createStreams(sdp); // create missing streams
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   try {
 
@@ -1134,7 +1134,7 @@ bool AmB2BMedia::replaceOffer(AmSdp &sdp, bool a_leg)
 
 void AmB2BMedia::setMuteFlag(bool a_leg, bool set)
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   if (a_leg) a_leg_muted = set;
   else b_leg_muted = set;
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
@@ -1145,7 +1145,7 @@ void AmB2BMedia::setMuteFlag(bool a_leg, bool set)
 
 void AmB2BMedia::setFirstStreamInput(bool a_leg, AmAudio *in)
 {
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
   //for ( i != audio.end(); ++i) {
   if (!audio.empty()) {
     AudioStreamIterator i = audio.begin();
@@ -1170,7 +1170,7 @@ void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer,
   // non-disabled stream in the response so we can not set all ports to 0 to
   // signalize that we don't want to receive anything)
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   answer = offer;
   answer.media.clear();
@@ -1220,7 +1220,7 @@ void AmB2BMedia::setRtpLogger(msg_logger* _logger)
 
 void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1244,7 +1244,7 @@ void AmB2BMedia::setRelayDTMFReceiving(bool enabled) {
 /** set receving of RTP/relay streams (not receiving=drop incoming packets) */
 void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   for (RelayStreamIterator j = relay_streams.begin(); j != relay_streams.end(); j++) {
@@ -1265,7 +1265,7 @@ void AmB2BMedia::setReceiving(bool receiving_a, bool receiving_b) {
 
 void AmB2BMedia::pauseRelay() {
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = true;
@@ -1282,7 +1282,7 @@ void AmB2BMedia::pauseRelay() {
 
 void AmB2BMedia::restartRelay() {
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   DBG("relay_streams.size() = %zd, audio_streams.size() = %zd\n", relay_streams.size(), audio.size());
   relay_paused = false;
@@ -1311,7 +1311,7 @@ void AudioStreamData::debug()
 void AmB2BMedia::debug()
 {
 
-  AmLock lock(mutex);
+  lock_guard<AmMutex> lock(mutex);
 
   // walk through all the streams
   DBG("B2B media session %p ('%s' <-> '%s'):",
