@@ -1413,11 +1413,11 @@ void CallLeg::updateCallStatus(CallStatus new_status, const StatusChangeCause &c
 
 CallLeg::holdMethod CallLeg::updateHoldMethod(const AmSdp &sdp)
 {
-  holdMethod hold_method = None;
+  holdMethod hold_method;
+
   /* just get the hold method */
   isHoldRequest(sdp, hold_method);
-  /* SendRecv are considered as NonHold */
-  hold_type_requested = NonHold;
+
   switch (hold_method)
   {
     case SendonlyStream:
@@ -1429,10 +1429,12 @@ CallLeg::holdMethod CallLeg::updateHoldMethod(const AmSdp &sdp)
     case ZeroedConnection:
       hold_type_requested = ZeroedHold;
       break;
-    case RecvonlyStream:
+    /* RecvonlyStream, None and sendrecv cases considered as non-holding */
+    default:
       hold_type_requested = NonHold;
       break;
   }
+
   if (hold_type_requested != NonHold) {
     DBG("hold_type_requested is set to: <%d> for LT <%s>\n",
         hold_type_requested, getLocalTag().c_str());
