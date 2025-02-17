@@ -512,7 +512,7 @@ void AmSession::session_started() {
   //avg session number
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
-  avg_session_num += session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec);
+  avg_session_num = avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
   avg_last_timestamp = now;
 
   //current session number
@@ -532,7 +532,7 @@ void AmSession::session_stopped() {
   //avg session number
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
-  avg_session_num += session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec);
+  avg_session_num = avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
   avg_last_timestamp = now;
   //current session number
   session_num = session_num - 1;
@@ -564,7 +564,7 @@ unsigned int AmSession::getAvgSessionNum() {
   session_num_mut.lock();
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
-  avg_session_num += session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec);
+  avg_session_num = avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
   timersub(&now, &avg_first_timestamp, &delta);
   unsigned long long d_usec = delta.tv_sec * 1000000ULL + delta.tv_usec;
   if (!d_usec) {
