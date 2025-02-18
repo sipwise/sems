@@ -28,7 +28,6 @@
 #ifndef _AmThread_h_
 #define _AmThread_h_
 
-#include <pthread.h>
 #include <sys/time.h>
 #include <time.h>
 #include <errno.h>
@@ -172,27 +171,15 @@ public:
 template<class T>
 class AmThreadLocalStorage
 {
-  pthread_key_t key;
+  static thread_local std::unique_ptr<T> t;
   
-  static void __del_tls_obj(void* obj) {
-    delete static_cast<T*>(obj);
-  }
-
 public:
-  AmThreadLocalStorage() {
-    pthread_key_create(&key,__del_tls_obj);
-  }
-
-  ~AmThreadLocalStorage() {
-    pthread_key_delete(key);
-  }
-
   T* get() {
-    return static_cast<T*>(pthread_getspecific(key));
+    return t.get();
   }
 
   void set(T* p) {
-    pthread_setspecific(key,(void*)p);
+    t.reset(p);
   }
 };
 
