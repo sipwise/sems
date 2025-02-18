@@ -513,8 +513,8 @@ static atomic_int __branch_cnt;
 
 void compute_sl_to_tag(char* to_tag/*[8]*/, const sip_msg* msg)
 {
-    unsigned int hl = __branch_cnt.inc();
-    unsigned int hh = __branch_cnt.inc();
+    unsigned int hl = ++__branch_cnt;
+    unsigned int hh = ++__branch_cnt;
     
     assert(msg->type == SIP_REQUEST);
     assert(msg->u.request);
@@ -549,8 +549,8 @@ void compute_branch(char* branch/*[8]*/, const cstring& callid, const cstring& c
     unsigned int hh=0;
     timeval      tv;
 
-    hh = __branch_cnt.inc();
-    hl = __branch_cnt.inc();
+    hh = ++__branch_cnt;
+    hl = ++__branch_cnt;
 
     hl = hashlittle(callid.s,callid.len,hl);
     hh = hashlittle(cseq.s,cseq.len,hh);

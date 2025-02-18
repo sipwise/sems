@@ -354,7 +354,7 @@ public:
   /**
    * Statistics
    */
-  unsigned int getActiveRegs() { return active_regs.get(); }
+  unsigned int getActiveRegs() { return active_regs; }
 };
 
 typedef singleton<_RegisterCache> RegisterCache;

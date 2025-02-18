@@ -418,7 +418,7 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
 	uri.c_str(), alias.c_str());
 
     // inc stats
-    active_regs.inc();
+    active_regs++;
 
     ContactBucket* ct_bucket = getContactBucket(uri,alias_update.source_ip,
 						alias_update.source_port);
@@ -540,7 +540,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
       compute_alias_hash(canon_aor,uri,public_ip);
 
     // inc stats
-    active_regs.inc();
+    active_regs++;
 
     string idx = uri + "/" + public_ip;
     aor_e->insert(AorEntry::value_type(idx, binding));
@@ -721,7 +721,7 @@ void _RegisterCache::removeAlias(const string& alias, bool generate_event)
     ct_bucket->unlock();
 
     // dec stats
-    active_regs.dec();
+    active_regs--;
 
     storage_handler->onDelete(ae->aor,
 			      ae->contact_uri,

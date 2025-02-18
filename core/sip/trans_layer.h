@@ -86,30 +86,30 @@ class trans_stats
   public:
 
     /** increment number of sent requests */
-    void inc_sent_requests() { sent_requests.inc(); }
+    void inc_sent_requests() { sent_requests++; }
 
     /** increment number of sent replies */
-    void inc_sent_replies() { sent_replies.inc(); }
+    void inc_sent_replies() { sent_replies++; }
 
     /** increment number of received requests */
-    void inc_received_requests() { received_requests.inc(); }
+    void inc_received_requests() { received_requests++; }
 
     /** increment number of received replies */
-    void inc_received_replies() { received_replies.inc(); }
+    void inc_received_replies() { received_replies++; }
 
     /** increment number of sent request retransmissions */
-    void inc_sent_request_retrans() { sent_request_retrans.inc(); }
+    void inc_sent_request_retrans() { sent_request_retrans++; }
 
     /** increment number of sent reply retransmissions */
-    void inc_sent_reply_retrans() { sent_reply_retrans.inc(); }
+    void inc_sent_reply_retrans() { sent_reply_retrans++; }
 
 
-    unsigned get_sent_requests() const { return sent_requests.get(); }
-    unsigned get_sent_replies() const { return sent_replies.get(); }
-    unsigned get_received_requests() const { return received_requests.get(); }
-    unsigned get_received_replies() const { return received_replies.get(); }
-    unsigned get_sent_request_retrans() const { return sent_request_retrans.get(); }
-    unsigned get_sent_reply_retrans() const { return sent_reply_retrans.get(); }
+    unsigned get_sent_requests() const { return sent_requests; }
+    unsigned get_sent_replies() const { return sent_replies; }
+    unsigned get_received_requests() const { return received_requests; }
+    unsigned get_received_replies() const { return received_replies; }
+    unsigned get_sent_request_retrans() const { return sent_request_retrans; }
+    unsigned get_sent_reply_retrans() const { return sent_reply_retrans; }
 };
 
 /** 
