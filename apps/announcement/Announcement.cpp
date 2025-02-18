@@ -136,7 +136,7 @@ void AnnouncementDialog::onSessionStart() {
   }
 
   if (AnnouncementFactory::Loop) 
-    wav_file.loop.set(true);
+    wav_file.loop = true;
 
   setOutput(&wav_file);
 

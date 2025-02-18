@@ -112,7 +112,7 @@ void EventQueueWorker::notify(AmEventQueue* sender)
 void EventQueueWorker::run()
 {
   stop_requested = false;
-  while(!stop_requested.get()){
+  while(!stop_requested){
 
     runcond.wait_for();
 
@@ -142,7 +142,7 @@ void EventQueueWorker::run()
 void EventQueueWorker::on_stop() 
 {
   INFO("requesting worker to stop.\n");
-  stop_requested.set(true);
+  stop_requested = true;
   runcond.set(true);
 }
 

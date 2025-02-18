@@ -113,8 +113,8 @@ protected:
   int fpopen_int(const string& filename, OpenMode mode, FILE* n_fp, const string& subtype);
 
 public:
-  AmSharedVar<bool> loop;
-  AmSharedVar<bool> autorewind;
+  atomic_bool loop;
+  atomic_bool autorewind;
 
   AmAudioFile();
   ~AmAudioFile();

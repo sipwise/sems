@@ -73,9 +73,9 @@ int RtmpSender::push_back(const RTMPPacket& p)
 
 void RtmpSender::run()
 {
-  running.set(true);
+  running = true;
 
-  while(running.get()){
+  while(running){
     
     //wait for some work
     // (at most 1s)
@@ -112,7 +112,7 @@ void RtmpSender::run()
 
 void RtmpSender::on_stop()
 {
-  running.set(false);
+  running = false;
 }
 
 int RtmpSender::SendChangeChunkSize()

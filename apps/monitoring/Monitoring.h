@@ -129,7 +129,7 @@ class MonitorGarbageCollector
 : public AmThread,
   public AmEventQueueInterface
  {
-  AmSharedVar<bool> running;
+  atomic_bool running;
 
  public:
   void run();

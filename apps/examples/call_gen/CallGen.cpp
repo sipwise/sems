@@ -441,7 +441,7 @@ void CallGenDialog::onSessionStart() {
   if (play_rand_digits > 0) 
     prompts.addToPlaylist("#",  (long)this, play_list);
 
-  play_file.loop.set(true);
+  play_file.loop = true;
   play_list.addToPlaylist(new AmPlaylistItem(&play_file, NULL));
 
 //   //   todo (?): set loop...

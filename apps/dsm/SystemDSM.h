@@ -32,7 +32,7 @@ class SystemDSM
 {
 
   EventProxySession dummy_session;
-  AmSharedVar<bool> stop_requested;
+  atomic_bool stop_requested;
 
   DSMStateEngine engine;
   string startDiagName;

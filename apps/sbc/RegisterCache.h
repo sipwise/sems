@@ -200,7 +200,7 @@ class _RegisterCache
 
   unsigned int gbc_bucket_id;
 
-  AmSharedVar<bool> running;
+  atomic_bool running;
 
   // stats
   atomic_int active_regs;

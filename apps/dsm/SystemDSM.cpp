@@ -51,7 +51,7 @@ void SystemDSM::run() {
     return;
   }
 
-  while (!stop_requested.get() && !dummy_session.getStopped()) {
+  while (!stop_requested && !dummy_session.getStopped()) {
     waitForEvent();
     processEvents();
   }
@@ -62,7 +62,7 @@ void SystemDSM::run() {
 
 void SystemDSM::on_stop() {
   DBG("requesting stop of SystemDSM\n");
-  stop_requested.set(true);
+  stop_requested = true;
 }
 
 void SystemDSM::process(AmEvent* event) {
@@ -163,7 +163,7 @@ void SystemDSM::process(AmEvent* event) {
       map<string, string> params;
       params["type"] = AmSystemEvent::getDescription(sys_ev->sys_event);
       engine.runEvent(&dummy_session, this, DSMCondition::System, &params);
-      // stop_requested.set(true);
+      // stop_requested = true;
       return;
     }
   }

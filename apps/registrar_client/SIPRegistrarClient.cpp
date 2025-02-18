@@ -77,7 +77,7 @@ void SIPRegistrarClient::run() {
     uac_auth_i = uac_auth_f->getInstance();
   }
 
-  while (!stop_requested.get()) {
+  while (!stop_requested) {
     if (registrations.size()) {
       unsigned int cnt = 250;
       while (cnt > 0) {
@@ -144,7 +144,7 @@ void SIPRegistrarClient::onServerShutdown() {
     AmEventDispatcher::instance()->delEventQueue(it->first);
   }
 
-  stop_requested.set(true);
+  stop_requested = true;
 //   
 //   setStopped();
 //   return;

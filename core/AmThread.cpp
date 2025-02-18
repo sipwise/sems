@@ -46,7 +46,7 @@ void * AmThread::_start(void * _t)
   _this->run();
 
   DBG("Thread %lu is ending.\n", (unsigned long) _this->_pid);
-  _this->_stopped.set(true);
+  _this->_stopped = true;
     
   return NULL;
 }
@@ -62,14 +62,11 @@ void AmThread::start()
 
   // unless placed here, a call seq like run(); join(); will not wait to join
   // b/c creating the thread can take too long
-  this->_stopped.lock();
-  if(!(this->_stopped.unsafe_get())){
-    this->_stopped.unlock();
+  bool expected = true;
+  if (!this->_stopped.compare_exchange_strong(expected, false)) {
     ERROR("thread already running\n");
     return;
   }
-  this->_stopped.unsafe_set(false);
-  this->_stopped.unlock();
 
   res = pthread_create(&_td,&attr,_start,this);
   pthread_attr_destroy(&attr);
@@ -118,7 +115,7 @@ void AmThread::cancel() {
     ERROR("pthread_cancel failed with code %i\n", res);
   } else {
     DBG("Thread %lu is canceled.\n", (unsigned long int) _pid);
-    _stopped.set(true);
+    _stopped = true;
   }
 }
 

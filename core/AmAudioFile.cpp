@@ -386,14 +386,14 @@ int AmAudioFile::read(unsigned int user_ts, unsigned int size)
       s = data_size - fpos + begin;
     }
     
-    if ((data_size == -1) && loop.get() && feof(fp)) {
+    if ((data_size == -1) && loop && feof(fp)) {
       // data size unknown, loop and eof
       DBG("rewinding audio file...\n");
       rewind();
       goto read_block;
     }
 
-    if (data_size == -1 && autorewind.get() && feof(fp)) {
+    if (data_size == -1 && autorewind && feof(fp)) {
       // data size unknown, autorewind and eof      
       DBG("autorewinding audio file...\n");
       rewind();
@@ -424,13 +424,13 @@ int AmAudioFile::read(unsigned int user_ts, unsigned int size)
     
 #endif
   } else {
-    if (loop.get() && data_size>0) {
+    if (loop && data_size>0) {
       DBG("rewinding audio file...\n");
       rewind();
       goto read_block;
     }
 
-    if (autorewind.get() && data_size>0){
+    if (autorewind && data_size>0){
       DBG("autorewinding audio file...\n");
       rewind();
     }

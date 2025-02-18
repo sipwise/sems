@@ -599,7 +599,7 @@ void SBCDSMInstance::playFile(const string& name, bool loop, bool front) {
     return;
   }
   if (loop)
-    af->loop.set(true);
+    af->loop = true;
 
   if (front)
     getPlaylist()->addToPlayListFront(new AmPlaylistItem(af, NULL));

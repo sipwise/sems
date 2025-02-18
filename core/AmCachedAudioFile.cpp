@@ -201,7 +201,7 @@ int AmCachedAudioFile::read(unsigned int user_ts, unsigned int size) {
   int ret = cache->read((void*)((unsigned char*)samples),&fpos,size);
 	
   //DBG("s = %i; ret = %i\n",s,ret);
-  if(loop.get() && (ret <= 0) && fpos==cache->getSize()){
+  if(loop && (ret <= 0) && fpos==cache->getSize()){
     DBG("rewinding audio file...\n");
     rewind();
     ret = cache->read((void*)((unsigned char*)samples),&fpos, size);
@@ -213,7 +213,7 @@ int AmCachedAudioFile::read(unsigned int user_ts, unsigned int size) {
     return size;
   }
 
-  return (fpos==cache->getSize() && !loop.get() ? -2 : ret);
+  return (fpos==cache->getSize() && !loop ? -2 : ret);
 }
 
 int AmCachedAudioFile::write(unsigned int user_ts, unsigned int size) {

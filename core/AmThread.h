@@ -35,8 +35,10 @@
 
 #include <queue>
 #include <mutex>
+#include <atomic>
 
 using std::lock_guard;
+using std::atomic_bool;
 
 /**
  * \brief Wrapper class for std::mutex
@@ -47,44 +49,6 @@ public:
   AmMutex() : std::mutex() {}
   AmMutex(const AmMutex &) : std::mutex() {}
   void operator=(const AmMutex &) {}
-};
-
-/**
- * \brief Shared variable.
- *
- * Include a variable and its mutex.
- * @warning Don't use safe functions (set,get)
- * within a {lock(); ... unlock();} block. Use 
- * unsafe function instead.
- */
-template<class T>
-class AmSharedVar
-{
-  T       t;
-  AmMutex m;
-
-public:
-  AmSharedVar(const T& _t) : t(_t) {}
-  AmSharedVar() {}
-
-  T get() {
-    lock();
-    T res = unsafe_get();
-    unlock();
-    return res;
-  }
-
-  void set(const T& new_val) {
-    lock();
-    unsafe_set(new_val);
-    unlock();
-  }
-
-  void lock() { m.lock(); }
-  void unlock() { m.unlock(); }
-
-  const T& unsafe_get() { return t; }
-  void unsafe_set(const T& new_val) { t = new_val; }
 };
 
 /**
@@ -177,7 +141,7 @@ class AmThread
   pthread_t _td;
   AmMutex   _m_td;
 
-  AmSharedVar<bool> _stopped;
+  atomic_bool _stopped;
 
   static void* _start(void*);
 
@@ -197,7 +161,7 @@ public:
   /** Stop it ! */
   void stop();
   /** @return true if this thread doesn't run. */
-  bool is_stopped() { return _stopped.get(); }
+  bool is_stopped() { return _stopped; }
   /** Wait for this thread to finish */
   void join();
   /** kill the thread (if pthread_setcancelstate(PTHREAD_CANCEL_ENABLED) has been set) **/ 

@@ -141,7 +141,7 @@ int AmPromptCollection::addToPlaylist(const std::string& name, long sess_id,
   }
 
   if (loop) 
-    af->loop.set(true);
+    af->loop = true;
 
   if (front)
     list.addToPlayListFront(new AmPlaylistItem(af,NULL));

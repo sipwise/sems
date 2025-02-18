@@ -67,7 +67,7 @@ class SIPRegistrarClient  : public AmThread,
 
   AmDynInvoke* uac_auth_i;
 
-  AmSharedVar<bool> stop_requested;
+  atomic_bool stop_requested;
   void checkTimeouts();
   void onServerShutdown();
  public:

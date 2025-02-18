@@ -491,7 +491,7 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
 	EXEC_ACTION_STOP;
       }
 
-      a_file->loop.set(looped);
+      a_file->loop = looped;
 
       sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL), front);
       sc_sess->transferOwnership(a_file);

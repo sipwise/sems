@@ -717,7 +717,7 @@ void DSMCall::playFile(const string& name, bool loop, bool front) {
     return;
   }
   if (loop) 
-    af->loop.set(true);
+    af->loop = true;
 
   if (front)
     playlist.addToPlayListFront(new AmPlaylistItem(af, NULL));

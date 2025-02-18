@@ -48,7 +48,7 @@ class RtmpSender
   RTMP* p_rtmp;
 
   // execution control
-  AmSharedVar<bool> running;
+  atomic_bool running;
 
   int SendChangeChunkSize();
 

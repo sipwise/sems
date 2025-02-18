@@ -93,7 +93,7 @@ class AmCachedAudioFile
   ~AmCachedAudioFile();
 
   /** loop the file? */
-  AmSharedVar<bool> loop;
+  atomic_bool loop;
 
   /**
    * Rewind the file.

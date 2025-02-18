@@ -224,7 +224,7 @@ AmMediaProcessorThread::~AmMediaProcessorThread()
 void AmMediaProcessorThread::on_stop()
 {
   INFO("requesting media processor to stop.\n");
-  stop_requested.set(true);
+  stop_requested = true;
 }
 
 void AmMediaProcessorThread::run()
@@ -241,7 +241,7 @@ void AmMediaProcessorThread::run()
 
   uint64_t next_tick = now + tick;
     
-  while(!stop_requested.get()){
+  while(!stop_requested){
 
     now = gettimeofday_us();
 

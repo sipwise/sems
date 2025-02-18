@@ -439,7 +439,7 @@ EXEC_ACTION_START(ConfPlayMixInListAction) {
     throw DSMException("file", "path", filename);
   }
   sc_sess->transferOwnership(af);
-  af->loop.set(loop);
+  af->loop = loop;
 
   DBG("adding file '%s' to mixin playlist\n", filename.c_str());
   l->addToPlaylist(new AmPlaylistItem(af, NULL));

@@ -71,7 +71,7 @@ class AmRtpReceiverThread
   Streams  streams;
   AmMutex  streams_mut;
 
-  AmSharedVar<bool> stop_requested;
+  atomic_bool stop_requested;
 
   static void _rtp_receiver_read_cb(evutil_socket_t sd, short what, void* arg);
 
