@@ -39,17 +39,14 @@
 using std::lock_guard;
 
 /**
- * \brief C++ Wrapper class for pthread mutex
+ * \brief Wrapper class for std::mutex
  */
-class AmMutex
+class AmMutex : public std::mutex
 {
-  pthread_mutex_t m;
-
 public:
-  AmMutex();
-  ~AmMutex();
-  void lock();
-  void unlock();
+  AmMutex() : std::mutex() {}
+  AmMutex(const AmMutex &) : std::mutex() {}
+  void operator=(const AmMutex &) {}
 };
 
 /**

@@ -33,26 +33,6 @@
 #include <string>
 using std::string;
 
-AmMutex::AmMutex()
-{
-  pthread_mutex_init(&m,NULL);
-}
-
-AmMutex::~AmMutex()
-{
-  pthread_mutex_destroy(&m);
-}
-
-void AmMutex::lock() 
-{
-  pthread_mutex_lock(&m);
-}
-
-void AmMutex::unlock() 
-{
-  pthread_mutex_unlock(&m);
-}
-
 AmThread::AmThread()
   : _stopped(true)
 {
