@@ -37,6 +37,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <thread>
 
 using std::lock_guard;
 using std::atomic_bool;
@@ -107,16 +108,16 @@ public:
 };
 
 /**
- * \brief C++ Wrapper class for pthread
+ * \brief Wrapper class for std::thread
  */
 class AmThread
 {
-  pthread_t _td;
+  std::thread _td;
   AmMutex   _m_td;
 
   atomic_bool _stopped;
 
-  static void* _start(void*);
+  void _start();
 
 protected:
   virtual void run()=0;

@@ -33,31 +33,27 @@
 #include <string>
 using std::string;
 
+#include <system_error>
+#include <exception>
+
 AmThread::AmThread()
   : _stopped(true)
 {
 }
 
-void * AmThread::_start(void * _t)
+void AmThread::_start()
 {
-  AmThread* _this = (AmThread*)_t;
-  _this->_pid = (unsigned long) _this->_td;
-  DBG("Thread %lu is starting.\n", (unsigned long) _this->_pid);
-  _this->run();
+  _pid = static_cast<unsigned long>(_td.native_handle());
+  DBG("Thread %lu is starting.\n", _pid);
+  run();
 
-  DBG("Thread %lu is ending.\n", (unsigned long) _this->_pid);
-  _this->_stopped = true;
+  DBG("Thread %lu is ending.\n", _pid);
+  _stopped = true;
     
-  return NULL;
 }
 
 void AmThread::start()
 {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setstacksize(&attr,1024*1024);// 1 MB
-
-  int res;
   _pid = 0;
 
   // unless placed here, a call seq like run(); join(); will not wait to join
@@ -68,12 +64,7 @@ void AmThread::start()
     return;
   }
 
-  res = pthread_create(&_td,&attr,_start,this);
-  pthread_attr_destroy(&attr);
-  if (res != 0) {
-    ERROR("pthread create failed with code %i\n", res);
-    throw string("thread could not be started");
-  }	
+  _td = std::thread(&AmThread::_start, this);
   //DBG("Thread %lu is just created.\n", (unsigned long int) _pid);
 }
 
@@ -86,23 +77,24 @@ void AmThread::stop()
   }
 
   // gives the thread a chance to clean up
-  DBG("Thread %lu (%lu) calling on_stop, give it a chance to clean up.\n", 
-      (unsigned long int) _pid, (unsigned long int) _td);
+  DBG("Thread %lu calling on_stop, give it a chance to clean up.\n", _pid);
 
   try { on_stop(); } catch(...) {}
 
-  int res;
-  if ((res = pthread_detach(_td)) != 0) {
-    if (res == EINVAL) {
-      WARN("pthread_detach failed with code EINVAL: thread already in detached state.\n");
-    } else if (res == ESRCH) {
-      WARN("pthread_detach failed with code ESRCH: thread could not be found.\n");
-    } else {
-      WARN("pthread_detach failed with code %i\n", res);
-    }
+  try {
+    _td.detach();
+  }
+  catch (std::system_error &e) {
+    WARN("Failed to detach thread: code %d (%s)\n", e.code().value(), e.what());
+  }
+  catch (std::exception &e) {
+    WARN("Failed to detach thread: %s\n", e.what());
+  }
+  catch (...) {
+    WARN("Failed to detach thread: unknown error\n");
   }
 
-  DBG("Thread %lu (%lu) finished detach.\n", (unsigned long int) _pid, (unsigned long int) _td);
+  DBG("Thread %lu finished detach.\n", _pid);
 
   //pthread_cancel(_td);
 }
@@ -110,7 +102,7 @@ void AmThread::stop()
 void AmThread::join()
 {
   if(!is_stopped())
-    pthread_join(_td,NULL);
+    _td.join();
 }
 
 
@@ -136,12 +128,12 @@ AmThreadWatcher* AmThreadWatcher::instance()
 
 void AmThreadWatcher::add(AmThread* t)
 {
-  DBG("trying to add thread %lu to thread watcher.\n", (unsigned long int) t->_pid);
+  DBG("trying to add thread %lu to thread watcher.\n", t->_pid);
   q_mut.lock();
   thread_queue.push(t);
   _run_cond.set(true);
   q_mut.unlock();
-  DBG("added thread %lu to thread watcher.\n", (unsigned long int) t->_pid);
+  DBG("added thread %lu to thread watcher.\n", t->_pid);
 }
 
 void AmThreadWatcher::on_stop()
@@ -169,13 +161,13 @@ void AmThreadWatcher::run()
 	thread_queue.pop();
 
 	q_mut.unlock();
-	DBG("thread %lu is to be processed in thread watcher.\n", (unsigned long int) cur_thread->_pid);
+	DBG("thread %lu is to be processed in thread watcher.\n", cur_thread->_pid);
 	if(cur_thread->is_stopped()){
-	  DBG("thread %lu has been destroyed.\n", (unsigned long int) cur_thread->_pid);
+	  DBG("thread %lu has been destroyed.\n", cur_thread->_pid);
 	  delete cur_thread;
 	}
 	else {
-	  DBG("thread %lu still running.\n", (unsigned long int) cur_thread->_pid);
+	  DBG("thread %lu still running.\n", cur_thread->_pid);
 	  n_thread_queue.push(cur_thread);
 	}
 
