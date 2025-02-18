@@ -137,8 +137,6 @@ public:
   bool is_stopped() { return _stopped; }
   /** Wait for this thread to finish */
   void join();
-  /** kill the thread (if pthread_setcancelstate(PTHREAD_CANCEL_ENABLED) has been set) **/ 
-  void cancel();
 
   int setRealtime();
 };

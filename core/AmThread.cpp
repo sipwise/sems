@@ -107,18 +107,6 @@ void AmThread::stop()
   //pthread_cancel(_td);
 }
 
-void AmThread::cancel() {
-  lock_guard<AmMutex> _l(_m_td);
-
-  int res;
-  if ((res = pthread_cancel(_td)) != 0) {
-    ERROR("pthread_cancel failed with code %i\n", res);
-  } else {
-    DBG("Thread %lu is canceled.\n", (unsigned long int) _pid);
-    _stopped = true;
-  }
-}
-
 void AmThread::join()
 {
   if(!is_stopped())
