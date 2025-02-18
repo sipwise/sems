@@ -233,7 +233,7 @@ static bool apply_args(std::map<char,string>& args)
 }
 
 /** Flag to mark the shutdown is in progress (in the main process) */
-static AmCondition<bool> is_shutting_down(false);
+static AmCondition is_shutting_down(false);
 
 static void signal_handler(int sig)
 {

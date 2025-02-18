@@ -70,7 +70,7 @@ class AmSessionProcessorThread
   std::vector<AmSession*> startup_sessions;
   atomic_bool stop_requested;
 
-  AmCondition<bool> runcond;
+  AmCondition runcond;
   std::set<AmEventQueue*> process_sessions;
   AmMutex process_sessions_mut;
 

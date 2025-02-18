@@ -136,7 +136,7 @@ private:
 
 protected:
 
-  AmCondition<bool> sess_stopped;
+  AmCondition sess_stopped;
 
   /** this is the group the media is processed with 
       - by default local tag */

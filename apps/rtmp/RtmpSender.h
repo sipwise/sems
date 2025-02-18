@@ -42,7 +42,7 @@ class RtmpSender
   // sender queue
   queue<RTMPPacket> q_send;
   AmMutex           m_q_send;
-  AmCondition<bool> has_work;
+  AmCondition has_work;
 
   // ptr to RtmpConnection::rtmp
   RTMP* p_rtmp;

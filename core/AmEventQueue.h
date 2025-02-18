@@ -69,7 +69,7 @@ protected:
 
   std::queue<AmEvent*>      ev_queue;
   AmMutex                   m_queue;
-  AmCondition<bool>         ev_pending;
+  AmCondition         ev_pending;
 
   bool finalized;
 

@@ -43,7 +43,7 @@ class ChannelWritingFile : public async_file
 
   void on_flushed();
 
-  AmCondition<bool> finished;
+  AmCondition finished;
 };
 
 /** 

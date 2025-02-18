@@ -108,7 +108,7 @@ class AmMailDeamon: public AmThread
 
   AmMutex      event_fifo_mut;
   std::queue<AmMail*>   event_fifo;
-  AmCondition<bool> _run_cond;
+  AmCondition _run_cond;
 
   AmMailDeamon() : _run_cond(false) {}
   AmMailDeamon(const AmMailDeamon&) : _run_cond(false) {}

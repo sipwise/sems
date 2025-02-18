@@ -212,7 +212,7 @@ class WebConferenceCleaner
   : public AmThread 
 {
   WebConferenceFactory* factory;
-  AmCondition<bool> is_stopped;
+  AmCondition is_stopped;
 
 public:
   WebConferenceCleaner(WebConferenceFactory* factory)

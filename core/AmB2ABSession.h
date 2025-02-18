@@ -251,7 +251,7 @@ class AmB2ABCalleeSession: public AmB2ABSession
  protected:
   void onB2ABEvent(B2ABEvent* ev);
   void onBeforeDestroy();
-  AmCondition<bool>* released;
+  AmCondition* released;
 };
 
 /** BRIDGE_DELAY is needed because of possible different packet sizes */ 
@@ -268,7 +268,7 @@ class AmSessionAudioConnector {
   bool connected[2];
   AmMutex tag_mut;
 
-  AmCondition<bool> released;
+  AmCondition released;
   
  public:
   /** create a connector, connect audio to sess */

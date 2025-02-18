@@ -105,7 +105,7 @@ class XMLRPC2DIServer
   unsigned int port; 
   string bind_ip;
 
-  AmCondition<bool> running;
+  AmCondition running;
 
   XMLRPC2DIServerCallsMethod       calls_method;
   XMLRPC2DIServerSetLoglevelMethod setloglevel_method;

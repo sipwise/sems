@@ -42,7 +42,7 @@ class EventQueueWorker
 {
   atomic_bool stop_requested;
 
-  AmCondition<bool> runcond;
+  AmCondition runcond;
   std::deque<AmEventQueue*> process_queues;
   AmMutex process_queues_mut;
 

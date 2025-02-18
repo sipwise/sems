@@ -25,9 +25,9 @@ namespace XmlRpc {
   {
 
     MultithreadXmlRpcServer* chief;
-    AmCondition<bool> runcond;
+    AmCondition runcond;
 
-    AmCondition<bool> running;
+    AmCondition running;
 
   public: 
     WorkerThread(MultithreadXmlRpcServer* chief);
@@ -68,7 +68,7 @@ namespace XmlRpc {
   private:
     AmMutex waiting_mut;
     std::queue<WorkerThread*> waiting; 
-    AmCondition<bool> have_waiting;
+    AmCondition have_waiting;
     std::vector<WorkerThread*> workers;
     WorkerThread* getIdleThread();
   }; 

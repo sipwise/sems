@@ -36,6 +36,7 @@
 #include <queue>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 
 using std::lock_guard;
 using std::atomic_bool;
@@ -52,84 +53,56 @@ public:
 };
 
 /**
- * \brief C++ Wrapper class for pthread condition
+ * \brief Wrapper class for std::condition_variable
  */
-template<class T>
 class AmCondition
 {
-  T               t;
-  pthread_mutex_t m;
-  pthread_cond_t  cond;
-
-  void init_cond() {
-    pthread_mutex_init(&m,NULL);
-    pthread_cond_init(&cond,NULL);
-  }
+  bool                    t = false;
+  std::mutex              m;
+  std::condition_variable cond;
 
 public:
-  AmCondition() : t() { init_cond(); }
-  AmCondition(const T& _t) : t(_t) { init_cond(); }
-    
-  ~AmCondition()
-  {
-    pthread_cond_destroy(&cond);
-    pthread_mutex_destroy(&m);
-  }
-    
+  AmCondition() = default;
+  AmCondition(const bool& _t) : t(_t) {}
+
   /** Change the condition's value. */
-  void set(const T& newval)
+  void set(const bool newval)
   {
-    pthread_mutex_lock(&m);
+    std::lock_guard<std::mutex> l(m);
     t = newval;
     if(t)
-      pthread_cond_broadcast(&cond);
-    pthread_mutex_unlock(&m);
+      cond.notify_all();
   }
     
-  T get()
+  bool get()
   {
-    T val;
-    pthread_mutex_lock(&m);
-    val = t;
-    pthread_mutex_unlock(&m);
-    return val;
+    std::lock_guard<std::mutex> l(m);
+    return t;
   }
     
   /** Waits for the condition to be true. */
   void wait_for()
   {
-    pthread_mutex_lock(&m);
+    std::unique_lock<std::mutex> l(m);
     while(!t){
-      pthread_cond_wait(&cond,&m);
+      cond.wait(l);
     }
-    pthread_mutex_unlock(&m);
   }
   
   /** Waits for the condition to be true or a timeout. */
   bool wait_for_to(unsigned long msec)
   {
-    struct timeval now;
-    struct timespec timeout;
-    int retcode = 0;
-    bool ret = false;
+    auto timeout = std::chrono::system_clock::now();
+    timeout += std::chrono::milliseconds(msec);
 
-    gettimeofday(&now, NULL);
-    timeout.tv_sec = now.tv_sec + (msec / 1000);
-    timeout.tv_nsec = (now.tv_usec + (msec % 1000)*1000)*1000;
-    if(timeout.tv_nsec >= 1000000000){
-      timeout.tv_sec++;
-      timeout.tv_nsec -= 1000000000;
+    std::unique_lock<std::mutex> l(m);
+    while(!t){
+      auto retcode = cond.wait_until(l, timeout);
+      if (retcode == std::cv_status::timeout)
+        break;
     }
 
-    pthread_mutex_lock(&m);
-    while(!t && !retcode){
-      retcode = pthread_cond_timedwait(&cond,&m, &timeout);
-    }
-
-    if(t) ret = true;
-    pthread_mutex_unlock(&m);
-
-    return ret;
+    return t;
   }
 };
 
@@ -188,7 +161,7 @@ class AmThreadWatcher: public AmThread
   AmMutex          q_mut;
 
   /** the daemon only runs if this is true */
-  AmCondition<bool> _run_cond;
+  AmCondition _run_cond;
     
   AmThreadWatcher();
   void run();

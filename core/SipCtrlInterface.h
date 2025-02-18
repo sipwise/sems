@@ -62,7 +62,7 @@ class _SipCtrlInterface:
 
     friend class udp_trsp;
 
-    AmCondition<bool> stopped;
+    AmCondition stopped;
     
     unsigned short    nr_udp_sockets;
     udp_trsp_socket** udp_sockets;

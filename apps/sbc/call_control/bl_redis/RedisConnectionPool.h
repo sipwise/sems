@@ -21,8 +21,8 @@ class RedisConnectionPool
   unsigned int failed_connections;
   AmMutex connections_mut;
 
-  AmCondition<bool> have_active_connection;
-  AmCondition<bool> try_connect;
+  AmCondition have_active_connection;
+  AmCondition try_connect;
 
   vector<unsigned int> retry_timers;
   unsigned int retry_index;

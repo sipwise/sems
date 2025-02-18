@@ -61,10 +61,10 @@ class AmSessionContainer : public AmThread
   AmMutex      ds_mut;
 
   /** is container closed for new sessions? */
-  AmCondition<bool> _container_closed;
+  AmCondition _container_closed;
 
   /** the daemon only runs if this is true */
-  AmCondition<bool> _run_cond;
+  AmCondition _run_cond;
 
   /** We are a Singleton ! Avoid people to have their own instance. */
   AmSessionContainer();

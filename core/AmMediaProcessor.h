@@ -54,7 +54,7 @@ struct SchedRequest;
 class AmMediaSession
 {
   private:
-    AmCondition<bool> processing_media;
+    AmCondition processing_media;
 
   public:
     AmMediaSession(): processing_media(false) { }
