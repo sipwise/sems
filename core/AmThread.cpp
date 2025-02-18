@@ -114,33 +114,6 @@ void AmThread::join()
 }
 
 
-int AmThread::setRealtime() {
-  // set process realtime
-  //     int policy;
-  //     struct sched_param rt_param;
-  //     memset (&rt_param, 0, sizeof (rt_param));
-  //     rt_param.sched_priority = 80;
-  //     int res = sched_setscheduler(0, SCHED_FIFO, &rt_param);
-  //     if (res) {
-  // 	ERROR("sched_setscheduler failed. Try to run SEMS as root or suid.\n");
-  //     }
-
-  //     policy = sched_getscheduler(0);
-    
-  //     std::string str_policy = "unknown";
-  //     switch(policy) {
-  // 	case SCHED_OTHER: str_policy = "SCHED_OTHER"; break;
-  // 	case SCHED_RR: str_policy = "SCHED_RR"; break;
-  // 	case SCHED_FIFO: str_policy = "SCHED_FIFO"; break;
-  //     }
- 
-  //     DBG("Thread has now policy '%s' - priority 80 (from %d to %d).\n", str_policy.c_str(), 
-  // 	sched_get_priority_min(policy), sched_get_priority_max(policy));
-  //     return 0;
-  return 0;
-}
-
-
 AmThreadWatcher* AmThreadWatcher::_instance=0;
 AmMutex AmThreadWatcher::_inst_mut;
 

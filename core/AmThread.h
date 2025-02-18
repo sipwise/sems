@@ -137,8 +137,6 @@ public:
   bool is_stopped() { return _stopped; }
   /** Wait for this thread to finish */
   void join();
-
-  int setRealtime();
 };
 
 /**
