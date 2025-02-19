@@ -123,15 +123,12 @@ void _wheeltimer::update_wheel(int wheel)
 	int pos = (wall_clock >> (wheel*BITS_PER_WHEEL))
 	    & ((1<<BITS_PER_WHEEL)-1);
 	
-	timer *t = (timer*)wheels[wheel][pos].next;
-	while( t ) {
-	    
-	    timer* t1 = (timer*)t->next;
-	    place_timer(t,wheel-1);
-	    t = t1;
+	auto& w = wheels[wheel][pos];
+	while (!w.empty()) {
+	    auto* t = w.front();
+	    w.pop_front();
+	    place_timer(t, wheel-1);
 	}
-
-	wheels[wheel][pos].next = NULL;
     }
 }
 
@@ -183,23 +180,18 @@ void _wheeltimer::process_events()
 
 void _wheeltimer::process_current_timers()
 {
-    timer *t = (timer *)wheels[0][wall_clock & 0xFF].next;
-    
-    while(t){
+    auto& w = wheels[0][wall_clock & 0xFF];
 
-	timer* t1 = (timer*)t->next;
+    while (!w.empty()) {
+	auto* t = w.front();
+	w.pop_front();
 
-	t->next = NULL;
-	t->prev = NULL;
+	t->list = NULL;
 	t->disarm();
 	num_timers--;
 
 	t->fire();
-
-	t = t1;
     }
-    
-    wheels[0][wall_clock & 0xFF].next = NULL;
 }
 
 void _wheeltimer::place_timer(timer* t)
@@ -240,25 +232,17 @@ void _wheeltimer::place_timer(timer* t, int wheel)
 
 void _wheeltimer::add_timer_to_wheel(timer* t, int wheel, unsigned int pos)
 {
-    t->next = wheels[wheel][pos].next;
-    wheels[wheel][pos].next = t;
-
-    if(t->next){
-	((timer*)t->next)->prev = t;
-    }
-
-    t->prev = &(wheels[wheel][pos]);
+    t->list = &wheels[wheel][pos];
+    t->list->push_front(t);
+    t->pos = wheels[wheel][pos].begin();
 }
 
 void _wheeltimer::delete_timer(timer* t)
 {
-    if(t->prev) {
-	t->prev->next = t->next;
-	num_timers--;
+    if (t->list) {
+	t->list->erase(t->pos);
+	t->list = NULL;
     }
-
-    if(t->next)
-	((timer*)t->next)->prev = t->prev;
 
     delete t;
 }

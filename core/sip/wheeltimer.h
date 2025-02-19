@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <deque>
+#include <list>
 
 #include "atomic_types.h"
 
@@ -45,33 +46,27 @@
 // do not change
 #define WHEELS 4
 
-class base_timer
+class timer;
+
+typedef std::list<timer*> timer_list;
+
+class timer
 {
 public:
-    base_timer* next;
-
-    base_timer():next(0) {}
-    virtual ~base_timer() {}
-};
-
-class timer: public base_timer
-{
-public:
-    base_timer*  prev;
+    // for fast removal:
+    timer_list::iterator pos;
+    timer_list* list;
 
     timer() 
-	: base_timer(),
-	  prev(0), expires(0), expires_rel(0)
+	: list(NULL), expires(0), expires_rel(0)
     {}
 
     timer(uint64_t expires)
-        : base_timer(),
-	  prev(0), expires(0), expires_rel(expires)
+        : list(NULL), expires(0), expires_rel(expires)
     {}
 
     timer(const timer &t)
-        : base_timer(),
-	  prev(0), expires(t.expires), expires_rel(t.expires_rel)
+        : list(NULL), expires(t.expires), expires_rel(t.expires_rel)
     {}
 
     virtual ~timer();
@@ -122,7 +117,7 @@ class _wheeltimer:
     };
 
     //the timer wheel
-    base_timer wheels[WHEELS][ELMTS_PER_WHEEL];
+    timer_list wheels[WHEELS][ELMTS_PER_WHEEL];
     unsigned int num_timers;
     uint64_t resolution; // microseconds
 
