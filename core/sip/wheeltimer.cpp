@@ -75,12 +75,10 @@ void _wheeltimer::remove_timer(timer* t)
 
 void _wheeltimer::run()
 {
-  uint64_t now, next_tick, diff, tick; // microseconds
+  uint64_t now, next_tick, diff; // microseconds
 
-  tick = TIMER_RESOLUTION;
-  
   now = gettimeofday_us();
-  next_tick = now + tick;
+  next_tick = now + resolution;
 
   while(true){
 
@@ -105,7 +103,7 @@ void _wheeltimer::run()
 
     while (now >= next_tick) {
       turn_wheel();
-      next_tick += tick;
+      next_tick += resolution;
     }
 
     process_events();
@@ -204,18 +202,12 @@ void _wheeltimer::process_current_timers()
     wheels[0][wall_clock & 0xFF].next = NULL;
 }
 
-inline bool less_ts(unsigned int t1, unsigned int t2)
-{
-    // t1 < t2
-    return (t1 - t2 > (unsigned int)(1<<31));
-}
-
 void _wheeltimer::place_timer(timer* t)
 {
-    if (t->arm_absolute(wall_clock))
+    if (t->arm())
 	num_timers++;
 
-    if(less_ts(t->get_absolute_expiry(),wall_clock)){
+    if(t->get_absolute_expiry() < gettimeofday_us()) {
 
 	// we put the late ones at the beginning of next wheel turn
 	add_timer_to_wheel(t,0,((1<<BITS_PER_WHEEL)-1) & wall_clock);
@@ -229,7 +221,8 @@ void _wheeltimer::place_timer(timer* t)
 void _wheeltimer::place_timer(timer* t, int wheel)
 {
     unsigned int pos;
-    unsigned int clock_mask = t->get_absolute_expiry() ^ wall_clock;
+    unsigned int expiry_ticks = t->get_absolute_expiry() / resolution;
+    unsigned int clock_mask = expiry_ticks ^ wall_clock;
 
     for(; wheel; wheel--){
 
@@ -241,7 +234,7 @@ void _wheeltimer::place_timer(timer* t, int wheel)
     }
 
     // we went down to wheel 0
-    pos = (t->get_absolute_expiry() >> (wheel*BITS_PER_WHEEL)) & ((1<<BITS_PER_WHEEL)-1);
+    pos = (expiry_ticks >> (wheel*BITS_PER_WHEEL)) & ((1<<BITS_PER_WHEEL)-1);
     add_timer_to_wheel(t,wheel,pos);
 }
 

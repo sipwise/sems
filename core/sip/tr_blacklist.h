@@ -43,7 +43,7 @@ public:
   : bl_bucket_base(id)
   {}
 
-  bool insert(const bl_addr& addr, unsigned int duration /* ms */,
+  bool insert(const bl_addr& addr, uint64_t duration /* ms */,
 	      const char* reason);
   bool remove(const bl_addr& addr);
 };
@@ -59,7 +59,7 @@ struct bl_timer
     : timer(), addr()
   {}
 
-  bl_timer(const bl_addr& addr, unsigned int expires)
+  bl_timer(const bl_addr& addr, uint64_t expires)
     : timer(expires), addr(addr)
   {}
 

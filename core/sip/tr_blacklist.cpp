@@ -45,11 +45,11 @@ void bl_timer::fire()
   tr_blacklist::instance()->remove(&addr);
 }
 
-bool blacklist_bucket::insert(const bl_addr& addr, unsigned int duration /* ms */,
+bool blacklist_bucket::insert(const bl_addr& addr, uint64_t duration /* ms */,
 			      const char* reason)
 {
   wheeltimer* wt = wheeltimer::instance();
-  unsigned int expires = duration / (TIMER_RESOLUTION/1000);
+  uint64_t expires = duration * 1000;
 
   bl_timer* t = new bl_timer(addr,expires);
   bl_entry* bl_e = new bl_entry(t);

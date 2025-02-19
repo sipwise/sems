@@ -31,7 +31,9 @@
 #define _wheeltimer_h_
 
 #include "../AmThread.h"
+#include "../AmUtils.h"
 #include <sys/types.h>
+#include <inttypes.h>
 #include <time.h>
 #include <deque>
 
@@ -39,9 +41,6 @@
 
 #define BITS_PER_WHEEL 8
 #define ELMTS_PER_WHEEL (1 << BITS_PER_WHEEL)
-
-// 20 ms == 20000 us
-#define TIMER_RESOLUTION 20000
 
 // do not change
 #define WHEELS 4
@@ -65,7 +64,7 @@ public:
 	  prev(0), expires(0), expires_rel(0)
     {}
 
-    timer(unsigned int expires)
+    timer(uint64_t expires)
         : base_timer(),
 	  prev(0), expires(0), expires_rel(expires)
     {}
@@ -81,11 +80,11 @@ public:
 
     // returns true if timer was not armed before
     // return false and does nothing otherwise
-    bool arm_absolute(u_int32_t wall_clock)
+    bool arm()
     {
 	if (expires)
 	    return false;
-	expires = expires_rel + wall_clock;
+	expires = expires_rel + gettimeofday_us();
 	return true;
     }
 
@@ -94,16 +93,17 @@ public:
 	expires = 0;
     }
 
-    u_int32_t get_absolute_expiry()
+    // microseconds
+    uint64_t get_absolute_expiry()
     {
 	return expires;
     }
 
 protected:
-    u_int32_t    expires; // absolute, set after arming timer
+    uint64_t    expires; // absolute, microseconds, set after arming timer
 
 private:
-    u_int32_t    expires_rel; // relative
+    uint64_t    expires_rel; // relative, microseconds
 };
 
 #include "singleton.h"
@@ -124,6 +124,7 @@ class _wheeltimer:
     //the timer wheel
     base_timer wheels[WHEELS][ELMTS_PER_WHEEL];
     unsigned int num_timers;
+    uint64_t resolution; // microseconds
 
     // request backlog lock (insert/remove)
     AmMutex               reqs_m;
@@ -131,7 +132,7 @@ class _wheeltimer:
     std::deque<timer_req> reqs_backlog;
     std::deque<timer_req> reqs_process;
 
-    u_int32_t wall_clock; // 32 bits
+    u_int32_t wall_clock; // 32 bits, "resolution" based ticks starting from epoch
 
     void turn_wheel();
     void process_events();
@@ -150,7 +151,12 @@ protected:
     void on_stop(){}
 
     _wheeltimer()
-	: wall_clock(0) {}
+	: resolution(20000), // 20 ms == 20000 us
+	  wall_clock(gettimeofday_us() / resolution) {}
+
+    _wheeltimer(uint64_t _resolution)
+	: resolution(_resolution),
+	  wall_clock(gettimeofday_us() / resolution) {}
 
 public:
     //clock reference

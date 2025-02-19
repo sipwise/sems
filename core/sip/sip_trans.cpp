@@ -40,6 +40,7 @@
 #include "log.h"
 
 #include <assert.h>
+#include <inttypes.h>
 
 int _timer_type_lookup[] = { 
     0,1,2, // STIMER_A, STIMER_B, STIMER_D
@@ -202,7 +203,7 @@ void trans_timer::fire()
     if(bucket){
 	bucket->lock();
 	if(bucket->exist(t)){
-	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%i, t=%i\n",
+	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%" PRIu64 ", t=%i\n",
 		timer_name(type),t,expires,wheeltimer::instance()->get_wall_clock());
 
 	    trans_timer* tt = t->get_timer(this->type & 0xFFFF);
@@ -235,14 +236,14 @@ void trans_timer::fire()
  * @param timer_type @see sip_timer_type
  * @param expires_delay delay before expiration in millisecond
  */
-void sip_trans::reset_timer(unsigned int timer_type, unsigned int expire_delay /* ms */,
+void sip_trans::reset_timer(unsigned int timer_type, uint64_t expire_delay /* ms */,
 			    unsigned int bucket_id)
 {
     wheeltimer* wt = wheeltimer::instance();
 
-    unsigned int expires = expire_delay / (TIMER_RESOLUTION/1000);
+    uint64_t expires = expire_delay * 1000;
     
-    DBG("New timer of type %s at time=%i (repeated=%i)\n",
+    DBG("New timer of type %s at time=%" PRIu64 " (repeated=%i)\n",
 	timer_name(timer_type),expires,timer_type>>16);
 
     trans_timer* t = new trans_timer(timer_type,expires,

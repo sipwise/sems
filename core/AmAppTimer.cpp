@@ -38,7 +38,7 @@ class app_timer : public timer
   int    timer_id;
 
  public:
-  app_timer(const string& q_id, int timer_id, unsigned int expires)
+  app_timer(const string& q_id, int timer_id, uint64_t expires)
     : timer(expires), timer_id(timer_id), q_id(q_id) {}
 
   ~app_timer() {}
@@ -58,7 +58,7 @@ class direct_app_timer
 public:
   DirectAppTimer* dt;
   
-  direct_app_timer(DirectAppTimer* dt, unsigned int expires)
+  direct_app_timer(DirectAppTimer* dt, uint64_t expires)
     : timer(expires), dt(dt) {}
 
   ~direct_app_timer() {}
@@ -149,7 +149,7 @@ app_timer* _AmAppTimer::erase_timer(const string& q_id, int id)
 }
 
 app_timer* _AmAppTimer::create_timer(const string& q_id, int id, 
-				     unsigned int expires) 
+				     uint64_t expires)
 {
   app_timer* timer = new app_timer(q_id, id, expires);
   if (!timer)
@@ -165,15 +165,15 @@ app_timer* _AmAppTimer::create_timer(const string& q_id, int id,
 void _AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double timeout) {
 
   // microseconds
-  unsigned int expires;
+  uint64_t expires;
   if (timeout < 0) { // in the past
     expires = 0;
   } else if (timeout > MAX_TIMER_SECONDS) { // more than one year
     ERROR("Application requesting timer %d for '%s' with timeout %f, "
 	  "clipped to maximum of one year\n", timer_id, eventqueue_name.c_str(), timeout);
-    expires = (double)MAX_TIMER_SECONDS*1000.0*1000.0 / (double)TIMER_RESOLUTION;
+    expires = (double)MAX_TIMER_SECONDS * 1000000.;
   } else {
-    expires = timeout*1000.0*1000.0 / (double)TIMER_RESOLUTION;
+    expires = timeout * 1000000.;
   }
 
   user_timers_mut.lock();
@@ -215,7 +215,7 @@ void _AmAppTimer::removeTimers(const string& eventqueue_name)
 
 void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
 {
-  unsigned int expires = timeout*1000.0*1000.0 / (double)TIMER_RESOLUTION;
+  uint64_t expires = timeout * 1000000.; // microseconds
 
   direct_app_timer* dt = new direct_app_timer(t,expires);
   if(!dt) return;

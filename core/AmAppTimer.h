@@ -35,8 +35,6 @@ using std::string;
 #include <map>
 #include <set>
 
-#define TICKS_PER_SEC (1000000 / TIMER_RESOLUTION)
-
 class app_timer;
 class direct_app_timer;
 
@@ -61,7 +59,7 @@ class _AmAppTimer
   DirectTimers direct_timers;
 
   /** creates timer object and inserts it into our container */
-  app_timer* create_timer(const string& q_id, int id, unsigned int expires);
+  app_timer* create_timer(const string& q_id, int id, uint64_t expires);
   /** erases timer - does not delete timer object @return timer object pointer, if found */
   app_timer* erase_timer(const string& q_id, int id);
 

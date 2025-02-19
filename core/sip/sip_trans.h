@@ -90,7 +90,7 @@ public:
     unsigned int bucket_id;
     sip_trans*   t;
 
-    trans_timer(unsigned int timer_type, unsigned int expires,
+    trans_timer(unsigned int timer_type, uint64_t expires,
 		int bucket_id, sip_trans* t)
         : timer(expires), type(timer_type),
 	  bucket_id(bucket_id), t(t)
@@ -181,7 +181,7 @@ class sip_trans
      * @param bucket_id id of the transaction's bucket 
      */
     void reset_timer(unsigned int timer_type, 
-		     unsigned int expire_delay /* ms */,
+		     uint64_t expire_delay /* ms */,
 		     unsigned int bucket_id);
 
     /**
