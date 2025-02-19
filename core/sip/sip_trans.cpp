@@ -203,7 +203,7 @@ void trans_timer::fire()
     if(bucket){
 	bucket->lock();
 	if(bucket->exist(t)){
-	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%" PRIu64 ", t=%i\n",
+	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%" PRIu64 ", t=%" PRIu64 "\n",
 		timer_name(type),t,expires,wheeltimer::instance()->get_wall_clock());
 
 	    trans_timer* tt = t->get_timer(this->type & 0xFFFF);

@@ -37,18 +37,14 @@
 #include <time.h>
 #include <deque>
 #include <list>
+#include <map>
 
-#include "atomic_types.h"
-
-#define BITS_PER_WHEEL 8
-#define ELMTS_PER_WHEEL (1 << BITS_PER_WHEEL)
-
-// do not change
-#define WHEELS 4
+#include "log.h"
 
 class timer;
 
 typedef std::list<timer*> timer_list;
+typedef std::map<uint64_t, timer_list> timer_buckets;
 
 class timer
 {
@@ -116,41 +112,43 @@ class _wheeltimer:
 	{}
     };
 
-    //the timer wheel
-    timer_list wheels[WHEELS][ELMTS_PER_WHEEL];
-    unsigned int num_timers;
+    timer_buckets buckets;
     uint64_t resolution; // microseconds
+
+    // Only go to sleep if the next timer to run is at least this far in the future.
+    // If the required sleep time is less long than this, don't bother going to sleep,
+    // and just run the timers now. In microseconds.
+    const uint64_t min_sleep_time = 500; // half a millisecond
+
+    // Don't sleep longer than this, even if the next timer to run is further in the
+    // future (or if no timers exist). Needed not to miss the shutdown flag being set.
+    const uint64_t max_sleep_time = 500000; // half a second
 
     // request backlog lock (insert/remove)
     AmMutex               reqs_m;
     AmCondition     reqs_cond; // to wake up worker thread when a request is added
     std::deque<timer_req> reqs_backlog;
 
-    u_int32_t wall_clock; // 32 bits, "resolution" based ticks starting from epoch
-
-    void turn_wheel();
     void process_events();
-    void update_wheel(int wheel);
 
     void place_timer(timer* t);
-    void place_timer(timer* t, int wheel);
 
-    void add_timer_to_wheel(timer* t, int wheel, unsigned int pos);
+    void add_timer_to_bucket(timer* t, uint64_t);
     void delete_timer(timer* t);
 
-    void process_current_timers();
+    void process_current_timers(timer_list&);
 
 protected:
     void run();
     void on_stop(){}
 
     _wheeltimer()
-	: resolution(20000), // 20 ms == 20000 us
-	  wall_clock(gettimeofday_us() / resolution) {}
+	: resolution(20000) // 20 ms == 20000 us
+    {}
 
     _wheeltimer(uint64_t _resolution)
-	: resolution(_resolution),
-	  wall_clock(gettimeofday_us() / resolution) {}
+	: resolution(_resolution)
+    {}
 
 public:
     //clock reference
@@ -163,9 +161,9 @@ public:
     _uc unix_clock;
 
     // for debugging/logging only!
-    u_int32_t get_wall_clock()
+    uint64_t get_wall_clock()
     {
-	return wall_clock;
+	return gettimeofday_us();
     }
 
     void insert_timer(timer* t);

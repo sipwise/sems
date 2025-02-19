@@ -50,9 +50,7 @@ void _wheeltimer::insert_timer(timer* t)
     //add new timer to user request list
     std::lock_guard<AmMutex> lock(reqs_m);
     reqs_backlog.push_back(timer_req(t,true));
-    // Wake up worker thread: This triggers turn_wheel() based on how many ticks have passed,
-    // and in turn brings wall_clock up to date. Finally the events queue is processed, which
-    // adds the timer to the wheel based on the now-updated wall_clock.
+    // Wake up worker thread: This causes the timer to be added to the appropriate bucket
     reqs_cond.set(true);
 }
 
@@ -75,83 +73,45 @@ void _wheeltimer::remove_timer(timer* t)
 
 void _wheeltimer::run()
 {
-  uint64_t now, next_tick, diff; // microseconds
-
-  now = gettimeofday_us();
-  next_tick = now + resolution;
-
   while(true){
 
-    now = gettimeofday_us();
-
-    if(now < next_tick){
-
-      diff = next_tick - now;
-
-      // Sleep up to diff ms OR up to 0.5 seconds if there are no timers,
-      // but wake up early if something is added to reqs_backlog
-      if (num_timers)
-	reqs_cond.wait_for_to(diff / 1000);
-      else
-	reqs_cond.wait_for_to(500); // 0.5 s
-    }
-    //else {
-    //printf("missed one tick\n");
-    //}
-
-    now = gettimeofday_us();
-
-    while (now >= next_tick) {
-      turn_wheel();
-      next_tick += resolution;
-    }
-
+    // make sure everything that's been added or removed is taken into account
     process_events();
+
+    // figure out whether there's anything to run, and for how long to sleep
+
+    uint64_t now = gettimeofday_us();
+
+    auto beg = buckets.begin();
+
+    if (beg == buckets.end()) {
+	// nothing to wait for - sleep the fixed maximum allowed
+	reqs_cond.wait_for_to(max_sleep_time / 1000);
+	continue;
+    }
+
+    auto next = beg->first;
+
+    if (next > now) {
+      uint64_t diff = next - now;
+      // don't bother sleeping more than half a millisecond
+      if (diff > min_sleep_time) {
+	  // Sleep up to diff ms OR up to the allowed maximum if it's longer
+	  // but wake up early if something is added to reqs_backlog
+	  if (diff < max_sleep_time)
+	    reqs_cond.wait_for_to(diff / 1000);
+	  else
+	    reqs_cond.wait_for_to(max_sleep_time / 1000);
+	  continue;
+      }
+    }
+
+    // this slot needs to run now
+    process_current_timers(beg->second);
+
+    // all done, remove bucket
+    buckets.erase(beg);
   }
-}
-
-
-
-void _wheeltimer::update_wheel(int wheel)
-{
-    // do not try do update wheel 0
-    if(!wheel)
-	return;
-    
-    for(;wheel;wheel--){
-
-	int pos = (wall_clock >> (wheel*BITS_PER_WHEEL))
-	    & ((1<<BITS_PER_WHEEL)-1);
-	
-	auto& w = wheels[wheel][pos];
-	while (!w.empty()) {
-	    auto* t = w.front();
-	    w.pop_front();
-	    place_timer(t, wheel-1);
-	}
-    }
-}
-
-void _wheeltimer::turn_wheel()
-{
-    u_int32_t mask = ((1<<BITS_PER_WHEEL)-1); // 0x00 00 00 FF
-    int i=0;
-	
-    //determine which wheel should be updated
-    for(;i<WHEELS;i++){
-	if((wall_clock & mask) ^ mask)
-	    break;
-	mask <<= BITS_PER_WHEEL;
-    }
-
-    //increment time
-    wall_clock++;
-		
-    // Update existing timer entries
-    update_wheel(i);
-	
-    //check for expired timer to process
-    process_current_timers();
 }
 
 void _wheeltimer::process_events()
@@ -174,22 +134,16 @@ void _wheeltimer::process_events()
 	    delete_timer(rq.t);
 	}
     }
-
-    //check for expired timer to process in case we just added some
-    process_current_timers();
 }
 
-void _wheeltimer::process_current_timers()
+void _wheeltimer::process_current_timers(timer_list& list)
 {
-    auto& w = wheels[0][wall_clock & 0xFF];
-
-    while (!w.empty()) {
-	auto* t = w.front();
-	w.pop_front();
+    while (!list.empty()) {
+	auto* t = list.front();
+	list.pop_front();
 
 	t->list = NULL;
 	t->disarm();
-	num_timers--;
 
 	t->fire();
     }
@@ -197,45 +151,27 @@ void _wheeltimer::process_current_timers()
 
 void _wheeltimer::place_timer(timer* t)
 {
-    if (t->arm())
-	num_timers++;
+    t->arm();
 
-    if(t->get_absolute_expiry() < gettimeofday_us()) {
+    uint64_t exp = t->get_absolute_expiry();
 
-	// we put the late ones at the beginning of next wheel turn
-	add_timer_to_wheel(t,0,((1<<BITS_PER_WHEEL)-1) & wall_clock);
-	
- 	return;
-    }
+    // scale expiry based on resolution: this is the bucket index
+    exp = ((exp / resolution) + 1) * resolution;
 
-    place_timer(t,WHEELS-1);
+    // if expiry is too soon or in the past, put the timer in the next bucket up
+    auto now = gettimeofday_us();
+    if (exp <= now)
+	exp = ((now / resolution) + 1) * resolution;
+
+    add_timer_to_bucket(t, exp);
 }
 
-void _wheeltimer::place_timer(timer* t, int wheel)
+void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 {
-    unsigned int pos;
-    unsigned int expiry_ticks = t->get_absolute_expiry() / resolution;
-    unsigned int clock_mask = expiry_ticks ^ wall_clock;
-
-    for(; wheel; wheel--){
-
-	if( (clock_mask >> (wheel*BITS_PER_WHEEL))
-	    & ((1<<BITS_PER_WHEEL)-1) ) {
-
-	    break;
-	}
-    }
-
-    // we went down to wheel 0
-    pos = (expiry_ticks >> (wheel*BITS_PER_WHEEL)) & ((1<<BITS_PER_WHEEL)-1);
-    add_timer_to_wheel(t,wheel,pos);
-}
-
-void _wheeltimer::add_timer_to_wheel(timer* t, int wheel, unsigned int pos)
-{
-    t->list = &wheels[wheel][pos];
-    t->list->push_front(t);
-    t->pos = wheels[wheel][pos].begin();
+    auto& b = buckets[bucket];
+    t->list = &b;
+    b.push_front(t);
+    t->pos = b.begin();
 }
 
 void _wheeltimer::delete_timer(timer* t)
