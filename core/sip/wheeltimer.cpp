@@ -48,13 +48,12 @@ timer::~timer()
 void _wheeltimer::insert_timer(timer* t)
 {
     //add new timer to user request list
-    reqs_m.lock();
+    std::lock_guard<AmMutex> lock(reqs_m);
     reqs_backlog.push_back(timer_req(t,true));
     // Wake up worker thread: This triggers turn_wheel() based on how many ticks have passed,
     // and in turn brings wall_clock up to date. Finally the events queue is processed, which
     // adds the timer to the wheel based on the now-updated wall_clock.
     reqs_cond.set(true);
-    reqs_m.unlock();
 }
 
 void _wheeltimer::remove_timer(timer* t)
@@ -64,7 +63,7 @@ void _wheeltimer::remove_timer(timer* t)
     }
 
     //add timer to remove to user request list
-    reqs_m.lock();
+    std::lock_guard<AmMutex> lock(reqs_m);
     reqs_backlog.push_back(timer_req(t,false));
     // Wake up worker thread: This is needed because the events queue is processed after
     // expired timers are fired, and because the worker thread would otherwise continue to
@@ -72,7 +71,6 @@ void _wheeltimer::remove_timer(timer* t)
     // IOW we want to make sure events are processed before timers are fired, in case the
     // timer we want to remove now is one of the timers that would be fired next.
     reqs_cond.set(true);
-    reqs_m.unlock();
 }
 
 void _wheeltimer::run()
@@ -164,10 +162,10 @@ void _wheeltimer::turn_wheel()
 void _wheeltimer::process_events()
 {
     // Swap the lists for timer insertion/deletion requests and reset wake condition
-    reqs_m.lock();
+    std::unique_lock<AmMutex> lock(reqs_m);
     reqs_cond.set(false);
     reqs_process.swap(reqs_backlog);
-    reqs_m.unlock();
+    lock.unlock();
 
     while(!reqs_process.empty()) {
 	timer_req rq = reqs_process.front();
