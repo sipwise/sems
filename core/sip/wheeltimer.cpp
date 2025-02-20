@@ -157,6 +157,7 @@ void _wheeltimer::turn_wheel()
 void _wheeltimer::process_events()
 {
     // Swap the lists for timer insertion/deletion requests and reset wake condition
+    std::deque<timer_req> reqs_process;
     std::unique_lock<AmMutex> lock(reqs_m);
     reqs_cond.set(false);
     reqs_process.swap(reqs_backlog);

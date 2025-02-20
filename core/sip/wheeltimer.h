@@ -125,7 +125,6 @@ class _wheeltimer:
     AmMutex               reqs_m;
     AmCondition     reqs_cond; // to wake up worker thread when a request is added
     std::deque<timer_req> reqs_backlog;
-    std::deque<timer_req> reqs_process;
 
     u_int32_t wall_clock; // 32 bits, "resolution" based ticks starting from epoch
 
