@@ -90,9 +90,9 @@ public:
     unsigned int bucket_id;
     sip_trans*   t;
 
-    trans_timer(unsigned int timer_type, uint64_t expires,
+    trans_timer(unsigned int timer_type,
 		int bucket_id, sip_trans* t)
-        : timer(expires), type(timer_type),
+        : type(timer_type),
 	  bucket_id(bucket_id), t(t)
     {}
 
@@ -187,10 +187,11 @@ class sip_trans
     /**
      * Resets a specific timer
      *
-     * @param t the new timer
+     * @param t the new timer, can be NULL
      * @param timer_type @see sip_timer_type
+     * @param expires_us relative expiry in microseconds, if not already set in t
     */
-    void reset_timer(trans_timer* t, unsigned int timer_type);
+    void reset_timer(trans_timer* t, unsigned int timer_type, uint64_t expires_us = 0);
 
     /**
      * Clears a specfic timer

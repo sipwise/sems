@@ -45,10 +45,10 @@ timer::~timer()
     // DBG("timer::~timer(this=%p)\n",this);
 }
 
-void _wheeltimer::insert_timer(timer* t)
+void _wheeltimer::insert_timer(timer* t, uint64_t relative_us)
 {
     std::lock_guard<std::mutex> lock(buckets_mut);
-    place_timer(t);
+    place_timer(t, relative_us);
     // Wake up worker thread: The new timer might be the next one to run
     buckets_cond.notify_one();
 }
@@ -124,24 +124,29 @@ void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std:
     }
 }
 
+uint64_t _wheeltimer::get_timer_bucket(uint64_t exp)
+{
+    // scale expiry based on resolution: this is the bucket index
+    // add +1 to make sure we never run before the scheduled time
+    return ((exp / resolution) + 1) * resolution;
+}
+
 uint64_t _wheeltimer::get_timer_bucket(timer* t)
 {
     uint64_t exp = t->get_absolute_expiry();
-
-    // scale expiry based on resolution: this is the bucket index
-    uint64_t bucket = ((exp / resolution) + 1) * resolution;
+    uint64_t bucket = get_timer_bucket(exp);
 
     // if expiry is too soon or in the past, put the timer in the next bucket up
     auto now = gettimeofday_us();
     if (bucket <= now)
-	bucket = ((now / resolution) + 1) * resolution;
+	bucket = get_timer_bucket(now);
 
     return bucket;
 }
 
-void _wheeltimer::place_timer(timer* t)
+void _wheeltimer::place_timer(timer* t, uint64_t relative_us)
 {
-    t->arm();
+    t->arm(relative_us);
     uint64_t bucket = get_timer_bucket(t);
     add_timer_to_bucket(t, bucket);
 }

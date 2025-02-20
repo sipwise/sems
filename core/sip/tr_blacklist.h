@@ -59,8 +59,8 @@ struct bl_timer
     : timer(), addr()
   {}
 
-  bl_timer(const bl_addr& addr, uint64_t expires)
-    : timer(expires), addr(addr)
+  bl_timer(const bl_addr& addr)
+    : addr(addr)
   {}
 
   void fire();

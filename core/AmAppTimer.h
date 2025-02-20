@@ -59,7 +59,7 @@ class _AmAppTimer
   DirectTimers direct_timers;
 
   /** creates timer object and inserts it into our container */
-  app_timer* create_timer(const string& q_id, int id, uint64_t expires);
+  app_timer* create_timer(const string& q_id, int id);
   /** erases timer - does not delete timer object @return timer object pointer, if found */
   app_timer* erase_timer(const string& q_id, int id);
 

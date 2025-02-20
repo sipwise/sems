@@ -51,7 +51,7 @@ bool blacklist_bucket::insert(const bl_addr& addr, uint64_t duration /* ms */,
   wheeltimer* wt = wheeltimer::instance();
   uint64_t expires = duration * 1000;
 
-  bl_timer* t = new bl_timer(addr,expires);
+  bl_timer* t = new bl_timer(addr);
   bl_entry* bl_e = new bl_entry(t);
 
   if(!bl_bucket_base::insert(addr,bl_e)) {
@@ -63,7 +63,7 @@ bool blacklist_bucket::insert(const bl_addr& addr, uint64_t duration /* ms */,
 	 am_inet_ntop(&addr).c_str(),am_get_port(&addr),
 	 reason,(float)duration/1000.0);
 
-  wt->insert_timer(t);
+  wt->insert_timer(t, expires);
   return true;
 }
 

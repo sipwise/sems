@@ -38,8 +38,8 @@ class app_timer : public timer
   int    timer_id;
 
  public:
-  app_timer(const string& q_id, int timer_id, uint64_t expires)
-    : timer(expires), timer_id(timer_id), q_id(q_id) {}
+  app_timer(const string& q_id, int timer_id)
+    : timer_id(timer_id), q_id(q_id) {}
 
   ~app_timer() {}
 
@@ -58,8 +58,8 @@ class direct_app_timer
 public:
   DirectAppTimer* dt;
   
-  direct_app_timer(DirectAppTimer* dt, uint64_t expires)
-    : timer(expires), dt(dt) {}
+  direct_app_timer(DirectAppTimer* dt)
+    : dt(dt) {}
 
   ~direct_app_timer() {}
 
@@ -148,10 +148,9 @@ app_timer* _AmAppTimer::erase_timer(const string& q_id, int id)
   return res;
 }
 
-app_timer* _AmAppTimer::create_timer(const string& q_id, int id, 
-				     uint64_t expires)
+app_timer* _AmAppTimer::create_timer(const string& q_id, int id)
 {
-  app_timer* timer = new app_timer(q_id, id, expires);
+  app_timer* timer = new app_timer(q_id, id);
   if (!timer)
     return NULL;
 
@@ -181,9 +180,9 @@ void _AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double t
   if (NULL != t) {
     remove_timer(t);
   }
-  t = create_timer(eventqueue_name, timer_id, expires);
+  t = create_timer(eventqueue_name, timer_id);
   if (NULL != t) {
-    insert_timer(t);
+    insert_timer(t, expires);
   }
   user_timers_mut.unlock();
 }
@@ -217,7 +216,7 @@ void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
 {
   uint64_t expires = timeout * 1000000.; // microseconds
 
-  direct_app_timer* dt = new direct_app_timer(t,expires);
+  direct_app_timer* dt = new direct_app_timer(t);
   if(!dt) return;
 
   DirectTimers::iterator dt_it = direct_timers.find(t);
@@ -228,7 +227,7 @@ void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
   else {
     direct_timers[t] = dt;
   }
-  insert_timer(dt);
+  insert_timer(dt, expires);
 }
 
 void _AmAppTimer::setTimer(DirectAppTimer* t, double timeout)

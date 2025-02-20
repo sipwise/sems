@@ -54,26 +54,22 @@ class timer
 
 public:
     timer() 
-	: list(NULL), expires(0), expires_rel(0)
-    {}
-
-    timer(uint64_t expires)
-        : list(NULL), expires(0), expires_rel(expires)
+	: list(NULL), expires(0)
     {}
 
     timer(const timer &t)
-        : list(NULL), expires(t.expires), expires_rel(t.expires_rel)
+        : list(NULL), expires(t.expires)
     {}
 
     virtual ~timer();
 
     virtual void fire()=0;
 
-    void arm()
+    void arm(uint64_t relative)
     {
 	if (expires)
 	    return;
-	expires = expires_rel + gettimeofday_us();
+	expires = relative + gettimeofday_us();
     }
 
     void link(timer_list& new_list)
@@ -99,11 +95,8 @@ public:
 	return expires;
     }
 
-protected:
-    uint64_t    expires; // absolute, microseconds, set after arming timer
-
 private:
-    uint64_t    expires_rel; // relative, microseconds
+    uint64_t    expires; // absolute, microseconds, set after arming timer
 };
 
 #include "singleton.h"
@@ -126,10 +119,11 @@ class _wheeltimer:
     // future (or if no timers exist). Needed not to miss the shutdown flag being set.
     const uint64_t max_sleep_time = 500000; // half a second
 
-    void place_timer(timer* t);
+    void place_timer(timer* t, uint64_t);
 
     void add_timer_to_bucket(timer* t, uint64_t);
-    uint64_t get_timer_bucket(timer* t);
+    uint64_t get_timer_bucket(uint64_t);
+    uint64_t get_timer_bucket(timer*);
     void delete_timer(timer* t);
 
     void process_current_timers(timer_list&, std::unique_lock<std::mutex>&);
@@ -162,7 +156,7 @@ public:
 	return gettimeofday_us();
     }
 
-    void insert_timer(timer* t);
+    void insert_timer(timer* t, uint64_t relative_expiry_us);
     void remove_timer(timer* t);
 };
 

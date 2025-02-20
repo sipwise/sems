@@ -180,7 +180,7 @@ const char* _state_name_lookup[] = {
  * @param t the new timer
  * @param timer_type @see sip_timer_type
  */
-void sip_trans::reset_timer(trans_timer* t, unsigned int timer_type)
+void sip_trans::reset_timer(trans_timer* t, unsigned int timer_type, uint64_t expires_us)
 {
     trans_timer** tp = fetch_timer(timer_type,timers);
     
@@ -194,7 +194,7 @@ void sip_trans::reset_timer(trans_timer* t, unsigned int timer_type)
     *tp = t;
 
     if(t)
-	wheeltimer::instance()->insert_timer((timer*)t);
+	wheeltimer::instance()->insert_timer((timer*)t, expires_us);
 }
 
 void trans_timer::fire()
@@ -204,7 +204,7 @@ void trans_timer::fire()
 	bucket->lock();
 	if(bucket->exist(t)){
 	    DBG("Transaction timer expired: type=%s, trans=%p, eta=%" PRIu64 ", t=%" PRIu64 "\n",
-		timer_name(type),t,expires,wheeltimer::instance()->get_wall_clock());
+		timer_name(type),t,this->get_absolute_expiry(),wheeltimer::instance()->get_wall_clock());
 
 	    trans_timer* tt = t->get_timer(this->type & 0xFFFF);
 	    if(tt != this) {
@@ -246,10 +246,10 @@ void sip_trans::reset_timer(unsigned int timer_type, uint64_t expire_delay /* ms
     DBG("New timer of type %s at time=%" PRIu64 " (repeated=%i)\n",
 	timer_name(timer_type),expires,timer_type>>16);
 
-    trans_timer* t = new trans_timer(timer_type,expires,
+    trans_timer* t = new trans_timer(timer_type,
 				     bucket_id,this);
 
-    reset_timer(t,timer_type);
+    reset_timer(t,timer_type,expires);
 }
 
 void sip_trans::clear_timer(unsigned int timer_type)
