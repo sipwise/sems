@@ -45,15 +45,16 @@ timer::~timer()
     // DBG("timer::~timer(this=%p)\n",this);
 }
 
-void _wheeltimer::insert_timer(timer* t, uint64_t relative_us)
+void _wheeltimer::insert_timer(timer* t, uint64_t relative_us, uint64_t latest_expiry)
 {
-    insert_timer_abs(t, (gettimeofday_us() + relative_us));
+    uint64_t now = gettimeofday_us();
+    insert_timer_abs(t, (now + relative_us), latest_expiry ? (now + latest_expiry) : 0);
 }
 
-void _wheeltimer::insert_timer_abs(timer* t, uint64_t us)
+void _wheeltimer::insert_timer_abs(timer* t, uint64_t us, uint64_t latest)
 {
-    std::lock_guard<std::mutex> lock(buckets_mut);
-    place_timer(t, us);
+    std::lock_guard<std::mutex> l(buckets_mut);
+    place_timer(t, us, latest);
     // Wake up worker thread: The new timer might be the next one to run
     buckets_cond.notify_one();
 }
@@ -149,10 +150,28 @@ uint64_t _wheeltimer::get_timer_bucket(timer* t)
     return bucket;
 }
 
-void _wheeltimer::place_timer(timer* t, uint64_t us)
+void _wheeltimer::place_timer(timer* t, uint64_t us, uint64_t latest)
 {
     t->arm(us);
     uint64_t bucket = get_timer_bucket(t);
+
+    // find the least busy bucket if we have a range to work with
+    if (latest && latest > us) {
+	// consider up to which bucket?
+	uint64_t end = get_timer_bucket(latest);
+
+	size_t least = SIZE_MAX;
+	for (uint64_t candidate = bucket; candidate < end; candidate += resolution) {
+	    size_t current = buckets[candidate].size();
+	    if (current < least) {
+		least = current;
+		bucket = candidate;
+		if (least == 0)
+		    break; // can't get much better
+	    }
+	}
+    }
+
     add_timer_to_bucket(t, bucket);
 }
 

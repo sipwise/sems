@@ -121,7 +121,7 @@ class _wheeltimer:
     // future (or if no timers exist). Needed not to miss the shutdown flag being set.
     const uint64_t max_sleep_time = 500000; // half a second
 
-    void place_timer(timer* t, uint64_t);
+    void place_timer(timer* t, uint64_t, uint64_t);
 
     void add_timer_to_bucket(timer* t, uint64_t);
     uint64_t get_timer_bucket(uint64_t);
@@ -158,8 +158,8 @@ public:
 	return gettimeofday_us();
     }
 
-    void insert_timer(timer* t, uint64_t relative_expiry_us);
-    void insert_timer_abs(timer* t, uint64_t expiry_us);
+    void insert_timer(timer* t, uint64_t relative_expiry_us, uint64_t latest_expiry = 0);
+    void insert_timer_abs(timer* t, uint64_t expiry_us, uint64_t latest = 0);
     void remove_timer(timer* t);
 };
 
