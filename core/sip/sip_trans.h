@@ -97,7 +97,7 @@ public:
     {}
 
     trans_timer(const trans_timer& ti, int bucket_id, sip_trans* t)
-        : timer(ti.expires), type(ti.type),
+        : timer(ti), type(ti.type),
 	  bucket_id(bucket_id), t(t)
     {}
 

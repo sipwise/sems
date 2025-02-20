@@ -70,6 +70,11 @@ public:
 	  prev(0), expires(0), expires_rel(expires)
     {}
 
+    timer(const timer &t)
+        : base_timer(),
+	  prev(0), expires(t.expires), expires_rel(t.expires_rel)
+    {}
+
     ~timer(); 
 
     virtual void fire()=0;
