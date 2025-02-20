@@ -74,7 +74,7 @@ public:
 	  prev(0), expires(t.expires), expires_rel(t.expires_rel)
     {}
 
-    ~timer(); 
+    virtual ~timer();
 
     virtual void fire()=0;
 
