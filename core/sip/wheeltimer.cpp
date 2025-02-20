@@ -47,11 +47,10 @@ timer::~timer()
 
 void _wheeltimer::insert_timer(timer* t)
 {
-    //add new timer to user request list
-    std::lock_guard<AmMutex> lock(reqs_m);
-    reqs_backlog.push_back(timer_req(t,true));
-    // Wake up worker thread: This causes the timer to be added to the appropriate bucket
-    reqs_cond.set(true);
+    std::lock_guard<std::mutex> lock(buckets_mut);
+    place_timer(t);
+    // Wake up worker thread: The new timer might be the next one to run
+    buckets_cond.notify_one();
 }
 
 void _wheeltimer::remove_timer(timer* t)
@@ -60,33 +59,28 @@ void _wheeltimer::remove_timer(timer* t)
 	return;
     }
 
-    //add timer to remove to user request list
-    std::lock_guard<AmMutex> lock(reqs_m);
-    reqs_backlog.push_back(timer_req(t,false));
-    // Wake up worker thread: This is needed because the events queue is processed after
-    // expired timers are fired, and because the worker thread would otherwise continue to
-    // sleep, possibly until the next timer expires, which may be the one we want to remove.
-    // IOW we want to make sure events are processed before timers are fired, in case the
-    // timer we want to remove now is one of the timers that would be fired next.
-    reqs_cond.set(true);
+    std::lock_guard<std::mutex> lock(buckets_mut);
+    delete_timer(t);
+    // Don't wake up worker thread: This is not necessary because in the worst case the
+    // worker thread would wake up early, see that there's nothing to do, and just go to
+    // sleep again
 }
 
 void _wheeltimer::run()
 {
   while(true){
 
-    // make sure everything that's been added or removed is taken into account
-    process_events();
-
     // figure out whether there's anything to run, and for how long to sleep
 
     uint64_t now = gettimeofday_us();
+
+    std::unique_lock<std::mutex> lock(buckets_mut);
 
     auto beg = buckets.begin();
 
     if (beg == buckets.end()) {
 	// nothing to wait for - sleep the fixed maximum allowed
-	reqs_cond.wait_for_to(max_sleep_time / 1000);
+	buckets_cond.wait_for(lock, std::chrono::microseconds(max_sleep_time));
 	continue;
     }
 
@@ -99,53 +93,36 @@ void _wheeltimer::run()
 	  // Sleep up to diff ms OR up to the allowed maximum if it's longer
 	  // but wake up early if something is added to reqs_backlog
 	  if (diff < max_sleep_time)
-	    reqs_cond.wait_for_to(diff / 1000);
+	    buckets_cond.wait_for(lock, std::chrono::microseconds(diff));
 	  else
-	    reqs_cond.wait_for_to(max_sleep_time / 1000);
+	    buckets_cond.wait_for(lock, std::chrono::microseconds(max_sleep_time));
 	  continue;
       }
     }
 
     // this slot needs to run now
-    process_current_timers(beg->second);
+    process_current_timers(beg->second, lock);
 
     // all done, remove bucket
     buckets.erase(beg);
   }
 }
 
-void _wheeltimer::process_events()
-{
-    // Swap the lists for timer insertion/deletion requests and reset wake condition
-    std::deque<timer_req> reqs_process;
-    std::unique_lock<AmMutex> lock(reqs_m);
-    reqs_cond.set(false);
-    reqs_process.swap(reqs_backlog);
-    lock.unlock();
-
-    while(!reqs_process.empty()) {
-	timer_req rq = reqs_process.front();
-	reqs_process.pop_front();
-
-	if(rq.insert) {
-	    place_timer(rq.t);
-	}
-	else {
-	    delete_timer(rq.t);
-	}
-    }
-}
-
-void _wheeltimer::process_current_timers(timer_list& list)
+void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std::mutex>& lock)
 {
     while (!list.empty()) {
 	auto* t = list.front();
 	list.pop_front();
 
+	// safe to unlock now
+	lock.unlock();
+
 	t->list = NULL;
 	t->disarm();
 
 	t->fire();
+
+	lock.lock();
     }
 }
 

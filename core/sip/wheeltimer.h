@@ -102,17 +102,10 @@ private:
 class _wheeltimer:
     public AmThread
 {
-    struct timer_req {
-
-	timer* t;
-	bool   insert; // false -> remove
-	
-	timer_req(timer* t, bool insert)
-	    : t(t), insert(insert)
-	{}
-    };
-
+    std::mutex buckets_mut;
+    std::condition_variable buckets_cond;
     timer_buckets buckets;
+
     uint64_t resolution; // microseconds
 
     // Only go to sleep if the next timer to run is at least this far in the future.
@@ -124,19 +117,12 @@ class _wheeltimer:
     // future (or if no timers exist). Needed not to miss the shutdown flag being set.
     const uint64_t max_sleep_time = 500000; // half a second
 
-    // request backlog lock (insert/remove)
-    AmMutex               reqs_m;
-    AmCondition     reqs_cond; // to wake up worker thread when a request is added
-    std::deque<timer_req> reqs_backlog;
-
-    void process_events();
-
     void place_timer(timer* t);
 
     void add_timer_to_bucket(timer* t, uint64_t);
     void delete_timer(timer* t);
 
-    void process_current_timers(timer_list&);
+    void process_current_timers(timer_list&, std::unique_lock<std::mutex>&);
 
 protected:
     void run();
