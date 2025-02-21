@@ -168,24 +168,6 @@ public:
   void add(AmThread*);
 };
 
-template<class T>
-class AmThreadLocalStorage
-{
-  static thread_local std::unique_ptr<T> t;
-  
-public:
-  T* get() {
-    return t.get();
-  }
-
-  void set(T* p) {
-    t.reset(p);
-  }
-};
-
-template<class T>
-thread_local std::unique_ptr<T> AmThreadLocalStorage<T>::t;
-
 #endif
 
 // Local Variables:
