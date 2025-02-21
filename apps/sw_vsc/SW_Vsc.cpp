@@ -910,7 +910,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     int ret;
     string filename;
     MYSQL *my_handler = NULL;
-    my_bool recon = 1;
+    bool recon = true;
 
     u_int64_t subId, domId, profId;
     string domain, uri, username;
