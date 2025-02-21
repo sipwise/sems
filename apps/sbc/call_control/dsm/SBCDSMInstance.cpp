@@ -736,6 +736,8 @@ void SBCDSMInstance::disconnectMedia() {
 NOT_IMPLEMENTED(mute());
 NOT_IMPLEMENTED(unmute());
 
+NOT_IMPLEMENTED(replaceHdrsCRLF(string& hdrs));
+
 /** B2BUA functions */
 NOT_IMPLEMENTED(B2BconnectCallee(const string& remote_party,
 				 const string& remote_uri,

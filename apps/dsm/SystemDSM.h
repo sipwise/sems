@@ -87,6 +87,9 @@ class SystemDSM
 
    void B2BsetRelayEarlyMediaSDP(bool enabled);
 
+  /** replaces escaped \r\n occurences */
+   void replaceHdrsCRLF(string& hdrs);
+
   /** set headers of outgoing INVITE */
    void B2BsetHeaders(const string& hdr, bool replaceCRLF);
 

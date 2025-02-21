@@ -957,26 +957,37 @@ void DSMCall::B2BsetRelayEarlyMediaSDP(bool enabled) {
   set_sip_relay_early_media_sdp(enabled);
 }
 
+void DSMCall::replaceHdrsCRLF(string& hdrs) {
+  if (hdrs.empty())
+    return;
+
+  DBG("originally given headers to be added '%s'\n", hdrs.c_str());
+
+  size_t p = hdrs.find("\\r\\n");
+  while (p != string::npos)
+  {
+    hdrs.replace(p, 4, "\r\n");
+    p = hdrs.find("\\r\\n");
+  }
+
+  DBG("originally given headers replaced to '%s'\n", hdrs.c_str());
+}
+
 void DSMCall::B2BsetHeaders(const string& hdr, bool replaceCRLF) {
   if (!replaceCRLF)  {
     invite_req.hdrs = hdr;
   } else {
     string hdr_crlf = hdr;
-    DBG("hdr_crlf is '%s'\n", hdr_crlf.c_str());
-
-    while (true) {
-      size_t p = hdr_crlf.find("\\r\\n");
-      if (p==string::npos)
-	break;
-      hdr_crlf.replace(p, 4, "\r\n");
-    }
-    DBG("-> hdr_crlf is '%s'\n", hdr_crlf.c_str());
+    replaceHdrsCRLF(hdr_crlf);
     invite_req.hdrs += hdr_crlf;
   }
+
   // add \r\n if not in header
   if (invite_req.hdrs.length()>2 && 
       invite_req.hdrs.substr(invite_req.hdrs.length()-2) != "\r\n")
+  {
     invite_req.hdrs+="\r\n";
+  }
 }
 
 void DSMCall::B2BaddHeader(const string& hdr) {

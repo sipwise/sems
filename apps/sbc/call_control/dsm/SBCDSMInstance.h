@@ -113,6 +113,8 @@ class SBCDSMInstance
     void mute();
     void unmute();
 
+  void replaceHdrsCRLF(string& hdrs);
+
   /** B2BUA functions */
   void B2BconnectCallee(const string& remote_party,
 				const string& remote_uri,

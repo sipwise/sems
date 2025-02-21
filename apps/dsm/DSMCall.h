@@ -152,6 +152,10 @@ public:
 			const string& remote_uri,
 			bool relayed_invite = false);
 
+  /* replaces escaped \r\n occurences.
+   * For internal DSM usage only.*/
+  void replaceHdrsCRLF(string& hdrs);
+
   void B2BaddReceivedRequest(const AmSipRequest& req);
   void B2BsetRelayEarlyMediaSDP(bool enabled);
   void B2BsetHeaders(const string& hdr, bool replaceCRLF);

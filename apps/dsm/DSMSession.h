@@ -172,6 +172,9 @@ class DSMSession {
   /** enable early media relay as reinvite */
   virtual void B2BsetRelayEarlyMediaSDP(bool enabled) = 0;
 
+  /** replaces escaped \r\n occurences */
+  virtual void replaceHdrsCRLF(string& hdrs) = 0;
+
   /** set headers of outgoing INVITE */
   virtual void B2BsetHeaders(const string& hdr, bool replaceCRLF) = 0;
 
