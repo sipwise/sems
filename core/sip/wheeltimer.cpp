@@ -47,8 +47,13 @@ timer::~timer()
 
 void _wheeltimer::insert_timer(timer* t, uint64_t relative_us)
 {
+    insert_timer_abs(t, (gettimeofday_us() + relative_us));
+}
+
+void _wheeltimer::insert_timer_abs(timer* t, uint64_t us)
+{
     std::lock_guard<std::mutex> lock(buckets_mut);
-    place_timer(t, relative_us);
+    place_timer(t, us);
     // Wake up worker thread: The new timer might be the next one to run
     buckets_cond.notify_one();
 }
@@ -144,9 +149,9 @@ uint64_t _wheeltimer::get_timer_bucket(timer* t)
     return bucket;
 }
 
-void _wheeltimer::place_timer(timer* t, uint64_t relative_us)
+void _wheeltimer::place_timer(timer* t, uint64_t us)
 {
-    t->arm(relative_us);
+    t->arm(us);
     uint64_t bucket = get_timer_bucket(t);
     add_timer_to_bucket(t, bucket);
 }

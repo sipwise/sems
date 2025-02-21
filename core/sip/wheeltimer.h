@@ -72,11 +72,11 @@ public:
     }
 
 private:
-    void arm(uint64_t relative)
+    void arm(uint64_t us)
     {
 	if (expires)
 	    return;
-	expires = relative + gettimeofday_us();
+	expires = us;
     }
 
     void link(timer_list& new_list)
@@ -159,6 +159,7 @@ public:
     }
 
     void insert_timer(timer* t, uint64_t relative_expiry_us);
+    void insert_timer_abs(timer* t, uint64_t expiry_us);
     void remove_timer(timer* t);
 };
 
