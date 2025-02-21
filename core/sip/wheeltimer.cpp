@@ -116,6 +116,8 @@ void _wheeltimer::run()
 
 void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std::mutex>& lock)
 {
+    DBG("firing %zd timers\n", list.size());
+
     while (!list.empty()) {
 	auto* t = list.front();
 
@@ -124,6 +126,7 @@ void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std:
 	// safe to unlock now
 	lock.unlock();
 
+	DBG("firing timer [%p]\n", t);
 	t->fire();
 
 	lock.lock();
@@ -170,6 +173,9 @@ void _wheeltimer::place_timer(timer* t, uint64_t us, uint64_t latest)
 		    break; // can't get much better
 	    }
 	}
+
+	DBG("found bucket %" PRIu64 " with least load %zd (between %" PRIu64 " and %" PRIu64 ")\n",
+	    bucket, least, us, latest);
     }
 
     add_timer_to_bucket(t, bucket);
@@ -178,11 +184,16 @@ void _wheeltimer::place_timer(timer* t, uint64_t us, uint64_t latest)
 void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 {
     t->link(buckets[bucket]);
+    DBG("inserted timer [%p] in bucket %" PRIu64 " (now sized %zd)\n",
+	t, bucket, buckets[bucket].size());
 }
 
 void _wheeltimer::delete_timer(timer* t)
 {
-    t->disarm();
+    if (t->disarm())
+	DBG("successfully removed timer [%p]\n", t);
+    else
+	DBG("timer [%p] not found for removing\n", t);
     delete t;
 }
 

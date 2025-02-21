@@ -86,14 +86,17 @@ private:
 	pos = list->begin();
     }
 
-    void disarm()
+    bool disarm()
     {
 	expires = 0;
 
 	if (list) {
 	    list->erase(pos);
 	    list = NULL;
+	    return true;
 	}
+
+	return false;
     }
 
     uint64_t    expires; // absolute, microseconds, set after arming timer
