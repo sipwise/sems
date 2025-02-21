@@ -933,7 +933,7 @@ bool AmB2BSession::saveSessionDescription(const AmMimeBody& body) {
   DBG("saving session description (%s, %.*s...)\n",
       sdp_body->getCTStr().c_str(), 50, sdp_body->getPayload());
 
-  established_body = *sdp_body;
+  dlg->established_body = *sdp_body;
 
   const char* cmp_body_begin = (const char*)sdp_body->getPayload();
   size_t cmp_body_length = sdp_body->getLen();
@@ -982,7 +982,7 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
     DBG("session description changed - saving (%s, %.*s...)\n",
 	sdp_body->getCTStr().c_str(), 50, sdp_body->getPayload());
     body_hash = new_body_hash;
-    established_body = body;
+    dlg->established_body = body;
     return true;
   }
 
@@ -990,7 +990,7 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
 }
 
 int AmB2BSession::sendEstablishedReInvite(const std::string &hdrs) {
-  if (established_body.empty()) {
+  if (dlg->established_body.empty()) {
     ERROR("trying to re-INVITE with saved description, but none saved\n");
     return -1;
   }
@@ -998,7 +998,7 @@ int AmB2BSession::sendEstablishedReInvite(const std::string &hdrs) {
   DBG("sending re-INVITE with saved session description\n");
 
   try {
-    AmMimeBody body(established_body); // contains only SDP
+    AmMimeBody body(dlg->established_body); // contains only SDP
     updateLocalBody(body);
     return dlg->reinvite(hdrs, &body, SIP_FLAGS_VERBATIM);
   } catch (const string& s) {

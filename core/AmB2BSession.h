@@ -191,8 +191,6 @@ private:
   /** SUBSCRIBE/NOTIFY handling */
   AmSipSubscription* subs;
 
-  /** body of established session */
-  AmMimeBody established_body;
   /** hash of body (from o-line) */
   uint32_t body_hash;
   /** save current session description (SDP) */

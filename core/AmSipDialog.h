@@ -56,6 +56,12 @@ protected:
   AmOfferAnswer oa;
   bool offeranswer_enabled;
 
+public:
+  /** body of established session */
+  AmMimeBody established_body;
+
+protected:
+
   // Reliable provisional reply support
   Am100rel rel100;
 

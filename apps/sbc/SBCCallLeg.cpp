@@ -1824,7 +1824,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
   // FIXME: fix SDP versioning! (remember generated versions and increase the
   // version number in every SDP passing through?)
 
-  AmMimeBody *s = established_body.hasContentType(SIP_APPLICATION_SDP);
+  AmMimeBody *s = dlg->established_body.hasContentType(SIP_APPLICATION_SDP);
   if (s) sdp.parse((const char*)s->getPayload());
 
   if (sdp.media.empty()) {

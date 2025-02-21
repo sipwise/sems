@@ -1018,7 +1018,7 @@ int CallLeg::resumeHeldImpl()
     updateLocalSdp(sdp);
     updateLocalSdpOrigin(sdp);
 
-    AmMimeBody body(established_body);
+    AmMimeBody body(dlg->established_body);
     sdp2body(sdp, body);
     if (dlg->reinvite("", &body, SIP_FLAGS_VERBATIM) != 0) {
       ERROR("re-INVITE failed\n");
@@ -1500,16 +1500,16 @@ void CallLeg::addCallee(CallLeg *callee, const string &hdrs)
 {
   if (!non_hold_sdp.media.empty()) {
     // use non-hold SDP if possible
-    AmMimeBody body(established_body);
+    AmMimeBody body(dlg->established_body);
     sdp2body(non_hold_sdp, body);
     addNewCallee(callee, new ConnectLegEvent(hdrs, body));
   }
-  else addNewCallee(callee, new ConnectLegEvent(hdrs, established_body));
+  else addNewCallee(callee, new ConnectLegEvent(hdrs, dlg->established_body));
 }
 
 /*void CallLeg::addCallee(CallLeg *callee, const string &hdrs, AmB2BSession::RTPRelayMode mode)
 {
-  addNewCallee(callee, new ConnectLegEvent(hdrs, established_body), mode);
+  addNewCallee(callee, new ConnectLegEvent(hdrs, dlg->established_body), mode);
 }*/
 
 void CallLeg::replaceExistingLeg(const string &session_tag, const AmSipRequest &relayed_invite)
@@ -1554,7 +1554,7 @@ void CallLeg::replaceExistingLeg(const string &session_tag, const string &hdrs)
   }
   else b.media_session = NULL;
 
-  ReconnectLegEvent *rev = new ReconnectLegEvent(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, established_body);
+  ReconnectLegEvent *rev = new ReconnectLegEvent(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, dlg->established_body);
   rev->setMedia(b.media_session, rtp_relay_mode);
   ReplaceLegEvent *ev = new ReplaceLegEvent(getLocalTag(), rev);
   // TODO: what about the RTP relay and other settings? send them as well?

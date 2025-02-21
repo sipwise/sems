@@ -383,7 +383,7 @@ class CallLeg: public AmB2BSession
     /** add given already existing session as our B leg */
     void addCallee(const string &session_tag, const AmSipRequest &relayed_invite);
     void addCallee(const string &session_tag, const string &hdrs)
-      { addExistingCallee(session_tag, new ReconnectLegEvent(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, established_body)); }
+      { addExistingCallee(session_tag, new ReconnectLegEvent(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, dlg->established_body)); }
 
     /** add given call leg as our B leg (only stored SDP is used, we don't need
      * to have INVITE request.
@@ -391,7 +391,7 @@ class CallLeg: public AmB2BSession
      * Additional headers may be specified - these are used in outgoing INVITE
      * to the callee's destination. */
     void addCallee(CallLeg *callee, const string &hdrs);
-//    void addCallee(CallLeg *callee, const string &hdrs, AmB2BSession::RTPRelayMode mode) { addNewCallee(callee, new ConnectLegEvent(hdrs, established_body), mode); }
+//    void addCallee(CallLeg *callee, const string &hdrs, AmB2BSession::RTPRelayMode mode) { addNewCallee(callee, new ConnectLegEvent(hdrs, dlg->established_body), mode); }
 
 
     /** Replace given already existing session in a B2B call. We become new
