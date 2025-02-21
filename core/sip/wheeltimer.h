@@ -65,6 +65,13 @@ public:
 
     virtual void fire()=0;
 
+    // returns absolute expiry time in microseconds
+    uint64_t get_absolute_expiry()
+    {
+	return expires;
+    }
+
+private:
     void arm(uint64_t relative)
     {
 	if (expires)
@@ -89,14 +96,9 @@ public:
 	}
     }
 
-    // microseconds
-    uint64_t get_absolute_expiry()
-    {
-	return expires;
-    }
-
-private:
     uint64_t    expires; // absolute, microseconds, set after arming timer
+
+    friend class _wheeltimer;
 };
 
 #include "singleton.h"
