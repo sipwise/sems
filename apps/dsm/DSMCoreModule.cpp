@@ -1543,6 +1543,8 @@ EXEC_ACTION_START(SCB2BSendEstablishedReinviteAction) {
   AmB2BSession* b2b_sess = dynamic_cast<AmB2BSession*>(sess);
   string hdrs = resolveVars(arg, sess, sc_sess, event_params);
 
+  sc_sess->replaceHdrsCRLF(hdrs);
+
   if (NULL != b2b_sess) {
     b2b_sess->sendEstablishedReInvite(hdrs);
   } else {
