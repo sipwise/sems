@@ -48,11 +48,11 @@ typedef std::map<uint64_t, timer_list> timer_buckets;
 
 class timer
 {
-public:
     // for fast removal:
     timer_list::iterator pos;
     timer_list* list;
 
+public:
     timer() 
 	: list(NULL), expires(0), expires_rel(0)
     {}
@@ -69,19 +69,28 @@ public:
 
     virtual void fire()=0;
 
-    // returns true if timer was not armed before
-    // return false and does nothing otherwise
-    bool arm()
+    void arm()
     {
 	if (expires)
-	    return false;
+	    return;
 	expires = expires_rel + gettimeofday_us();
-	return true;
+    }
+
+    void link(timer_list& new_list)
+    {
+	list = &new_list;
+	list->push_front(this);
+	pos = list->begin();
     }
 
     void disarm()
     {
 	expires = 0;
+
+	if (list) {
+	    list->erase(pos);
+	    list = NULL;
+	}
     }
 
     // microseconds
@@ -120,6 +129,7 @@ class _wheeltimer:
     void place_timer(timer* t);
 
     void add_timer_to_bucket(timer* t, uint64_t);
+    uint64_t get_timer_bucket(timer* t);
     void delete_timer(timer* t);
 
     void process_current_timers(timer_list&, std::unique_lock<std::mutex>&);

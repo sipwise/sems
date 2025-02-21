@@ -112,13 +112,11 @@ void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std:
 {
     while (!list.empty()) {
 	auto* t = list.front();
-	list.pop_front();
+
+	t->disarm(); // removes it from list
 
 	// safe to unlock now
 	lock.unlock();
-
-	t->list = NULL;
-	t->disarm();
 
 	t->fire();
 
@@ -126,38 +124,36 @@ void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std:
     }
 }
 
-void _wheeltimer::place_timer(timer* t)
+uint64_t _wheeltimer::get_timer_bucket(timer* t)
 {
-    t->arm();
-
     uint64_t exp = t->get_absolute_expiry();
 
     // scale expiry based on resolution: this is the bucket index
-    exp = ((exp / resolution) + 1) * resolution;
+    uint64_t bucket = ((exp / resolution) + 1) * resolution;
 
     // if expiry is too soon or in the past, put the timer in the next bucket up
     auto now = gettimeofday_us();
-    if (exp <= now)
-	exp = ((now / resolution) + 1) * resolution;
+    if (bucket <= now)
+	bucket = ((now / resolution) + 1) * resolution;
 
-    add_timer_to_bucket(t, exp);
+    return bucket;
+}
+
+void _wheeltimer::place_timer(timer* t)
+{
+    t->arm();
+    uint64_t bucket = get_timer_bucket(t);
+    add_timer_to_bucket(t, bucket);
 }
 
 void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 {
-    auto& b = buckets[bucket];
-    t->list = &b;
-    b.push_front(t);
-    t->pos = b.begin();
+    t->link(buckets[bucket]);
 }
 
 void _wheeltimer::delete_timer(timer* t)
 {
-    if (t->list) {
-	t->list->erase(t->pos);
-	t->list = NULL;
-    }
-
+    t->disarm();
     delete t;
 }
 
