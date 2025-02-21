@@ -1043,6 +1043,9 @@ void DSMCallCalleeSession::onSipReply(const AmSipRequest& req, const AmSipReply&
   // call event handlers where it is not done 
   TransMap::iterator t = relayed_req.find(reply.cseq);
   bool fwd = t != relayed_req.end();
+
+  last_200_reply = reply;
+
   DBG("onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
   DBG("onSipReply: content-type = %s\n",reply.body.getCTStr().c_str());
   if(fwd) {
