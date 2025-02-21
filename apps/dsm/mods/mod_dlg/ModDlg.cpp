@@ -182,14 +182,22 @@ EXEC_ACTION_START(DLGAcceptInviteAction) {
 
   try {
     AmMimeBody sdp_body;
-    if(sess->dlg->reply(*sc_sess->last_req.get(),code_i, reason,
-		       sdp_body.addPart(SIP_APPLICATION_SDP), hdrs) != 0)
+    /* save generated SDP body for this session as `established_body`  */
+    if(sess->dlg->reply(*sc_sess->last_req.get(),
+                        code_i,
+                        reason,
+                        sdp_body.addPart(SIP_APPLICATION_SDP),
+                        hdrs,
+                        SIP_FLAGS_SAVE_ESTB_SDP) != 0)
+    {
       throw AmSession::Exception(500,"could not send response");
+    }
 
   }catch(const AmSession::Exception& e){
 
     ERROR("%i %s\n",e.code,e.reason.c_str());
     sess->setStopped();
+
     sess->dlg->reply(*sc_sess->last_req.get(),e.code,e.reason);
 
     sc_sess->SET_ERRNO(DSM_ERRNO_DLG);

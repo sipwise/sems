@@ -86,7 +86,7 @@ public:
   int onReplyIn(const AmSipReply& reply);
   int onRequestOut(AmSipRequest& req);
   /* `no_sdp_generation` - can be used for cases like absent SDP in coming INVITE */
-  int onReplyOut(AmSipReply& reply, bool no_sdp_generation = false);
+  int onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_body, bool no_sdp_generation = false);
   int onRequestSent(const AmSipRequest& req);
   int onReplySent(const AmSipReply& reply);
   void onNoAck(unsigned int ack_cseq);

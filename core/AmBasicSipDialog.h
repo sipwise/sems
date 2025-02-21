@@ -45,6 +45,8 @@ using std::string;
 
 #define SIP_FLAGS_NOBL         1<<4 // do not use destination blacklist
 
+#define SIP_FLAGS_SAVE_ESTB_SDP 1<<10 // save established SDP body when processing in OA, see `AmOfferAnswer::onReplyOut()`
+
 /** \brief SIP transaction representation */
 struct AmSipTransaction
 {

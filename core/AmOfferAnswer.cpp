@@ -361,7 +361,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   return 0;
 }
 
-int AmOfferAnswer::onReplyOut(AmSipReply& reply, bool no_sdp_generation)
+int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_body, bool no_sdp_generation)
 {
   AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
   AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
@@ -409,7 +409,6 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, bool no_sdp_generation)
         }
 
         sdp_body->setPayload((const unsigned char*)existing_sdp.c_str(), existing_sdp.length());
-
         has_sdp = true;
         DBG("Now has_sdp has been reset to true.\n");
 
@@ -469,6 +468,14 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, bool no_sdp_generation)
 
       sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(), sdp_buf.length());
       has_sdp = true;
+
+      /* some of sessions want generated body to be kept for the future, e.g. for the case
+        * when we want to reinvite the other side, before this side got actual SDP answer.
+        * e.g. this happens in DSM, when we generate faked SDP in some cases. */
+      if (flags & SIP_FLAGS_SAVE_ESTB_SDP) {
+        DBG("Saving established_body based on newly generated SDP.\n");
+        ret_body = *sdp_body;
+      }
     }
 
   } else if (sdp_body && has_sdp) {
