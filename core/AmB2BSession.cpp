@@ -1364,12 +1364,6 @@ void AmB2BCallerSession::onB2BEvent(B2BEvent* ev)
                   "switching to SIP relay only mode, sending re-INVITE to caller\n");
 
               sip_relay_only = true;
-              AmSipReply n_reply = reply;
-
-              if (n_reply.body.empty() && !established_body.empty()) {
-                DBG("callee FR without SDP, using provisional response's (18x) one\n");
-                n_reply.body = established_body;
-              }
 
               if (reinviteCaller(reply, hdrs)) {
                 ERROR("re-INVITEing caller failed - stopping this and other leg\n");
