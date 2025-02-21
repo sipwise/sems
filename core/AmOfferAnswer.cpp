@@ -371,6 +371,10 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
   bool has_sdp = sdp_body && sdp_body->getLen();
   bool has_csta = csta_body && csta_body->getLen();
 
+  DBG("AmOfferAnswer::onReplyOut(), has_sdp = <%c>, generate_sdp = <%c>.\n",
+      has_sdp ? 't' : 'f',
+      generate_sdp ? 't' : 'f');
+
   /* check whether 183 has same SDP version it has had before. Then it doesn't change leg's OA state */
   if (has_sdp && !generate_sdp &&
       reply.cseq_method == SIP_METH_INVITE && reply.code == 183)
@@ -421,13 +425,13 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
                         ((state == OA_OfferRecved)
                         || (state == OA_None)
                         || (state == OA_Completed));
+        DBG("Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
 
     } else if (reply.cseq_method == SIP_METH_UPDATE) {
 
       if ((reply.code >= 200) && (reply.code < 300)) {
-        /* offer received:
-         *  -> force SDP */
+        /* offer received: -> force SDP */
         generate_sdp = (state == OA_OfferRecved);
         DBG("Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
@@ -445,10 +449,13 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     }
   }
 
+  DBG("Saving OA state, saved_state = <%d>.\n", state);
   saveState();
 
   if (generate_sdp) {
     string sdp_buf;
+
+    DBG("Generating of the new SDP body is required.\n");
 
     if (getSdpBody(sdp_buf)) {
       if (reply.code == 183 && reply.cseq_method == SIP_METH_INVITE) {
@@ -468,6 +475,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
 
       sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(), sdp_buf.length());
       has_sdp = true;
+      DBG("Now has_sdp has been reset to true.\n");
 
       /* some of sessions want generated body to be kept for the future, e.g. for the case
         * when we want to reinvite the other side, before this side got actual SDP answer.
@@ -479,6 +487,8 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     }
 
   } else if (sdp_body && has_sdp) {
+    DBG("Generating of the new SDP body was Not required. Just updating local SDP..\n");
+
     /* update local SDP copy */
     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
       WARN("parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
