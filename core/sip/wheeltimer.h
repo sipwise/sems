@@ -124,6 +124,9 @@ class _wheeltimer:
     // future (or if no timers exist). Needed not to miss the shutdown flag being set.
     const uint64_t max_sleep_time = 500000; // half a second
 
+    atomic_bool stopped;
+    AmCondition shutdown_finished;
+
     void place_timer(timer* t, uint64_t, uint64_t);
 
     void add_timer_to_bucket(timer* t, uint64_t);
@@ -135,15 +138,18 @@ class _wheeltimer:
 
 protected:
     void run();
-    void on_stop(){}
+    void on_stop(){
+	    stopped = true;
+	    shutdown_finished.wait_for();
+    }
 
     _wheeltimer()
-	: resolution(20000) // 20 ms == 20000 us
-    {}
+	: resolution(20000), // 20 ms == 20000 us
+	  stopped(false), shutdown_finished(false) {}
 
     _wheeltimer(uint64_t _resolution)
-	: resolution(_resolution)
-    {}
+	: resolution(_resolution),
+	  stopped(false), shutdown_finished(false) {}
 
 public:
     //clock reference
