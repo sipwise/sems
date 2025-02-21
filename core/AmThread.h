@@ -183,6 +183,9 @@ public:
   }
 };
 
+template<class T>
+thread_local std::unique_ptr<T> AmThreadLocalStorage<T>::t;
+
 #endif
 
 // Local Variables:
