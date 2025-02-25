@@ -10,3 +10,11 @@ Welcome to the SEMS Project Documentation
    :maxdepth: 4
 
    Overview <overview>
+
+==============================================
+
+.. toctree::
+   :maxdepth: 1
+
+   Usage <usage>
+   Compilation and installation <installation>
