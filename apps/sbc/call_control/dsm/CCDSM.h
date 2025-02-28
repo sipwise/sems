@@ -35,8 +35,6 @@
 #include "SBCDSMInstance.h"
 #include "ExtendedCCInterface.h"
 
-#define TRACE DBG
-
 class CCDSMModule: public AmObject /* passing through DI */, public AmDynInvoke, public ExtendedCCInterface
 {
   private:
@@ -54,8 +52,8 @@ class CCDSMModule: public AmObject /* passing through DI */, public AmDynInvoke,
     static CCDSMModule* instance();
 
     virtual void invoke(const string& method, const AmArg& args, AmArg& ret);
-    virtual int onLoad() { TRACE(MOD_NAME " call control module loaded.\n"); return 0; }
-    virtual void onUnload() { TRACE(MOD_NAME " unloading...\n"); }
+    virtual int onLoad() { DBG(MOD_NAME " call control module loaded.\n"); return 0; }
+    virtual void onUnload() { DBG(MOD_NAME " unloading...\n"); }
 
     // CC interface
     bool init(SBCCallLeg *call, const map<string, string> &values);

@@ -42,7 +42,7 @@ CCDSMModule* CCDSMModule::instance()
 
 void CCDSMModule::invoke(const string& method, const AmArg& args, AmArg& ret)
 {
-  TRACE(MOD_NAME " %s(%s)\n", method.c_str(), AmArg::print(args).c_str());
+  DBG(MOD_NAME " %s(%s)\n", method.c_str(), AmArg::print(args).c_str());
 
   if ((method == "start") || (method == "connect") || (method == "end")) {
     return; // FIXME: advertise that the interface shouldn't be used
