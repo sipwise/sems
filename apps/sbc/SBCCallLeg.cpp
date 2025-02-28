@@ -55,8 +55,6 @@
 
 using namespace std;
 
-#define TRACE DBG
-
 // helper functions
 
 static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
@@ -1530,7 +1528,7 @@ void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
 
   // important: normalized SDP should get here
 
-  TRACE("going to append transcoder codecs into SDP\n");
+  DBG("going to append transcoder codecs into SDP\n");
   const std::vector<SdpPayload> &transcoder_codecs = call_profile.transcoder.audio_codecs;
 
   unsigned stream_idx = 0;
@@ -1581,7 +1579,7 @@ void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
       }
       else {
         // no compatible codecs found
-        TRACE("can not transcode stream %d - no compatible codecs with transcoder_codecs found\n", stream_idx + 1);
+        DBG("can not transcode stream %d - no compatible codecs with transcoder_codecs found\n", stream_idx + 1);
       }
 
       stream_idx++; // count chosen media type only
@@ -1721,42 +1719,42 @@ void SBCCallLeg::addPendingCCExtModule(const string& cc_name, const string& cc_m
 
 void SBCCallLeg::holdRequested()
 {
-  TRACE("%s: hold requested\n", getLocalTag().c_str());
+  DBG("%s: hold requested\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdRequested);
   CallLeg::holdRequested();
 }
 
 void SBCCallLeg::holdAccepted()
 {
-  TRACE("%s: hold accepted\n", getLocalTag().c_str());
+  DBG("%s: hold accepted\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdAccepted);
   CallLeg::holdAccepted();
 }
 
 void SBCCallLeg::holdRejected()
 {
-  TRACE("%s: hold rejected\n", getLocalTag().c_str());
+  DBG("%s: hold rejected\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdRejected);
   CallLeg::holdRejected();
 }
 
 void SBCCallLeg::resumeRequested()
 {
-  TRACE("%s: resume requested\n", getLocalTag().c_str());
+  DBG("%s: resume requested\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeRequested);
   CallLeg::resumeRequested();
 }
 
 void SBCCallLeg::resumeAccepted()
 {
-  TRACE("%s: resume accepted\n", getLocalTag().c_str());
+  DBG("%s: resume accepted\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeAccepted);
   CallLeg::resumeAccepted();
 }
 
 void SBCCallLeg::resumeRejected()
 {
-  TRACE("%s: resume rejected\n", getLocalTag().c_str());
+  DBG("%s: resume rejected\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeRejected);
   CallLeg::resumeRejected();
 }
@@ -1806,7 +1804,7 @@ void SBCCallLeg::alterHoldRequestImpl(AmSdp &sdp)
 
 void SBCCallLeg::alterHoldRequest(AmSdp &sdp)
 {
-  TRACE("altering B2B hold request(%s, %s, %s)\n",
+  DBG("altering B2B hold request(%s, %s, %s)\n",
       call_profile.hold_settings.alter_b2b(a_leg) ? "alter B2B" : "do not alter B2B",
       call_profile.hold_settings.mark_zero_connection(a_leg) ? "0.0.0.0" : "own IP",
       call_profile.hold_settings.activity_str(a_leg).c_str()
@@ -1847,7 +1845,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
   } else {
       /* increase sessV */
       sdp.origin.sessV++;
-      TRACE("Increasing session version in SDP origin line to %s", uint128ToStr(sdp.origin.sessV).c_str());
+      DBG("Increasing session version in SDP origin line to %s", uint128ToStr(sdp.origin.sessV).c_str());
   }
 
   AmB2BMedia *ms = getMediaSession();
@@ -1899,7 +1897,7 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
 void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
 {
   if (call_profile.transcoder.isActive()) {
-    TRACE("entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
+    DBG("entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
 
     SBCCallProfile::TranscoderSettings &transcoder_settings = call_profile.transcoder;
     PayloadMask m1, m2;
@@ -1925,13 +1923,13 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
       if(strcasecmp("telephone-event",p->encoding_name.c_str()) == 0) continue;
 
       // mark every codec for relay in m2
-      TRACE("m2: marking payload %d for relay\n", p->payload_type);
+      DBG("m2: marking payload %d for relay\n", p->payload_type);
       m2.set(p->payload_type);
 
       if (!containsPayload(norelay_payloads, *p, m.transport)) {
         // this payload can be relayed
 
-        TRACE("m1: marking payload %d for relay\n", p->payload_type);
+        DBG("m1: marking payload %d for relay\n", p->payload_type);
         m1.set(p->payload_type);
 
         if (!use_m1 && containsPayload(transcoder_settings.audio_codecs, *p, m.transport)) {
@@ -1943,7 +1941,7 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
       }
     }
 
-    TRACE("using %s\n", use_m1 ? "m1" : "m2");
+    DBG("using %s\n", use_m1 ? "m1" : "m2");
     if (use_m1) mask = m1;
     else mask = m2;
   }
