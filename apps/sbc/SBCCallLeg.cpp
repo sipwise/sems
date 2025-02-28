@@ -190,7 +190,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   }
 
   if (!initCCExtModules(call_profile.cc_interfaces, cc_modules)) {
-    ERROR("initializing extended call control modules\n");
+    ILOG_DLG(L_ERR, "initializing extended call control modules\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
@@ -237,16 +237,16 @@ void SBCCallLeg::applyAProfile()
   // SBCFactory::onInvite)
 
   if (call_profile.rtprelay_enabled_value || call_profile.transcoder.isActive()) {
-    DBG("Enabling RTP relay mode for SBC call\n");
+    ILOG_DLG(L_DBG, "Enabling RTP relay mode for SBC call\n");
 
     setRtpRelayForceSymmetricRtp(call_profile.aleg_force_symmetric_rtp_value);
-    DBG("%s\n",getRtpRelayForceSymmetricRtp() ?
+    ILOG_DLG(L_DBG, "%s\n",getRtpRelayForceSymmetricRtp() ?
 	"forcing symmetric RTP (passive mode)":
 	"disabled symmetric RTP (normal mode)");
 
     if (call_profile.aleg_rtprelay_interface_value >= 0) {
       setRtpInterface(call_profile.aleg_rtprelay_interface_value);
-      DBG("using RTP interface %i for A leg\n", rtp_interface);
+      ILOG_DLG(L_DBG, "using RTP interface %i for A leg\n", rtp_interface);
     }
 
     setRtpRelayTransparentSeqno(call_profile.rtprelay_transparent_seqno);
@@ -282,9 +282,9 @@ void SBCCallLeg::applyAProfile()
 int SBCCallLeg::applySSTCfg(AmConfigReader& sst_cfg, 
 			   const AmSipRequest* p_req)
 {
-  DBG("Enabling SIP Session Timers\n");  
+  ILOG_DLG(L_DBG, "Enabling SIP Session Timers\n");  
   if (NULL == SBCFactory::instance()->session_timer_fact) {
-    ERROR("session_timer module not loaded - "
+    ILOG_DLG(L_ERR, "session_timer module not loaded - "
 	  "unable to create call with SST\n");
     return -1;
   }
@@ -298,12 +298,12 @@ int SBCCallLeg::applySSTCfg(AmConfigReader& sst_cfg,
     getHandler(this);
 
   if (!h) {
-    ERROR("could not get a session timer event handler\n");
+    ILOG_DLG(L_ERR, "could not get a session timer event handler\n");
     return -1;
   }
 
   if (h->configure(sst_cfg)) {
-    ERROR("Could not configure the session timer: "
+    ILOG_DLG(L_ERR, "Could not configure the session timer: "
 	  "disabling session timers.\n");
     delete h;
   }
@@ -329,14 +329,14 @@ void SBCCallLeg::applyBProfile()
     AmSessionEventHandlerFactory* uac_auth_f =
       AmPlugIn::instance()->getFactory4Seh("uac_auth");
     if (NULL == uac_auth_f)  {
-      INFO("uac_auth module not loaded. uac auth NOT enabled.\n");
+      ILOG_DLG(L_INFO, "uac_auth module not loaded. uac auth NOT enabled.\n");
     } else {
       AmSessionEventHandler* h = uac_auth_f->getHandler(this);
 
       // we cannot use the generic AmSessionEventHandler hooks,
       // because the hooks don't work in AmB2BSession
       setAuthHandler(h);
-      DBG("uac auth enabled for callee session.\n");
+      ILOG_DLG(L_DBG, "uac auth enabled for callee session.\n");
     }
   }
 
@@ -348,7 +348,7 @@ void SBCCallLeg::applyBProfile()
 	setAuthDI(di_inst);
       }
     } else {
-      ERROR("B-leg UAS auth enabled (uas_auth_bleg_enabled), but uac_auth module not loaded!\n");
+      ILOG_DLG(L_ERR, "B-leg UAS auth enabled (uas_auth_bleg_enabled), but uac_auth module not loaded!\n");
     }
   }
 
@@ -364,7 +364,7 @@ void SBCCallLeg::applyBProfile()
   }
 
   if (!call_profile.next_hop.empty()) {
-    DBG("set next hop to '%s' (1st_req=%s,fixed=%s)\n",
+    ILOG_DLG(L_DBG, "set next hop to '%s' (1st_req=%s,fixed=%s)\n",
 	call_profile.next_hop.c_str(), call_profile.next_hop_1st_req?"true":"false",
 	call_profile.next_hop_fixed?"true":"false");
     dlg->setNextHop(call_profile.next_hop);
@@ -372,7 +372,7 @@ void SBCCallLeg::applyBProfile()
     dlg->setNextHopFixed(call_profile.next_hop_fixed);
   }
 
-  DBG("patch_ruri_next_hop = %i",call_profile.patch_ruri_next_hop);
+  ILOG_DLG(L_DBG, "patch_ruri_next_hop = %i",call_profile.patch_ruri_next_hop);
   dlg->setPatchRURINextHop(call_profile.patch_ruri_next_hop);
 
   // was read from caller but reading directly from profile now
@@ -386,7 +386,7 @@ void SBCCallLeg::applyBProfile()
       setRtpInterface(call_profile.rtprelay_interface_value);
 
     setRtpRelayForceSymmetricRtp(call_profile.force_symmetric_rtp_value);
-    DBG("%s\n",getRtpRelayForceSymmetricRtp() ?
+    ILOG_DLG(L_DBG, "%s\n",getRtpRelayForceSymmetricRtp() ?
 	"forcing symmetric RTP (passive mode)":
 	"disabled symmetric RTP (normal mode)");
 
@@ -432,7 +432,7 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
 	    fixReplaces(req_ev->req.hdrs, false);
 	  }
 
-          DBG("filtering body for request '%s' (c/t '%s')\n",
+          ILOG_DLG(L_DBG, "filtering body for request '%s' (c/t '%s')\n",
               req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
           // todo: handle filtering errors
 
@@ -470,7 +470,7 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
               call_profile.reply_translations.find(reply_ev->reply.code);
 
             if (it != call_profile.reply_translations.end()) {
-              DBG("translating reply %u %s => %u %s\n",
+              ILOG_DLG(L_DBG, "translating reply %u %s => %u %s\n",
                   reply_ev->reply.code, reply_ev->reply.reason.c_str(),
                   it->second.first, it->second.second.c_str());
               reply_ev->reply.code = it->second.first;
@@ -478,7 +478,7 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             }
           }
 
-          DBG("filtering body for reply '%s' (c/t '%s')\n",
+          ILOG_DLG(L_DBG, "filtering body for reply '%s' (c/t '%s')\n",
               reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
 
           filterSdp(reply_ev->reply.body, reply_ev->reply.cseq_method);
@@ -531,7 +531,7 @@ void SBCCallLeg::onSipRequest(const AmSipRequest& req) {
 	bool is_filtered = (it->filter_type == Whitelist) ^ 
 	  (it->filter_list.find(method) != it->filter_list.end());
 	if (is_filtered) {
-	  DBG("replying 405 to filtered message '%s'\n", req.method.c_str());
+	  ILOG_DLG(L_DBG, "replying 405 to filtered message '%s'\n", req.method.c_str());
 	  dlg->reply(req, 405, "Method Not Allowed", NULL, "", SIP_FLAGS_VERBATIM);
 	  return;
 	}
@@ -546,7 +546,7 @@ void SBCCallLeg::onSipRequest(const AmSipRequest& req) {
   if (call_profile.uas_auth_bleg_enabled && NULL != auth_di) {
     AmArg di_args, di_ret;
     try {
-      DBG("Auth: checking authentication\n");
+      ILOG_DLG(L_DBG, "Auth: checking authentication\n");
       di_args.push((AmObject*)&req);
       di_args.push(call_profile.uas_auth_bleg_credentials.realm);
       di_args.push(call_profile.uas_auth_bleg_credentials.user);
@@ -555,38 +555,38 @@ void SBCCallLeg::onSipRequest(const AmSipRequest& req) {
 
       if (di_ret.size() >= 3) {
 	if (di_ret[0].asInt() != 200) {
-	  DBG("Auth: replying %u %s - hdrs: '%s'\n",
+	  ILOG_DLG(L_DBG, "Auth: replying %u %s - hdrs: '%s'\n",
 	      di_ret[0].asInt(), di_ret[1].asCStr(), di_ret[2].asCStr());
 	  dlg->reply(req, di_ret[0].asInt(), di_ret[1].asCStr(), NULL, di_ret[2].asCStr());
 	  return;
 	} else {
-	  DBG("Successfully authenticated request.\n");
+	  ILOG_DLG(L_DBG, "Successfully authenticated request.\n");
 	}
       } else {
-	ERROR("internal: no proper result from checkAuth: '%s'\n", AmArg::print(di_ret).c_str());
+	ILOG_DLG(L_ERR, "internal: no proper result from checkAuth: '%s'\n", AmArg::print(di_ret).c_str());
       }
 
     } catch (const AmDynInvoke::NotImplemented& ni) {
-      ERROR("not implemented DI function 'checkAuth'\n");
+      ILOG_DLG(L_ERR, "not implemented DI function 'checkAuth'\n");
       dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, NULL, "", SIP_FLAGS_VERBATIM);
       return;
     } catch (const AmArg::OutOfBoundsException& oob) {
-      ERROR("out of bounds in  DI call 'checkAuth'\n");
+      ILOG_DLG(L_ERR, "out of bounds in  DI call 'checkAuth'\n");
       dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, NULL, "", SIP_FLAGS_VERBATIM);
       return;
     } catch (const AmArg::TypeMismatchException& oob) {
-      ERROR("type mismatch  in  DI call checkAuth\n");
+      ILOG_DLG(L_ERR, "type mismatch  in  DI call checkAuth\n");
       dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, NULL, "", SIP_FLAGS_VERBATIM);
       return;
     } catch (...) {
-      ERROR("unexpected Exception  in  DI call checkAuth\n");
+      ILOG_DLG(L_ERR, "unexpected Exception  in  DI call checkAuth\n");
       dlg->reply(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, NULL, "", SIP_FLAGS_VERBATIM);
       return;
     }
   }
 
   if (fwd && req.method == SIP_METH_INVITE) {
-    DBG("replying 100 Trying to INVITE to be fwd'ed\n");
+    ILOG_DLG(L_DBG, "replying 100 Trying to INVITE to be fwd'ed\n");
     dlg->reply(req, 100, SIP_REPLY_TRYING);
   }
 
@@ -595,7 +595,7 @@ void SBCCallLeg::onSipRequest(const AmSipRequest& req) {
 
 void SBCCallLeg::setOtherId(const AmSipReply& reply)
 {
-  DBG("setting other_id to '%s'",reply.from_tag.c_str());
+  ILOG_DLG(L_DBG, "setting other_id to '%s'",reply.from_tag.c_str());
   setOtherId(reply.from_tag);
   if(call_profile.transparent_dlg_id && !reply.to_tag.empty()) {
     dlg->setExtLocalTag(reply.to_tag);
@@ -617,8 +617,8 @@ void SBCCallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
   TransMap::iterator t = relayed_req.find(reply.cseq);
   bool fwd = t != relayed_req.end();
 
-  DBG("onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
-  DBG("onSipReply: content-type = %s\n",reply.body.getCTStr().c_str());
+  ILOG_DLG(L_DBG, "onSipReply: %i %s (fwd=%i)\n",reply.code,reply.reason.c_str(),fwd);
+  ILOG_DLG(L_DBG, "onSipReply: content-type = %s\n",reply.body.getCTStr().c_str());
   if (fwd) {
     CALL_EVENT_H(onSipReply, req, reply, old_dlg_status);
   }
@@ -628,7 +628,7 @@ void SBCCallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
     unsigned int cseq_before = dlg->cseq;
     if (auth->onSipReply(req, reply, old_dlg_status)) {
       if (cseq_before != dlg->cseq) {
-        DBG("uac_auth consumed reply with cseq %d and resent with cseq %d; "
+        ILOG_DLG(L_DBG, "uac_auth consumed reply with cseq %d and resent with cseq %d; "
             "updating relayed_req map\n", reply.cseq, cseq_before);
         updateUACTransCSeq(reply.cseq, cseq_before);
 
@@ -653,21 +653,21 @@ void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
 
   if(a_leg) {
     if (!call_profile.aleg_append_headers_req.empty()) {
-      DBG("appending '%s' to outbound request (A leg)\n",
+      ILOG_DLG(L_DBG, "appending '%s' to outbound request (A leg)\n",
 	  call_profile.aleg_append_headers_req.c_str());
       req.hdrs+=call_profile.aleg_append_headers_req;
     }
   }
   else {
     if (!call_profile.append_headers_req.empty()) {
-      DBG("appending '%s' to outbound request (B leg)\n", 
+      ILOG_DLG(L_DBG, "appending '%s' to outbound request (B leg)\n", 
 	  call_profile.append_headers_req.c_str());
       req.hdrs+=call_profile.append_headers_req;
     }
   }
 
   if (NULL != auth) {
-    DBG("auth->onSendRequest cseq = %d\n", req.cseq);
+    ILOG_DLG(L_DBG, "auth->onSendRequest cseq = %d\n", req.cseq);
     auth->onSendRequest(req, flags);
   }
 
@@ -697,7 +697,7 @@ void SBCCallLeg::onOtherBye(const AmSipRequest& req)
 
 void SBCCallLeg::onDtmf(int event, int duration)
 {
-  DBG("received DTMF on %c-leg (%i;%i)\n", a_leg ? 'A': 'B', event, duration);
+  ILOG_DLG(L_DBG, "received DTMF on %c-leg (%i;%i)\n", a_leg ? 'A': 'B', event, duration);
 
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
     if ((*i)->onDtmf(this, event, duration)  == StopProcessing)
@@ -708,7 +708,7 @@ void SBCCallLeg::onDtmf(int event, int duration)
 
   // Don't send the DTMF to the other leg unless we are transcoding
   if (ms && getRtpRelayMode() == RTP_Transcoding) {
-    DBG("sending DTMF (%i;%i)\n", event, duration);
+    ILOG_DLG(L_DBG, "sending DTMF (%i;%i)\n", event, duration);
     ms->sendDtmf(!a_leg,event,duration);
   }
 }
@@ -728,20 +728,20 @@ void SBCCallLeg::onControlCmd(string& cmd, AmArg& params) {
   if (cmd == "teardown") {
     if (a_leg) {
       // was for caller:
-      DBG("teardown requested from control cmd\n");
+      ILOG_DLG(L_DBG, "teardown requested from control cmd\n");
       stopCall("ctrl-cmd");
       SBCEventLog::instance()->logCallEnd(dlg,"ctrl-cmd",&call_connect_ts);
       // FIXME: don't we want to relay the controll event as well?
     }
     else {
       // was for callee:
-      DBG("relaying teardown control cmd to A leg\n");
+      ILOG_DLG(L_DBG, "relaying teardown control cmd to A leg\n");
       relayEvent(new SBCControlEvent(cmd, params));
       // FIXME: don't we want to stopCall as well?
     }
     return;
   }
-  DBG("ignoring unknown control cmd : '%s'\n", cmd.c_str());
+  ILOG_DLG(L_DBG, "ignoring unknown control cmd : '%s'\n", cmd.c_str());
 }
 
 
@@ -757,7 +757,7 @@ void SBCCallLeg::process(AmEvent* ev) {
       int timer_id = plugin_event->data.get(0).asInt();
       if (timer_id >= SBC_TIMER_ID_CALL_TIMERS_START &&
           timer_id <= SBC_TIMER_ID_CALL_TIMERS_END) {
-        DBG("timer %d timeout, stopping call\n", timer_id);
+        ILOG_DLG(L_DBG, "timer %d timeout, stopping call\n", timer_id);
         stopCall("timer");
 	SBCEventLog::instance()->logCallEnd(dlg,"timeout",&call_connect_ts);
         ev->processed = true;
@@ -771,19 +771,19 @@ void SBCCallLeg::process(AmEvent* ev) {
         case BB_Connected: 
           switch (ct_event->timer_action) {
             case SBCCallTimerEvent::Remove:
-              DBG("removing timer %d on call timer request\n", ct_event->timer_id);
+              ILOG_DLG(L_DBG, "removing timer %d on call timer request\n", ct_event->timer_id);
               removeTimer(ct_event->timer_id); return;
             case SBCCallTimerEvent::Set:
-              DBG("setting timer %d to %f on call timer request\n",
+              ILOG_DLG(L_DBG, "setting timer %d to %f on call timer request\n",
                   ct_event->timer_id, ct_event->timeout);
               setTimer(ct_event->timer_id, ct_event->timeout); return;
             case SBCCallTimerEvent::Reset:
-              DBG("resetting timer %d to %f on call timer request\n",
+              ILOG_DLG(L_DBG, "resetting timer %d to %f on call timer request\n",
                   ct_event->timer_id, ct_event->timeout);
               removeTimer(ct_event->timer_id);
               setTimer(ct_event->timer_id, ct_event->timeout);
               return;
-            default: ERROR("unknown timer_action in sbc call timer event\n"); return;
+            default: ILOG_DLG(L_ERR, "unknown timer_action in sbc call timer event\n"); return;
           }
 
         case BB_Init:
@@ -799,7 +799,7 @@ void SBCCallLeg::process(AmEvent* ev) {
               saveCallTimer(ct_event->timer_id, ct_event->timeout); 
               return;
 
-            default: ERROR("unknown timer_action in sbc call timer event\n"); return;
+            default: ILOG_DLG(L_ERR, "unknown timer_action in sbc call timer event\n"); return;
           }
           break;
 
@@ -828,7 +828,7 @@ void SBCCallLeg::process(AmEvent* ev) {
 
 void SBCCallLeg::onInvite(const AmSipRequest& req)
 {
-  DBG("processing initial INVITE %s\n", req.r_uri.c_str());
+  ILOG_DLG(L_DBG, "processing initial INVITE %s\n", req.r_uri.c_str());
 
   ParamReplacerCtx ctx(&call_profile);
   ctx.app_param = getHeader(req.hdrs, PARAM_HDR, true);
@@ -882,12 +882,12 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   }
 
   if (!call_profile.evaluate(ctx, req)) {
-    ERROR("call profile evaluation failed\n");
+    ILOG_DLG(L_ERR, "call profile evaluation failed\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
   if (!initCCExtModules(call_profile.cc_interfaces, cc_modules)) {
-    ERROR("initializing extended call control modules\n");
+    ILOG_DLG(L_ERR, "initializing extended call control modules\n");
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);    
   }
 
@@ -896,7 +896,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   AmUriParser uac_ruri;
   uac_ruri.uri = uac_req.r_uri;
   if(!uac_ruri.parse_uri()) {
-    DBG("Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
+    ILOG_DLG(L_DBG, "Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
     throw AmSession::Exception(400,"Failed to parse R-URI");
   }
 
@@ -914,7 +914,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   if(!call_profile.ruri_host.empty()){
     ctx.ruri_parser.uri = ruri;
     if(!ctx.ruri_parser.parse_uri()) {
-      WARN("Error parsing R-URI '%s'\n", ruri.c_str());
+      ILOG_DLG(L_WARN, "Error parsing R-URI '%s'\n", ruri.c_str());
     }
     else {
       ctx.ruri_parser.uri_port.clear();
@@ -964,9 +964,9 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
 #undef REPLACE_VALS
 
-  DBG("SBC: connecting to '%s'\n",ruri.c_str());
-  DBG("     From:  '%s'\n",from.c_str());
-  DBG("     To:  '%s'\n",to.c_str());
+  ILOG_DLG(L_DBG, "SBC: connecting to '%s'\n",ruri.c_str());
+  ILOG_DLG(L_DBG, "     From:  '%s'\n",from.c_str());
+  ILOG_DLG(L_DBG, "     To:  '%s'\n",to.c_str());
 
   // we evaluated the settings, now we can initialize internals (like RTP relay)
   // we have to use original request (not the altered one) because for example
@@ -1006,7 +1006,7 @@ void SBCCallLeg::connectCallee(const string& remote_party,
   callee_session->setLocalParty(from, from);
   callee_session->setRemoteParty(remote_party, remote_uri);
 
-  DBG("Created B2BUA callee leg, From: %s\n", from.c_str());
+  ILOG_DLG(L_DBG, "Created B2BUA callee leg, From: %s\n", from.c_str());
 
   // FIXME: inconsistent with other filtering stuff - here goes the INVITE
   // already filtered so need not to be catched (can not) in relayEvent because
@@ -1071,7 +1071,7 @@ void SBCCallLeg::clearCallTimers() {
 bool SBCCallLeg::startCallTimers() {
   for (map<int, double>::iterator it=
 	 call_timers.begin(); it != call_timers.end(); it++) {
-    DBG("SBC: starting call timer %i of %f seconds\n", it->first, it->second);
+    ILOG_DLG(L_DBG, "SBC: starting call timer %i of %f seconds\n", it->first, it->second);
     setTimer(it->first, it->second);
   }
 
@@ -1081,7 +1081,7 @@ bool SBCCallLeg::startCallTimers() {
 void SBCCallLeg::stopCallTimers() {
   for (map<int, double>::iterator it=
 	 call_timers.begin(); it != call_timers.end(); it++) {
-    DBG("SBC: removing call timer %i\n", it->first);
+    ILOG_DLG(L_DBG, "SBC: removing call timer %i\n", it->first);
     removeTimer(it->first);
   }
 }
@@ -1120,13 +1120,13 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
     try {
       (*cc_mod)->invoke("start", di_args, ret);
     } catch (const AmArg::OutOfBoundsException& e) {
-      ERROR("OutOfBoundsException executing call control interface start "
+      ILOG_DLG(L_ERR, "OutOfBoundsException executing call control interface start "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
       exception_occured = true;
     } catch (const AmArg::TypeMismatchException& e) {
-      ERROR("TypeMismatchException executing call control interface start "
+      ILOG_DLG(L_ERR, "TypeMismatchException executing call control interface start "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
@@ -1159,13 +1159,13 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 	if (!isArgArray(ret[i]) || !ret[i].size())
 	  continue;
 	if (!isArgInt(ret[i][SBC_CC_ACTION])) {
-	  ERROR("in call control module '%s' - action type not int\n",
+	  ILOG_DLG(L_ERR, "in call control module '%s' - action type not int\n",
 		cc_if.cc_name.c_str());
 	  continue;
 	}
 	switch (ret[i][SBC_CC_ACTION].asInt()) {
 	case SBC_CC_DROP_ACTION: {
-	  DBG("dropping call on call control action DROP from '%s'\n",
+	  ILOG_DLG(L_DBG, "dropping call on call control action DROP from '%s'\n",
 	      cc_if.cc_name.c_str());
 	  dlg->setStatus(AmSipDialog::Disconnected);
 
@@ -1181,7 +1181,7 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 	  if (ret[i].size() < 3 ||
 	      !isArgInt(ret[i][SBC_CC_REFUSE_CODE]) ||
 	      !isArgCStr(ret[i][SBC_CC_REFUSE_REASON])) {
-	    ERROR("in call control module '%s' - REFUSE action parameters missing/wrong: '%s'\n",
+	    ILOG_DLG(L_ERR, "in call control module '%s' - REFUSE action parameters missing/wrong: '%s'\n",
 		  cc_if.cc_name.c_str(), AmArg::print(ret[i]).c_str());
 	    continue;
 	  }
@@ -1191,7 +1191,7 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 	      headers += string(ret[i][SBC_CC_REFUSE_HEADERS][h].asCStr()) + CRLF;
 	  }
 
-	  DBG("replying with %d %s on call control action REFUSE from '%s' headers='%s'\n",
+	  ILOG_DLG(L_DBG, "replying with %d %s on call control action REFUSE from '%s' headers='%s'\n",
 	      ret[i][SBC_CC_REFUSE_CODE].asInt(), ret[i][SBC_CC_REFUSE_REASON].asCStr(),
 	      cc_if.cc_name.c_str(), headers.c_str());
 
@@ -1214,14 +1214,14 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 
 	case SBC_CC_SET_CALL_TIMER_ACTION: {
 	  if (cc_timer_id > SBC_TIMER_ID_CALL_TIMERS_END) {
-	    ERROR("too many call timers - ignoring timer\n");
+	    ILOG_DLG(L_ERR, "too many call timers - ignoring timer\n");
 	    continue;
 	  }
 
 	  if (ret[i].size() < 2 ||
 	      (!(isArgInt(ret[i][SBC_CC_TIMER_TIMEOUT]) ||
 		 isArgDouble(ret[i][SBC_CC_TIMER_TIMEOUT])))) {
-	    ERROR("in call control module '%s' - SET_CALL_TIMER action parameters missing: '%s'\n",
+	    ILOG_DLG(L_ERR, "in call control module '%s' - SET_CALL_TIMER action parameters missing: '%s'\n",
 		  cc_if.cc_name.c_str(), AmArg::print(ret[i]).c_str());
 	    continue;
 	  }
@@ -1232,12 +1232,12 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 	  else
 	    timeout = ret[i][SBC_CC_TIMER_TIMEOUT].asDouble();
 
-	  DBG("saving call timer %i: timeout %f\n", cc_timer_id, timeout);
+	  ILOG_DLG(L_DBG, "saving call timer %i: timeout %f\n", cc_timer_id, timeout);
 	  saveCallTimer(cc_timer_id, timeout);
 	  cc_timer_id++;
 	} break;
 	default: {
-	  ERROR("unknown call control action: '%s'\n", AmArg::print(ret[i]).c_str());
+	  ILOG_DLG(L_ERR, "unknown call control action: '%s'\n", AmArg::print(ret[i]).c_str());
 	  continue;
 	}
 
@@ -1279,14 +1279,14 @@ void SBCCallLeg::CCConnect(const AmSipReply& reply) {
     try {
       (*cc_mod)->invoke("connect", di_args, ret);
     } catch (const AmArg::OutOfBoundsException& e) {
-      ERROR("OutOfBoundsException executing call control interface connect "
+      ILOG_DLG(L_ERR, "OutOfBoundsException executing call control interface connect "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
       stopCall(StatusChangeCause::InternalError);
       return;
     } catch (const AmArg::TypeMismatchException& e) {
-      ERROR("TypeMismatchException executing call control interface connect "
+      ILOG_DLG(L_ERR, "TypeMismatchException executing call control interface connect "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
@@ -1325,12 +1325,12 @@ void SBCCallLeg::CCEnd(const CCInterfaceListIteratorT& end_interface) {
     try {
       (*cc_mod)->invoke("end", di_args, ret);
     } catch (const AmArg::OutOfBoundsException& e) {
-      ERROR("OutOfBoundsException executing call control interface end "
+      ILOG_DLG(L_ERR, "OutOfBoundsException executing call control interface end "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
     } catch (const AmArg::TypeMismatchException& e) {
-      ERROR("TypeMismatchException executing call control interface end "
+      ILOG_DLG(L_ERR, "TypeMismatchException executing call control interface end "
 	    "module '%s' named '%s', parameters '%s'\n",
 	    cc_if.cc_module.c_str(), cc_if.cc_name.c_str(),
 	    AmArg::print(di_args).c_str());
@@ -1394,7 +1394,7 @@ void SBCCallLeg::logCallStart(const AmSipReply& reply)
 					  (int)reply.code,reply.reason);
   }
   else {
-    DBG("could not log call-start/call-attempt (ci='%s';lt='%s')",
+    ILOG_DLG(L_DBG, "could not log call-start/call-attempt (ci='%s';lt='%s')",
 	  getCallID().c_str(),getLocalTag().c_str());
   }
 }
@@ -1408,7 +1408,7 @@ void SBCCallLeg::logCanceledCall()
 					  0,"canceled");
   }
   else {
-    ERROR("could not log call-attempt (canceled, ci='%s';lt='%s')",
+    ILOG_DLG(L_ERR, "could not log call-attempt (canceled, ci='%s';lt='%s')",
 	  getCallID().c_str(),getLocalTag().c_str());
   }
 }
@@ -1418,7 +1418,7 @@ void SBCCallLeg::logCanceledCall()
 
 int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
 {
-  DBG("filtering body\n");
+  ILOG_DLG(L_DBG, "filtering body\n");
 
   AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
   if (!sdp_body) return 0;
@@ -1432,7 +1432,7 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
   AmSdp sdp;
   int res = sdp.parse((const char *)sdp_body->getPayload());
   if (0 != res) {
-    DBG("SDP parsing failed during body filtering!\n");
+    ILOG_DLG(L_DBG, "SDP parsing failed during body filtering!\n");
     return res;
   }
 
@@ -1528,7 +1528,7 @@ void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
 
   // important: normalized SDP should get here
 
-  DBG("going to append transcoder codecs into SDP\n");
+  ILOG_DLG(L_DBG, "going to append transcoder codecs into SDP\n");
   const std::vector<SdpPayload> &transcoder_codecs = call_profile.transcoder.audio_codecs;
 
   unsigned stream_idx = 0;
@@ -1575,11 +1575,11 @@ void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
             }
           }
         }
-        if (id > 128) ERROR("assigned too high payload type number (%d), see RFC 3551\n", id);
+        if (id > 128) ILOG_DLG(L_ERR, "assigned too high payload type number (%d), see RFC 3551\n", id);
       }
       else {
         // no compatible codecs found
-        DBG("can not transcode stream %d - no compatible codecs with transcoder_codecs found\n", stream_idx + 1);
+        ILOG_DLG(L_DBG, "can not transcode stream %d - no compatible codecs with transcoder_codecs found\n", stream_idx + 1);
       }
 
       stream_idx++; // count chosen media type only
@@ -1652,23 +1652,23 @@ bool SBCCallLeg::initCCExtModules(const CCInterfaceListT& cc_module_list, const 
       (*cc_mod)->invoke("getExtendedInterfaceHandler", args, ret);
       ExtendedCCInterface *iface = dynamic_cast<ExtendedCCInterface*>(ret[0].asObject());
       if (iface) {
-        DBG("extended CC interface offered by cc_module '%s'\n", cc_module.c_str());
+        ILOG_DLG(L_DBG, "extended CC interface offered by cc_module '%s'\n", cc_module.c_str());
         // module initialization
         if (!iface->init(this, cc_if.cc_values)) {
-	  ERROR("initializing extended call control interface '%s'\n", cc_module.c_str());
+	  ILOG_DLG(L_ERR, "initializing extended call control interface '%s'\n", cc_module.c_str());
 	  return false;
 	}
 
         cc_ext.push_back(iface);
       }
-      else WARN("BUG: returned invalid extended CC interface by cc_module '%s'\n", cc_module.c_str());
+      else ILOG_DLG(L_WARN, "BUG: returned invalid extended CC interface by cc_module '%s'\n", cc_module.c_str());
     }
     catch (const string& s) {
-      DBG("initialization error '%s' or extended CC interface "
+      ILOG_DLG(L_DBG, "initialization error '%s' or extended CC interface "
 	  "not supported by cc_module '%s'\n", s.c_str(), cc_module.c_str());
     }
     catch (...) {
-      DBG("initialization error or extended CC interface not "
+      ILOG_DLG(L_DBG, "initialization error or extended CC interface not "
 	  "supported by cc_module '%s'\n", cc_module.c_str());
     }
 
@@ -1706,7 +1706,7 @@ void SBCCallLeg::addPendingCCExtModule(const string& cc_name, const string& cc_m
   cc_module_queue.push_back(CCInterface(cc_name));
   cc_module_queue.back().cc_module = cc_module;
   cc_module_queue.back().cc_values = cc_values;
-  DBG("added module '%s' from module '%s' to pending CC Ext modules\n",
+  ILOG_DLG(L_DBG, "added module '%s' from module '%s' to pending CC Ext modules\n",
       cc_name.c_str(), cc_module.c_str());
 }
 
@@ -1719,42 +1719,42 @@ void SBCCallLeg::addPendingCCExtModule(const string& cc_name, const string& cc_m
 
 void SBCCallLeg::holdRequested()
 {
-  DBG("%s: hold requested\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: hold requested\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdRequested);
   CallLeg::holdRequested();
 }
 
 void SBCCallLeg::holdAccepted()
 {
-  DBG("%s: hold accepted\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: hold accepted\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdAccepted);
   CallLeg::holdAccepted();
 }
 
 void SBCCallLeg::holdRejected()
 {
-  DBG("%s: hold rejected\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: hold rejected\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(holdRejected);
   CallLeg::holdRejected();
 }
 
 void SBCCallLeg::resumeRequested()
 {
-  DBG("%s: resume requested\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: resume requested\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeRequested);
   CallLeg::resumeRequested();
 }
 
 void SBCCallLeg::resumeAccepted()
 {
-  DBG("%s: resume accepted\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: resume accepted\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeAccepted);
   CallLeg::resumeAccepted();
 }
 
 void SBCCallLeg::resumeRejected()
 {
-  DBG("%s: resume rejected\n", getLocalTag().c_str());
+  ILOG_DLG(L_DBG, "%s: resume rejected\n", getLocalTag().c_str());
   CALL_EXT_CC_MODULES(resumeRejected);
   CallLeg::resumeRejected();
 }
@@ -1804,7 +1804,7 @@ void SBCCallLeg::alterHoldRequestImpl(AmSdp &sdp)
 
 void SBCCallLeg::alterHoldRequest(AmSdp &sdp)
 {
-  DBG("altering B2B hold request(%s, %s, %s)\n",
+  ILOG_DLG(L_DBG, "altering B2B hold request(%s, %s, %s)\n",
       call_profile.hold_settings.alter_b2b(a_leg) ? "alter B2B" : "do not alter B2B",
       call_profile.hold_settings.mark_zero_connection(a_leg) ? "0.0.0.0" : "own IP",
       call_profile.hold_settings.activity_str(a_leg).c_str()
@@ -1845,7 +1845,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
   } else {
       /* increase sessV */
       sdp.origin.sessV++;
-      DBG("Increasing session version in SDP origin line to %s", uint128ToStr(sdp.origin.sessV).c_str());
+      ILOG_DLG(L_DBG, "Increasing session version in SDP origin line to %s", uint128ToStr(sdp.origin.sessV).c_str());
   }
 
   AmB2BMedia *ms = getMediaSession();
@@ -1897,7 +1897,7 @@ void SBCCallLeg::setLogger(msg_logger *_logger)
 void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
 {
   if (call_profile.transcoder.isActive()) {
-    DBG("entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
+    ILOG_DLG(L_DBG, "entering transcoder's computeRelayMask(%s)\n", a_leg ? "A leg" : "B leg");
 
     SBCCallProfile::TranscoderSettings &transcoder_settings = call_profile.transcoder;
     PayloadMask m1, m2;
@@ -1923,13 +1923,13 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
       if(strcasecmp("telephone-event",p->encoding_name.c_str()) == 0) continue;
 
       // mark every codec for relay in m2
-      DBG("m2: marking payload %d for relay\n", p->payload_type);
+      ILOG_DLG(L_DBG, "m2: marking payload %d for relay\n", p->payload_type);
       m2.set(p->payload_type);
 
       if (!containsPayload(norelay_payloads, *p, m.transport)) {
         // this payload can be relayed
 
-        DBG("m1: marking payload %d for relay\n", p->payload_type);
+        ILOG_DLG(L_DBG, "m1: marking payload %d for relay\n", p->payload_type);
         m1.set(p->payload_type);
 
         if (!use_m1 && containsPayload(transcoder_settings.audio_codecs, *p, m.transport)) {
@@ -1941,7 +1941,7 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
       }
     }
 
-    DBG("using %s\n", use_m1 ? "m1" : "m2");
+    ILOG_DLG(L_DBG, "using %s\n", use_m1 ? "m1" : "m2");
     if (use_m1) mask = m1;
     else mask = m2;
   }
