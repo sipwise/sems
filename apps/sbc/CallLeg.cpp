@@ -35,8 +35,6 @@
 
 #include "global_defs.h"
 
-#define TRACE DBG
-
 // helper functions
 
 static const char *callStatus2str(const CallLeg::CallStatus state)
@@ -61,7 +59,7 @@ static const char *callStatus2str(const CallLeg::CallStatus state)
 
 ReliableB2BEvent::~ReliableB2BEvent()
 {
-  TRACE("reliable event was %sprocessed, sending %p to %s\n",
+  DBG("reliable event was %sprocessed, sending %p to %s\n",
       processed ? "" : "NOT ",
       processed ? processed_reply : unprocessed_reply,
       sender.c_str());
@@ -533,7 +531,7 @@ bool CallLeg::setOther(const string &id, bool forward)
         dlg->setOAState(AmOfferAnswer::OA_OfferRecved);
       }
       if (i->media_session) {
-        TRACE("connecting media session: %s to %s\n", 
+        DBG("connecting media session: %s to %s\n", 
             dlg->getLocalTag().c_str(), getOtherId().c_str());
         i->media_session->changeSession(a_leg, this);
       }
@@ -702,7 +700,7 @@ void CallLeg::onB2BReply(B2BSipReplyEvent *ev)
 
   AmSipReply& reply = ev->reply;
 
-  TRACE("%s: B2B SIP reply %d/%d %s received in %s state\n",
+  DBG("%s: B2B SIP reply %d/%d %s received in %s state\n",
       getLocalTag().c_str(),
       reply.code, reply.cseq, reply.cseq_method.c_str(),
       callStatus2str(call_status));
@@ -718,7 +716,7 @@ void CallLeg::onB2BReply(B2BSipReplyEvent *ev)
     // handle relayed initial replies (replies to initiating INVITE at the other
     // side, note that this need not to be initiating INVITE at our side)
 
-    TRACE("established CSeq: %d, forward: %s\n", est_invite_cseq, ev->forward ? "yes": "no");
+    DBG("established CSeq: %d, forward: %s\n", est_invite_cseq, ev->forward ? "yes": "no");
 
     onInitialReply(ev);
   }
@@ -727,7 +725,7 @@ void CallLeg::onB2BReply(B2BSipReplyEvent *ev)
 
     // reply not from our peer (might be one of the discarded ones)
     if (getOtherId() != ev->sender_ltag && getOtherId() != reply.from_tag) {
-      TRACE("ignoring reply from %s in %s state, other_id = '%s'\n",
+      DBG("ignoring reply from %s in %s state, other_id = '%s'\n",
 	    reply.from_tag.c_str(), callStatus2str(call_status), getOtherId().c_str());
       return;
     }
@@ -808,7 +806,7 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
     ERROR("BUG: invalid argument given\n");
     return;
   }
-  TRACE("handling ReconnectLegEvent, other: %s, connect to %s\n", 
+  DBG("handling ReconnectLegEvent, other: %s, connect to %s\n", 
 	getOtherId().c_str(), ev->session_tag.c_str());
 
   ev->markAsProcessed();
@@ -828,7 +826,7 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
       hdrs += SIP_HDR_COLSP(SIP_HDR_P_FORCE_491) "0" CRLF;
     SessionUpdate *u = new Reinvite(hdrs, ev->body, true, ev->relayed_invite, ev->r_cseq);
 
-    TRACE("INVITE pending - planning session update with SDP from INVITE+replaces for later for ltag %s",
+    DBG("INVITE pending - planning session update with SDP from INVITE+replaces for later for ltag %s",
 	  getLocalTag().c_str());
     pending_updates.push_back(u);
     DBG("INVITE pending - accepting with fake SDP\n");
@@ -866,7 +864,7 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
 		  "ruri", dlg->getRemoteUri().c_str());
 
   if (!is_pending_call) {
-    TRACE("updating session with SDP from INVITE+replaces for ltag %s", getLocalTag().c_str());
+    DBG("updating session with SDP from INVITE+replaces for ltag %s", getLocalTag().c_str());
     // the Re-INVITE to be used
     SessionUpdate *u = new Reinvite(ev->hdrs, ev->body, true, ev->relayed_invite, ev->r_cseq);
     updateSession(u);
@@ -887,7 +885,7 @@ void CallLeg::onB2BReplace(ReplaceLegEvent *e)
     return;
   }
 
-  TRACE("handling ReplaceLegEvent, other: %s, connect to %s\n", 
+  DBG("handling ReplaceLegEvent, other: %s, connect to %s\n", 
 	getOtherId().c_str(), reconnect->session_tag.c_str());
 
   string id(getOtherId());
@@ -926,7 +924,7 @@ void CallLeg::onB2BReplaceInProgress(ReplaceInProgressEvent *e)
 
 void CallLeg::disconnect(bool hold_remote, bool preserve_media_session)
 {
-  TRACE("disconnecting call leg %s from the other\n", getLocalTag().c_str());
+  DBG("disconnecting call leg %s from the other\n", getLocalTag().c_str());
 
   switch (call_status) {
     case Disconnecting:
@@ -978,7 +976,7 @@ int CallLeg::putOnHoldImpl()
 {
   if (on_hold) return -1; // no request went out
 
-  TRACE("putting remote on hold\n");
+  DBG("putting remote on hold\n");
   hold = HoldRequested;
 
   holdRequested();
@@ -1003,7 +1001,7 @@ int CallLeg::resumeHeldImpl()
   if (!on_hold) return -1;
 
   try {
-    TRACE("resume held remote\n");
+    DBG("resume held remote\n");
     hold = ResumeRequested;
 
     resumeRequested();
@@ -1078,7 +1076,7 @@ void CallLeg::onInvite(const AmSipRequest& req)
 
 void CallLeg::onSipRequest(const AmSipRequest& req)
 {
-  TRACE("%s: SIP request %d %s received in %s state\n",
+  DBG("%s: SIP request %d %s received in %s state\n",
         getLocalTag().c_str(), req.cseq,
         req.method.c_str(), callStatus2str(call_status));
 
@@ -1089,7 +1087,7 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
   if ((getCallStatus() == Disconnected || getCallStatus() == Disconnecting)
         && getOtherId().empty())
   {
-    TRACE("handling request %s in disconnected state", req.method.c_str());
+    DBG("handling request %s in disconnected state", req.method.c_str());
 
     /* this is not correct but what is?
      * handle reINVITEs within B2B call with no other leg */
@@ -1153,7 +1151,7 @@ void CallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSip
   TransMap::iterator t = relayed_req.find(reply.cseq);
   bool relayed_request = (t != relayed_req.end());
 
-  TRACE("%s: SIP reply %d/%d %s (%s) received in %s state\n",
+  DBG("%s: SIP reply %d/%d %s (%s) received in %s state\n",
       getLocalTag().c_str(),
       reply.code, reply.cseq, reply.cseq_method.c_str(),
       (relayed_request ? "to relayed request" : "to locally generated request"),
@@ -1184,7 +1182,7 @@ void CallLeg::onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSip
       pending_updates.front()->reset();
       double t = get491RetryTime();
       pending_updates_timer.start(getLocalTag(), t);
-      TRACE("planning to retry update operation in %gs", t);
+      DBG("planning to retry update operation in %gs", t);
     }
     else {
       // TODO: 503, ...
@@ -1348,7 +1346,7 @@ void CallLeg::addNewCallee(CallLeg *callee, ConnectLegEvent *e,
   other_legs.push_back(b);
 
   if (AmConfig::LogSessions) {
-    TRACE("Starting B2B callee session %s\n",
+    DBG("Starting B2B callee session %s\n",
 	 callee->getLocalTag().c_str()/*, invite_req.cmd.c_str()*/);
   }
 
@@ -1366,7 +1364,7 @@ void CallLeg::addNewCallee(CallLeg *callee, ConnectLegEvent *e,
 
   // generate connect event to the newly added leg
   // Warning: correct callee's role must be already set (in constructor or so)
-  TRACE("relaying connect leg event to the new leg\n");
+  DBG("relaying connect leg event to the new leg\n");
   // other stuff than relayed INVITE should be set directly when creating callee
   // (remote_uri, remote_party is not propagated and thus B2BConnectEvent is not
   // used because it would just overwrite already set things. Note that in many
@@ -1396,14 +1394,14 @@ const char* CallLeg::getCallStatusStr() {
 void CallLeg::updateCallStatus(CallStatus new_status, const StatusChangeCause &cause)
 {
   if (new_status == Connected)
-    TRACE("%s leg %s changing status from %s to %s with %s\n",
+    DBG("%s leg %s changing status from %s to %s with %s\n",
         a_leg ? "A" : "B",
         getLocalTag().c_str(),
         callStatus2str(call_status),
         callStatus2str(new_status),
         getOtherId().c_str());
   else
-    TRACE("%s leg %s changing status from %s to %s\n",
+    DBG("%s leg %s changing status from %s to %s\n",
         a_leg ? "A" : "B",
         getLocalTag().c_str(),
         callStatus2str(call_status),
@@ -1474,7 +1472,7 @@ void CallLeg::addExistingCallee(const string &session_tag, ReconnectLegEvent *ev
   else b.media_session = NULL;
 
   // generate connect event to the newly added leg
-  TRACE("relaying re-connect leg event to the B leg\n");
+  DBG("relaying re-connect leg event to the B leg\n");
   ev->setMedia(b.media_session, rtp_relay_mode);
   // TODO: what about the RTP relay and other settings? send them as well?
   if (!AmSessionContainer::instance()->postEvent(session_tag, ev)) {
@@ -1632,13 +1630,13 @@ void CallLeg::changeRtpMode(RTPRelayMode new_mode)
       break;
 
     case AmOfferAnswer::OA_OfferSent:
-      TRACE("changing RTP mode after offer was sent: reINVITE needed\n");
+      DBG("changing RTP mode after offer was sent: reINVITE needed\n");
       // TODO: plan a reINVITE
       ERROR("not implemented\n");
       break;
 
     case AmOfferAnswer::OA_OfferRecved:
-      TRACE("changing RTP mode after offer was received\n");
+      DBG("changing RTP mode after offer was received\n");
       break;
 
     case AmOfferAnswer::__max_OA: break; // grrrr
@@ -1688,13 +1686,13 @@ void CallLeg::changeRtpMode(RTPRelayMode new_mode, AmB2BMedia *new_media)
       break;
 
     case AmOfferAnswer::OA_OfferSent:
-      TRACE("changing RTP mode/media session after offer was sent: reINVITE needed\n");
+      DBG("changing RTP mode/media session after offer was sent: reINVITE needed\n");
       // TODO: plan a reINVITE
       ERROR("%s: not implemented\n", getLocalTag().c_str());
       break;
 
     case AmOfferAnswer::OA_OfferRecved:
-      TRACE("changing RTP mode/media session after offer was received\n");
+      DBG("changing RTP mode/media session after offer was received\n");
       break;
 
     case AmOfferAnswer::__max_OA: break; // grrrr
@@ -1764,7 +1762,7 @@ void CallLeg::acceptPendingInvite(AmSipRequest *invite)
     updateLocalBody(body);
   } catch (...) { /* throw ? */  }
 
-  TRACE("replying pending INVITE with body: %s\n", body_str.c_str());
+  DBG("replying pending INVITE with body: %s\n", body_str.c_str());
   dlg->reply(*invite, 200, "OK", &body);
 
   if (getCallStatus() != Connected) updateCallStatus(Connected);
@@ -1842,7 +1840,7 @@ void CallLeg::adjustOffer(AmSdp &sdp)
 
 void CallLeg::updateLocalSdp(AmSdp &sdp)
 {
-  TRACE("%s: updateLocalSdp (OA: %d)\n", getLocalTag().c_str(), dlg->getOAState());
+  DBG("%s: updateLocalSdp (OA: %d)\n", getLocalTag().c_str(), dlg->getOAState());
   // handle the body based on current offer-answer status
   // (possibly update the body before sending to remote)
 
@@ -1897,7 +1895,7 @@ void CallLeg::updateLocalSdp(AmSdp &sdp)
 
 void CallLeg::offerRejected()
 {
-  TRACE("%s: offer rejected! (hold status: %d)", getLocalTag().c_str(), hold);
+  DBG("%s: offer rejected! (hold status: %d)", getLocalTag().c_str(), hold);
   switch (hold) {
     case HoldRequested: holdRejected(); break;
     case ResumeRequested: resumeRejected(); break;
@@ -1944,7 +1942,7 @@ void CallLeg::debug()
 
 int CallLeg::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
 {
-  TRACE("%s: oaCompleted\n", getLocalTag().c_str());
+  DBG("%s: oaCompleted\n", getLocalTag().c_str());
   switch (hold) {
     case HoldRequested: holdAccepted(); break;
     case ResumeRequested: resumeAccepted(); break;
@@ -1957,16 +1955,16 @@ int CallLeg::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
 
 void CallLeg::applyPendingUpdate()
 {
-  TRACE("going to apply pending updates");
+  DBG("going to apply pending updates");
 
   if (pending_updates.empty()) return;
 
   if (!canUpdateSession()) {
-    TRACE("can't apply pending updates now");
+    DBG("can't apply pending updates now");
     return;
   }
 
-  TRACE("applying pending updates");
+  DBG("applying pending updates");
 
   do {
     SessionUpdate *u = pending_updates.front();
@@ -1986,24 +1984,24 @@ void CallLeg::applyPendingUpdate()
 
 void CallLeg::onTransFinished()
 {
-  TRACE("UAC/UAS transaction finished");
+  DBG("UAC/UAS transaction finished");
   AmB2BSession::onTransFinished();
 
   if (pending_updates.empty() || !canUpdateSession()) return; // there is nothing we can do now
 
   if (pending_updates_timer.started()) {
-    TRACE("UAC/UAS transaction finished, but waiting for planned updates");
+    DBG("UAC/UAS transaction finished, but waiting for planned updates");
     return; // it is planned to apply the updates later on
   }
 
-  TRACE("UAC/UAS transaction finished, try to apply pending updates");
+  DBG("UAC/UAS transaction finished, try to apply pending updates");
   AmSessionContainer::instance()->postEvent(getLocalTag(), new ApplyPendingUpdatesEvent());
 }
 
 void CallLeg::updateSession(SessionUpdate *u)
 {
   if (!canUpdateSession() || !pending_updates.empty()) {
-    TRACE("planning session update for later");
+    DBG("planning session update for later");
     pending_updates.push_back(u);
   }
   else {
