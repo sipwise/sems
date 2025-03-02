@@ -18,3 +18,4 @@ Welcome to the SEMS Project Documentation
 
    Usage <usage>
    Compilation and installation <installation>
+   Packaging <packaging>
