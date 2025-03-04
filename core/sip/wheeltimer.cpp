@@ -155,6 +155,7 @@ uint64_t _wheeltimer::get_timer_bucket(timer* t)
     return bucket;
 }
 
+// requires buckets_mut mutex to be held
 void _wheeltimer::place_timer(timer* t, uint64_t us, uint64_t latest)
 {
     t->arm(us);
@@ -183,6 +184,7 @@ void _wheeltimer::place_timer(timer* t, uint64_t us, uint64_t latest)
     add_timer_to_bucket(t, bucket);
 }
 
+// requires buckets_mut mutex to be held
 void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 {
     t->link(buckets[bucket]);
@@ -190,6 +192,7 @@ void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 	t, bucket, buckets[bucket].size());
 }
 
+// requires buckets_mut mutex to be held
 void _wheeltimer::delete_timer(timer* t)
 {
     if (t->disarm())
