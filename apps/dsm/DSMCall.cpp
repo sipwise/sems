@@ -636,15 +636,17 @@ void DSMCall::process(AmEvent* event)
   /* add some additional headers for DSM triggered updates (triggered by replies) */
   B2BEvent* b2b_ev = dynamic_cast<B2BEvent*>(event);
   if (b2b_ev && b2b_ev->event_id == B2BSipReply) {
-    string pai_from_hdr = getVar(DSM_B2B_BUILD_PAI_FROM_HDR);
 
+    /* get reply via B2BSipReplyEvent (we know event's id, hence can surely cast it) */
+    AmSipReply& reply = (static_cast<B2BSipReplyEvent*>(b2b_ev))->reply;
+
+    string pai_from_hdr = getVar(DSM_B2B_BUILD_PAI_FROM_HDR);
     string mark_dsm = getVar(DSM_B2B_MARK_DSM_FOR_UPDATES);
     string hdrs;
 
     /* add P-Asserted-Identity */
-    if (!pai_from_hdr.empty()) {
-      string pai_value;
-      B2BgetHeaderReply(pai_from_hdr, pai_value);
+    if (!pai_from_hdr.empty() && !reply.hdrs.empty()) {
+      string pai_value = getHeader(reply.hdrs, pai_from_hdr, true);
 
       DBG("Building '%s' value from header '%s'.\n", SIP_HDR_P_ASSERTED_IDENTITY, pai_from_hdr.c_str());
 
