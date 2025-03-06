@@ -222,7 +222,7 @@ class DBRegAgent
   void scheduleDeregistration(long object_id, const string& type);
 
   /** create a timer for the registration - fixed expiry + action */
-  void setRegistrationTimer(long object_id, unsigned int timeout,
+  void setRegistrationTimer(long object_id, uint64_t timeout,
 			    RegistrationActionEvent::RegAction reg_action, const string& type);
 
   /** create a registration refresh timer for that registration 
@@ -232,7 +232,7 @@ class DBRegAgent
       @param now_time      - current time
    */
   void setRegistrationTimer(long object_id,
-			    time_t expiry, time_t reg_start_ts, time_t now_time, const string& type);
+			    uint64_t expiry, uint64_t reg_start_ts, uint64_t now_time, const string& type);
 
   /** clear re-registration timer and remove timer object */
   void clearRegistrationTimer(long object_id, const string& type);

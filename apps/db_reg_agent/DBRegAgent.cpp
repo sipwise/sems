@@ -253,15 +253,15 @@ int DBRegAgent::onLoad()
 void DBRegAgent::onUnload() {
   if (running) {
     running = false;
-    registration_scheduler._timer_thread_running = false;
+    registration_scheduler.stop();
     DBG("unclean shutdown. Waiting for processing thread to stop.\n");
     for (int i=0;i<400;i++) {
-      if (shutdown_finished && registration_scheduler._shutdown_finished)
+      if (shutdown_finished)
 	break;
       usleep(2000); // 2ms
     }
 
-    if (!shutdown_finished || !registration_scheduler._shutdown_finished) {
+    if (!shutdown_finished) {
       WARN("processing thread could not be stopped, process will probably crash\n");
     }
   }
@@ -785,7 +785,7 @@ void DBRegAgent::process(AmEvent* ev) {
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	running = false;
-	registration_scheduler._timer_thread_running = false;
+	registration_scheduler.stop();
       }
       return;
     }
@@ -1218,9 +1218,9 @@ void DBRegAgent::on_stop() {
   running = false;
 }
 
-void DBRegAgent::setRegistrationTimer(long object_id, unsigned int timeout,
+void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
 				      RegistrationActionEvent::RegAction reg_action, const string& type) {
-  DBG("setting Register timer for subscription %ld, timeout %u, reg_action %u\n",
+  DBG("setting Register timer for subscription %ld, timeout %" PRIu64 ", reg_action %u\n",
       object_id, timeout, reg_action);
 
   RegTimer* timer = NULL;
@@ -1250,10 +1250,9 @@ void DBRegAgent::setRegistrationTimer(long object_id, unsigned int timeout,
   }
 
   timer->data2 = reg_action;
-  timer->expires = time(0) + timeout;
 
-  DBG("placing timer for %ld in T-%u, type: %s\n", object_id, timeout, type.c_str());
-  registration_scheduler.insert_timer(timer);
+  DBG("placing timer for %ld in T-%" PRIu64 ", type: %s\n", object_id, timeout, type.c_str());
+  registration_scheduler.insert_timer(timer, timeout * 1000000);
 
   if (type == TYPE_PEERING)
     registration_timers_peers.insert(std::make_pair(object_id, timer));
@@ -1262,9 +1261,8 @@ void DBRegAgent::setRegistrationTimer(long object_id, unsigned int timeout,
 }
 
 void DBRegAgent::setRegistrationTimer(long object_id,
-              time_t expiry, time_t reg_start_ts,
-              time_t now_time, const string& type) {
-
+				      uint64_t expiry, uint64_t reg_start_ts,
+				      uint64_t now_time, const string& type) {
   DBG("setting re-Register timer for subscription %ld, expiry %ld, reg_start_t %ld, type: %s\n",
       object_id, expiry, reg_start_ts, type.c_str());
 
@@ -1297,8 +1295,8 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   timer->data2 = RegistrationActionEvent::Register;
 
   if (minimum_reregister_interval>0.0) {
-    time_t t_expiry_max = reg_start_ts;
-    time_t t_expiry_min = reg_start_ts;
+    uint64_t t_expiry_max = reg_start_ts;
+    uint64_t t_expiry_min = reg_start_ts;
     if (expiry > reg_start_ts)
       t_expiry_max+=(expiry - reg_start_ts) * reregister_interval;
     if (expiry > reg_start_ts)
@@ -1313,8 +1311,6 @@ void DBRegAgent::setRegistrationTimer(long object_id,
     if (t_expiry_min > t_expiry_max)
       t_expiry_min = t_expiry_max;
 
-    timer->expires = t_expiry_max;
-
     if (t_expiry_max == now_time) {
       // immediate re-registration
       DBG("calculated re-registration at TS <now> (%ld)"
@@ -1322,7 +1318,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 	  "minimum_reregister_interval=%f)\n",
 	  t_expiry_max, reg_start_ts, expiry,
 	  reregister_interval, minimum_reregister_interval);
-      registration_scheduler.insert_timer(timer);
+      registration_scheduler.insert_timer_abs(timer, t_expiry_max * 1000000);
     } else {
       DBG("calculated re-registration at TS %ld .. %ld"
 	  "(reg_start_ts=%ld, reg_expiry=%ld, reregister_interval=%f, "
@@ -1330,10 +1326,10 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 	  t_expiry_min, t_expiry_max, reg_start_ts, expiry,
 	  reregister_interval, minimum_reregister_interval);
   
-      registration_scheduler.insert_timer_leastloaded(timer, t_expiry_min, t_expiry_max);
+      registration_scheduler.insert_timer_abs(timer, t_expiry_min * 1000000, t_expiry_max * 1000000);
     }
   } else {
-    time_t t_expiry = reg_start_ts;
+    uint64_t t_expiry = reg_start_ts;
     if (expiry > reg_start_ts)
       t_expiry+=(expiry - reg_start_ts) * reregister_interval;
 
@@ -1346,8 +1342,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 	"(reg_start_ts=%ld, reg_expiry=%ld, reregister_interval=%f)\n",
 	t_expiry, reg_start_ts, expiry, reregister_interval);
 
-    timer->expires = t_expiry;    
-    registration_scheduler.insert_timer(timer);
+    registration_scheduler.insert_timer_abs(timer, t_expiry * 1000000);
   }
 }
 

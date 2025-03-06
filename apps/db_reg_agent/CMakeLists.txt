@@ -1,6 +1,5 @@
 set (db_reg_agent_SRCS
 DBRegAgent.cpp
-RegistrationTimer.cpp
 )
 
 INCLUDE_DIRECTORIES(/usr/include/mysql)
