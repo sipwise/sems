@@ -119,6 +119,8 @@ class DBRegAgentProcessorThread
 
 };
 
+class RegTimer;
+
 class DBRegAgent
 : public AmDynInvokeFactory,
   public AmDynInvoke,
@@ -287,7 +289,7 @@ class DBRegAgent
   void invoke(const string& method, 
 	      const AmArg& args, AmArg& ret);
   /** re-registration timer callback */
-  void timer_cb(RegTimer* timer, long object_id, int data2, const string& type);
+  void timer_cb(RegTimer* timer);
 
   friend class DBRegAgentProcessorThread;
 };

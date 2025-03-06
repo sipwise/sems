@@ -35,28 +35,7 @@
 #include "AmThread.h"
 #include "../../core/sip/wheeltimer.h"
 
-#include <string>
-using std::string;
-
 #define TIMER_RESOLUTION (100 * 1000) // 100 ms
-
-class RegTimer;
-typedef void (*timer_cb)(RegTimer*, long /*data1*/, int /*data2*/, const string& type);
-
-class RegTimer : public timer {
- public:
-    void fire() {
-        this->cb(this, this->data1, this->data2, this->data3);
-    }
-
-    timer_cb       cb;
-    long           data1;
-    int            data2;
-		string         data3;
-
-    RegTimer()
-      : cb(0), data1(0), data2(0) { }
-};
 
 /**
   Additionally to normal timer operation (setting and removing timer,

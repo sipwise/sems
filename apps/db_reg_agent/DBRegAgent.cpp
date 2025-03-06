@@ -60,9 +60,18 @@ bool DBRegAgent::save_auth_replies = false;
 
 unsigned int DBRegAgent::error_retry_interval = 300;
 
-static void _timer_cb(RegTimer* timer, long object_id, int data2, const string& type) {
-  DBRegAgent::instance()->timer_cb(timer, object_id, data2, type);
-}
+class RegTimer : public timer {
+  public:
+    void fire() {
+      DBRegAgent::instance()->timer_cb(this);
+    }
+
+    long                                object_id = 0;
+    RegistrationActionEvent::RegAction  action;
+    string                              type;
+
+    RegTimer() {}
+};
 
 DBRegAgent::DBRegAgent(const string& _app_name)
   : AmDynInvokeFactory(_app_name),
@@ -1239,9 +1248,8 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
   if (marker) {
     DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
     timer = new RegTimer();
-    timer->data1 = object_id;
-    timer->data3 = type;          // 'peering' or 'subscriber'
-    timer->cb = _timer_cb;
+    timer->object_id = object_id;
+    timer->type = type;          // 'peering' or 'subscriber'
     DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
   } else {
     timer = it->second;
@@ -1249,7 +1257,7 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
     registration_scheduler.remove_timer(timer);
   }
 
-  timer->data2 = reg_action;
+  timer->action = reg_action;
 
   DBG("placing timer for %ld in T-%" PRIu64 ", type: %s\n", object_id, timeout, type.c_str());
   registration_scheduler.insert_timer(timer, timeout * 1000000);
@@ -1281,9 +1289,8 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   if (marker) {
     DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
     timer = new RegTimer();
-    timer->data1 = object_id;
-    timer->data3 = type;          // 'peering' or 'subscriber'
-    timer->cb = _timer_cb;
+    timer->object_id = object_id;
+    timer->type = type;          // 'peering' or 'subscriber'
     DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
     registration_timers.insert(std::make_pair(object_id, timer));
   } else {
@@ -1292,7 +1299,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
     registration_scheduler.remove_timer(timer);
   }
 
-  timer->data2 = RegistrationActionEvent::Register;
+  timer->action = RegistrationActionEvent::Register;
 
   if (minimum_reregister_interval>0.0) {
     uint64_t t_expiry_max = reg_start_ts;
@@ -1410,21 +1417,21 @@ void DBRegAgent::removeRegistrationTimer(long object_id, const string& type) {
     registration_timers.erase(it);
 }
 
-void DBRegAgent::timer_cb(RegTimer* timer, long object_id, int reg_action, const string& type) {
+void DBRegAgent::timer_cb(RegTimer* timer) {
   DBG("re-registration timer expired: subscriber %ld, timer=[%p], action %d, type %s\n",
-      object_id, timer, reg_action, type.c_str());
+      timer->object_id, timer, timer->action, timer->type.c_str());
 
   registrations_mut.lock();
-  removeRegistrationTimer(object_id, type);
+  removeRegistrationTimer(timer->object_id, timer->type);
   registrations_mut.unlock();
 
-  switch (reg_action) {
+  switch (timer->action) {
   case RegistrationActionEvent::Register:
-    scheduleRegistration(object_id, type); break;
+    scheduleRegistration(timer->object_id, timer->type); break;
   case RegistrationActionEvent::Deregister:
-    scheduleDeregistration(object_id, type); break;
+    scheduleDeregistration(timer->object_id, timer->type); break;
   default: ERROR("internal: unknown reg_action %d for subscriber %ld timer event\n",
-		 reg_action, object_id);
+		 timer->action, timer->object_id);
   };
 }
 
