@@ -97,7 +97,7 @@ int AmConferenceChannel::get(unsigned long long system_ts, unsigned char* buffer
 
   size = resampleOutput(buffer,size,mixer_sample_rate,output_sample_rate);
   mixer->unlock();
-  return size;
+  return size;  /* will be zero if `mixer_sample_rate` isn't set */
 }
 
 ChannelWritingFile::ChannelWritingFile(const char* path) 
