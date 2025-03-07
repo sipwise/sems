@@ -73,9 +73,10 @@ int AmConferenceChannel::get(unsigned long long system_ts, unsigned char* buffer
 
   AmMultiPartyMixer* mixer = status->getMixer();
   mixer->lock();
-  unsigned int size = output_sample_rate ?
-    PCM16_S2B(nb_samples * mixer->GetCurrentSampleRate() / output_sample_rate) : 0;
+
+  unsigned int size = PCM16_S2B(nb_samples * mixer->GetCurrentSampleRate() / output_sample_rate);
   unsigned int mixer_sample_rate = 0;
+
   mixer->GetChannelPacket(channel_id,system_ts,buffer,size,mixer_sample_rate);
 
 
