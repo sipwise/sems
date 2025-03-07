@@ -178,15 +178,17 @@ static int wav_read_header(FILE* fp, struct amci_file_desc_t* fmt_desc)
   fmt_desc->rate = rate;
   fmt_desc->channels = channels;
 
-  if( (fmt == 0x01) && (sample_size == 1)){
-    ERROR("Sorry, we don't support PCM 8 bit\n");
+  if( (fmt == 0x01) && (sample_size == 1)) {
+    ERROR("No support of PCM 8 bit!\n");
+    return -1;
+  } else if (chunk_size < 16) {
+    ERROR("Chunk size is less than supported bit rate (16 bit)!\n");
     return -1;
   }
 
-  if ((fseek(fp,chunk_size-16,SEEK_CUR) < 0) 
-      && errno == EBADF) {
+  if ((fseek(fp, (chunk_size - 16), SEEK_CUR) < 0) && errno == EBADF) {
     is_seekable = 0;
-    wav_dummyread(fp,chunk_size-16);
+    wav_dummyread(fp, (chunk_size - 16));
   }
 
   for(;;) {
