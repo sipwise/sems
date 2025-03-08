@@ -130,7 +130,7 @@ class XMLRPC2DIServer
   XMLRPC2DIServer(unsigned int port,
 		  const string& bind_ip,
 		  bool di_export, 
-		  string direct_export,
+		  string &direct_export,
       bool multithreaded = false,
       unsigned int threads = 5);
 
@@ -155,7 +155,7 @@ class  XMLRPCServerEntry {
   time_t last_try;
 
  public: 
-  XMLRPCServerEntry(string s, int p, string u);
+  XMLRPCServerEntry(string &s, int p, string &u);
   ~XMLRPCServerEntry();
 
   bool is_active();

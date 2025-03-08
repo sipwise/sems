@@ -158,7 +158,7 @@ int XMLRPC2DI::load() {
   return 0;
 }
 
-XMLRPCServerEntry::XMLRPCServerEntry(string s, int p, string u)
+XMLRPCServerEntry::XMLRPCServerEntry(string &s, int p, string &u)
   : last_try(0), active(true), server(s), port(p), uri(u) 
 { }
 
@@ -319,8 +319,8 @@ void XMLRPC2DI::invoke(const string& method,
 
 XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
 				 const string& bind_ip,
-				 bool di_export, 
-				 string direct_export,
+				 bool di_export,
+				 string &direct_export,
 				 bool multithreaded,
 				 unsigned int threads)
   : AmEventQueue(this),
