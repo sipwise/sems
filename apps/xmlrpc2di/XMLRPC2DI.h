@@ -131,7 +131,8 @@ class XMLRPC2DIServer
 		  const string& bind_ip,
 		  bool di_export, 
 		  string direct_export,
-		  XmlRpcServer* s);
+      bool multithreaded = false,
+      unsigned int threads = 5);
 
   bool initialize();
 

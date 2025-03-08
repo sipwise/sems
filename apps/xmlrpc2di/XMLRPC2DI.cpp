@@ -71,39 +71,27 @@ int XMLRPC2DI::onLoad() {
 int XMLRPC2DI::load() {
   if (configured)    // load only once
     return 0;
+
   configured = true;
-  
+  unsigned int threads = 0;
+
   AmConfigReader cfg;
   if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf")))
     return -1;
 
-  string multithreaded = cfg.getParameter("multithreaded", "yes");
+  bool multithreaded = (cfg.getParameter("multithreaded") == "yes");
+  DebugServerResult = (cfg.getParameter("debug_server_result", "no") == "yes");
+  DebugServerParams = (cfg.getParameter("debug_server_params", "no") == "yes");
+  ServerRetryAfter = cfg.getParameterInt("server_retry_after", 10);
 
-  DebugServerResult = cfg.getParameter("debug_server_result", "no") == "yes";
-  DebugServerParams = cfg.getParameter("debug_server_params", "no") == "yes";
+  DBG("Parameter server_retry_after is set to '%u' seconds\n", ServerRetryAfter);
 
-  XmlRpcServer* s;
-  bool multi_threaded = false;
-  unsigned int threads = 0;
-  if (multithreaded == "yes") {
-    multi_threaded = true;
-    if (!cfg.getParameter("threads").length())
-      threads = 5;
-    else 
-      threads = cfg.getParameterInt("threads", 5);
-
-    DBG("Running multi-threaded XMLRPC server with %u threads\n", threads);
-    MultithreadXmlRpcServer* mt_s = new MultithreadXmlRpcServer();
-    mt_s->createThreads(threads);    
-    s = mt_s;
-  } else {
-    DBG("Running single-threaded XMLRPC server\n");
-    s = new XmlRpcServer();
+  /* threads */
+  if (multithreaded) {
+    threads = cfg.getParameterInt("threads", 5);
   }
 
-  ServerRetryAfter = cfg.getParameterInt("server_retry_after", 10);
-  DBG("retrying failed server after %u seconds\n", ServerRetryAfter);
-
+  /* server_timeout */
   string server_timeout = cfg.getParameter("server_timeout");
   if (!server_timeout.empty()) {
     unsigned int server_timeout_i = 0;
@@ -118,12 +106,14 @@ int XMLRPC2DI::load() {
     }
   }
 
+  /* run_server */
   string run_server = cfg.getParameter("run_server","yes");
   if (run_server != "yes") {
     DBG("XMLRPC server will not be started.\n");
     return 0;
   }
 
+  /* bind_ip */
   string bind_ip = cfg.getParameter("server_ip");
   if (bind_ip.empty()) {
     DBG("binding on ANY interface\n");
@@ -131,6 +121,7 @@ int XMLRPC2DI::load() {
     bind_ip = fixIface2IP(bind_ip, false);
   }
 
+  /* conf_xmlrpc_port */
   string conf_xmlrpc_port = cfg.getParameter("xmlrpc_port",XMLRPC_PORT);
   if (conf_xmlrpc_port.empty()) {
     ERROR("configuration: xmlrpc_port must be defined!\n");
@@ -143,7 +134,7 @@ int XMLRPC2DI::load() {
     return -1;
   }
 
-  bool export_di = false;
+  /* direct_export */
   string direct_export = cfg.getParameter("direct_export","");
   if (direct_export.length()) {
     DBG("direct_export interfaces: %s\n", direct_export.c_str());
@@ -151,15 +142,12 @@ int XMLRPC2DI::load() {
     DBG("No direct_export interfaces.\n");
   }
 
-  string export_di_s = cfg.getParameter("export_di","yes");
-  if (export_di_s == "yes") {
-    export_di = true;
-  } 
+  /* export_di */
+  bool export_di = (cfg.getParameter("export_di", "yes") == "yes");
   
-  INFO("XMLRPC Server: %snabling builtin method 'di'.\n", export_di?"E":"Not e");
+  INFO("XMLRPC Server: %sabling built-in method 'DI'.\n", (export_di ? "En" : "Dis"));
 
-
-  server = new XMLRPC2DIServer(XMLRPCPort, bind_ip, export_di, direct_export, s);
+  server = new XMLRPC2DIServer(XMLRPCPort, bind_ip, export_di, direct_export, multithreaded, threads);
   if (!server->initialize()) {
     return -1;
   }
@@ -333,11 +321,12 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
 				 const string& bind_ip,
 				 bool di_export, 
 				 string direct_export,
-				 XmlRpcServer* s) 
+				 bool multithreaded,
+				 unsigned int threads)
   : AmEventQueue(this),
     port(port),
     bind_ip(bind_ip),
-    s(s), running(false),
+    running(false),
     // register method 'calls'
     calls_method(s),
     // register method 'set_loglevel'
@@ -377,6 +366,22 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
   for(vector<string>::iterator it=export_ifaces.begin(); 
       it != export_ifaces.end(); it++) {
     registerMethods(*it);
+  }
+
+  if (multithreaded) {
+
+    /* default 5 */
+    if (!threads)
+      threads = 5;
+
+    DBG("Running multi-threaded XMLRPC server with '%u' threads\n", threads);
+
+    MultithreadXmlRpcServer* mt_s = new MultithreadXmlRpcServer();
+    mt_s->createThreads(threads);
+    s = mt_s;
+  } else {
+    DBG("Running single-threaded XMLRPC server\n");
+    s = new XmlRpcServer();
   }
 
   INFO("Initialized XMLRPC2DIServer with: \n");
