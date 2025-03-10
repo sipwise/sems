@@ -134,6 +134,15 @@ class XMLRPC2DIServer
       bool multithreaded = false,
       unsigned int threads = 5);
 
+  ~XMLRPC2DIServer() {
+    if (s) {
+      delete s;
+    }
+    if (di_method) {
+      delete di_method;
+    }
+  }
+
   bool initialize();
 
   void run();
@@ -188,7 +197,11 @@ class XMLRPC2DI
 
  public:
   XMLRPC2DI(const string& mod_name);
-  ~XMLRPC2DI() { }
+  ~XMLRPC2DI() {
+    if (server) {
+      delete server;
+    }
+  }
   int onLoad();
 
   // DI factory

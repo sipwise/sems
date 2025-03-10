@@ -66,7 +66,7 @@ XMLRPC2DI* XMLRPC2DI::instance()
   return _instance;
 }
 
-XMLRPC2DI::XMLRPC2DI(const string& mod_name) 
+XMLRPC2DI::XMLRPC2DI(const string& mod_name)
   : AmDynInvokeFactory(mod_name)
 {
 }
@@ -348,7 +348,8 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
     getcpsavg_method(s),
     getcpsmax_method(s),
     getcpslimit_method(s),
-    setcpslimit_method(s)
+    setcpslimit_method(s),
+    s(NULL), di_method(NULL)
 {	
   INFO("XMLRPC Server: enabled builtin method 'calls'\n");
   INFO("XMLRPC Server: enabled builtin method 'get_loglevel'\n");
