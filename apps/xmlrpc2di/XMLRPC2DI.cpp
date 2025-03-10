@@ -44,7 +44,7 @@ EXPORT_PLUGIN_CLASS_FACTORY(XMLRPC2DI, MOD_NAME)
 XMLRPC2DI* XMLRPC2DI::_instance=0;
 
 // retry a failed server after 10 seconds
-unsigned int XMLRPC2DI::ServerRetryAfter = 10; 
+time_t XMLRPC2DI::ServerRetryAfter = 10;
 
 bool XMLRPC2DI::DebugServerParams = false;
 bool XMLRPC2DI::DebugServerResult = false;

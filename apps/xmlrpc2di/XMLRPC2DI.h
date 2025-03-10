@@ -198,7 +198,7 @@ class XMLRPC2DI
   void invoke(const string& method, 
 	      const AmArg& args, AmArg& ret);
 
-  static unsigned int ServerRetryAfter;
+  static time_t ServerRetryAfter;
   static double ServerTimeout;
   
   static bool DebugServerParams;
