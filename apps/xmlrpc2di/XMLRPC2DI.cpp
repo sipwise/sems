@@ -166,11 +166,10 @@ XMLRPCServerEntry::~XMLRPCServerEntry()
 { }
 
 bool XMLRPCServerEntry::is_active() {
-  if (!active && 
-      ((unsigned int)(last_try + XMLRPC2DI::ServerRetryAfter) 
-       < (unsigned int)time(NULL)))
-      active = true;
-  
+  if (!active && (last_try + XMLRPC2DI::ServerRetryAfter) < time(NULL)) {
+    active = true;
+  }
+
   return active;
 }
 
