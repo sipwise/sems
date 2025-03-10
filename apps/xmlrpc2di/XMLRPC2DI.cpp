@@ -46,6 +46,13 @@ XMLRPC2DI* XMLRPC2DI::_instance=0;
 // retry a failed server after 10 seconds
 time_t XMLRPC2DI::ServerRetryAfter = 10;
 
+/* is later set during loading */
+unsigned int XMLRPC2DI::XMLRPCPort = 0;
+
+/* XMLRPC2DI server */
+XMLRPC2DIServer* XMLRPC2DI::server = NULL;
+bool XMLRPC2DI::configured = false;
+
 bool XMLRPC2DI::DebugServerParams = false;
 bool XMLRPC2DI::DebugServerResult = false;
 
@@ -60,7 +67,7 @@ XMLRPC2DI* XMLRPC2DI::instance()
 }
 
 XMLRPC2DI::XMLRPC2DI(const string& mod_name) 
-  : AmDynInvokeFactory(mod_name), configured(false)
+  : AmDynInvokeFactory(mod_name)
 {
 }
 

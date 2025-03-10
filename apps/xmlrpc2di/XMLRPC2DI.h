@@ -170,11 +170,11 @@ class XMLRPC2DI
 : public AmDynInvokeFactory, 
   public AmDynInvoke {
 
-  XMLRPC2DIServer* server;
-  unsigned int XMLRPCPort;
-
+  static XMLRPC2DIServer* server;
+  static unsigned int XMLRPCPort;
   static XMLRPC2DI* _instance;
-  bool configured;
+  static bool configured;
+
   int load();
 
   //  app           server
@@ -185,6 +185,7 @@ class XMLRPC2DI
   void newConnection(const AmArg& args, AmArg& ret);
   void sendRequest(const AmArg& args, AmArg& ret);
   void sendRequestList(const AmArg& args, AmArg& ret);
+
  public:
   XMLRPC2DI(const string& mod_name);
   ~XMLRPC2DI() { }
