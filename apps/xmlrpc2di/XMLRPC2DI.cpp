@@ -91,7 +91,7 @@ int XMLRPC2DI::load() {
   DebugServerParams = (cfg.getParameter("debug_server_params", "no") == "yes");
   ServerRetryAfter = cfg.getParameterInt("server_retry_after", 10);
 
-  DBG("Parameter server_retry_after is set to '%u' seconds\n", ServerRetryAfter);
+  DBG("Parameter server_retry_after is set to '%lu' seconds\n", static_cast<unsigned long>(ServerRetryAfter));
 
   /* threads */
   if (multithreaded) {
