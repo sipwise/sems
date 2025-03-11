@@ -100,9 +100,9 @@ AmSession::~AmSession()
       delete *evh;
   }
 
-  delete dlg;
-
   ILOG_DLG(L_DBG, "AmSession destructor finished\n");
+
+  delete dlg;
 }
 
 AmSipDialog* AmSession::createSipDialog()
