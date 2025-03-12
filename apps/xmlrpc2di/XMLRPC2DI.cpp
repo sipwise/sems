@@ -363,18 +363,6 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
   INFO("XMLRPC Server: enabled builtin method 'get_cpslimit'\n");
   INFO("XMLRPC Server: enabled builtin method 'set_cpslimit'\n");
 
-  // export all methods via 'di' function? 
-  if (di_export) {
-    // register method 'di'
-    di_method = new XMLRPC2DIServerDIMethod(s);
-  }
-  
-  vector<string> export_ifaces = explode(direct_export, ";");
-  for(vector<string>::iterator it=export_ifaces.begin(); 
-      it != export_ifaces.end(); it++) {
-    registerMethods(*it);
-  }
-
   if (multithreaded) {
 
     /* default 5 */
@@ -389,6 +377,18 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
   } else {
     DBG("Running single-threaded XMLRPC server\n");
     s = new XmlRpcServer();
+  }
+
+  // export all methods via 'di' function?
+  if (di_export) {
+    // register method 'di'
+    di_method = new XMLRPC2DIServerDIMethod(s);
+  }
+
+  vector<string> export_ifaces = explode(direct_export, ";");
+  for(vector<string>::iterator it=export_ifaces.begin();
+      it != export_ifaces.end(); it++) {
+    registerMethods(*it);
   }
 
   INFO("Initialized XMLRPC2DIServer with: \n");
