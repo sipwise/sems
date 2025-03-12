@@ -52,7 +52,7 @@ class AudioStreamData {
     /** The RTP stream itself.
      *
      * Audio only for now. */
-    AmRtpAudio *stream;
+    std::unique_ptr<AmRtpAudio> stream;
 
     /** Non-stream input (required for music on hold for example). */
     AmAudio *in;
@@ -200,7 +200,7 @@ class AudioStreamData {
     }
 
     AmRtpAudio *getStream() { 
-      return stream; 
+      return stream.get();
     }
 
     bool isInitialized() { return initialized; }

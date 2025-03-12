@@ -164,7 +164,7 @@ void B2BMediaStatistics::getReport(const AmArg &args, AmArg &ret)
 
 void AudioStreamData::initialize(AmB2BSession *session)
 {
-  stream = new AmRtpAudio(session, session->getRtpInterface());
+  stream.reset(new AmRtpAudio(session, session->getRtpInterface()));
   stream->setRtpRelayTransparentSeqno(session->getRtpRelayTransparentSeqno());
   stream->setRtpRelayTransparentSSRC(session->getRtpRelayTransparentSSRC());
   stream->setRtpRelayFilterRtpDtmf(session->getEnableDtmfRtpFiltering());
@@ -187,7 +187,6 @@ AudioStreamData::AudioStreamData(AmB2BSession *session):
   muted(false), relay_paused(false), receiving(true)
 {
   if (session) initialize(session);
-  else stream = NULL; // not initialized yet
 }
 
 void AudioStreamData::changeSession(AmB2BSession *session)
@@ -226,10 +225,7 @@ void AudioStreamData::clear()
     //delete in;
     in = NULL;
   }
-  if (stream) {
-    delete stream;
-    stream = NULL;
-  }
+  stream.reset();
   clearDtmfSink();
   initialized = false;
 }
@@ -278,12 +274,12 @@ void AudioStreamData::setRelayDestination(const string& connection_address, int 
 
 void AudioStreamData::setRelayPaused(bool paused) {
   if (paused == relay_paused) {
-    DBG("relay already paused for stream [%p], ignoring\n", stream);
+    DBG("relay already paused for stream [%p], ignoring\n", stream.get());
     return;
   }
 
   relay_paused = paused;
-  DBG("relay %spaused, stream [%p]\n", relay_paused?"":"not ", stream);
+  DBG("relay %spaused, stream [%p]\n", relay_paused?"":"not ", stream.get());
 
   if (NULL != stream) {
     if (relay_paused)
@@ -473,7 +469,7 @@ int AudioStreamData::writeStream(unsigned long long ts, unsigned char *buffer, A
 
 void AudioStreamData::mute(bool set_mute)
 {
-  DBG("mute(%s) - RTP stream [%p]\n", set_mute?"true":"false", stream);
+  DBG("mute(%s) - RTP stream [%p]\n", set_mute?"true":"false", stream.get());
  
   if (stream) {
     stream->setOnHold(set_mute);
@@ -483,7 +479,7 @@ void AudioStreamData::mute(bool set_mute)
 }
 
 void AudioStreamData::setReceiving(bool r) {
-  DBG("setReceiving(%s) - RTP stream [%p]\n", r?"true":"false", stream);
+  DBG("setReceiving(%s) - RTP stream [%p]\n", r?"true":"false", stream.get());
   if (stream) {
     stream->setReceiving(r);
   }
@@ -715,10 +711,9 @@ void AmB2BMedia::createStreams(const AmSdp &sdp)
     // audio streams
     if (m->type == MT_AUDIO) {
       if (create_audio) {
-        AudioStreamPair pair(a, b, idx);
-        pair.a.mute(a_leg_muted);
-        pair.b.mute(b_leg_muted);
-        audio.push_back(pair);
+        audio.emplace_back(a, b, idx);
+        audio.back().a.mute(a_leg_muted);
+        audio.back().b.mute(b_leg_muted);
         audio.back().setLogger(logger);
       }
       else if (++astreams == audio.end()) create_audio = true; // we went through the last audio stream
