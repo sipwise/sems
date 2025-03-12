@@ -42,6 +42,28 @@
 #include <string>
 using std::string;
 
+#if defined IP_RECVDSTADDR
+# define DSTADDR_SOCKOPT IP_RECVDSTADDR
+# define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_addr)))
+# define dstaddr(x) (CMSG_DATA(x))
+#elif defined IP_PKTINFO
+# define DSTADDR_SOCKOPT IP_PKTINFO
+# define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_pktinfo)))
+# define dstaddr(x) (&(((struct in_pktinfo *)(CMSG_DATA(x)))->ipi_addr))
+#else
+# error "can't determine v4 socket option (IP_RECVDSTADDR or IP_PKTINFO)"
+#endif
+
+#if !defined IPV6_RECVPKTINFO
+# define DSTADDR6_SOCKOPT IPV6_PKTINFO
+# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
+#elif defined IPV6_PKTINFO
+# define DSTADDR6_SOCKOPT IPV6_RECVPKTINFO
+# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
+#else
+# error "cant't determine v6 socket option (IPV6_RECVPKTINFO or IPV6_PKTINFO)"
+#endif
+
 class udp_trsp_socket: public trsp_socket
 {
     int sendto(const sockaddr_storage* sa, const char* msg, const int msg_len);
@@ -75,6 +97,13 @@ public:
 
 class udp_trsp: public transport
 {
+    char   buf[MAX_UDP_MSGLEN];
+    u_char dst_addr_buf[DSTADDR_DATASIZE];
+
+    msghdr           msg;
+    sockaddr_storage from_addr;
+    iovec            iov[1];
+
 protected:
     /** @see AmThread */
     void run();

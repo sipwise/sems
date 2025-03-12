@@ -47,28 +47,6 @@
 #include <errno.h>
 #include <string.h>
 
-#if defined IP_RECVDSTADDR
-# define DSTADDR_SOCKOPT IP_RECVDSTADDR
-# define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_addr)))
-# define dstaddr(x) (CMSG_DATA(x))
-#elif defined IP_PKTINFO
-# define DSTADDR_SOCKOPT IP_PKTINFO
-# define DSTADDR_DATASIZE (CMSG_SPACE(sizeof(struct in_pktinfo)))
-# define dstaddr(x) (&(((struct in_pktinfo *)(CMSG_DATA(x)))->ipi_addr))
-#else
-# error "can't determine v4 socket option (IP_RECVDSTADDR or IP_PKTINFO)"
-#endif
-
-#if !defined IPV6_RECVPKTINFO
-# define DSTADDR6_SOCKOPT IPV6_PKTINFO
-# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
-#elif defined IPV6_PKTINFO
-# define DSTADDR6_SOCKOPT IPV6_RECVPKTINFO
-# define dstaddr6(x) (&(((struct in6_pktinfo *)(CMSG_DATA(x)))->ipi6_addr))
-#else
-# error "cant't determine v6 socket option (IPV6_RECVPKTINFO or IPV6_PKTINFO)"
-#endif
-
 
 /** @see trsp_socket */
 int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
@@ -274,6 +252,16 @@ int udp_trsp_socket::send(const sockaddr_storage* sa,
 udp_trsp::udp_trsp(udp_trsp_socket* sock)
     : transport(sock)
 {
+  iov[0].iov_base = buf;
+  iov[0].iov_len  = MAX_UDP_MSGLEN;
+
+  memset(&msg,0,sizeof(msg));
+  msg.msg_name       = &from_addr;
+  msg.msg_namelen    = sizeof(sockaddr_storage);
+  msg.msg_iov        = iov;
+  msg.msg_iovlen     = 1;
+  msg.msg_control    = dst_addr_buf;
+  msg.msg_controllen = DSTADDR_DATASIZE;
 }
 
 udp_trsp::~udp_trsp()
@@ -284,24 +272,7 @@ udp_trsp::~udp_trsp()
 /** @see AmThread */
 void udp_trsp::run()
 {
-    char buf[MAX_UDP_MSGLEN];
     int buf_len;
-
-    msghdr           msg;
-    cmsghdr*         cmsgptr; 
-    sockaddr_storage from_addr;
-    iovec            iov[1];
-
-    iov[0].iov_base = buf;
-    iov[0].iov_len  = MAX_UDP_MSGLEN;
-
-    memset(&msg,0,sizeof(msg));
-    msg.msg_name       = &from_addr;
-    msg.msg_namelen    = sizeof(sockaddr_storage);
-    msg.msg_iov        = iov;
-    msg.msg_iovlen     = 1;
-    msg.msg_control    = new u_char[DSTADDR_DATASIZE];
-    msg.msg_controllen = DSTADDR_DATASIZE;
 
     if(sock->get_sd()<=0){
 	ERROR("Transport instance not bound\n");
@@ -339,6 +310,7 @@ void udp_trsp::run()
 	    continue;
 	}
 
+	char *buf = (char *)msg.msg_iov[0].iov_base;
 	sip_msg* s_msg = new sip_msg(buf,buf_len);
 	memcpy(&s_msg->remote_ip,msg.msg_name,msg.msg_namelen);
 
@@ -355,7 +327,7 @@ void udp_trsp::run()
 	s_msg->local_socket = sock;
 	inc_ref(sock);
 
-	for (cmsgptr = CMSG_FIRSTHDR(&msg);
+	for (cmsghdr* cmsgptr = CMSG_FIRSTHDR(&msg);
              cmsgptr != NULL;
              cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
 	    
