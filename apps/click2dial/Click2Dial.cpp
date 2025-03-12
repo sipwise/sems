@@ -104,7 +104,6 @@ string Click2DialFactory::getAnnounceFile(const AmSipRequest& req)
 
 AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& app_name, AmArg& session_params)
 {
-  UACAuthCred* cred = NULL;
   string callee_uri, a_realm, a_user, a_pwd;
 
   if(session_params.size() != 4) {
@@ -135,7 +134,7 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& ap
     return NULL;
   }
 
-  cred = new UACAuthCred(a_realm, a_user, a_pwd);
+  auto cred = std::make_unique<UACAuthCred>(a_realm, a_user, a_pwd);
   if(cred == NULL) {
     ERROR("Failed to create authentication handle\n");
     return NULL;
@@ -149,7 +148,7 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& ap
     return NULL;
   }
 
-  AmSession* s = new C2DCallerDialog(req, getAnnounceFile(req), callee_uri, cred);
+  AmSession* s = new C2DCallerDialog(req, getAnnounceFile(req), callee_uri, cred.release());
   if(s == NULL) {
     ERROR("Failed to create a click2dial dialog");
     return NULL;
