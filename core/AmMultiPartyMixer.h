@@ -41,22 +41,20 @@
 
 struct MixerBufferState
 {
-  typedef std::map<int,SampleArrayShort*> ChannelMap;
+  typedef std::map<int,std::unique_ptr<SampleArrayShort>> ChannelMap;
 
   unsigned int sample_rate;
   unsigned int last_ts;
   ChannelMap channels;
-  SampleArrayInt *mixed_channel;
+  std::unique_ptr<SampleArrayInt> mixed_channel;
 
   MixerBufferState(unsigned int sample_rate, std::set<int>& channelids);
-  MixerBufferState(const MixerBufferState& other);
-  ~MixerBufferState();
+  ~MixerBufferState() {}
 
   void add_channel(unsigned int channel_id);
   void remove_channel(unsigned int channel_id);
   SampleArrayShort* get_channel(unsigned int channel_id);
   void fix_channels(std::set<int>& curchannelids);
-  void free_channels();
 };
 
 /**
@@ -91,7 +89,7 @@ class AmMultiPartyMixer
 
 public:
   AmMultiPartyMixer();
-  ~AmMultiPartyMixer();
+  ~AmMultiPartyMixer() {}
     
   unsigned int addChannel(unsigned int external_sample_rate);
   void removeChannel(unsigned int channel_id);

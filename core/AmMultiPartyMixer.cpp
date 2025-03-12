@@ -56,14 +56,6 @@ AmMultiPartyMixer::AmMultiPartyMixer()
 {
 }
 
-AmMultiPartyMixer::~AmMultiPartyMixer()
-{
-  for (std::deque<MixerBufferState>::iterator it = buffer_state.begin();
-       it != buffer_state.end(); it++) {
-    it->free_channels();
-  }
-}
-
 unsigned int AmMultiPartyMixer::addChannel(unsigned int external_sample_rate)
 {
   unsigned int cur_channel_id = 0;
@@ -254,7 +246,7 @@ std::deque<MixerBufferState>::iterator AmMultiPartyMixer::findOrCreateBufferStat
   }
 
   //DBG("XXDebugMixerXX: Creating buffer state (from PutChannelPacket)");
-  buffer_state.push_back(MixerBufferState(sample_rate, channelids));
+  buffer_state.emplace_back(sample_rate, channelids);
   std::deque<MixerBufferState>::reverse_iterator rit = buffer_state.rbegin();
   //DEBUG_MIXER_BUFFER_STATE(*((rit + 1).base()), "returned to PutChannelPacket");
   return (rit + 1).base();
@@ -277,7 +269,7 @@ AmMultiPartyMixer::findBufferStateForReading(unsigned int sample_rate,
 
   if (buffer_state.size() < MAX_BUFFER_STATES) {
     // DBG("XXDebugMixerXX: Creating buffer state (from GetChannelPacket)\n");
-    buffer_state.push_back(MixerBufferState(sample_rate, channelids));
+    buffer_state.emplace_back(sample_rate, channelids);
   } // else just reuse the last buffer - conference without a speaker
   std::deque<MixerBufferState>::reverse_iterator rit = buffer_state.rbegin();
   //DEBUG_MIXER_BUFFER_STATE(*((rit + 1).base()), "returned to PutChannelPacket");
@@ -291,7 +283,6 @@ void AmMultiPartyMixer::cleanupBufferStates(unsigned int last_ts)
 	 && (unsigned int)GetCurrentSampleRate() != buffer_state.front().sample_rate) {
 
     //DEBUG_MIXER_BUFFER_STATE(buffer_state.front(), "freed in cleanupBufferStates");
-    buffer_state.front().free_channels();
     buffer_state.pop_front();
   }
 }
@@ -307,24 +298,13 @@ void AmMultiPartyMixer::unlock()
 }
 
 MixerBufferState::MixerBufferState(unsigned int sample_rate, std::set<int>& channelids)
-  : sample_rate(sample_rate), last_ts(0), channels(), mixed_channel(NULL)
+  : sample_rate(sample_rate), last_ts(0), channels()
 {
   for (std::set<int>::iterator it = channelids.begin(); it != channelids.end(); it++) {
     channels.insert(std::make_pair(*it,new SampleArrayShort()));
   }
 
-  mixed_channel = new SampleArrayInt();
-}
-
-MixerBufferState::MixerBufferState(const MixerBufferState& other)
-  : sample_rate(other.sample_rate), last_ts(other.last_ts), 
-    channels(other.channels), mixed_channel(other.mixed_channel)
-{
-}
-
-MixerBufferState::~MixerBufferState()
-{
-  free_channels();
+  mixed_channel.reset(new SampleArrayInt());
 }
 
 void MixerBufferState::add_channel(unsigned int channel_id)
@@ -337,7 +317,6 @@ void MixerBufferState::remove_channel(unsigned int channel_id)
 {
   ChannelMap::iterator channel_it = channels.find(channel_id);
   if (channel_it != channels.end()) {
-    delete channel_it->second;
     channels.erase(channel_it);
   }
 }
@@ -350,7 +329,7 @@ SampleArrayShort* MixerBufferState::get_channel(unsigned int channel_id)
     return NULL;
   }
 
-  return channel_it->second;
+  return channel_it->second.get();
 }
 
 void MixerBufferState::fix_channels(std::set<int>& curchannelids)
@@ -360,18 +339,5 @@ void MixerBufferState::fix_channels(std::set<int>& curchannelids)
       DBG("XXMixerDebugXX: fixing channel #%d", *it);
       channels.insert(std::make_pair(*it,new SampleArrayShort()));
     }
-  }
-}
-
-void MixerBufferState::free_channels()
-{
-  for (ChannelMap::iterator it = channels.begin(); it != channels.end(); it++) {
-    if (it->second != NULL)
-      delete it->second;
-  }
-
-  if (mixed_channel) {
-    delete mixed_channel;
-    mixed_channel = NULL;
   }
 }
