@@ -327,6 +327,7 @@ long opus_create(const char* format_parameters, const char** format_parameters_o
   if (error) {
     DBG("OPUS: error %d while creating decoder state.\n", error);
     opus_encoder_destroy(codec_inst->opus_enc);
+    free(codec_inst);
     return -1;
   }
 
