@@ -324,6 +324,7 @@ MixerBufferState::MixerBufferState(const MixerBufferState& other)
 
 MixerBufferState::~MixerBufferState()
 {
+  free_channels();
 }
 
 void MixerBufferState::add_channel(unsigned int channel_id)
@@ -369,5 +370,8 @@ void MixerBufferState::free_channels()
       delete it->second;
   }
 
-  delete mixed_channel;
+  if (mixed_channel) {
+    delete mixed_channel;
+    mixed_channel = NULL;
+  }
 }
