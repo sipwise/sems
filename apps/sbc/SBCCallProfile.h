@@ -217,7 +217,6 @@ struct SBCCallProfile
   int outbound_interface_value;
 
   string aleg_outbound_interface;
-  int aleg_outbound_interface_value;
 
   struct TranscoderSettings {
     // non-replaced parameters
