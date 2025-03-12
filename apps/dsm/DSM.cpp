@@ -831,7 +831,7 @@ bool DSMFactory::createSystemDSM(const string& config_name, const string& start_
 }
 
 void DSMFactory::reloadDSMs(const AmArg& args, AmArg& ret) {
-  DSMStateDiagramCollection* new_diags = new DSMStateDiagramCollection();
+  auto new_diags = std::make_unique<DSMStateDiagramCollection>();
 
   AmConfigReader cfg;
   if(cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf"))) {
@@ -861,7 +861,7 @@ void DSMFactory::reloadDSMs(const AmArg& args, AmArg& ret) {
   }
   ScriptConfigs_mut.lock();
   old_diags.insert(MainScriptConfig.diags);
-  MainScriptConfig.diags = new_diags; 
+  MainScriptConfig.diags = new_diags.release();
   ScriptConfigs_mut.unlock();
 
   ret.push(200);
