@@ -90,17 +90,15 @@ struct wav_header
 int wav_dummyread(FILE *fp, unsigned int size)
 {
   unsigned int s;
-  char *dummybuf;
+  char dummybuf[4096];
   
   DBG("Skip chunk by reading dummy bytes from stream\n");
-  dummybuf = (char*) malloc (size);
-  if(dummybuf==NULL) {
-      ERROR("Can't alloc memory for dummyread!\n");
-      return -1;
-  }
 
-  SAFE_READ(dummybuf,size,fp,s);
-  free(dummybuf);
+  while (size) {
+    unsigned int readsize = size > sizeof(dummybuf) ? sizeof(dummybuf) : size;
+    SAFE_READ(dummybuf,readsize,fp,s);
+    size -= readsize;
+  }
   return 0;
 } 
 
