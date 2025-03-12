@@ -251,7 +251,7 @@ bool AmSIPRegistration::timeToReregister(time_t now_sec) {
 }
 
 bool AmSIPRegistration::registerExpired(time_t now_sec) {
-  return ((reg_begin+reg_expires) < (unsigned int)now_sec);	
+  return ((reg_begin+reg_expires) < now_sec);	
 }
 
 void AmSIPRegistration::onSipReply(const AmSipRequest& req,
