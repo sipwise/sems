@@ -41,9 +41,9 @@
 
 #include <string>
 #include <fstream>
+#include <filesystem>
 
 #include <sys/types.h>
-#include <dirent.h>
 
 #define MOD_NAME "dsm"
 
@@ -235,29 +235,25 @@ int DSMFactory::onLoad()
       conf_d_dir += '/';
 
     DBG("processing configurations in '%s'...\n", conf_d_dir.c_str());
-    int err=0;
-    struct dirent* entry;
-    DIR* dir = opendir(conf_d_dir.c_str());
-    
-    if(!dir){
-      INFO("DSM config files loader (%s): %s\n",
-	    conf_d_dir.c_str(), strerror(errno));
-    } else {
-      while( ((entry = readdir(dir)) != NULL) && (err == 0) ){
-	string conf_name = string(entry->d_name);
-	
+
+    try {
+      for (const auto& entry : std::filesystem::directory_iterator(conf_d_dir)) {
+	const auto& conf_name = entry.path().filename().string();
+	const auto& conf_file_name = entry.path().string();
+
 	if (conf_name.find(".conf",conf_name.length()-5) == string::npos){
 	  continue;
 	}
         
-	string conf_file_name = conf_d_dir + conf_name;
-	
 	DBG("loading %s ...\n",conf_file_name.c_str());
 	if (!loadConfig(conf_file_name, conf_name, false, NULL)) 
 	  return -1;
 
       }
-      closedir(dir);
+    }
+    catch (std::filesystem::filesystem_error& e) {
+      INFO("DSM config files loader (%s): %s\n",
+	    conf_d_dir.c_str(), e.what());
     }
   }
 
