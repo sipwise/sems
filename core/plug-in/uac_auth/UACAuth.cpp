@@ -606,7 +606,7 @@ string UACAuth::calcNonce() {
   HASH RespHash;
 
   time_t now = time(NULL);
-  result = int2hex(now);
+  result = int2hex(static_cast<unsigned int>(now));
   
   MD5Init(&Md5Ctx);
   w_MD5Update(&Md5Ctx, result);
