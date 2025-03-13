@@ -672,7 +672,6 @@ int main(int argc, char* argv[])
   AmPlugIn::dispose();
 
   async_file_writer::instance()->stop();
-  async_file_writer::instance()->join();
 
   unlink(AmConfig::DaemonPidFile.c_str());
 
