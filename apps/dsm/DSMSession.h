@@ -199,6 +199,12 @@ class DSMSession {
   /** get header from reply */
   virtual void B2BgetHeaderReply(const string& hdr, string& out) = 0;
 
+  /** get header's param from request */
+  virtual void B2BgetHeaderParamRequest(const string& hdr, const string& param, string& out) = 0;
+
+  /** get header's param from reply */
+  virtual void B2BgetHeaderParamReply(const string& hdr, const string& param, string& out) = 0;
+
   /* holds variables which are accessed by $varname */
   VarMapT var;
 

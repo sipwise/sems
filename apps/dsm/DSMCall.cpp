@@ -1004,8 +1004,18 @@ void DSMCall::B2BgetHeaderRequest(const string& hdr_name, string& out) {
   out = getHeader(invite_req.hdrs, hdr_name, true);
 }
 
+void DSMCall::B2BgetHeaderParamRequest(const string& hdr_name, const string& param_name, string& out) {
+  string hdr_value = getHeader(invite_req.hdrs, hdr_name, true);
+  out = get_header_param(hdr_value, param_name);
+}
+
 void DSMCall::B2BgetHeaderReply(const string& hdr_name, string& out) {
   out = getHeader(last_200_reply.hdrs, hdr_name, true);
+}
+
+void DSMCall::B2BgetHeaderParamReply(const string& hdr_name, const string& param_name, string& out) {
+  string hdr_value = getHeader(last_200_reply.hdrs, hdr_name, true);
+  out = get_header_param(hdr_value, param_name);
 }
 
 void DSMCall::B2BclearHeaders() {

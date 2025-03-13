@@ -750,6 +750,8 @@ NOT_IMPLEMENTED(B2BclearHeaders());
 NOT_IMPLEMENTED(B2BaddHeader(const string& hdr));
 NOT_IMPLEMENTED(B2BgetHeaderRequest(const string& hdr, string& out));
 NOT_IMPLEMENTED(B2BgetHeaderReply(const string& hdr, string& out));
+NOT_IMPLEMENTED(B2BgetHeaderParamRequest(const string& hdr, const string& param, string& out));
+NOT_IMPLEMENTED(B2BgetHeaderParamReply(const string& hdr, const string& param, string& out));
 NOT_IMPLEMENTED(B2BremoveHeader(const string& hdr));
 
 #undef NOT_IMPLEMENTED

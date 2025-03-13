@@ -148,6 +148,8 @@ DSMAction* DSMCoreModule::getAction(const string& from_str) {
   DEF_CMD("B2B.addHeader", SCB2BAddHeaderAction);
   DEF_CMD("B2B.getHeaderRequest", SCB2BGetHeaderRequestAction);
   DEF_CMD("B2B.getHeaderReply", SCB2BGetHeaderReplyAction);
+  DEF_CMD("B2B.getHeaderParamRequest", SCB2BGetHeaderParamRequestAction);
+  DEF_CMD("B2B.getHeaderParamReply", SCB2BGetHeaderParamReplyAction);
   DEF_CMD("B2B.removeHeader", SCB2BRemoveHeaderAction);
   DEF_CMD("B2B.clearHeaders", SCB2BClearHeadersAction);
   DEF_CMD("B2B.setHeaders", SCB2BSetHeadersAction);
@@ -1582,6 +1584,22 @@ EXEC_ACTION_START(SCB2BGetHeaderRequestAction) {
     DBG("No header with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;
 
+CONST_ACTION_3P(SCB2BGetHeaderParamRequestAction,',', false);
+EXEC_ACTION_START(SCB2BGetHeaderParamRequestAction) {
+  string hdr_name = resolveVars(par1, sess, sc_sess, event_params);
+  string param_name = resolveVars(par2, sess, sc_sess, event_params);
+  string destination_variable = (par3.length() && par3[0] == '$') ? par3.substr(1) : par3;
+  string result;
+  if (hdr_name.empty() || param_name.empty() || destination_variable.empty())
+    throw DSMException("core", "cause", "parameters missing");
+  sc_sess->B2BgetHeaderParamRequest(hdr_name, param_name, result);
+  /* write only if we got something */
+  if (!result.empty())
+    sc_sess->var[destination_variable] = result;
+  else
+    DBG("No header param with name '%s' found.\n", hdr_name.c_str());
+} EXEC_ACTION_END;
+
 CONST_ACTION_2P(SCB2BGetHeaderReplyAction,',', false);
 EXEC_ACTION_START(SCB2BGetHeaderReplyAction) {
   string hdr_name = resolveVars(par1, sess, sc_sess, event_params);
@@ -1598,6 +1616,22 @@ EXEC_ACTION_START(SCB2BGetHeaderReplyAction) {
     sc_sess->var[destination_variable] = result;
   else
     DBG("No header with name '%s' found.\n", hdr_name.c_str());
+} EXEC_ACTION_END;
+
+CONST_ACTION_3P(SCB2BGetHeaderParamReplyAction,',', false);
+EXEC_ACTION_START(SCB2BGetHeaderParamReplyAction) {
+  string hdr_name = resolveVars(par1, sess, sc_sess, event_params);
+  string param_name = resolveVars(par2, sess, sc_sess, event_params);
+  string destination_variable = (par3.length() && par3[0] == '$') ? par3.substr(1) : par3;
+  string result;
+  if (hdr_name.empty() || param_name.empty() || destination_variable.empty())
+    throw DSMException("core", "cause", "parameters missing");
+  sc_sess->B2BgetHeaderParamReply(hdr_name, param_name, result);
+  /* write only if we got something */
+  if (!result.empty())
+    sc_sess->var[destination_variable] = result;
+  else
+    DBG("No header param with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCB2BRemoveHeaderAction) {

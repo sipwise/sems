@@ -99,6 +99,12 @@ class SystemDSM
   /** get header from reply */
    void B2BgetHeaderReply(const string& hdr, string& out);
 
+  /** get header's param from request */
+   void B2BgetHeaderParamRequest(const string& hdr, const string& param, string& out);
+
+  /** get header's param from reply */
+   void B2BgetHeaderParamReply(const string& hdr, const string& param, string& out);
+
   /** set headers of outgoing INVITE */
    void B2BclearHeaders();
 

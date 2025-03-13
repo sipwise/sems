@@ -126,6 +126,8 @@ class SBCDSMInstance
   void B2BclearHeaders();
   void B2BaddHeader(const string& hdr);
   void B2BgetHeaderRequest(const string& hdr, string& out);
+  void B2BgetHeaderParamRequest(const string& hdr, const string& param, string& out);
+  void B2BgetHeaderParamReply(const string& hdr, const string& param, string& out);
   void B2BgetHeaderReply(const string& hdr, string& out);
   void B2BremoveHeader(const string& hdr);
 
