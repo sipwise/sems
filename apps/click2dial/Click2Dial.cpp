@@ -148,19 +148,14 @@ AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& ap
     return NULL;
   }
 
-  AmSession* s = new C2DCallerDialog(req, getAnnounceFile(req), callee_uri, cred.release());
-  if(s == NULL) {
-    ERROR("Failed to create a click2dial dialog");
-    return NULL;
-  }
+  auto s = std::make_unique<C2DCallerDialog>(req, getAnnounceFile(req), callee_uri, cred.release());
 
-  if (!AmUACAuth::enable(s)) {
+  if (!AmUACAuth::enable(s.get())) {
     ERROR("Failed to get authentication event handler");
-    delete s;
     return NULL;
   }
 
-  return s;
+  return s.release();
 }
 
 
