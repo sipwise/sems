@@ -275,14 +275,6 @@ bool DSMStateDiagram::checkHangupHandled(string& report) {
   return res;
 }
 
-
-DSMStateEngine::DSMStateEngine() 
-  : current(NULL) {
-}
-
-DSMStateEngine::~DSMStateEngine() {
-}
-
 bool DSMStateEngine::onInvite(const AmSipRequest& req, DSMSession* sess) {
   bool res = true;
   for (vector<DSMModule*>::iterator it =

@@ -320,8 +320,8 @@ class DSMStateEngine {
   vector<DSMModule*> mods;
 
  public: 
-  DSMStateEngine();
-  ~DSMStateEngine();
+  DSMStateEngine() : current(NULL), current_diag(NULL) {};
+  ~DSMStateEngine() {};
 
   void addDiagram(DSMStateDiagram* diag); 
   void addModules(vector<DSMModule*> modules);
