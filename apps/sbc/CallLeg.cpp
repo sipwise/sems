@@ -1552,11 +1552,14 @@ void CallLeg::replaceExistingLeg(const string &session_tag, const string &hdrs)
   }
   else b.media_session = NULL;
 
-  ReconnectLegEvent *rev = new ReconnectLegEvent(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, dlg->established_body);
+  auto rev = std::make_unique<ReconnectLegEvent>(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, dlg->established_body);
+
   rev->setMedia(b.media_session, rtp_relay_mode);
-  ReplaceLegEvent *ev = new ReplaceLegEvent(getLocalTag(), rev);
+
+  auto ev = std::make_unique<ReplaceLegEvent>(getLocalTag(), rev.release());
+
   // TODO: what about the RTP relay and other settings? send them as well?
-  if (!AmSessionContainer::instance()->postEvent(session_tag, ev)) {
+  if (!AmSessionContainer::instance()->postEvent(session_tag, ev.release())) {
     // session doesn't exist - can't connect
     ILOG_DLG(L_INFO, "the call leg to be replaced (%s) doesn't exist\n", session_tag.c_str());
     if (b.media_session) {
