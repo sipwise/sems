@@ -242,6 +242,15 @@ class DBRegAgent
   /** remove timer object */
   void removeRegistrationTimer(long object_id, const string& type);
   
+  /** handle timer object */
+  void handleRegistrationTimer(long object_id, const std::string &type);
+
+  /** handle registration scheduling */
+  void handleRegistrationScheduling(long object_id, const std::string &auth_user,
+                                    const std::string &user, const std::string &pass,
+                                    const std::string &realm, const std::string &contact,
+                                    const std::string &type);
+
   //  void run_tests();
 
   // amThread
