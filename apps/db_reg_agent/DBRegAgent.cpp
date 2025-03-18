@@ -66,11 +66,11 @@ class RegTimer : public timer {
       DBRegAgent::instance()->timer_cb(this);
     }
 
-    long                                object_id = 0;
+    long                                object_id;
     RegistrationActionEvent::RegAction  action;
     string                              type;
 
-    RegTimer() {}
+    RegTimer() : object_id(0), action(RegistrationActionEvent::Unknown), type("") {}
 };
 
 DBRegAgent::DBRegAgent(const string& _app_name)

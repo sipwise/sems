@@ -79,7 +79,7 @@ using std::queue;
 
 struct RegistrationActionEvent : public AmEvent {
 
-  enum RegAction { Register=0, Deregister };
+  enum RegAction { Register=0, Deregister, Unknown };
 
 RegistrationActionEvent(RegAction action, long object_id, const string& type)
   : AmEvent(RegistrationActionEventID),
