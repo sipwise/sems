@@ -1254,7 +1254,7 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
   } else {
     timer = it->second;
     DBG("removing scheduled timer...\n");
-    registration_scheduler.remove_timer(timer);
+    registration_scheduler.remove_timer(timer, false);
   }
 
   timer->action = reg_action;
@@ -1296,7 +1296,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   } else {
     timer = it->second;
     DBG("removing scheduled timer...\n");
-    registration_scheduler.remove_timer(timer);
+    registration_scheduler.remove_timer(timer, false);
   }
 
   timer->action = RegistrationActionEvent::Register;
@@ -1375,10 +1375,9 @@ void DBRegAgent::clearRegistrationTimer(long object_id, const string& type) {
   }
 
   DBG("removing timer [%p] from scheduler\n", it->second);
-  registration_scheduler.remove_timer(it->second);
 
-  DBG("deleting timer object [%p]\n", it->second);
-  delete it->second;
+  /* remote_timer() in this case takes care to deallocate the timer object */
+  registration_scheduler.remove_timer(it->second);
 
   if (type == TYPE_PEERING)
     registration_timers_peers.erase(it);
