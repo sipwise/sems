@@ -1252,9 +1252,14 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
     timer->type = type;          // 'peering' or 'subscriber'
     DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
   } else {
-    timer = it->second;
-    DBG("removing scheduled timer...\n");
-    registration_scheduler.remove_timer(timer, false);
+    if (it->second) {
+      timer = it->second;
+      DBG("removing scheduled timer...\n");
+      registration_scheduler.remove_timer(timer, false);
+    } else {
+      WARN("Failed to get existing timer for removing.\n");
+      return;
+    }
   }
 
   timer->action = reg_action;
@@ -1294,9 +1299,14 @@ void DBRegAgent::setRegistrationTimer(long object_id,
     DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
     registration_timers.insert(std::make_pair(object_id, timer));
   } else {
-    timer = it->second;
-    DBG("removing scheduled timer...\n");
-    registration_scheduler.remove_timer(timer, false);
+    if (it->second) {
+      timer = it->second;
+      DBG("removing scheduled timer...\n");
+      registration_scheduler.remove_timer(timer, false);
+    } else {
+      WARN("Failed to get existing timer for removing.\n");
+      return;
+    }
   }
 
   timer->action = RegistrationActionEvent::Register;
@@ -1407,8 +1417,10 @@ void DBRegAgent::removeRegistrationTimer(long object_id, const string& type) {
     }
   }
 
-  DBG("deleting timer object [%p]\n", it->second);
-  delete it->second;
+  if (it->second) {
+    DBG("deleting timer object [%p]\n", it->second);
+    delete it->second;
+  }
 
   if (type == TYPE_PEERING)
     registration_timers_peers.erase(it);
