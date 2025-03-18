@@ -36,11 +36,6 @@ using std::string;
 #include <system_error>
 #include <exception>
 
-AmThread::AmThread()
-  : _stopped(true)
-{
-}
-
 void AmThread::_start()
 {
   _pid = static_cast<unsigned long>(_td.native_handle());
@@ -48,60 +43,41 @@ void AmThread::_start()
   run();
 
   DBG("Thread %lu is ending.\n", _pid);
-  _stopped = true;
-    
+
+  _state = state::stopped;
 }
 
 void AmThread::start()
 {
-  _pid = 0;
-
-  // unless placed here, a call seq like run(); join(); will not wait to join
-  // b/c creating the thread can take too long
-  bool expected = true;
-  if (!this->_stopped.compare_exchange_strong(expected, false)) {
-    ERROR("thread already running\n");
+  state expected = state::idle;
+  if(!_state.compare_exchange_strong(expected, state::running)) {
+    DBG("Thread %lu already running.\n", _pid);
     return;
   }
 
+  _pid = 0;
+
   _td = std::thread(&AmThread::_start, this);
-  //DBG("Thread %lu is just created.\n", (unsigned long int) _pid);
 }
 
 void AmThread::stop()
 {
-  lock_guard<AmMutex> _l(_m_td);
-
-  if(is_stopped()){
+  state expected = state::running;
+  if(!_state.compare_exchange_strong(expected, state::stopping)){
+    DBG("Thread %lu already stopped\n", _pid);
     return;
   }
 
   // gives the thread a chance to clean up
-  DBG("Thread %lu calling on_stop, give it a chance to clean up.\n", _pid);
+  DBG("Thread %lu calling on_stop\n", _pid);
 
-  try { on_stop(); } catch(...) {}
-
-  try {
-    _td.detach();
-  }
-  catch (std::system_error &e) {
-    WARN("Failed to detach thread: code %d (%s)\n", e.code().value(), e.what());
-  }
-  catch (std::exception &e) {
-    WARN("Failed to detach thread: %s\n", e.what());
-  }
-  catch (...) {
-    WARN("Failed to detach thread: unknown error\n");
-  }
-
-  DBG("Thread %lu finished detach.\n", _pid);
-
-  //pthread_cancel(_td);
+  on_stop();
 }
 
 void AmThread::join()
 {
-  if(!is_stopped())
+  // only when neither stopped nor joined
+  if (_td.joinable())
     _td.join();
 }
 
@@ -164,6 +140,7 @@ void AmThreadWatcher::run()
 	DBG("thread %lu is to be processed in thread watcher.\n", cur_thread->_pid);
 	if(cur_thread->is_stopped()){
 	  DBG("thread %lu has been destroyed.\n", cur_thread->_pid);
+	  cur_thread->join();
 	  delete cur_thread;
 	}
 	else {

@@ -112,29 +112,42 @@ public:
 class AmThread
 {
   std::thread _td;
-  AmMutex   _m_td;
 
-  atomic_bool _stopped;
+  enum state {
+    idle, // not started yet
+    running,
+    stopping, // waiting to stop
+    stopped, // after stop
+  };
+
+  std::atomic<state> _state;
 
   void _start();
 
 protected:
   virtual void run()=0;
-  virtual void on_stop()=0;
+  virtual void on_stop() {};
 
 public:
   unsigned long _pid;
-  AmThread();
+
+  AmThread()
+    : _state(state::idle)
+  {}
+
   virtual ~AmThread() {}
 
   /** Start it ! */
   void start();
+
   /** Stop it ! */
   void stop();
-  /** @return true if this thread doesn't run. */
-  bool is_stopped() { return _stopped; }
+
   /** Wait for this thread to finish */
   void join();
+
+  /** @return true if this thread has finished. */
+  bool is_stopped() { return _state == stopped; }
 };
 
 /**
