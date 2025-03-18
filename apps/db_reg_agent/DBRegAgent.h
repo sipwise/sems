@@ -78,6 +78,8 @@ enum regType { TYPE_UNDEFINED=0, TYPE_PEERING, TYPE_SUBSCRIBER };
 
 #define ERR_REASON_UNABLE_TO_SEND_REQUEST  "unable to send request"
 
+#define TYPE_TO_STRING(type) ((type) == TYPE_PEERING ? "peering" : "subscriber")
+
 struct RegistrationActionEvent : public AmEvent {
 
   enum RegAction { Register=0, Deregister, Unknown };
