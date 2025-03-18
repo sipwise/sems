@@ -127,8 +127,6 @@ public:
   AmThread();
   virtual ~AmThread() {}
 
-  virtual void onIdle() {}
-
   /** Start it ! */
   void start();
   /** Stop it ! */
