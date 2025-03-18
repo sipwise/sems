@@ -97,7 +97,7 @@ bool SessionTimer::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
     unsigned int i_minse;
     string min_se_hdr = getHeader(reply.hdrs, SIP_HDR_MIN_SE, true);
     if (!min_se_hdr.empty()) {
-      if (str2i(strip_header_params(min_se_hdr), i_minse)) {
+      if (str2int(strip_header_params(min_se_hdr), i_minse)) {
 	WARN("error while parsing " SIP_HDR_MIN_SE " header value '%s'\n",
 	     strip_header_params(min_se_hdr).c_str());
       } else {
@@ -245,7 +245,7 @@ bool SessionTimerFactory::checkSessionExpires(const AmSipRequest& req, AmConfigR
 
   if (session_expires.length()) {
     unsigned int i_se;
-    if (!str2i(strip_header_params(session_expires), i_se)) {
+    if (!str2int(strip_header_params(session_expires), i_se)) {
       if (i_se < sst_cfg.getMinimumTimer()) {
 	throw AmSession::Exception(422, "Session Interval Too Small",
 				   SIP_HDR_COLSP(SIP_HDR_MIN_SE)+
@@ -275,7 +275,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
     bool rem_has_sess_expires = false;
     unsigned int rem_sess_expires=0; 
     if (!sess_expires_hdr.empty()) {
-      if (str2i(strip_header_params(sess_expires_hdr),
+      if (str2int(strip_header_params(sess_expires_hdr),
 		rem_sess_expires)) {
 	WARN("error while parsing " SIP_HDR_SESSION_EXPIRES " header value '%s'\n",
 	     strip_header_params(sess_expires_hdr).c_str()); // exception?
@@ -288,7 +288,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
     unsigned int i_minse = min_se;
     string min_se_hdr = getHeader(req.hdrs, SIP_HDR_MIN_SE, true);
     if (!min_se_hdr.empty()) {
-      if (str2i(strip_header_params(min_se_hdr),
+      if (str2int(strip_header_params(min_se_hdr),
 		i_minse)) {
 	WARN("error while parsing " SIP_HDR_MIN_SE " header value '%s'\n",
 	     strip_header_params(min_se_hdr).c_str()); // exception?
@@ -370,7 +370,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   
   if (!sess_expires_hdr.empty()) {
     unsigned int sess_i_tmp = 0;
-    if (str2i(strip_header_params(sess_expires_hdr),
+    if (str2int(strip_header_params(sess_expires_hdr),
 	      sess_i_tmp)) {
       WARN("error while parsing " SIP_HDR_SESSION_EXPIRES " header value '%s'\n",
 	   strip_header_params(sess_expires_hdr).c_str()); // exception?

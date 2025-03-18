@@ -684,7 +684,7 @@ void SBCDSMInstance::flushPlaylist() {
 
 void SBCDSMInstance::addSeparator(const string& name, bool front) {
   unsigned int id = 0;
-  if (str2i(name, id)) {
+  if (str2int(name, id)) {
     SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     SET_STRERROR("separator id '"+name+"' not a number");
     return;

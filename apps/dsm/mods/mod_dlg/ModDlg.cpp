@@ -109,7 +109,7 @@ void replyRequest(DSMSession* sc_sess, AmSession* sess,
   string reason = resolveVars(par2, sess, sc_sess, event_params);
   string hdrs = replaceLineEnds(resolveVars("$dlg.reply.hdrs", sess, sc_sess, event_params));
   unsigned int code_i;
-  if (str2i(code, code_i)) {
+  if (str2int(code, code_i)) {
     ERROR("decoding reply code '%s'\n", code.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     return;
@@ -162,7 +162,7 @@ EXEC_ACTION_START(DLGAcceptInviteAction) {
 
   if (code.length()) {
     reason = resolveVars(par2, sess, sc_sess, event_params);
-    if (str2i(code, code_i)) {
+    if (str2int(code, code_i)) {
       ERROR("decoding reply code '%s'\n", code.c_str());
       sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
       sc_sess->SET_STRERROR("decoding reply code '"+
@@ -572,7 +572,7 @@ EXEC_ACTION_START(DLGB2BRelayErrorAction) {
   string code = resolveVars(par1, sess, sc_sess, event_params);
   string reason = resolveVars(par2, sess, sc_sess, event_params);
   unsigned int code_i;
-  if (str2i(code, code_i)) {
+  if (str2int(code, code_i)) {
     ERROR("decoding reply code '%s'\n", code.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     EXEC_ACTION_STOP;

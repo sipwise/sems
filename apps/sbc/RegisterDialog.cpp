@@ -73,7 +73,7 @@ int RegisterDialog::replyFromCache(const AmSipRequest& req)
     long int expires;
     AmUriParser& contact = contact_it->second;
 
-    if(!str2long(contact.params["expires"], expires)) {
+    if(!str2int(contact.params["expires"], expires)) {
       ERROR("failed to parse contact-expires for the second time\n");
       reply_error(req, 500, "Server internal error", "", logger);
       return -1;
@@ -113,7 +113,7 @@ int RegisterDialog::fixUacContacts(const AmSipRequest& req)
   unsigned int requested_expires=0;
   if (!expires.empty()) {
 
-    if (str2i(expires, requested_expires)) {
+    if (str2int(expires, requested_expires)) {
       reply_error(req, 400, "Bad Request",
 		  "Warning: Malformed expires\r\n",
                   logger);
@@ -183,7 +183,7 @@ int RegisterDialog::fixUacContacts(const AmSipRequest& req)
 
       if(expires_it != contact_it->params.end()) {
 	// 'expires=xxx' present:
-	if(!str2long(expires_it->second,contact_expires)) {
+	if(!str2int(expires_it->second,contact_expires)) {
 	  reply_error(req, 400, "Bad Request",
 		      "Warning: Malformed expires\r\n",
                       logger);
@@ -436,7 +436,7 @@ void RegisterDialog::onSipReply(const AmSipRequest& req,
   // unsigned int req_expires = 0;
   // string expires_str = getHeader(req.hdrs, "Expires");
   // if (!expires_str.empty()) {
-  //   str2i(expires_str, req_expires);
+  //   str2int(expires_str, req_expires);
   // }
 
   DBG("parsing server contact set '%s'\n", reply.contact.c_str());
@@ -469,7 +469,7 @@ void RegisterDialog::onSipReply(const AmSipRequest& req,
 	// parameter to each contact
 	string expires_str = it->params["expires"];
 	if (!expires_str.empty()) {
-	  str2i(expires_str, expires);
+	  str2int(expires_str, expires);
 	}
 
 	AmUriParser& orig_contact = alias_it->second;
@@ -481,7 +481,7 @@ void RegisterDialog::onSipReply(const AmSipRequest& req,
 	// check orig expires
 	string orig_expires_str = orig_contact.params["expires"];
 	unsigned int orig_expires=0;
-	str2i(orig_expires_str,orig_expires);
+	str2int(orig_expires_str,orig_expires);
 
 	if(!orig_expires || (expires < orig_expires)) {
 	  orig_expires = expires;

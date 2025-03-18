@@ -440,7 +440,7 @@ int main(int argc, char* argv[])
 
     if(!AmConfig::DaemonGid.empty()){
       unsigned int gid;
-      if(str2i(AmConfig::DaemonGid, gid)){
+      if(str2int(AmConfig::DaemonGid, gid)){
 	struct group* grnam = getgrnam(AmConfig::DaemonGid.c_str());
 	if(grnam != NULL){
 	  gid = grnam->gr_gid;
@@ -461,7 +461,7 @@ int main(int argc, char* argv[])
 
     if(!AmConfig::DaemonUid.empty()){
       unsigned int uid;
-      if(str2i(AmConfig::DaemonUid, uid)){
+      if(str2int(AmConfig::DaemonUid, uid)){
 	struct passwd* pwnam = getpwnam(AmConfig::DaemonUid.c_str());
 	if(pwnam != NULL){
 	  uid = pwnam->pw_uid;

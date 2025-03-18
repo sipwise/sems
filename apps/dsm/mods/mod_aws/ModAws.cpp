@@ -178,7 +178,7 @@ EXEC_ACTION_START(SCS3PutMultiFileAction) {
     keys_array = files_array;
 
   unsigned int num_files = 0;
-  if (str2i(sc_sess->var[files_array+"_size"], num_files)) {
+  if (str2int(sc_sess->var[files_array+"_size"], num_files)) {
     ERROR("determining size of '%s' array\n", files_array.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("determining size of '"+
@@ -188,7 +188,7 @@ EXEC_ACTION_START(SCS3PutMultiFileAction) {
 
   // safety check
   unsigned int num_keys = 0;
-  if (str2i(sc_sess->var[keys_array+"_size"], num_keys)) {
+  if (str2int(sc_sess->var[keys_array+"_size"], num_keys)) {
     ERROR("determining size of '%s' array\n", keys_array.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("determining size of '"+
@@ -311,7 +311,7 @@ EXEC_ACTION_START(SCSQSCreateQueueAction) {
   CHECK_PRELOAD_SQS;
   string aVisibilityTimeout_s = resolveVars(par1, sess, sc_sess, event_params);
   unsigned int aVisibilityTimeout = 0;
-  if (str2i(aVisibilityTimeout_s, aVisibilityTimeout)) {
+  if (str2int(aVisibilityTimeout_s, aVisibilityTimeout)) {
     ERROR("unable to determine aVisibilityTimeout '%s' for new queue\n",
 	  aVisibilityTimeout_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);

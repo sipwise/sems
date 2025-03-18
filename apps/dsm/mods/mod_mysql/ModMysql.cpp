@@ -327,7 +327,7 @@ EXEC_ACTION_START(SCMyQueryGetResultAction) {
       unsigned int rowindex_i = 0;
       string rowindex = resolveVars(par2, sess, sc_sess, event_params);
       if (rowindex.length()) {
-	if (str2i(rowindex, rowindex_i)) {
+	if (str2int(rowindex, rowindex_i)) {
 	  ERROR("row index '%s' not understood\n", rowindex.c_str());
 	  sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
 	  sc_sess->SET_STRERROR("row index '"+rowindex+"' not understood\n");
@@ -377,7 +377,7 @@ EXEC_ACTION_START(SCMyGetResultAction) {
   string colname  = resolveVars(par2, sess, sc_sess, event_params);
 
   if (rowindex.length()) {
-    if (str2i(rowindex, rowindex_i)) {
+    if (str2int(rowindex, rowindex_i)) {
       ERROR("row index '%s' not understood\n", rowindex.c_str());
       sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
       sc_sess->SET_STRERROR("row index '"+rowindex+"' not understood");

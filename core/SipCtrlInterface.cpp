@@ -210,7 +210,7 @@ int _SipCtrlInterface::load()
 
 	if (cfg.hasParameter("udp_rcvbuf")) {
 	    unsigned int config_udp_rcvbuf = -1;
-	    if (str2i(cfg.getParameter("udp_rcvbuf"), config_udp_rcvbuf)) {
+	    if (str2int(cfg.getParameter("udp_rcvbuf"), config_udp_rcvbuf)) {
 		ERROR("invalid value specified for udp_rcvbuf\n");
 		return false;
 	    }

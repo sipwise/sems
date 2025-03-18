@@ -527,7 +527,7 @@ inline int parse_via_params(sip_via_parm* parm, const char** c, int len)
 	    parm->has_rport = true;
 	    parm->rport = (*it)->value;
 	    if(parm->rport.len) {
-		if(str2i(c2stlstr(parm->rport),parm->rport_i)) {
+		if(str2int(c2stlstr(parm->rport),parm->rport_i)) {
 		    DBG("invalid port number in Via 'sent-by' address.\n");
 		}
 	    }

@@ -455,7 +455,7 @@ int AmConfig::readConfiguration()
 
   if (cfg.hasParameter("max_forwards")) {
       unsigned int mf=0;
-      if(str2i(cfg.getParameter("max_forwards"), mf)) {
+      if(str2int(cfg.getParameter("max_forwards"), mf)) {
 	  ERROR("invalid max_forwards specified\n");
       }
       else {
@@ -627,7 +627,7 @@ int AmConfig::readConfiguration()
     if (limit.size() != 3) {
       ERROR("invalid session_limit specified.\n");
     } else {
-      if (str2i(limit[0], SessionLimit) || str2i(limit[1], SessionLimitErrCode)) {
+      if (str2int(limit[0], SessionLimit) || str2int(limit[1], SessionLimitErrCode)) {
 	ERROR("invalid session_limit specified.\n");
       }
       SessionLimitErrReason = limit[2];
@@ -639,7 +639,7 @@ int AmConfig::readConfiguration()
     if (limit.size() != 3) {
       ERROR("invalid options_session_limit specified.\n");
     } else {
-      if (str2i(limit[0], OptionsSessionLimit) || str2i(limit[1], OptionsSessionLimitErrCode)) {
+      if (str2int(limit[0], OptionsSessionLimit) || str2int(limit[1], OptionsSessionLimitErrCode)) {
 	ERROR("invalid options_session_limit specified.\n");
       }
       OptionsSessionLimitErrReason = limit[2];
@@ -652,7 +652,7 @@ int AmConfig::readConfiguration()
     if (limit.size() != 3) {
       ERROR("invalid cps_limit specified.\n");
     } else {
-      if (str2i(limit[0], CPSLimit) || str2i(limit[1], CPSLimitErrCode)) {
+      if (str2int(limit[0], CPSLimit) || str2int(limit[1], CPSLimitErrCode)) {
 	ERROR("invalid cps_limit specified.\n");
       }
       CPSLimitErrReason = limit[2];
@@ -672,7 +672,7 @@ int AmConfig::readConfiguration()
       ret = -1;
 
     } else {
-      if (str2i(c_reply.substr(0, spos), ShutdownModeErrCode)) {
+      if (str2int(c_reply.substr(0, spos), ShutdownModeErrCode)) {
 	ERROR("invalid shutdown_mode_reply specified, expected \"<code> <reason>\","
 	      "e.g. shutdown_mode_reply=\"503 Not At The Moment, Please\".\n");
 	ret = -1;

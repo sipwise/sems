@@ -241,7 +241,7 @@ EXEC_ACTION_START(DSMRedisConnectAction) {
     } else if (p[0] == "connect_timeout"){
       str2int(p[1], connect_timeout);
     } else if (p[0] == "port"){
-      str2i(p[1], redis_port);
+      str2int(p[1], redis_port);
     } else {
       ERROR("unknown redis_db_url config or connect parameter - "
 	    "parameter '%s'\n", p[0].c_str());

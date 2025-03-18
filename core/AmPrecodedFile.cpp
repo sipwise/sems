@@ -172,7 +172,7 @@ int AmPrecodedFile::open(const std::string& filename) {
 
 #define get_uint_item(name, index, description)			\
     unsigned int name;						\
-    if (str2i(codec_def[index], name)) {			\
+    if (str2int(codec_def[index], name)) {			\
       ERROR("decoding " description " in codec line '%s'\n",	\
 	    codec_line.c_str());				\
       continue;							\

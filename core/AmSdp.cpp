@@ -586,7 +586,7 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
             next = skip_till_next_line(s, line_len);
             if (line_len) {
               string version(s, line_len);
-              str2i(version, sdp_msg->version);
+              str2int(version, sdp_msg->version);
               // DBG("parse_sdp_line_ex: found version '%s'\n", version.c_str());
             } else {
               sdp_msg->version = 0;
@@ -880,7 +880,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
           if (next > media_line)
             port = string(media_line, int(next-media_line)-1);
 
-          str2i(port, m.port);
+          str2int(port, m.port);
 
           /* number of ports */
           media_line = next;
@@ -889,7 +889,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
           if (next > media_line)
             nports = string(media_line, int(next-media_line)-1);
 
-          str2i(nports, m.nports);
+          str2int(nports, m.nports);
 
         } else {
           /* port number */
@@ -897,7 +897,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
           string port;
           if (next > media_line)
             port = string(media_line, int(next-media_line)-1);
-          str2i(port, m.port);
+          str2int(port, m.port);
           media_line = next;
         }
 
@@ -943,7 +943,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
 
             if (!value.empty()) {
               payload.type = m.type;
-              str2i(value, payload_type);
+              str2int(value, payload_type);
               payload.payload_type = payload_type;
               m.payloads.push_back(payload);
             }
@@ -961,7 +961,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
             }
             if (!last_value.empty()) {
               payload.type = m.type;
-              str2i(last_value, payload_type);
+              str2int(last_value, payload_type);
               payload.payload_type = payload_type;
               m.payloads.push_back(payload);
             }
@@ -1069,7 +1069,7 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
         {
           next = parse_until(attr_line, ' ');
           string type(attr_line, int(next-attr_line)-1);
-          str2i(type,payload_type);
+          str2int(type,payload_type);
           attr_line = next;
           rtpmap_st = ENC_NAME;
           break;
@@ -1096,18 +1096,18 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
           if(contains(attr_line, line_end, '/')){
             next = parse_until(attr_line, '/');
             string clk_rate(attr_line, int(next-attr_line)-1);
-            str2i(clk_rate, clock_rate);
+            str2int(clk_rate, clock_rate);
             attr_line = next;
             rtpmap_st = ENC_PARAM;
             /* last line check */
           }else if (*line_end == '\0') {
             string clk_rate(attr_line, int(line_end-attr_line));
-            str2i(clk_rate, clock_rate);
+            str2int(clk_rate, clock_rate);
             parsing = 0;
             /* more lines to come */
           }else{
             string clk_rate(attr_line, int(line_end-attr_line)-1);
-            str2i(clk_rate, clock_rate);
+            str2int(clk_rate, clock_rate);
             parsing=0;
           }
           break;
@@ -1118,12 +1118,12 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
           next = parse_until(attr_line, ' ');
           if(next < line_end){
             string value(attr_line, int(next-attr_line)-1);
-            str2i(value, encoding_param);
+            str2int(value, encoding_param);
             attr_line = next;
             rtpmap_st = ENC_PARAM;
           }else{
             string last_value(attr_line, int(line_end-attr_line)-1);
-            str2i(last_value, encoding_param);
+            str2int(last_value, encoding_param);
             parsing = 0;
           }
           break;
@@ -1156,7 +1156,7 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
         {
           next = parse_until(attr_line, line_end, ' ');
           string fmtp_format(attr_line, int(next-attr_line)-1);
-          str2i(fmtp_format, payload_type);
+          str2int(fmtp_format, payload_type);
           attr_line = next;
           fmtp_st = FORMAT_PARAM;
           break;
@@ -1285,7 +1285,7 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
           break;
         }
         string id(origin_line, int(next-origin_line)-1);
-        str2uint128(id, origin.sessId);
+        str2int(id, origin.sessId);
         origin_line = next;
         origin_st = VERSION_ST;
         break;
@@ -1300,7 +1300,7 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
           break;
         }
         string version(origin_line, int(next-origin_line)-1);
-        str2uint128(version, origin.sessV);
+        str2int(version, origin.sessV);
         origin_line = next;
         origin_st = NETTYPE;
         break;

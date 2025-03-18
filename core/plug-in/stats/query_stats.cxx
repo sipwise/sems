@@ -41,7 +41,7 @@ static int parse_args(int argc, char* argv[], const string& flags,
 
 
 /* returns non-zero if error occured */
-int str2i(const char* str, unsigned short* result)
+int str2int(const char* str, unsigned short* result)
 {
   int i=0;
   unsigned short ret=0;
@@ -63,10 +63,10 @@ int str2i(const char* str, unsigned short* result)
   return 0;
 
  error_digits:
-  fprintf(stderr,"str2i: too many letters in [%s]\n", init);
+  fprintf(stderr,"str2int: too many letters in [%s]\n", init);
   return -1;
  error_char:
-  fprintf(stderr,"str2i: unexpected char %c in %s\n", *str, init);
+  fprintf(stderr,"str2int: unexpected char %c in %s\n", *str, init);
   return -1;
 }
 
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
     case 's': { server=it->second; } break;
     case 'p': { port=it->second; } break;
     case 'c': { cmd=it->second; } break;
-    case 't': { if (str2i(it->second.c_str(),&timeout_s)<0) {
+    case 't': { if (str2int(it->second.c_str(),&timeout_s)<0) {
 	  fprintf(stderr,"timeout '%s' not understood\n",it->second.c_str());
 	  return -1;
 	} } break;
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
     return -1;
   }
 
-  if(str2i(port.c_str(),&addr.sin_port) == -1){
+  if(str2int(port.c_str(),&addr.sin_port) == -1){
     fprintf(stderr,"port '%s' is not a valid integer\n",port.c_str());
     return -1;
   }

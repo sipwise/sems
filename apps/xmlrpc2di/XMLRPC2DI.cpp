@@ -102,7 +102,7 @@ int XMLRPC2DI::load() {
   string server_timeout = cfg.getParameter("server_timeout");
   if (!server_timeout.empty()) {
     unsigned int server_timeout_i = 0;
-    if (str2i(server_timeout, server_timeout_i)) {
+    if (str2int(server_timeout, server_timeout_i)) {
       ERROR("could not understand server_timeout=%s\n", 
 	    server_timeout.c_str());
       return -1;
@@ -135,7 +135,7 @@ int XMLRPC2DI::load() {
     return -1;
   } 
   
-  if (str2i(conf_xmlrpc_port, XMLRPCPort)) {
+  if (str2int(conf_xmlrpc_port, XMLRPCPort)) {
     ERROR("configuration: unable to decode xmlrpc_port value '%s'!\n", 
 	  conf_xmlrpc_port.c_str());
     return -1;

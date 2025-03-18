@@ -136,7 +136,7 @@ bool curl_run_get(DSMSession* sc_sess, const string& url,
 
   if (!sc_sess->var["curl.timeout"].empty())  {
     unsigned int curl_timeout = 0;
-    if (str2i(sc_sess->var["curl.timeout"], curl_timeout)) {
+    if (str2int(sc_sess->var["curl.timeout"], curl_timeout)) {
       WARN("curl.timeout '%s' not understood\n", sc_sess->var["curl.timeout"].c_str());
     } else {
       if ((curl_easy_setopt(m_curl_handle, CURLOPT_TIMEOUT, curl_timeout) != CURLE_OK) || 
@@ -249,7 +249,7 @@ void curl_run_getfile(DSMSession* sc_sess, const string& url, const string& outf
 
   if (!sc_sess->var["curl.timeout"].empty())  {
     unsigned int curl_timeout = 0;
-    if (str2i(sc_sess->var["curl.timeout"], curl_timeout)) {
+    if (str2int(sc_sess->var["curl.timeout"], curl_timeout)) {
       WARN("curl.timeout '%s' not understood\n", sc_sess->var["curl.timeout"].c_str());
     } else {
       if ((curl_easy_setopt(m_curl_handle, CURLOPT_TIMEOUT, curl_timeout) != CURLE_OK) || 
@@ -332,7 +332,7 @@ bool curl_run_post(DSMSession* sc_sess, const string& par1, const string& par2,
 
   if (!sc_sess->var["curl.timeout"].empty())  {
     unsigned int curl_timeout = 0;
-    if (str2i(sc_sess->var["curl.timeout"], curl_timeout)) {
+    if (str2int(sc_sess->var["curl.timeout"], curl_timeout)) {
       WARN("curl.timeout '%s' not understood\n", sc_sess->var["curl.timeout"].c_str());
     } else {
       if ((curl_easy_setopt(m_curl_handle, CURLOPT_TIMEOUT, curl_timeout) != CURLE_OK) || 

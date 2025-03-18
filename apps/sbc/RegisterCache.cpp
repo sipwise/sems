@@ -853,7 +853,7 @@ int _RegisterCache::parseExpires(RegisterCacheCtx& ctx,
 
   // move Expires as separate header to contact parameter
   string expires_str = getHeader(req.hdrs, "Expires");
-  if (!expires_str.empty() && str2i(expires_str, ctx.requested_expires)) {
+  if (!expires_str.empty() && str2int(expires_str, ctx.requested_expires)) {
     AmBasicSipDialog::reply_error(req, 400, "Bad Request", 
 				  "Warning: Malformed expires\r\n", logger);
     return true; // error reply sent
@@ -908,7 +908,7 @@ bool _RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
       contact_it->params["expires"] = long2str(contact_expires);
     }
     else {
-      if(!str2long(expires_it->second,contact_expires)) {
+      if(!str2int(expires_it->second,contact_expires)) {
 	AmBasicSipDialog::reply_error(req, 400, "Bad Request",
 				      "Warning: Malformed expires\r\n", logger);
 	return true; // error reply sent
@@ -1061,7 +1061,7 @@ bool _RegisterCache::saveSingleContact(RegisterCacheCtx& ctx,
     if(contact->params.find("expires") != contact->params.end()) {
       DBG("contact->params[\"expires\"] = '%s'",
 	  contact->params["expires"].c_str());
-      if(str2i(contact->params["expires"],contact_expires)) {
+      if(str2int(contact->params["expires"],contact_expires)) {
 	AmBasicSipDialog::reply_error(req, 400, "Bad Request",
 				      "Warning: Malformed expires\r\n", logger);
 	return true; // error reply sent

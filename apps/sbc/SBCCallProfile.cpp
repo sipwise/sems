@@ -65,7 +65,7 @@ static string payload2str(const SdpPayload &p);
     if (!what.empty()) {			    \
       what = ctx.replaceParameters(what, #what, req);	\
       unsigned int num;					\
-      if (str2i(what, num)) {				   \
+      if (str2int(what, num)) {				   \
 	ERROR(#what " '%s' not understood\n", what.c_str());	\
 	return false;						\
       }								\
@@ -331,7 +331,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     }
 
     unsigned int from_code, to_code;
-    if (str2i(trans_components[0], from_code)) {
+    if (str2int(trans_components[0], from_code)) {
       ERROR("%s: code '%s' in reply_translations not understood.\n",
 	    name.c_str(), trans_components[0].c_str());
       return false;
@@ -340,7 +340,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     string to_reply = trans_components[1];
     while (s_pos < to_reply.length() && to_reply[s_pos] != ' ')
       s_pos++;
-    if (str2i(to_reply.substr(0, s_pos), to_code)) {
+    if (str2int(to_reply.substr(0, s_pos), to_code)) {
       ERROR("%s: code '%s' in reply_translations not understood.\n",
 	    name.c_str(), to_reply.substr(0, s_pos).c_str());
       return false;
@@ -1066,7 +1066,7 @@ int SBCCallProfile::refuse(ParamReplacerCtx& ctx, const AmSipRequest& req) const
   size_t spos = m_refuse_with.find(' ');
   unsigned int refuse_with_code;
   if (spos == string::npos || spos == m_refuse_with.size() ||
-      str2i(m_refuse_with.substr(0, spos), refuse_with_code)) {
+      str2int(m_refuse_with.substr(0, spos), refuse_with_code)) {
     ERROR("invalid refuse_with '%s'->'%s' in  %s. Expected <code> <reason>\n",
 	  refuse_with.c_str(), m_refuse_with.c_str(), profile_file.c_str());
     return -1;
@@ -1709,7 +1709,7 @@ bool PayloadDesc::read(const std::string &s)
   vector<string> elems = explode(s, "/");
   if (elems.size() > 1) {
     name = elems[0];
-    str2i(elems[1], clock_rate);
+    str2int(elems[1], clock_rate);
   }
   else if (elems.size() > 0) {
     name = elems[0];

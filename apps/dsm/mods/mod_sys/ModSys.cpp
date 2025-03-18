@@ -228,7 +228,7 @@ EXEC_ACTION_START(SCUnlinkArrayAction) {
   string prefix = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int arr_size = 0;
-  if (str2i(sc_sess->var[fname + "_size"], arr_size)) {
+  if (str2int(sc_sess->var[fname + "_size"], arr_size)) {
     ERROR("_size not present/parseable '$%s'\n", sc_sess->var[fname + "_size"].c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     return false;

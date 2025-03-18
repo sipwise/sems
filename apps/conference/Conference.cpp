@@ -298,7 +298,7 @@ int ConferenceFactory::onLoad()
 
   MaxParticipants = 0;
   string max_participants = cfg.getParameter("max_participants");
-  if (max_participants.length() && str2i(max_participants, MaxParticipants)) {
+  if (max_participants.length() && str2int(max_participants, MaxParticipants)) {
     ERROR("while parsing max_participants parameter\n"); 
   }
 

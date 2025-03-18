@@ -60,7 +60,7 @@ EXEC_ACTION_START(SIPSUBCreateAction) {
   unsigned int expires = 0;
   
   if (sc_sess->var.find(params_s+".expires") != sc_sess->var.end()) {
-    str2i(sc_sess->var[params_s+".expires"], expires);
+    str2int(sc_sess->var[params_s+".expires"], expires);
   }
 
   string handle = AmSipSubscriptionContainer::instance()->
@@ -84,7 +84,7 @@ EXEC_ACTION_START(SIPSUBRefreshAction) {
   string expires = resolveVars(par2, sess, sc_sess, event_params);
   unsigned int expires_i = 0;
   if (!expires.empty())
-    str2i(expires, expires_i);
+    str2int(expires, expires_i);
 
   DBG("refreshing subscription with handle '%s'\n", handle.c_str());
   if (!AmSipSubscriptionContainer::instance()->refreshSubscription(handle, expires_i)) {

@@ -613,7 +613,7 @@ DSMAction::SEAction SCReturnFSMAction::getSEAction(string& param,
 CONST_ACTION_2P(SCLogAction, ',', false);
 EXEC_ACTION_START(SCLogAction) {
   unsigned int lvl;
-  if (str2i(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
+  if (str2int(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
     ERROR("unknown log level '%s'\n", par1.c_str());
     EXEC_ACTION_STOP;
   }
@@ -625,7 +625,7 @@ EXEC_ACTION_START(SCLogAction) {
 CONST_ACTION_2P(SCLogsAction, ',', false);
 EXEC_ACTION_START(SCLogsAction) {
   unsigned int lvl;
-  if (str2i(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
+  if (str2int(resolveVars(par1, sess, sc_sess, event_params), lvl)) {
     ERROR("unknown log level '%s'\n", par1.c_str());
     EXEC_ACTION_STOP;
   }
@@ -656,7 +656,7 @@ EXEC_ACTION_START(SCErrorAction) {
 void log_vars(const string& l_arg, AmSession* sess,
 	      DSMSession* sc_sess, map<string,string>* event_params) {
   unsigned int lvl;
-  if (str2i(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
+  if (str2int(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
     ERROR("unknown log level '%s'\n", l_arg.c_str());
     return;
   }
@@ -676,7 +676,7 @@ EXEC_ACTION_START(SCLogVarsAction) {
 void log_params(const string& l_arg, AmSession* sess,
 		DSMSession* sc_sess, map<string,string>* event_params) {
   unsigned int lvl;
-  if (str2i(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
+  if (str2int(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
     ERROR("unknown log level '%s'\n", l_arg.c_str());
     return;
   }
@@ -702,7 +702,7 @@ EXEC_ACTION_START(SCLogParamsAction) {
 void log_selects(const string& l_arg, AmSession* sess,
 		 DSMSession* sc_sess, map<string,string>* event_params) {
   unsigned int lvl;
-  if (str2i(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
+  if (str2int(resolveVars(l_arg, sess, sc_sess, event_params), lvl)) {
     ERROR("unknown log level '%s'\n", l_arg.c_str());
     return;
   }
@@ -1076,19 +1076,19 @@ EXEC_ACTION_START(SCSubStrAction) {
   unsigned int pos2 = 0;
   size_t c_pos = par2.find(",");
   if (c_pos == string::npos) {
-    if (str2i(resolveVars(par2, sess, sc_sess, event_params), pos)) {
+    if (str2int(resolveVars(par2, sess, sc_sess, event_params), pos)) {
       ERROR("substr length '%s' unparseable\n",
 	    resolveVars(par2, sess, sc_sess, event_params).c_str());
       return false;
     }
   } else {
-    if (str2i(resolveVars(par2.substr(0, c_pos), sess, sc_sess, event_params), pos)) {
+    if (str2int(resolveVars(par2.substr(0, c_pos), sess, sc_sess, event_params), pos)) {
       ERROR("substr length '%s' unparseable\n",
 	    resolveVars(par2.substr(0, c_pos), sess, sc_sess, event_params).c_str());
       return false;
     }
 
-    if (str2i(resolveVars(par2.substr(c_pos+1), sess, sc_sess, event_params), pos2)) {
+    if (str2int(resolveVars(par2.substr(c_pos+1), sess, sc_sess, event_params), pos2)) {
       ERROR("substr length '%s' unparseable\n",
 	    resolveVars(par2.substr(0, c_pos-1), sess, sc_sess, event_params).c_str());
       return false;
@@ -1113,7 +1113,7 @@ EXEC_ACTION_START(SCIncAction) {
   string var_name = (arg.length() && arg[0] == '$')?
     arg.substr(1) : arg;
   unsigned int val = 0;
-  str2i(sc_sess->var[var_name], val);
+  str2int(sc_sess->var[var_name], val);
   sc_sess->var[var_name] = int2str(val+1);
 
   DBG("inc: $%s now '%s'\n", 
@@ -1125,7 +1125,7 @@ CONST_ACTION_2P(SCSetTimerAction,',', false);
 EXEC_ACTION_START(SCSetTimerAction) {
 
   unsigned int timerid;
-  if (str2i(resolveVars(par1, sess, sc_sess, event_params), timerid)) {
+  if (str2int(resolveVars(par1, sess, sc_sess, event_params), timerid)) {
     ERROR("timer id '%s' not decipherable\n", 
 	  resolveVars(par1, sess, sc_sess, event_params).c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
@@ -1136,7 +1136,7 @@ EXEC_ACTION_START(SCSetTimerAction) {
   }
 
   unsigned int timeout;
-  if (str2i(resolveVars(par2, sess, sc_sess, event_params), timeout)) {
+  if (str2int(resolveVars(par2, sess, sc_sess, event_params), timeout)) {
     ERROR("timeout value '%s' not decipherable\n", 
 	  resolveVars(par2, sess, sc_sess, event_params).c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
@@ -1161,7 +1161,7 @@ EXEC_ACTION_START(SCRemoveTimerAction) {
 
   unsigned int timerid;
   string timerid_s = resolveVars(arg, sess, sc_sess, event_params);
-  if (str2i(timerid_s, timerid)) {
+  if (str2int(timerid_s, timerid)) {
     ERROR("timer id '%s' not decipherable\n", timerid_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("timer id '"+timerid_s+"' not decipherable\n");
@@ -1663,7 +1663,7 @@ EXEC_ACTION_START(SCSendDTMFAction) {
   string duration = resolveVars(par2, sess, sc_sess, event_params);  
   
   unsigned int event_i;
-  if (str2i(event, event_i)) {
+  if (str2int(event, event_i)) {
     ERROR("event '%s' not a valid DTMF event\n", event.c_str());
     throw DSMException("core", "cause", "invalid DTMF:"+ event);
   }
@@ -1672,7 +1672,7 @@ EXEC_ACTION_START(SCSendDTMFAction) {
   if (duration.empty()) {
     duration_i = 500; // default
   } else {
-    if (str2i(duration, duration_i)) {
+    if (str2int(duration, duration_i)) {
       ERROR("event duration '%s' not a valid DTMF duration\n", duration.c_str());
       throw DSMException("core", "cause", "invalid DTMF duration:"+ duration);
     }
@@ -1690,7 +1690,7 @@ EXEC_ACTION_START(SCSendDTMFSequenceAction) {
   if (duration.empty()) {
     duration_i = 500; // default
   } else {
-    if (str2i(duration, duration_i)) {
+    if (str2int(duration, duration_i)) {
       ERROR("event duration '%s' not a valid DTMF duration\n", duration.c_str());
       throw DSMException("core", "cause", "invalid DTMF duration:"+ duration);
     }

@@ -318,7 +318,7 @@ void AmSIPRegistration::onSipReply(const AmSipRequest& req,
 	    DBG("contact found\n");
 	    found = active = true;
 
-	    if (str2i(server_contact.params["expires"], reg_expires)) {
+	    if (str2int(server_contact.params["expires"], reg_expires)) {
 	      ERROR("could not extract expires value, default to 300.\n");
 	      reg_expires = 300;
 	    }

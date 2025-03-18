@@ -164,7 +164,7 @@ EXEC_ACTION_START(SCUPlayCountRightAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -183,7 +183,7 @@ EXEC_ACTION_START(SCUPlayCountLeftAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -201,7 +201,7 @@ EXEC_ACTION_START(SCUGetCountRightAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -226,7 +226,7 @@ EXEC_ACTION_START(SCUGetCountLeftAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -251,7 +251,7 @@ EXEC_ACTION_START(SCUGetCountRightNoSuffixAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -276,7 +276,7 @@ EXEC_ACTION_START(SCUGetCountLeftNoSuffixAction) {
   string basedir = resolveVars(par2, sess, sc_sess, event_params);
 
   unsigned int cnt = 0;
-  if (str2i(cnt_s,cnt)) {
+  if (str2int(cnt_s,cnt)) {
     ERROR("could not parse count '%s'\n", cnt_s.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("could not parse count '"+cnt_s+"'\n");
@@ -307,7 +307,7 @@ EXEC_ACTION_START(SCURandomAction) {
 
   unsigned int modulo = 0;
   if (modulo_str.length()) 
-    str2i(modulo_str, modulo);
+    str2int(modulo_str, modulo);
   
   if (modulo)
     sc_sess->var[varname]=int2str(rand()%modulo);

@@ -58,7 +58,7 @@ int CCParallelCalls::onLoad() {
     cfg.getParameter("refuse_reason") : refuse_reason;
 
   if (cfg.hasParameter("refuse_code")) {
-    if (str2i(cfg.getParameter("refuse_code"), refuse_code)) {
+    if (str2int(cfg.getParameter("refuse_code"), refuse_code)) {
       ERROR("refuse_code '%s' not understood\n", cfg.getParameter("refuse_code").c_str());
       return -1;
     }
@@ -130,7 +130,7 @@ void CCParallelCalls::start(const string& cc_namespace,
 
   unsigned int max_calls = 1; // default
   if (values.hasMember("max_calls") && isArgCStr(values["max_calls"])) {
-    if (str2i(values["max_calls"].asCStr(), max_calls)) {
+    if (str2int(values["max_calls"].asCStr(), max_calls)) {
       ERROR("max_calls '%s' could not be interpreted!\n", values["max_calls"].asCStr());
       REFUSE_WITH_SERVER_INTERNAL_ERROR;
     }

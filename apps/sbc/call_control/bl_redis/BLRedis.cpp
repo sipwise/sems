@@ -99,19 +99,19 @@ int CCBLRedis::onLoad() {
   }
 
   unsigned int i_redis_connections;
-  if (str2i(redis_connections, i_redis_connections)) {
+  if (str2int(redis_connections, i_redis_connections)) {
     ERROR("could not understand redis_connections=%s\n", redis_connections.c_str());
     return -1;
   }
 
   unsigned int i_redis_port;
-  if (str2i(redis_port, i_redis_port)) {
+  if (str2int(redis_port, i_redis_port)) {
     ERROR("could not understand redis_port=%s\n", redis_port.c_str());
     return -1;
   }
 
  unsigned int i_redis_max_conn_wait;
-  if (str2i(redis_max_conn_wait, i_redis_max_conn_wait)) {
+  if (str2int(redis_max_conn_wait, i_redis_max_conn_wait)) {
     ERROR("could not understand redis_max_conn_wait=%s\n", redis_max_conn_wait.c_str());
     return -1;
   }
@@ -293,7 +293,7 @@ void CCBLRedis::start(const string& cc_name, const string& ltag,
   unsigned int argv_max = 0;
 
   if (!values.hasMember("argc") ||
-      str2i(values["argc"].asCStr(), argv_max) || (!argv_max)) {
+      str2int(values["argc"].asCStr(), argv_max) || (!argv_max)) {
     ERROR("deciphering argc\n");
     res_cmd[SBC_CC_ACTION] = SBC_CC_REFUSE_ACTION;
     res_cmd[SBC_CC_REFUSE_CODE] = 500;

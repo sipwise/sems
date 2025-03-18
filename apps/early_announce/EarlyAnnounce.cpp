@@ -398,7 +398,7 @@ void EarlyAnnounceDialog::process(AmEvent* event)
 	string iptel_app_param = getHeader(invite_req.hdrs, PARAM_HDR, true);
 	if (iptel_app_param.length()) {
 	  string code = get_header_keyvalue(iptel_app_param,"Final-Reply-Code");
-	  if (code.length() && str2i(code, code_i)) {
+	  if (code.length() && str2int(code, code_i)) {
 	    ERROR("while parsing Final-Reply-Code parameter\n");
 	  }
 	  reason = get_header_keyvalue(iptel_app_param,"Final-Reply-Reason");
@@ -406,7 +406,7 @@ void EarlyAnnounceDialog::process(AmEvent* event)
 	    reason = "Not Found";
 	} else {
 	  string code = getHeader(invite_req.hdrs,"P-Final-Reply-Code", true);
-	  if (code.length() && str2i(code, code_i)) {
+	  if (code.length() && str2int(code, code_i)) {
 	    ERROR("while parsing P-Final-Reply-Code\n");
 	  }
 	  string h_reason =  getHeader(invite_req.hdrs,"P-Final-Reply-Reason", true);

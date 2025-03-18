@@ -150,7 +150,7 @@ int WebConferenceFactory::load()
     use_direct_room = true;
     string direct_room_strip_str = cfg.getParameter("direct_room_strip");
     if (direct_room_strip_str.length() &&
-	str2i(direct_room_strip_str, direct_room_strip)) {
+	str2int(direct_room_strip_str, direct_room_strip)) {
       ERROR("unable to decipher direct_room_strip amount '%s'\n",
 	    direct_room_strip_str.c_str());
       return -1;
@@ -162,7 +162,7 @@ int WebConferenceFactory::load()
 
   string room_pin_split_s = cfg.getParameter("room_pin_split");
   if (!room_pin_split_s.empty()) {
-    if (str2i(room_pin_split_s, room_pin_split_pos)) {
+    if (str2int(room_pin_split_s, room_pin_split_pos)) {
       ERROR("room_pin_split in webconference config not readable\n");
       return -1;
     }

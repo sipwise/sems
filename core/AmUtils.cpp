@@ -231,13 +231,13 @@ bool reverse_hex2int(const string& str, unsigned int& result)
   return false;
 }
 
-bool str2i(const string& str, unsigned int& result)
+bool str2int(const string& str, unsigned int& result)
 {
   char* s = (char*)str.c_str();
-  return str2i(s,result);
+  return str2int(s,result);
 }
 
-bool str2i(char*& str, unsigned int& result, char sep)
+bool str2int(char*& str, unsigned int& result, char sep)
 {
   unsigned int ret=0;
   int i=0;
@@ -271,10 +271,10 @@ bool str2i(char*& str, unsigned int& result, char sep)
   return false;
 
  error_digits:
-  DBG("str2i: too many letters in [%s]\n", init);
+  DBG("str2int: too many letters in [%s]\n", init);
   return true;
  error_char:
-  DBG("str2i: unexpected char 0x%x in %s\n", *str, init);
+  DBG("str2int: unexpected char 0x%x in %s\n", *str, init);
   return true;
 }
 
@@ -328,18 +328,18 @@ bool str2int(char*& str, int& result, char sep)
   DBG("str2int: too many digits in [%s]\n", init);
   return false;
  error_char:
-  DBG("str2i: unexpected char 0x%x in %s\n", *str, init);
+  DBG("str2int: unexpected char 0x%x in %s\n", *str, init);
   return false;
 }
 
 // long int could probably be the same size as int
-bool str2long(const string& str, long& result)
+bool str2int(const string& str, long& result)
 {
   char* s = (char*)str.c_str();
-  return str2long(s,result);
+  return str2int(s,result);
 }
 
-bool str2long(char*& str, long& result, char sep)
+bool str2int(char*& str, long& result, char sep)
 {
   long ret=0;
   int i=0;
@@ -380,21 +380,21 @@ bool str2long(char*& str, long& result, char sep)
   return true;
 
  error_digits:
-  DBG("str2long: too many digits in [%s]\n", init);
+  DBG("str2int: too many digits in [%s]\n", init);
   return false;
  error_char:
-  DBG("str2long: unexpected char 0x%x in %s\n", *str, init);
+  DBG("str2int: unexpected char 0x%x in %s\n", *str, init);
   return false;
 }
 
-bool str2uint128(const string& str, __uint128_t & result)
+bool str2int(const string& str, __uint128_t & result)
 {
   char* s = (char*)str.c_str();
-  result = str2uint128(s);
+  result = str2int(s);
   return (result ? true : false);
 }
 
-__uint128_t str2uint128(const char* str) {
+__uint128_t str2int(const char* str) {
     __uint128_t result = 0;
     while (*str) {
         if (*str < '0' || *str > '9') {
@@ -409,13 +409,13 @@ __uint128_t str2uint128(const char* str) {
 }
 
 // long int could probably be the same size as int
-bool str2ull(const string& str, unsigned long long& result)
+bool str2int(const string& str, unsigned long long& result)
 {
   char* s = (char*)str.c_str();
-  return str2ull(s,result);
+  return str2int(s,result);
 }
 
-bool str2ull(char*& str, unsigned long long& result, char sep)
+bool str2int(char*& str, unsigned long long& result, char sep)
 {
   unsigned long long ret=0;
   int i=0;
@@ -456,10 +456,10 @@ bool str2ull(char*& str, unsigned long long& result, char sep)
   return true;
 
  error_digits:
-  DBG("str2ull: too many digits in [%s]\n", init);
+  DBG("str2int: too many digits in [%s]\n", init);
   return false;
  error_char:
-  DBG("str2ull: unexpected char 0x%x in %s\n", *str, init);
+  DBG("str2int: unexpected char 0x%x in %s\n", *str, init);
   return false;
 }
 

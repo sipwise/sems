@@ -101,7 +101,7 @@ EXEC_ACTION_START(ConfPostEventAction) {
   string ev_id = resolveVars(par2, sess, sc_sess, event_params);
   
   unsigned int ev;
-  if (str2i(ev_id, ev)) {
+  if (str2int(ev_id, ev)) {
     ERROR("decoding conference event id '%s'\n", ev_id.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
     sc_sess->SET_STRERROR("decoding conference event id '"+ev_id+"%s'\n");
@@ -349,7 +349,7 @@ EXEC_ACTION_START(ConfSetupMixInAction) {
   if (seconds.empty()) {
     s = 0;
   } else {
-    if (str2i(seconds, s)) {
+    if (str2int(seconds, s)) {
       throw DSMException("conference", 
 			 "cause", "could not interpret seconds value");
     }

@@ -251,28 +251,28 @@ int VoiceboxFactory::onLoad()
   }
 
   string s_repeat_key = cfg.getParameter("repeat_key", "1");
-  if (str2i(s_repeat_key, repeat_key)) {
+  if (str2int(s_repeat_key, repeat_key)) {
     ERROR("repeat_key value '%s' unparseable.\n", 
 	  s_repeat_key.c_str());
     return -1;
   }
 
   string s_save_key = cfg.getParameter("save_key", "2");
-  if (str2i(s_save_key, save_key)) {
+  if (str2int(s_save_key, save_key)) {
     ERROR("save_key value '%s' unparseable.\n", 
 	  s_save_key.c_str());
     return -1;
   }
 
   string s_delete_key = cfg.getParameter("delete_key", "3");
-  if (str2i(s_delete_key, delete_key)) {
+  if (str2int(s_delete_key, delete_key)) {
     ERROR("delete_key value '%s' unparseable.\n", 
 	  s_delete_key.c_str());
     return -1;
   }
 
   string s_startover_key = cfg.getParameter("startover_key", "4");
-  if (str2i(s_startover_key, startover_key)) {
+  if (str2int(s_startover_key, startover_key)) {
     ERROR("startover_key value '%s' unparseable.\n", 
 	  s_startover_key.c_str());
     return -1;

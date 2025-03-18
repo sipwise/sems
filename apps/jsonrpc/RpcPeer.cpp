@@ -211,7 +211,7 @@ int JsonrpcNetstringsConnection::netstringsRead() {
       DBG("received '%c'\n", msgbuf[rcvd_size]);
       if (msgbuf[rcvd_size] == ':') {
 	msgbuf[rcvd_size] = '\0';
-	if (str2i(std::string(msgbuf, rcvd_size), msg_size)) {
+	if (str2int(std::string(msgbuf, rcvd_size), msg_size)) {
 	  ERROR("Protocol error decoding size '%s'\n", msgbuf);
 	  close();
 	  return REMOVE;

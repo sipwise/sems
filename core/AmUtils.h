@@ -123,25 +123,25 @@ bool reverse_hex2int(const string& str, unsigned int& result);
 string double2str(double val);
 
 /** 
- * Convert a string to an uint. 
+ * Convert a string to an uint.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
  * @return true if failed (!!!)
  */
-bool str2i(const string& str, unsigned int& result);
+bool str2int(const string& str, unsigned int& result);
 
 /** 
- * Internal version of preceeding 'str2i' method. 
+ * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
  * @param sep    [in] character seprating the number to convert and the next token
  * @return true if failed (!!!)
  */
-bool str2i(char*& str, unsigned int& result, char sep = ' ');
+bool str2int(char*& str, unsigned int& result, char sep = ' ');
 
 
 /** 
- * Convert a string to an int. 
+ * Convert a string to an int.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
  * @return true on success (!!!)
@@ -149,7 +149,7 @@ bool str2i(char*& str, unsigned int& result, char sep = ' ');
 bool str2int(const string& str, int& result);
 
 /** 
- * Internal version of preceeding 'str2int' method. 
+ * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
  * @param sep    [in] character seprating the number to convert and the next token
@@ -158,22 +158,22 @@ bool str2int(const string& str, int& result);
 bool str2int(char*& str, int& result, char sep = ' ');
 
 /** 
- * Convert a string to a long int. 
+ * Convert a string to a long int.
  * On many systems nowadays this could be the same as str2int.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
  * @return true if on success (!!!).
  */
-bool str2long(const string& str, long& result);
+bool str2int(const string& str, long& result);
 
 /** 
- * Internal version of preceeding 'str2long' method. 
+ * Internal version of preceeding 'str2long' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
  * @param sep    [in] character seprating the number to convert and the next token
  * @return true on success
  */
-bool str2long(char*& str, long& result, char sep = ' ');
+bool str2int(char*& str, long& result, char sep = ' ');
 
 /**
  * Convert a string to a unsigned int128.
@@ -181,13 +181,13 @@ bool str2long(char*& str, long& result, char sep = ' ');
  * @param result [out] result unsinged int128.
  * @return true on success.
  */
-bool str2uint128(const string& str, __uint128_t & result);
+bool str2int(const string& str, __uint128_t & result);
 /**
  * Convert a char array to a unsigned int128.
  * @param str    [in]  string to convert.
  * @return 0 (failed) or converted unsigned int128 value.
  */
-__uint128_t str2uint128(const char* str);
+__uint128_t str2int(const char* str);
 
 /**
  * Convert a string to a unsigned long long int.
@@ -195,16 +195,16 @@ __uint128_t str2uint128(const char* str);
  * @param result [out] result integer.
  * @return true if on success (!!!).
  */
-bool str2ull(const string& str, unsigned long long& result);
+bool str2int(const string& str, unsigned long long& result);
 
 /**
- * Internal version of preceeding 'std2ull' method.
+ * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
  * @param sep    [in] character seprating the number to convert and the next token
  * @return true on success
  */
-bool str2ull(char*& str, unsigned long long& result, char sep = ' ');
+bool str2int(char*& str, unsigned long long& result, char sep = ' ');
 
 /* translates string value into bool, returns false on error */
 bool str2bool(const string &s, bool &dst);
