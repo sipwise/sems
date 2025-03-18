@@ -225,21 +225,14 @@ void _RegisterCache::gbc(unsigned int bucket_id)
   bucket->unlock();
 }
 
-void _RegisterCache::on_stop()
-{
-  running = false;
-}
-
 void _RegisterCache::run()
 {
   struct timespec tick,rem;
   tick.tv_sec  = (REG_CACHE_SINGLE_CYCLE/1000000L);
   tick.tv_nsec = (REG_CACHE_SINGLE_CYCLE - (tick.tv_sec)*1000000L) * 1000L;
 
-  running = true;
-
   gbc_bucket_id = 0;
-  while(running) {
+  while (!stop_requested()) {
     gbc(gbc_bucket_id);
     gbc_bucket_id = (gbc_bucket_id+1);
     gbc_bucket_id &= (REG_CACHE_TABLE_ENTRIES-1);

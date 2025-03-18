@@ -89,8 +89,7 @@ void AmSessionProcessorThread::notify(AmEventQueue* sender) {
 
 void AmSessionProcessorThread::run() {
 
-  stop_requested = false;
-  while(!stop_requested){
+  while (!stop_requested()) {
 
     runcond.wait_for();
 
@@ -159,8 +158,7 @@ void AmSessionProcessorThread::run() {
 }
 
 void AmSessionProcessorThread::on_stop() {
-  INFO("requesting session to stop.\n");
-  stop_requested = true;
+  runcond.set(true);
 }
 
 // AmEventHandler interface

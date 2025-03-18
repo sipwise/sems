@@ -171,8 +171,8 @@ class AmMediaProcessorThread :
   // AmThread interface
   void run();
   void on_stop();
-  atomic_bool stop_requested;
-    
+  const char *identify() { return "media processor"; }
+ 
   // AmEventHandler interface
   void process(AmEvent* e);
 public:

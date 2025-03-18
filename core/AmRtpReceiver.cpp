@@ -50,7 +50,6 @@ _AmRtpReceiver::~_AmRtpReceiver()
 }
 
 AmRtpReceiverThread::AmRtpReceiverThread()
-  : stop_requested(false)
 {
   // libevent event base
   ev_base = event_base_new();
@@ -68,20 +67,11 @@ void AmRtpReceiverThread::on_stop()
   event_base_loopbreak(ev_base);
 }
 
-void AmRtpReceiverThread::stop_and_wait()
-{
-  if(!is_stopped()) {
-    stop();
-    
-    while(!is_stopped()) 
-      usleep(10000);
-  }
-}
-
 void _AmRtpReceiver::dispose() 
 {
   for(unsigned int i=0; i<n_receivers; i++){
-    receivers[i].stop_and_wait();
+    receivers[i].stop();
+    receivers[i].join();
   }
 }
 

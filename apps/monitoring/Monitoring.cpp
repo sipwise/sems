@@ -721,8 +721,7 @@ LogBucket& Monitor::getLogBucket(const string& call_id) {
 
 void MonitorGarbageCollector::run() {
   DBG("running MonitorGarbageCollector thread\n");
-  running.set(true);
-  while (running.get()) {
+  while (!stop_requested()) {
     sleep(Monitor::gcInterval);
     Monitor::instance()->clearFinished();
   }
@@ -735,7 +734,8 @@ void MonitorGarbageCollector::postEvent(AmEvent* e) {
   if (sys_ev && 
       sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
     DBG("stopping MonitorGarbageCollector thread\n");
-    running.set(false);
+    stop();
+    join();
     return;
   }
 

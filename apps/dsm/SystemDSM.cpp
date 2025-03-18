@@ -13,7 +13,7 @@
 SystemDSM::SystemDSM(const DSMScriptConfig& config,
 		     const string& startDiagName,
 		     bool reload) 
-  : stop_requested(false), AmEventQueue(this), 
+  : AmEventQueue(this), 
     startDiagName(startDiagName), dummy_session(this), 
     reload(reload)
 {
@@ -51,7 +51,7 @@ void SystemDSM::run() {
     return;
   }
 
-  while (!stop_requested && !dummy_session.getStopped()) {
+  while (!stop_requested() && !dummy_session.getStopped()) {
     waitForEvent();
     processEvents();
   }
@@ -62,7 +62,6 @@ void SystemDSM::run() {
 
 void SystemDSM::on_stop() {
   DBG("requesting stop of SystemDSM\n");
-  stop_requested = true;
 }
 
 void SystemDSM::process(AmEvent* event) {

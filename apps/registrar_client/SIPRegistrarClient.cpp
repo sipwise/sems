@@ -62,8 +62,7 @@ SIPRegistrarClient* SIPRegistrarClient::instance()
 SIPRegistrarClient::SIPRegistrarClient(const string& name)
   : AmEventQueue(this),
     uac_auth_i(NULL),
-    AmDynInvokeFactory(MOD_NAME),
-    stop_requested(false)
+    AmDynInvokeFactory(MOD_NAME)
 { 
 }
 
@@ -77,7 +76,7 @@ void SIPRegistrarClient::run() {
     uac_auth_i = uac_auth_f->getInstance();
   }
 
-  while (!stop_requested) {
+  while (!stop_requested()) {
     if (registrations.size()) {
       unsigned int cnt = 250;
       while (cnt > 0) {
@@ -144,7 +143,7 @@ void SIPRegistrarClient::onServerShutdown() {
     AmEventDispatcher::instance()->delEventQueue(it->first);
   }
 
-  stop_requested = true;
+  stop();
 //   
 //   setStopped();
 //   return;

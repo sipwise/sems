@@ -47,9 +47,6 @@ class RtmpSender
   // ptr to RtmpConnection::rtmp
   RTMP* p_rtmp;
 
-  // execution control
-  atomic_bool running;
-
   int SendChangeChunkSize();
 
 protected:

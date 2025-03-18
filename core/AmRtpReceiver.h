@@ -71,8 +71,6 @@ class AmRtpReceiverThread
   Streams  streams;
   AmMutex  streams_mut;
 
-  atomic_bool stop_requested;
-
   static void _rtp_receiver_read_cb(evutil_socket_t sd, short what, void* arg);
 
 public:    
@@ -84,8 +82,6 @@ public:
 
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
-
-  void stop_and_wait();
 };
 
 class _AmRtpReceiver

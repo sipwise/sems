@@ -474,7 +474,7 @@ void XMLRPC2DIServer::run() {
     s->work(DEF_XMLRPCSERVER_WORK_INTERVAL);
     processEvents();
   } 
-  while(running.get());
+  while (!stop_requested());
 
   AmEventDispatcher::instance()->delEventQueue(MOD_NAME);
   DBG("Exiting XMLRPC2DIServer.\n");
@@ -488,7 +488,8 @@ void XMLRPC2DIServer::process(AmEvent* ev) {
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	DBG("XMLRPC2DIServer received system Event: ServerShutdown, "
 	    "stopping thread\n");
-	running.set(false);
+	stop();
+	join();
       }
       return;
     }
@@ -498,7 +499,6 @@ void XMLRPC2DIServer::process(AmEvent* ev) {
 
 void XMLRPC2DIServer::on_stop() {
   DBG("on_stop().\n");
-  running.set(false);
 }
 
 void XMLRPC2DIServerCallsMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {

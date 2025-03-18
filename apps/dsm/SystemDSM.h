@@ -32,7 +32,6 @@ class SystemDSM
 {
 
   EventProxySession dummy_session;
-  atomic_bool stop_requested;
 
   DSMStateEngine engine;
   string startDiagName;

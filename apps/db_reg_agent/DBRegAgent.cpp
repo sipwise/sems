@@ -260,20 +260,12 @@ int DBRegAgent::onLoad()
 }
 
 void DBRegAgent::onUnload() {
-  if (running) {
-    running = false;
-    registration_scheduler.stop();
-    DBG("unclean shutdown. Waiting for processing thread to stop.\n");
-    for (int i=0;i<400;i++) {
-      if (shutdown_finished)
-	break;
-      usleep(2000); // 2ms
-    }
+  stop();
+  join();
 
-    if (!shutdown_finished) {
-      WARN("processing thread could not be stopped, process will probably crash\n");
-    }
-  }
+  registration_scheduler.stop();
+  DBG("unclean shutdown. Waiting for processing thread to stop.\n");
+  registration_scheduler.join();
 
   DBG("closing main DB connection\n");
   MainDBConnection.disconnect();
@@ -828,8 +820,8 @@ void DBRegAgent::process(AmEvent* ev) {
     if(sys_ev){	
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
-	running = false;
 	registration_scheduler.stop();
+	registration_scheduler.join();
       }
       return;
     }
@@ -1231,8 +1223,6 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
 }
 
 void DBRegAgent::run() {
-  running = shutdown_finished = true;
-
   DBG("DBRegAgent thread: waiting 2 sec for server startup ...\n");
   sleep(2);
   
@@ -1244,8 +1234,7 @@ void DBRegAgent::run() {
   }
 
   DBG("running DBRegAgent thread...\n");
-  shutdown_finished = false;
-  while (running) {
+  while (!stop_requested()) {
     waitForEventTimed(500); // 500 milliseconds
     processEvents();
   }
@@ -1264,12 +1253,10 @@ void DBRegAgent::run() {
   mysqlpp::Connection::thread_end();
 
   DBG("DBRegAgent thread stopped.\n");
-  shutdown_finished = true;
 }
 
 void DBRegAgent::on_stop() {
   DBG("DBRegAgent on_stop()...\n");
-  running = false;
 }
 
 void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
@@ -1728,7 +1715,7 @@ void DBRegAgent::invoke(const string& method,
 // /////////////// processor thread /////////////////
 
 DBRegAgentProcessorThread::DBRegAgentProcessorThread()
-  : AmEventQueue(this), stopped(false) {
+  : AmEventQueue(this) {
 }
 
 DBRegAgentProcessorThread::~DBRegAgentProcessorThread() {
@@ -1785,7 +1772,7 @@ void DBRegAgentProcessorThread::run() {
     allowance = DBRegAgent::ratelimit_rate;
 
   reg_agent = DBRegAgent::instance();
-  while (!stopped) {
+  while (!stop_requested()) {
     waitForEvent();
     while (eventPending()) {
       rateLimitWait();
@@ -1806,7 +1793,8 @@ void DBRegAgentProcessorThread::process(AmEvent* ev) {
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	DBG("stopping processor thread\n");
-	stopped = true;
+	stop();
+	join();
       }
       return;
     }

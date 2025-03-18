@@ -68,7 +68,6 @@ class AmSessionProcessorThread
   AmEventQueue    events;
   std::list<AmSession*> sessions;
   std::vector<AmSession*> startup_sessions;
-  atomic_bool stop_requested;
 
   AmCondition runcond;
   std::set<AmEventQueue*> process_sessions;

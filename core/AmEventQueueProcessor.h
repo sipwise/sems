@@ -40,8 +40,6 @@ class EventQueueWorker
 : public AmThread,
   public AmEventNotificationSink
 {
-  atomic_bool stop_requested;
-
   AmCondition runcond;
   std::deque<AmEventQueue*> process_queues;
   AmMutex process_queues_mut;

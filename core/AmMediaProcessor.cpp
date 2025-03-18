@@ -214,7 +214,7 @@ void AmMediaProcessor::dispose()
 /* the actual media processing thread */
 
 AmMediaProcessorThread::AmMediaProcessorThread()
-  : events(this), stop_requested(false)
+  : events(this)
 {
 }
 AmMediaProcessorThread::~AmMediaProcessorThread()
@@ -224,13 +224,10 @@ AmMediaProcessorThread::~AmMediaProcessorThread()
 void AmMediaProcessorThread::on_stop()
 {
   INFO("requesting media processor to stop.\n");
-  stop_requested = true;
 }
 
 void AmMediaProcessorThread::run()
 {
-  stop_requested = false;
-
   // wallclock time
   unsigned long long ts = 0;//4294417296;
 
@@ -241,7 +238,7 @@ void AmMediaProcessorThread::run()
 
   uint64_t next_tick = now + tick;
     
-  while(!stop_requested){
+  while (!stop_requested()) {
 
     now = gettimeofday_us();
 

@@ -200,8 +200,6 @@ class _RegisterCache
 
   unsigned int gbc_bucket_id;
 
-  atomic_bool running;
-
   // stats
   atomic_int active_regs;
 
@@ -216,7 +214,7 @@ protected:
 
   /* AmThread interface */
   void run();
-  void on_stop();
+  const char *identify() { return "register cache"; }
 
   /**
    * Returns the bucket associated with the passed contact-uri

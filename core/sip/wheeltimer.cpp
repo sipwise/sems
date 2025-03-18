@@ -74,7 +74,7 @@ void _wheeltimer::remove_timer(timer* t, bool del_timer)
 
 void _wheeltimer::run()
 {
-  while(!stopped){
+  while (!stop_requested()) {
 
     // figure out whether there's anything to run, and for how long to sleep
 
@@ -112,8 +112,6 @@ void _wheeltimer::run()
     // all done, remove bucket
     buckets.erase(beg);
   }
-
-  shutdown_finished.set(true);
 }
 
 void _wheeltimer::process_current_timers(timer_list& list, std::unique_lock<std::mutex>& lock)

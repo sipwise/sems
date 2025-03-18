@@ -129,8 +129,6 @@ class MonitorGarbageCollector
 : public AmThread,
   public AmEventQueueInterface
  {
-  atomic_bool running;
-
  public:
   void run();
   void on_stop();

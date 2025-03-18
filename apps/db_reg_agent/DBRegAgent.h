@@ -103,7 +103,6 @@ class DBRegAgentProcessorThread
 {
 
   DBRegAgent* reg_agent;
-  bool stopped;
 
   void rateLimitWait();
 
@@ -269,12 +268,6 @@ class DBRegAgent
 
 
   unsigned int expires;
-
-  /** processing thread running? */
-  bool running;
-
-  /** processing thread shutdown finished? */
-  bool shutdown_finished;
 
   AmDynInvoke* uac_auth_i;
 
