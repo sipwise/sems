@@ -108,14 +108,19 @@ void AmThreadWatcher::add(AmThread* t)
 
 void AmThreadWatcher::run()
 {
-  for(;;){
+  std::unique_lock<AmMutex> _l(q_mut);
+
+  while (!stop_requested() || !thread_list.empty()) {
+
+    _l.unlock();
 
     sleep(10);
 
-    std::unique_lock<AmMutex> _l(q_mut);
     DBG("Thread watcher starting its work\n");
 
     try {
+      _l.lock();
+
       auto it = thread_list.begin();
       while (it != thread_list.end()) {
 
@@ -141,6 +146,10 @@ void AmThreadWatcher::run()
     } catch(...) {
       ERROR("Unhandled exception in thread watcher\n");
     }
+
+    // restore lock if exception left it unlocked
+    if (!_l.owns_lock())
+      _l.lock();
 
     DBG("Thread watcher finished\n");
   }

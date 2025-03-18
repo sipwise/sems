@@ -128,6 +128,9 @@ protected:
   virtual void run()=0;
   virtual void on_stop() {};
 
+  /** @return true if this thread ought to stop. */
+  bool stop_requested() { return _state == stopping; }
+
 public:
   unsigned long _pid;
 
