@@ -85,11 +85,6 @@ void AmThread::join()
 AmThreadWatcher* AmThreadWatcher::_instance=0;
 AmMutex AmThreadWatcher::_inst_mut;
 
-AmThreadWatcher::AmThreadWatcher()
-  : _run_cond(false)
-{
-}
-
 AmThreadWatcher* AmThreadWatcher::instance()
 {
   _inst_mut.lock();
@@ -106,64 +101,48 @@ void AmThreadWatcher::add(AmThread* t)
 {
   DBG("trying to add thread %lu to thread watcher.\n", t->_pid);
   q_mut.lock();
-  thread_queue.push(t);
-  _run_cond.set(true);
+  thread_list.push_back(t);
   q_mut.unlock();
   DBG("added thread %lu to thread watcher.\n", t->_pid);
-}
-
-void AmThreadWatcher::on_stop()
-{
 }
 
 void AmThreadWatcher::run()
 {
   for(;;){
 
-    _run_cond.wait_for();
-    // Let some time for to threads 
-    // to stop by themselves
     sleep(10);
 
-    q_mut.lock();
+    std::unique_lock<AmMutex> _l(q_mut);
     DBG("Thread watcher starting its work\n");
 
     try {
-      std::queue<AmThread*> n_thread_queue;
+      auto it = thread_list.begin();
+      while (it != thread_list.end()) {
 
-      while(!thread_queue.empty()){
+	AmThread* cur_thread = *it;
 
-	AmThread* cur_thread = thread_queue.front();
-	thread_queue.pop();
-
-	q_mut.unlock();
+	_l.unlock();
 	DBG("thread %lu is to be processed in thread watcher.\n", cur_thread->_pid);
 	if(cur_thread->is_stopped()){
 	  DBG("thread %lu has been destroyed.\n", cur_thread->_pid);
 	  cur_thread->join();
+	  it = thread_list.erase(it);
 	  delete cur_thread;
 	}
 	else {
 	  DBG("thread %lu still running.\n", cur_thread->_pid);
-	  n_thread_queue.push(cur_thread);
+	  it++;
 	}
 
-	q_mut.lock();
+	_l.lock();
       }
-
-      swap(thread_queue,n_thread_queue);
-
-    }catch(...){
-      /* this one is IMHO very important, as lock is called in try block! */
-      ERROR("unexpected exception, state may be invalid!\n");
+    } catch(std::exception& e) {
+      ERROR("Exception in thread watcher: %s\n", e.what());
+    } catch(...) {
+      ERROR("Unhandled exception in thread watcher\n");
     }
 
-    bool more = !thread_queue.empty();
-    q_mut.unlock();
-
     DBG("Thread watcher finished\n");
-    if(!more)
-      _run_cond.set(false);
   }
 }
 

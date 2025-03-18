@@ -32,7 +32,7 @@
 #include <time.h>
 #include <errno.h>
 
-#include <queue>
+#include <list>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
@@ -164,15 +164,11 @@ class AmThreadWatcher: public AmThread
   static AmThreadWatcher* _instance;
   static AmMutex          _inst_mut;
 
-  std::queue<AmThread*> thread_queue;
+  std::list<AmThread*> thread_list;
   AmMutex          q_mut;
 
-  /** the daemon only runs if this is true */
-  AmCondition _run_cond;
-    
-  AmThreadWatcher();
+  AmThreadWatcher() {}
   void run();
-  void on_stop();
 
 public:
   static AmThreadWatcher* instance();
