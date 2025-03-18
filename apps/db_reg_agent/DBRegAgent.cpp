@@ -1344,7 +1344,6 @@ void DBRegAgent::setRegistrationTimer(long object_id,
     timer->object_id = object_id;
     timer->type = type;          // 'peering' or 'subscriber'
     DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, TYPE_TO_STRING(type));
-    registration_timers.insert(std::make_pair(object_id, timer));
   } else {
     if (it->second) {
       timer = it->second;
@@ -1358,6 +1357,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 
   timer->action = RegistrationActionEvent::Register;
 
+  /* place timer */
   if (minimum_reregister_interval>0.0) {
     uint64_t t_expiry_max = reg_start_ts;
     uint64_t t_expiry_min = reg_start_ts;
@@ -1408,6 +1408,13 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 
     registration_scheduler.insert_timer_abs(timer, t_expiry * 1000000);
   }
+
+  if (type == TYPE_PEERING) {
+    registration_timers_peers.insert(std::make_pair(object_id, timer));
+  } else {
+    registration_timers.insert(std::make_pair(object_id, timer));
+  }
+
 }
 
 void DBRegAgent::clearRegistrationTimer(long object_id, const regType type) {
