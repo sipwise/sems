@@ -132,7 +132,7 @@ class _wheeltimer:
     void add_timer_to_bucket(timer* t, uint64_t);
     uint64_t get_timer_bucket(uint64_t);
     uint64_t get_timer_bucket(timer*);
-    void delete_timer(timer* t);
+    void delete_timer(timer* t, bool del_timer = true);
 
     void process_current_timers(timer_list&, std::unique_lock<std::mutex>&);
 
@@ -169,7 +169,7 @@ public:
 
     void insert_timer(timer* t, uint64_t relative_expiry_us, uint64_t latest_expiry = 0);
     void insert_timer_abs(timer* t, uint64_t expiry_us, uint64_t latest = 0);
-    void remove_timer(timer* t);
+    void remove_timer(timer* t, bool del_timer = true);
 };
 
 typedef singleton<_wheeltimer> wheeltimer;

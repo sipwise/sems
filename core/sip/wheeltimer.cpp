@@ -59,14 +59,14 @@ void _wheeltimer::insert_timer_abs(timer* t, uint64_t us, uint64_t latest)
     buckets_cond.notify_one();
 }
 
-void _wheeltimer::remove_timer(timer* t)
+void _wheeltimer::remove_timer(timer* t, bool del_timer)
 {
     if (t == NULL){
 	return;
     }
 
     std::lock_guard<std::mutex> lock(buckets_mut);
-    delete_timer(t);
+    delete_timer(t, del_timer);
     // Don't wake up worker thread: This is not necessary because in the worst case the
     // worker thread would wake up early, see that there's nothing to do, and just go to
     // sleep again
@@ -193,13 +193,17 @@ void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 }
 
 // requires buckets_mut mutex to be held
-void _wheeltimer::delete_timer(timer* t)
+void _wheeltimer::delete_timer(timer* t, bool del_timer)
 {
     if (t->disarm())
 	DBG("successfully removed timer [%p]\n", t);
     else
 	DBG("timer [%p] not found for removing\n", t);
-    delete t;
+
+    if (del_timer) {
+        DBG("timer object has been deallocated\n");
+        delete t;
+    }
 }
 
 
