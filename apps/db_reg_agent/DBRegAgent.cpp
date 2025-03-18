@@ -68,9 +68,9 @@ class RegTimer : public timer {
 
     long                                object_id;
     RegistrationActionEvent::RegAction  action;
-    string                              type;
+    regType                              type;
 
-    RegTimer() : object_id(0), action(RegistrationActionEvent::Unknown), type("") {}
+    RegTimer() : object_id(0), action(RegistrationActionEvent::Unknown), type(TYPE_UNDEFINED) {}
 };
 
 DBRegAgent::DBRegAgent(const string& _app_name)
@@ -296,7 +296,7 @@ bool DBRegAgent::loadRegistrations() {
 
     while (mysqlpp::Row row = res_sb.fetch_row()) {
       int status = 0;
-      string type = TYPE_SUBSCRIBER;
+      regType type = TYPE_SUBSCRIBER;
       long object_id = row[COLNAME_SUBSCRIBER_ID];
 
       if (object_id == 0) {
@@ -378,13 +378,13 @@ bool DBRegAgent::loadRegistrations() {
         case REG_STATUS_REMOVED:
         {
           DBG("ignoring removed registration %ld %s@%s of type: %s\n", object_id,
-              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), type.c_str());
+              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
         } break;
 
         case REG_STATUS_TO_BE_REMOVED:
         {
           DBG("Scheduling Deregister of registration %ld %s@%s of type: %s\n", object_id,
-              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), type.c_str());
+              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
           createRegistration(object_id,
                 (string)row[COLNAME_AUTH_USER],
                 (string)row[COLNAME_USER],
@@ -421,7 +421,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
 
     while (mysqlpp::Row row = res_pr.fetch_row()) {
       int status = 0;
-      string type = TYPE_PEERING;
+      regType type = TYPE_PEERING;
       long object_id = row[COLNAME_PEER_ID];
 
       if (object_id == 0) {
@@ -503,13 +503,13 @@ bool DBRegAgent::loadRegistrationsPeerings() {
         case REG_STATUS_REMOVED:
         {
           DBG("ignoring removed registration %ld %s@%s of type: %s\n", object_id,
-              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), type.c_str());
+              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
         } break;
 
         case REG_STATUS_TO_BE_REMOVED:
         {
           DBG("Scheduling Deregister of registration %ld %s@%s of type: %s\n", object_id,
-              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), type.c_str());
+              ((string)row[COLNAME_USER]).c_str(), ((string)row[COLNAME_REALM]).c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
           createRegistration(object_id,
                 (string)row[COLNAME_AUTH_USER],
                 (string)row[COLNAME_USER],
@@ -534,9 +534,9 @@ bool DBRegAgent::loadRegistrationsPeerings() {
 /**
  * Must only be used with registrations_mut lock held.
  */
-void DBRegAgent::handleRegistrationTimer(long object_id, const std::string &type) {
+void DBRegAgent::handleRegistrationTimer(long object_id, const regType type) {
       registrations_mut.unlock();
-      WARN("Registration for %s with ID %ld already exists, removing.\n", type.c_str(), object_id);
+      WARN("Registration for %s with ID %ld already exists, removing.\n", (type == TYPE_PEERING ? "peering" : "subscriber"), object_id);
       removeRegistration(object_id, type);
       clearRegistrationTimer(object_id, type);
       registrations_mut.lock();
@@ -548,11 +548,11 @@ void DBRegAgent::handleRegistrationTimer(long object_id, const std::string &type
 void DBRegAgent::handleRegistrationScheduling(long object_id, const std::string &auth_user,
     const std::string &user, const std::string &pass,
     const std::string &realm, const std::string &contact,
-    const std::string &type)
+    const regType type)
 {
     registrations_mut.unlock();
     WARN("updateRegistration - registration %ld %s@%s unknown, creating. Type: %s.\n",
-        object_id, user.c_str(), realm.c_str(), type.c_str());
+        object_id, user.c_str(), realm.c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
     createRegistration(object_id, auth_user, user, pass, realm, contact, type);
     scheduleRegistration(object_id, type);
 }
@@ -564,7 +564,7 @@ void DBRegAgent::createRegistration(long object_id,
             const string& pass,
             const string& realm,
             const string& contact,
-            const string& type) {
+            const regType type) {
 
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
 	DBG("REGISTER: authentication user picked out: <%s> \n", auth_user_temp.c_str());
@@ -590,7 +590,7 @@ void DBRegAgent::createRegistration(long object_id,
 
   DBG(" >>> realm '%s', user '%s', auth_user '%s', pass '%s', outbound_proxy '%s', contact_uri '%s', type '%s'\n",
       realm.c_str(), user.c_str(), auth_user.c_str(), pass.c_str(),
-      outbound_proxy.c_str(), contact_uri.c_str(), type.c_str());
+      outbound_proxy.c_str(), contact_uri.c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
 
   registrations_mut.lock();
   try {
@@ -623,7 +623,7 @@ void DBRegAgent::createRegistration(long object_id,
     }
 
     if (NULL != uac_auth_i) {
-      DBG("REGISTER: Enabling UAC Auth for new registration of type: <%s>\n", type.c_str());
+      DBG("REGISTER: Enabling UAC Auth for new registration of type: <%s>\n", (type == TYPE_PEERING ? "peering" : "subscriber"));
       
       // get a sessionEventHandler from uac_auth
       AmArg di_args, ret;
@@ -655,7 +655,7 @@ void DBRegAgent::createRegistration(long object_id,
   AmEventDispatcher::instance()->addEventQueue(handle,this);
 
   DBG("created new registration with ID <%ld>, ltag '%s' and type '%s'\n",
-      object_id, handle.c_str(), type.c_str());
+      object_id, handle.c_str(), (type == TYPE_PEERING ? "peering" : "subscriber"));
 }
 
 void DBRegAgent::updateRegistration(long object_id,
@@ -664,7 +664,7 @@ void DBRegAgent::updateRegistration(long object_id,
 				    const string& pass,
 				    const string& realm,
             const string& contact,
-            const string& type) {
+            const regType type) {
 
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
   DBG("REGISTER: authentication user picked out: <%s> \n", auth_user_temp.c_str());
@@ -721,7 +721,7 @@ void DBRegAgent::updateRegistration(long object_id,
 }
 
 /** remove registration from our list */
-void DBRegAgent::removeRegistration(long object_id, const string& type) {
+void DBRegAgent::removeRegistration(long object_id, const regType type) {
   bool res = false;
   string handle;
   registrations_mut.lock();
@@ -770,14 +770,14 @@ void DBRegAgent::removeRegistration(long object_id, const string& type) {
   if (res) {
     // deregister us as SIP event receiver for this ltag
     AmEventDispatcher::instance()->delEventQueue(handle);
-    DBG("removed registration with ID %ld, type: %s \n", object_id, type.c_str());
+    DBG("removed registration with ID %ld, type: %s \n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
   } else {
-    DBG("registration with ID %ld not found for removing, type: %s \n", object_id, type.c_str());
+    DBG("registration with ID %ld not found for removing, type: %s \n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
   }
 }
 
 /** schedule this registration to REGISTER (immediately) */
-void DBRegAgent::scheduleRegistration(long object_id, const string& type) {
+void DBRegAgent::scheduleRegistration(long object_id, const regType type) {
   if (enable_ratelimiting) {
     registration_processor.
     postEvent(new RegistrationActionEvent(RegistrationActionEvent::Register,
@@ -787,11 +787,11 @@ void DBRegAgent::scheduleRegistration(long object_id, const string& type) {
     postEvent(new RegistrationActionEvent(RegistrationActionEvent::Register,
                 object_id, type));
   }
-  DBG("Added to pending actions: REGISTER of %ld, type: %s\n", object_id, type.c_str());
+  DBG("Added to pending actions: REGISTER of %ld, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
 }
 
 /** schedule this registration to de-REGISTER (immediately) */
-void DBRegAgent::scheduleDeregistration(long object_id, const string& type) {
+void DBRegAgent::scheduleDeregistration(long object_id, const regType type) {
   if (enable_ratelimiting) {
     registration_processor.
       postEvent(new RegistrationActionEvent(RegistrationActionEvent::Deregister,
@@ -801,7 +801,7 @@ void DBRegAgent::scheduleDeregistration(long object_id, const string& type) {
       postEvent(new RegistrationActionEvent(RegistrationActionEvent::Deregister,
                 object_id, type));
   }
-  DBG("added to pending actions: DEREGISTER of %ld, type: %s\n", object_id, type.c_str());
+  DBG("added to pending actions: DEREGISTER of %ld, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
 }
 
 void DBRegAgent::process(AmEvent* ev) {
@@ -843,7 +843,7 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
   case RegistrationActionEvent::Register:
     {
       DBG("REGISTER of registration %ld, type: %s\n",
-          reg_action_ev->object_id, reg_action_ev->type.c_str());
+          reg_action_ev->object_id, (reg_action_ev->type == TYPE_PEERING ? "peering" : "subscriber"));
 
       registrations_mut.lock();
       map<long, AmSIPRegistration*>::iterator it = (reg_action_ev->type == TYPE_PEERING ? registrations_peers.find(reg_action_ev->object_id) :
@@ -885,7 +885,7 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
   case RegistrationActionEvent::Deregister:
     {
       DBG("De-REGISTER of registration %ld, type: %s\n",
-          reg_action_ev->object_id, reg_action_ev->type.c_str());
+          reg_action_ev->object_id, (reg_action_ev->type == TYPE_PEERING ? "peering" : "subscriber"));
 
       registrations_mut.lock();
       map<long, AmSIPRegistration*>::iterator it = (reg_action_ev->type == TYPE_PEERING ? registrations_peers.find(reg_action_ev->object_id) :
@@ -930,7 +930,7 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
   }
 }
 
-void DBRegAgent::createDBRegistration(long object_id, const string& type, mysqlpp::Connection& conn) {
+void DBRegAgent::createDBRegistration(long object_id, const regType type, mysqlpp::Connection& conn) {
 
   string column_id = COLNAME_SUBSCRIBER_ID;
   if (type == TYPE_PEERING) {
@@ -951,7 +951,7 @@ void DBRegAgent::createDBRegistration(long object_id, const string& type, mysqlp
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
       WARN("creating registration in DB with query '%s' failed: '%s', type: %s\n",
-          insert_query.c_str(), res.info(), type.c_str());
+          insert_query.c_str(), res.info(), (type == TYPE_PEERING ? "peering" : "subscriber"));
     }
   }  catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
@@ -960,7 +960,7 @@ void DBRegAgent::createDBRegistration(long object_id, const string& type, mysqlp
   }
 }
 
-void DBRegAgent::deleteDBRegistration(long object_id, const string& type, mysqlpp::Connection& conn) {
+void DBRegAgent::deleteDBRegistration(long object_id, const regType type, mysqlpp::Connection& conn) {
 
   string column_id = COLNAME_SUBSCRIBER_ID;
   if (type == TYPE_PEERING) {
@@ -979,7 +979,7 @@ void DBRegAgent::deleteDBRegistration(long object_id, const string& type, mysqlp
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
       WARN("removing registration in DB with query '%s' failed: '%s', type: %s\n",
-          insert_query.c_str(), res.info(), type.c_str());
+          insert_query.c_str(), res.info(), (type == TYPE_PEERING ? "peering" : "subscriber"));
     }
   }  catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
@@ -989,7 +989,7 @@ void DBRegAgent::deleteDBRegistration(long object_id, const string& type, mysqlp
 }
 
 void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
-				      long object_id, const string& type, int last_code,
+				      long object_id, const regType type, int last_code,
 				      const string& last_reason,
 				      bool update_status, int status,
 				      bool update_ts, unsigned int expiry,
@@ -1031,7 +1031,7 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
     } else {
       if (!res.rows()) {
 	// should not happen - DB entry is created on load or on createRegistration
-  DBG("creating registration DB entry for subscriber %ld, type: %s\n", object_id, type.c_str());
+  DBG("creating registration DB entry for subscriber %ld, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
   createDBRegistration(object_id, type, db_connection);
 	query.reset();
 	query << query_str;
@@ -1075,7 +1075,7 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
   map<string, long>::iterator it;
 
   bool marker = false;
-  string type;
+  regType type;
 
   // not the best solution to match coming reply against needed object
   // we need to find a way how to better differentiate,
@@ -1115,7 +1115,7 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
     if (marker) {
       AmSIPRegistration* registration = r_it->second;
       if (!registration) {
-        ERROR("Internal error: registration object missing, type: %s\n", type.c_str());
+        ERROR("Internal error: registration object missing, type: %s\n", (type == TYPE_PEERING ? "peering" : "subscriber"));
         return;
       }
       unsigned int cseq_before = registration->getDlg()->cseq;
@@ -1265,7 +1265,7 @@ void DBRegAgent::on_stop() {
 }
 
 void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
-				      RegistrationActionEvent::RegAction reg_action, const string& type) {
+				      RegistrationActionEvent::RegAction reg_action, const regType type) {
   DBG("setting Register timer for subscription %ld, timeout %" PRIu64 ", reg_action %u\n",
       object_id, timeout, reg_action);
 
@@ -1287,11 +1287,11 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
   }
 
   if (marker) {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     timer = new RegTimer();
     timer->object_id = object_id;
     timer->type = type;          // 'peering' or 'subscriber'
-    DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
+    DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
   } else {
     if (it->second) {
       timer = it->second;
@@ -1301,11 +1301,12 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
       WARN("Failed to get existing timer for removing.\n");
       return;
     }
+
   }
 
   timer->action = reg_action;
 
-  DBG("placing timer for %ld in T-%" PRIu64 ", type: %s\n", object_id, timeout, type.c_str());
+  DBG("placing timer for %ld in T-%" PRIu64 ", type: %s\n", object_id, timeout, (type == TYPE_PEERING ? "peering" : "subscriber"));
   registration_scheduler.insert_timer(timer, timeout * 1000000);
 
   if (type == TYPE_PEERING) {
@@ -1317,9 +1318,9 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
 
 void DBRegAgent::setRegistrationTimer(long object_id,
 				      uint64_t expiry, uint64_t reg_start_ts,
-				      uint64_t now_time, const string& type) {
+				      uint64_t now_time, const regType type) {
   DBG("setting re-Register timer for subscription %ld, expiry %ld, reg_start_t %ld, type: %s\n",
-      object_id, expiry, reg_start_ts, type.c_str());
+      object_id, expiry, reg_start_ts, (type == TYPE_PEERING ? "peering" : "subscriber"));
 
   RegTimer* timer = NULL;
   map<long, RegTimer*>::iterator it = (type == TYPE_PEERING ? registration_timers_peers.find(object_id) : registration_timers.find(object_id));
@@ -1339,11 +1340,11 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   }
 
   if (marker) {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     timer = new RegTimer();
     timer->object_id = object_id;
     timer->type = type;          // 'peering' or 'subscriber'
-    DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, type.c_str());
+    DBG("created timer object [%p] for subscription %ld, type: %s\n", timer, object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     registration_timers.insert(std::make_pair(object_id, timer));
   } else {
     if (it->second) {
@@ -1410,8 +1411,8 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   }
 }
 
-void DBRegAgent::clearRegistrationTimer(long object_id, const string& type) {
-  DBG("Removing timer for subscription %ld, type: %s", object_id, type.c_str());
+void DBRegAgent::clearRegistrationTimer(long object_id, const regType type) {
+  DBG("Removing timer for subscription %ld, type: %s", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
 
   map<long, RegTimer*>::iterator it = (type == TYPE_PEERING ? registration_timers_peers.find(object_id) : registration_timers.find(object_id));
 
@@ -1419,14 +1420,14 @@ void DBRegAgent::clearRegistrationTimer(long object_id, const string& type) {
   if (type == TYPE_PEERING &&
       it == registration_timers_peers.end())
   {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     return;
 
   /* clear registration timer for subscribers */
   } else if (type != TYPE_PEERING &&
       it == registration_timers.end())
   {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     return;
   }
 
@@ -1442,8 +1443,8 @@ void DBRegAgent::clearRegistrationTimer(long object_id, const string& type) {
   }
 }
 
-void DBRegAgent::removeRegistrationTimer(long object_id, const string& type) {
-  DBG("removing timer object for subscription %ld, type: %s", object_id, type.c_str());
+void DBRegAgent::removeRegistrationTimer(long object_id, const regType type) {
+  DBG("removing timer object for subscription %ld, type: %s", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
 
   map<long, RegTimer*>::iterator it = (type == TYPE_PEERING ? registration_timers_peers.find(object_id) : registration_timers.find(object_id));
 
@@ -1451,14 +1452,14 @@ void DBRegAgent::removeRegistrationTimer(long object_id, const string& type) {
   if (type == TYPE_PEERING &&
       it == registration_timers_peers.end())
   {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     return;
 
   /* remove registration timer for subscribers */
   } else if (type != TYPE_PEERING &&
       it == registration_timers.end())
   {
-    DBG("timer object for subscription %ld not found, type: %s\n", object_id, type.c_str());
+    DBG("timer object for subscription %ld not found, type: %s\n", object_id, (type == TYPE_PEERING ? "peering" : "subscriber"));
     return;
   }
 
@@ -1476,7 +1477,7 @@ void DBRegAgent::removeRegistrationTimer(long object_id, const string& type) {
 
 void DBRegAgent::timer_cb(RegTimer* timer) {
   DBG("re-registration timer expired: subscriber %ld, timer=[%p], action %d, type %s\n",
-      timer->object_id, timer, timer->action, timer->type.c_str());
+      timer->object_id, timer, timer->action, (timer->type == TYPE_PEERING ? "peering" : "subscriber"));
 
   registrations_mut.lock();
   removeRegistrationTimer(timer->object_id, timer->type);
@@ -1495,7 +1496,7 @@ void DBRegAgent::timer_cb(RegTimer* timer) {
 void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
               const string& pass, const string& realm,
               const string& contact, const string& auth_user,
-              const string& type, AmArg& ret) {
+              const regType type, AmArg& ret) {
 
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
 
@@ -1512,7 +1513,7 @@ void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
 void DBRegAgent::DIupdateRegistration(int object_id, const string& user,
               const string& pass, const string& realm,
               const string& contact, const string& auth_user,
-              const string& type, AmArg& ret) {
+              const regType type, AmArg& ret) {
 
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
 
@@ -1531,7 +1532,7 @@ void DBRegAgent::DIupdateRegistration(int object_id, const string& user,
   ret.push("OK");
 }
 
-void DBRegAgent::DIremoveRegistration(int object_id, const string& type, AmArg& ret) {
+void DBRegAgent::DIremoveRegistration(int object_id, const regType type, AmArg& ret) {
   DBG("DI method: removeRegistration(%i)\n",
       object_id);
   scheduleDeregistration(object_id, type);
@@ -1544,7 +1545,7 @@ void DBRegAgent::DIremoveRegistration(int object_id, const string& type, AmArg& 
   ret.push("OK");
 }
 
-void DBRegAgent::DIrefreshRegistration(int object_id, const string& type, AmArg& ret) {
+void DBRegAgent::DIrefreshRegistration(int object_id, const regType type, AmArg& ret) {
   DBG("DI method: refreshRegistration(%i)\n", object_id);
   scheduleRegistration(object_id, type);
 
@@ -1562,7 +1563,8 @@ void DBRegAgent::invoke(const string& method,
     args.assertArrayFmt("issssss"); // object_id, user, pass, realm, contact, auth_user, type
     string contact;
     string auth_user;
-		string type;                   // 'peering' or 'subscriber'
+    string type_str;                   // 'peering' or 'subscriber'
+    regType type = TYPE_UNDEFINED;
 
     // for case when: object_id, user, pass, realm, contact
     if (args.size() == 5) {
@@ -1583,17 +1585,26 @@ void DBRegAgent::invoke(const string& method,
       assertArgCStr(args.get(6));
       contact = args.get(4).asCStr();
       auth_user = args.get(5).asCStr();
-      type = args.get(6).asCStr();
+      type_str = args.get(6).asCStr();
+      /* handle types setting */
+      if (!type_str.empty()) {
+        if (type_str == TYPE_PEERING_STR)
+          type = TYPE_PEERING;
+        else if (type_str == TYPE_SUBSCRIBER_STR)
+          type = TYPE_SUBSCRIBER;
+      }
     }
 
-    // we only allow three possible types: 'peering', 'subscriber' and 'undefined'
-    if (type.empty() || (type != TYPE_PEERING && type != TYPE_SUBSCRIBER && type != TYPE_UNDEFINED)) {
-      DBG("REGISTER: Wrong type of the registration object defined: <%s>. Trying to fix.\n", type.c_str());
-      type = TYPE_UNDEFINED;
+    /* we only allow three possible types: 'peering', 'subscriber' and 'undefined'
+     * But if undefined, we warn.
+     */
+    if (type == TYPE_UNDEFINED) {
+      WARN("REGISTER: Type of the registration object is undefined.\n");
     }
 
     DBG("REGISTER: SEMS is about to Create a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s> \n",
-      args.get(0).asInt(), type.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+      args.get(0).asInt(), type_str.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+
     DIcreateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
         args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, type, ret);
 
@@ -1602,7 +1613,8 @@ void DBRegAgent::invoke(const string& method,
     args.assertArrayFmt("issssss"); // object_id, user, pass, realm, contact, auth_user, type
     string contact;
     string auth_user;
-    string type;                   // 'peering' or 'subscriber'
+    string type_str;                   // 'peering' or 'subscriber'
+    regType type = TYPE_UNDEFINED;
 
     // for case when: object_id, user, pass, realm, contact
     if (args.size() == 5) {
@@ -1623,34 +1635,65 @@ void DBRegAgent::invoke(const string& method,
       assertArgCStr(args.get(6));
       contact = args.get(4).asCStr();
       auth_user = args.get(5).asCStr();
-      type = args.get(6).asCStr();
+      type_str = args.get(6).asCStr();
+      /* handle types setting */
+      if (!type_str.empty()) {
+        if (type_str == TYPE_PEERING_STR)
+          type = TYPE_PEERING;
+        else if (type_str == TYPE_SUBSCRIBER_STR)
+          type = TYPE_SUBSCRIBER;
+      }
     }
 
-    // we only allow three possible types: 'peering', 'subscriber' and 'undefined'
-    if (type.empty() || (type != TYPE_PEERING && type != TYPE_SUBSCRIBER && type != TYPE_UNDEFINED)) {
-      DBG("REGISTER: Wrong type of the registration object defined: <%s>. Trying to fix.\n", type.c_str());
-      type = TYPE_UNDEFINED;
+    /* we only allow three possible types: 'peering', 'subscriber' and 'undefined'
+     * But if undefined, we warn.
+     */
+    if (type == TYPE_UNDEFINED) {
+      WARN("REGISTER: Type of the registration object is undefined.\n");
     }
 
     DBG("REGISTER: SEMS is about to Update a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s> \n",
-      args.get(0).asInt(), type.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+      args.get(0).asInt(), type_str.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+
     DIupdateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
 			 args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, type, ret);
 
   // remove an existing registration
   } else if (method == "removeRegistration") {
     args.assertArrayFmt("is"); // object_id, type
-    string type;               // must be 'peering' or 'subscriber'
-    if (args.size() == 2) type = args.get(1).asCStr();
-    if (type.empty()) type = TYPE_UNDEFINED;
+    string type_str;               // must be 'peering' or 'subscriber'
+    regType type = TYPE_UNDEFINED;
+
+    if (args.size() == 2)
+      type_str = args.get(1).asCStr();
+
+    /* handle types setting */
+    if (!type_str.empty()) {
+      if (type_str == TYPE_PEERING_STR)
+        type = TYPE_PEERING;
+      else if (type_str == TYPE_SUBSCRIBER_STR)
+        type = TYPE_SUBSCRIBER;
+    }
+
     DIremoveRegistration(args.get(0).asInt(), type, ret);
 
   // refresh an existing registration
   } else if (method == "refreshRegistration") {
     args.assertArrayFmt("is"); // object_id, type
-    string type;               // must be 'peering' or 'subscriber'
-    if (args.size() == 2) type = args.get(1).asCStr();
-    if (type.empty()) type = TYPE_UNDEFINED;
+    string type_str;               // must be 'peering' or 'subscriber'
+    regType type = TYPE_UNDEFINED;
+
+    if (args.size() == 2)
+      type_str = args.get(1).asCStr();
+
+    /* handle types setting */
+    if (!type_str.empty()) {
+      if (type_str == TYPE_PEERING_STR)
+        type = TYPE_PEERING;
+      else if (type_str == TYPE_SUBSCRIBER_STR)
+        type = TYPE_SUBSCRIBER;
+    }
+
     DIrefreshRegistration(args.get(0).asInt(), type, ret);
 
   }  else if(method == "_list") {
