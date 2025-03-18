@@ -732,9 +732,17 @@ void DBRegAgent::removeRegistration(long object_id, const string& type) {
   if (type == TYPE_PEERING &&
       it != registrations_peers.end())
   {
+    if (!it->second) {
+      WARN("Something went wrong while removing '%ld'\n", object_id);
+      return;
+    }
+
     handle = it->second->getHandle();
-    registration_ltags_peers.erase(handle);
+    if (!handle.empty())
+      registration_ltags_peers.erase(handle);
+
     delete it->second;
+
     registrations_peers.erase(it);
     res = true;
 
@@ -742,9 +750,17 @@ void DBRegAgent::removeRegistration(long object_id, const string& type) {
   } else if (type != TYPE_PEERING &&
       it != registrations.end())
   {
+    if (!it->second) {
+      WARN("Something went wrong while removing '%ld'\n", object_id);
+      return;
+    }
+
     handle = it->second->getHandle();
-    registration_ltags.erase(handle);
+    if (!handle.empty())
+      registration_ltags.erase(handle);
+
     delete it->second;
+
     registrations.erase(it);
     res = true;
   }
