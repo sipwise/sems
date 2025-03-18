@@ -40,7 +40,7 @@ class tcp_trsp_socket: public trsp_socket
   
   parser_state     pst;
   unsigned char    input_buf[MAX_TCP_MSGLEN];
-  int              input_len;
+  size_t           input_len;
 
   struct event_base* evbase;
   struct event*      read_ev;
@@ -56,7 +56,7 @@ class tcp_trsp_socket: public trsp_socket
 	    const int msg_len);
     ~msg_buf();
 
-    int bytes_left() { return msg_len - (cursor - msg); }
+    ssize_t bytes_left() { return msg_len - (cursor - msg); }
   };
 
   deque<msg_buf*> send_q;
@@ -64,7 +64,7 @@ class tcp_trsp_socket: public trsp_socket
   AmMutex sock_mut;
 
   unsigned char*   get_input() { return input_buf + input_len; }
-  int              get_input_free_space() {
+  ssize_t          get_input_free_space() {
     if(input_len > MAX_TCP_MSGLEN) return 0;
     return MAX_TCP_MSGLEN - input_len;
   }

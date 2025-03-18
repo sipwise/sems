@@ -298,7 +298,7 @@ void tcp_trsp_socket::generate_transport_errors()
 
 void tcp_trsp_socket::on_read(short ev)
 {
-  int bytes = 0;
+  ssize_t bytes = 0;
   char* old_cursor = (char*)get_input();
 
   {// locked section
@@ -345,7 +345,7 @@ void tcp_trsp_socket::on_read(short ev)
 
   input_len += bytes;
 
-  DBG("received: <%.*s>",bytes,old_cursor);
+  DBG("received: <%.*s>",(int) bytes,old_cursor);
 
   // ... and parse it
   if(parse_input() < 0) {
@@ -366,7 +366,7 @@ int tcp_trsp_socket::parse_input()
 
 	if(pst.orig_buf > (char*)input_buf) {
 
-	  int addr_shift = pst.orig_buf - (char*)input_buf;
+	  ssize_t addr_shift = pst.orig_buf - (char*)input_buf;
 	  memmove(input_buf, pst.orig_buf, input_len - addr_shift);
 
 	  pst.orig_buf = (char*)input_buf;
@@ -445,9 +445,9 @@ void tcp_trsp_socket::on_write(short ev)
     }
 
     // send msg
-    int bytes = write(sd,msg->cursor,msg->bytes_left());
+    ssize_t bytes = write(sd,msg->cursor,msg->bytes_left());
     if(bytes < 0) {
-      DBG("error on write: %i",bytes);
+      DBG("error on write: %zd",bytes);
       switch(errno){
       case EINTR:
       case EAGAIN: // would block
@@ -463,7 +463,7 @@ void tcp_trsp_socket::on_write(short ev)
       return;
     }
 
-    DBG("bytes written: <%.*s>",bytes,msg->cursor);
+    DBG("bytes written: <%.*s>",(int) bytes,msg->cursor);
 
     if(bytes < msg->bytes_left()) {
       msg->cursor += bytes;

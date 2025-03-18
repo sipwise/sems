@@ -1,6 +1,8 @@
 #ifndef _sip_parser_async_h_
 #define _sip_parser_async_h_
 
+#include <sys/types.h>
+
 #include "parse_header.h"
 
 struct parser_state
@@ -14,7 +16,7 @@ struct parser_state
   int saved_st; // saved parser state (within stage)
   sip_header hdr; // temporary header struct
   
-  int content_len; // detected body content-length
+  ssize_t content_len; // detected body content-length
 
   parser_state()
     : orig_buf(NULL),c(NULL),beg(NULL),
@@ -34,7 +36,7 @@ struct parser_state
     beg = c;
   }
 
-  int get_msg_len() {
+  ssize_t get_msg_len() {
     return c - orig_buf + content_len;
   }
 };
