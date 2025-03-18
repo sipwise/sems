@@ -255,7 +255,9 @@ udp_trsp::udp_trsp(udp_trsp_socket* sock)
   iov[0].iov_base = buf;
   iov[0].iov_len  = MAX_UDP_MSGLEN;
 
+  memset(&from_addr,0,sizeof(from_addr));
   memset(&msg,0,sizeof(msg));
+
   msg.msg_name       = &from_addr;
   msg.msg_namelen    = sizeof(sockaddr_storage);
   msg.msg_iov        = iov;
