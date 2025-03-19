@@ -96,8 +96,8 @@ struct DIMethodProxy : public XmlRpcServerMethod
 };
 
 class XMLRPC2DIServer
-: public AmThread,
-  public AmEventQueue,
+: public AmEventQueue,
+  public AmThread,
   public AmEventHandler
 {
   XmlRpcServer* s;

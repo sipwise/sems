@@ -93,8 +93,8 @@ struct DiameterServerConnection {
 };
 
 class ServerConnection 
-: public AmThread,
-  public AmEventQueue,
+: public AmEventQueue,
+  public AmThread,
   public AmEventHandler
 {
   struct timeval connect_ts;

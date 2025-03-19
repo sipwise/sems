@@ -66,10 +66,10 @@ class AmDtmfEvent;
  */
 class AmSession : 
   public virtual AmObject,
+  public AmEventQueue,
 #ifndef SESSION_THREADPOOL
   public AmThread,
 #endif
-  public AmEventQueue, 
   public AmEventHandler,
   public AmSipDialogEventHandler,
   public AmMediaSession,

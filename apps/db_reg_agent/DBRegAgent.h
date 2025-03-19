@@ -97,8 +97,8 @@ class DBRegAgent;
 
 // separate thread for REGISTER sending, which can block for rate limiting
 class DBRegAgentProcessorThread
-: public AmThread,
-  public AmEventQueue,
+: public AmEventQueue,
+  public AmThread,
   public AmEventHandler
 {
 
@@ -126,8 +126,8 @@ class RegTimer;
 class DBRegAgent
 : public AmDynInvokeFactory,
   public AmDynInvoke,
-  public AmThread,
   public AmEventQueue,
+  public AmThread,
   public AmEventHandler
 {
 
