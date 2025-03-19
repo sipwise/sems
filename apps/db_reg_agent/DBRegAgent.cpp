@@ -682,14 +682,14 @@ void DBRegAgent::updateRegistration(long object_id,
   if (type == TYPE_PEERING &&
       it == registrations_peers.end())
   {
-    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type);
+    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type); /* unlocks */
     return;
 
   /* handle subscribers */
   } else if (type != TYPE_PEERING &&
       it == registrations.end())
   {
-    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type);
+    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type); /* unlocks */
     return;
   }
 
@@ -734,6 +734,7 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
   {
     if (!it->second) {
       WARN("Something went wrong while removing '%ld'\n", object_id);
+      registrations_mut.unlock();
       return;
     }
 
@@ -752,6 +753,7 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
   {
     if (!it->second) {
       WARN("Something went wrong while removing '%ld'\n", object_id);
+      registrations_mut.unlock();
       return;
     }
 
