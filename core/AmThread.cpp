@@ -36,6 +36,12 @@ using std::string;
 #include <system_error>
 #include <exception>
 
+AmThread::~AmThread()
+{
+  stop();
+  join();
+}
+
 void AmThread::_start()
 {
   _pid = static_cast<unsigned long>(_td.native_handle());

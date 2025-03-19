@@ -138,7 +138,7 @@ public:
     : _state(state::idle)
   {}
 
-  virtual ~AmThread() {}
+  virtual ~AmThread();
 
   /** Start it ! */
   void start();
