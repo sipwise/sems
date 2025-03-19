@@ -1773,7 +1773,7 @@ void DBRegAgentProcessorThread::run() {
 
   reg_agent = DBRegAgent::instance();
   while (!stop_requested()) {
-    waitForEvent();
+    waitForEventTimed(500);
     while (eventPending()) {
       rateLimitWait();
       processSingleEvent();
