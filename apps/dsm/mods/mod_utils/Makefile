@@ -2,7 +2,7 @@ plug_in_name = mod_utils
 
 DSMPATH ?= ../..
 
-module_ldflags =
+module_ldflags = -lssl -lcrypto
 module_cflags  = -DMOD_NAME=\"$(plug_in_name)\" -I$(DSMPATH)
 
 COREPATH ?=$(DSMPATH)/../../core
