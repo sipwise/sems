@@ -694,21 +694,28 @@ CONST_ACTION_2P(SCUPlayRingToneAction, ',', true);
 EXEC_ACTION_START(SCUPlayRingToneAction) {
 
   int length = 0;
-  int rtparams[4] = {2000, 4000, 440, 480}; // US
+  int rtparams[4] = {2000, 4000, 440, 480}; // default values: ms, ms, Hz, Hz
   string s_length = resolveVars(par1, sess, sc_sess, event_params);
+
   if (!str2int(s_length, length)) {
     WARN("could not decipher ringtone length: '%s'\n", s_length.c_str());
   }
 
+  /* it handles > 2 parameters case using explode per coma */
   vector<string> r_params = explode(par2, ",");
-  for (vector<string>::iterator it=
-	 r_params.begin(); it !=r_params.end(); it++) {
+  for (vector<string>::iterator it=r_params.begin(); it !=r_params.end(); it++)
+  {
+    /* multi-arguments list is passed as one string, make sure to remove trash */
+    removeFromString(*it, " ");
+    removeFromString(*it, "\"");
+
     string p = resolveVars(*it, sess, sc_sess, event_params);
+
     if (p.empty())
       continue;
+
     if (!str2int(p, rtparams[it-r_params.begin()])) {
-      WARN("could not decipher ringtone parameter %zd: '%s', using default\n",
-	   it-r_params.begin(), p.c_str());
+      WARN("could not decipher ringtone parameter %zd: '%s', using default\n", (it-r_params.begin()), p.c_str());
       continue;
     }
   }
@@ -716,8 +723,7 @@ EXEC_ACTION_START(SCUPlayRingToneAction) {
   DBG("Playing ringtone length %d, on %d, off %d, f %d, f2 %d\n",
       length, rtparams[0], rtparams[1], rtparams[2], rtparams[3]);
 
-  DSMRingTone* rt = new DSMRingTone(length, rtparams[0], rtparams[1],
-				    rtparams[2], rtparams[3]);
+  DSMRingTone* rt = new DSMRingTone(length, rtparams[0], rtparams[1], rtparams[2], rtparams[3]);
   sc_sess->addToPlaylist(new AmPlaylistItem(rt, NULL));
 
   sc_sess->transferOwnership(rt);
