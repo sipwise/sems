@@ -840,6 +840,7 @@ void DBRegAgent::process(AmEvent* ev) {
 
 // uses ProcessorDBConnection
 void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_ev) {
+
   switch (reg_action_ev->action) {
 
   case RegistrationActionEvent::Register:
@@ -928,6 +929,11 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
       }
 
       registrations_mut.unlock();
+    } break;
+
+  case RegistrationActionEvent::Unknown:
+    {
+      DBG("Unknown action, cannot handle this in correct way.");
     } break;
   }
 }
@@ -1493,11 +1499,16 @@ void DBRegAgent::timer_cb(RegTimer* timer) {
 
   switch (timer->action) {
   case RegistrationActionEvent::Register:
-    scheduleRegistration(timer->object_id, timer->type); break;
+    scheduleRegistration(timer->object_id, timer->type);
+    break;
   case RegistrationActionEvent::Deregister:
-    scheduleDeregistration(timer->object_id, timer->type); break;
-  default: ERROR("internal: unknown reg_action %d for subscriber %ld timer event\n",
-		 timer->action, timer->object_id);
+    scheduleDeregistration(timer->object_id, timer->type);
+    break;
+  case RegistrationActionEvent::Unknown:
+    ERROR("internal: unknown reg_action %d for subscriber %ld timer event\n", timer->action, timer->object_id);
+    break;
+  default:
+    ERROR("internal: unknown reg_action %d for subscriber %ld timer event\n", timer->action, timer->object_id);
   };
 }
 
