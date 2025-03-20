@@ -35,6 +35,11 @@
 #include "AmSession.h"
 #include "AmPlaylist.h"
 
+/* voucher */
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+
 SC_EXPORT(MOD_CLS_NAME);
 
 MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
@@ -58,6 +63,9 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
   DEF_CMD("utils.unescapeCRLF", SCUUnescapeCRLFAction);
   DEF_CMD("utils.playRingTone", SCUPlayRingToneAction);
 
+  DEF_CMD("utils.encryptCodeAes128CBC", SCEncryptCodeAes128CBC);
+  DEF_CMD("utils.decryptCodeAes128CBC", SCDecryptCodeAes128CBC);
+
 } MOD_ACTIONEXPORT_END;
 
 MOD_CONDITIONEXPORT_BEGIN(MOD_CLS_NAME) {
@@ -66,6 +74,10 @@ MOD_CONDITIONEXPORT_BEGIN(MOD_CLS_NAME) {
   }
 
 } MOD_CONDITIONEXPORT_END;
+
+/**
+ * Helper functions
+ */
 
 vector<string> utils_get_count_files(DSMSession* sc_sess, unsigned int cnt, 
 				     const string& basedir, const string& suffix, bool right) {
@@ -156,6 +168,94 @@ bool utils_play_count(DSMSession* sc_sess, unsigned int cnt,
   }
 
   return false;
+}
+
+static int encryptDataAES128CBC(unsigned char *plaintext, int plaintextLen, unsigned char *key,
+            unsigned char *iv, unsigned char *ciphertext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int ciphertextLen;
+
+    /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
+
+    /* Initialise the encryption operation. IMPORTANT - ensure you use a key
+     * and IV size appropriate for your cipher
+     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
+     * IV size for *most* modes is the same as the block size. For AES this
+     * is 128 bits
+     */
+    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv))
+        return -1;
+
+    /* Provide the message to be encrypted, and obtain the encrypted output.
+     * EVP_EncryptUpdate can be called multiple times if necessary
+     */
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintextLen))
+        return -1;
+    ciphertextLen = len;
+
+    /* Finalise the encryption. Further ciphertext bytes may be written at
+     * this stage.
+     */
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+        return -1;
+    ciphertextLen += len;
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return ciphertextLen;
+}
+
+static int decryptDataAES128CBC(unsigned char *ciphertext, int ciphertextLen, unsigned char *key,
+            unsigned char *iv, unsigned char *plaintext)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int ciplaintextLen;
+
+    /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
+
+    /* Initialise the decryption operation. IMPORTANT - ensure you use a key
+     * and IV size appropriate for your cipher
+     * In this example we are using 256 bit AES (i.e. a 256 bit key). The
+     * IV size for *most* modes is the same as the block size. For AES this
+     * is 128 bits
+     */
+    if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv))
+        return -1;
+
+    /* Provide the message to be decrypted, and obtain the plaintext output.
+     * EVP_DecryptUpdate can be called multiple times if necessary.
+     */
+    if(1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertextLen))
+        return -1;
+    ciplaintextLen = len;
+
+    /* Finalise the decryption. Further plaintext bytes may be written at
+     * this stage.
+     */
+    if(1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
+        return -1;
+
+    ciplaintextLen += len;
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return ciplaintextLen;
+}
+
+static void removeFromString(string& value, const string & pattern) {
+  size_t pos = std::string::npos;
+
+  while ((pos = value.find(pattern)) != std::string::npos)
+    value.erase(pos, pattern.length());
 }
 
 /**
@@ -645,3 +745,125 @@ MATCH_CONDITION_START(IsInListCondition) {
     return res;
   }
  } MATCH_CONDITION_END;
+
+CONST_ACTION_2P(SCEncryptCodeAes128CBC, ',', true);
+EXEC_ACTION_START(SCEncryptCodeAes128CBC) {
+  string source_name = (par1.length() && par1[0] == '$') ? par1.substr(1) : par1;
+  string source_value = resolveVars(par1, sess, sc_sess, event_params);
+
+  /* voucher_iv and voucher_key */
+  vector<string> params = explode(par2, ",");
+
+  if (params.size() < 2) {
+    throw DSMException("encrypt", "cause", "Lack of arguments!\n");
+  }
+
+  if (params[0].empty() || params[1].empty()) {
+    throw DSMException("encrypt", "cause", "Empty arguments: iv or key!\n");
+  }
+
+  if (source_value.empty()) {
+    throw DSMException("encrypt", "cause", "Empty arguments: source value!\n");
+  }
+
+  /* multi-arguments list is passed as one string, make sure to remove trash */
+  for (auto it = params.begin(); it != params.end(); ++it)
+  {
+    removeFromString(*it, " ");
+    removeFromString(*it, "\"");
+  }
+
+  /* vector and key, cast right away for encryption needs */
+  string rawIv = resolveVars(params[0], sess, sc_sess, event_params);
+  string rawKey = resolveVars(params[1], sess, sc_sess, event_params);
+  unsigned char * voucherIv = (unsigned char *)rawIv.c_str();
+  unsigned char * voucherKey = (unsigned char *)rawKey.c_str();
+
+  /* prepare plain code for encryption */
+  unsigned char * plainCode = (unsigned char *)source_value.c_str();
+
+  /* padding with default AES key length */
+  int paddedLen = source_value.length() + AES_KEY_SIZE - (source_value.length() % AES_KEY_SIZE);
+
+  /* a buffer for an encrypted data */
+  unsigned char encryptedCode[paddedLen];
+
+  /* base64() related things */
+  int flen = 0;
+  char * encryptedCodeBase64;
+  int encryptedLen = encryptDataAES128CBC(plainCode, strlen((char *)plainCode),
+                              voucherKey, voucherIv, encryptedCode);
+
+  if (encryptedLen == -1) {
+    throw DSMException("encrypt", "cause", "Encrypt failure!\n");
+  /* format into base64  */
+  } else {
+    encryptedCodeBase64 = base64(encryptedCode, paddedLen, &flen );
+    DBG("Successfully encrypted the value: <%s>\n", encryptedCodeBase64);
+    sc_sess->var[source_name] = encryptedCodeBase64;
+  }
+
+  /* base64() uses malloc, don't forget to free() */
+  free(encryptedCodeBase64);
+} EXEC_ACTION_END;
+
+CONST_ACTION_2P(SCDecryptCodeAes128CBC, ',', true);
+EXEC_ACTION_START(SCDecryptCodeAes128CBC) {
+  /* encrypted code must be given in base64 */
+  string source_name = (par1.length() && par1[0] == '$') ? par1.substr(1) : par1;
+  string source_value = resolveVars(par1, sess, sc_sess, event_params);
+
+  /* voucher_iv and voucher_key */
+  vector<string> params = explode(par2, ",");
+
+  if (params.size() < 2) {
+    WARN("Lack of arguments!\n");
+    throw DSMException("encrypt", "cause", "Lack of arguments!\n");
+  }
+
+  if (params[0].empty() || params[1].empty()) {
+    WARN("Empty arguments: iv or key!\n");
+    throw DSMException("encrypt", "cause", "Empty arguments: iv or key!\n");
+  }
+
+  if (source_value.empty()) {
+    WARN("Empty arguments: source value!\n");
+    throw DSMException("encrypt", "cause", "Empty arguments: source value!\n");
+  }
+
+  /* multi-arguments list is passed as one string, make sure to remove trash */
+  for (auto it = params.begin(); it != params.end(); ++it)
+  {
+    removeFromString(*it, " ");
+    removeFromString(*it, "\"");
+  }
+
+  /* vector and key, cast right away for encryption needs */
+  string rawIv = resolveVars(params[0], sess, sc_sess, event_params);
+  string rawKey = resolveVars(params[1], sess, sc_sess, event_params);
+
+  unsigned char * voucherIv = (unsigned char *)rawIv.c_str();
+  unsigned char * voucherKey = (unsigned char *)rawKey.c_str();
+
+  /* base64() related things */
+  int flen = 0;
+
+  /* buffer for decryption, must be big enough */
+  unsigned char decryptedCode[DEC_BUF_LEN];
+
+  /* convert the encrypted code (in base64) into the raw binary data */
+  unsigned char * encryptedCodeRaw = unbase64(source_value.c_str(), source_value.length(), &flen);
+
+  int decrypteLen = decryptDataAES128CBC(encryptedCodeRaw, strlen((char *)encryptedCodeRaw),
+                                voucherKey, voucherIv, decryptedCode);
+  if (decrypteLen == -1) {
+    throw DSMException("decrypt", "cause", "Decrypt failure!\n");
+  } else {
+    DBG("Successfully decrypted the value: <%s>\n", decryptedCode);
+    sc_sess->var[source_name] = (char *)decryptedCode;
+  }
+
+  /* unbase64() uses malloc, don't forget to free() */
+  free(encryptedCodeRaw);
+
+} EXEC_ACTION_END;

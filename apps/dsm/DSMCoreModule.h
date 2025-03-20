@@ -30,8 +30,9 @@
 #include "DSMStateEngine.h"
 
 #include <string>
-using std::string;
 #include <map>
+
+using std::string;
 using std::map;
 
 class AmSession;

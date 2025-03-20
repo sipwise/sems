@@ -35,6 +35,9 @@
 
 #define MOD_CLS_NAME SCUtilsModule
 
+#define DEC_BUF_LEN 512
+#define AES_KEY_SIZE 16
+
 DECLARE_MODULE(MOD_CLS_NAME);
 
 DEF_CONDITION_2P(IsInListCondition);
@@ -60,6 +63,8 @@ DEF_ACTION_1P(SCUUnescapeCRLFAction);
 
 DEF_ACTION_2P(SCUPlayRingToneAction);
 
+DEF_ACTION_2P(SCEncryptCodeAes128CBC);
+DEF_ACTION_2P(SCDecryptCodeAes128CBC);
 
 class DSMRingTone 
 : public AmRingTone,
