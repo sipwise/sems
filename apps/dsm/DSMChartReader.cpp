@@ -785,7 +785,6 @@ void DSMChartReader::cleanup() {
     if (h_dl)
       dlclose(h_dl);
   }
-  mods_mutex.unlock();
-
   mods.clear();  
+  mods_mutex.unlock();
 }
