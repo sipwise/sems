@@ -34,6 +34,12 @@
 #include <string>
 using std::string;
 
+struct modLinkHdl {
+  DSMModule* mod;
+  void* h_dl;
+};
+typedef vector<modLinkHdl> v_modsHdls;
+
 class NamedAction : public DSMAction {
  public:
   NamedAction(const string& m_name) {
@@ -96,7 +102,9 @@ class DSMChartReader {
   bool forFromToken(DSMArrayFor& af, const string& token);
 
   bool importModule(const string& mod_cmd, const string& mod_path);
-  vector<DSMModule*> mods;
+
+  v_modsHdls mods;
+
   DSMCoreModule core_mod;
 
   vector<DSMFunction*> funcs;

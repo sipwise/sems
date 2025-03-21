@@ -119,10 +119,16 @@ string DSMChartReader::getToken(string str, size_t& pos) {
 }
 
 DSMAction* DSMChartReader::actionFromToken(const string& str) {
-  for (vector<DSMModule*>::iterator it=
-	 mods.begin(); it!= mods.end(); it++) {
-    DSMAction* a = (*it)->getAction(str);
-    if (a) return a;
+
+  for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
+  {
+    DSMModule* mod = (*it).mod;
+    if (!mod)
+      continue;
+
+    DSMAction* a = mod->getAction(str);
+    if (a)
+      return a;
   }
 
   DSMAction* a = core_mod.getAction(str);
@@ -201,9 +207,14 @@ bool DSMChartReader::forFromToken(DSMArrayFor& af, const string& token) {
 }
 
 DSMCondition* DSMChartReader::conditionFromToken(const string& str, bool invert) {
-  for (vector<DSMModule*>::iterator it=
-	 mods.begin(); it!= mods.end(); it++) {
-    DSMCondition* c=(*it)->getCondition(str);
+
+  for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
+  {
+    DSMModule* mod = (*it).mod;
+    if (!mod)
+      continue;
+
+    DSMCondition* c = mod->getCondition(str);
     if (c) {
       c->invert = invert;
       return c;
@@ -252,7 +263,10 @@ bool DSMChartReader::importModule(const string& mod_cmd, const string& mod_path)
 	  fname.c_str());
     return false;
   }
-  mods.push_back(mod);
+
+  modLinkHdl mod_hdl = {mod, h_dl};
+  mods.push_back(mod_hdl);
+
   DBG("loaded module '%s' from '%s'\n", 
       params.c_str(), fname.c_str());
   return true;
@@ -735,16 +749,30 @@ bool DSMChartReader::decode(DSMStateDiagram* e, const string& chart,
 
   }
 
-  for (vector<DSMModule*>::iterator it=
-	 mods.begin(); it != mods.end(); it++)
-    out_mods.push_back(*it);
+  for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
+  {
+    DSMModule* mod = (*it).mod;
+    if (mod)
+      out_mods.push_back(mod);
+  }
 
   return true;
 }
 
 
 void DSMChartReader::cleanup() {
-  for (vector<DSMModule*>::iterator it=mods.begin(); it != mods.end(); it++)
-    delete *it;
+
+  for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
+  {
+    DSMModule* mod = (*it).mod;
+    void* h_dl = (*it).h_dl;
+
+    if (mod)
+      delete mod;
+
+    if (h_dl)
+      dlclose(h_dl);
+  }
+
   mods.clear();  
 }

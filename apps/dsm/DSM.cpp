@@ -876,7 +876,18 @@ int DSMFactory::preloadModules(AmConfigReader& cfg, string& res, const string& M
 	res = "importing module '"+*it+"' for preload\n";
 	return -1;
       }
-      DSMModule* last_loaded = preload_reader.mods.back();
+
+      DSMModule* last_loaded = NULL;
+      modLinkHdl modHdl = preload_reader.mods.back();
+
+      if (modHdl.mod)
+        last_loaded = modHdl.mod;
+      else
+      {
+        res = "Error while preloading '"+*it+"'\n";
+        return -1;
+      }
+
       if (last_loaded) {
  	if (last_loaded->preload()) {
 	  res = "Error while preloading '"+*it+"'\n";
@@ -919,7 +930,19 @@ void DSMFactory::preloadModule(const AmArg& args, AmArg& ret) {
     ret.push("importing module '"+mod_name+"' for preload");
     return;
   }
-  DSMModule* last_loaded = preload_reader.mods.back();
+
+  DSMModule* last_loaded = NULL;
+  modLinkHdl modHdl = preload_reader.mods.back();
+
+  if (modHdl.mod)
+    last_loaded = modHdl.mod;
+  else
+  {
+    ret.push(500);
+    ret.push("Error while preloading '"+mod_name+"'");
+    return;
+  }
+
   if (last_loaded) {
     if (last_loaded->preload()) {
       ret.push(500);
