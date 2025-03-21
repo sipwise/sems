@@ -120,6 +120,7 @@ string DSMChartReader::getToken(string str, size_t& pos) {
 
 DSMAction* DSMChartReader::actionFromToken(const string& str) {
 
+  mods_mutex.lock();
   for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
   {
     DSMModule* mod = (*it).mod;
@@ -127,9 +128,12 @@ DSMAction* DSMChartReader::actionFromToken(const string& str) {
       continue;
 
     DSMAction* a = mod->getAction(str);
-    if (a)
+    if (a) {
+      mods_mutex.unlock();
       return a;
+    }
   }
+  mods_mutex.unlock();
 
   DSMAction* a = core_mod.getAction(str);
   if (a) return a;
@@ -208,6 +212,7 @@ bool DSMChartReader::forFromToken(DSMArrayFor& af, const string& token) {
 
 DSMCondition* DSMChartReader::conditionFromToken(const string& str, bool invert) {
 
+  mods_mutex.lock();
   for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
   {
     DSMModule* mod = (*it).mod;
@@ -217,9 +222,11 @@ DSMCondition* DSMChartReader::conditionFromToken(const string& str, bool invert)
     DSMCondition* c = mod->getCondition(str);
     if (c) {
       c->invert = invert;
+      mods_mutex.unlock();
       return c;
     }
   }
+  mods_mutex.unlock();
 
   DSMCondition* c = core_mod.getCondition(str);
   if (c) 
@@ -264,8 +271,10 @@ bool DSMChartReader::importModule(const string& mod_cmd, const string& mod_path)
     return false;
   }
 
+  mods_mutex.lock();
   modLinkHdl mod_hdl = {mod, h_dl};
   mods.push_back(mod_hdl);
+  mods_mutex.unlock();
 
   DBG("loaded module '%s' from '%s'\n", 
       params.c_str(), fname.c_str());
@@ -749,12 +758,14 @@ bool DSMChartReader::decode(DSMStateDiagram* e, const string& chart,
 
   }
 
+  mods_mutex.lock();
   for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
   {
     DSMModule* mod = (*it).mod;
     if (mod)
       out_mods.push_back(mod);
   }
+  mods_mutex.unlock();
 
   return true;
 }
@@ -762,6 +773,7 @@ bool DSMChartReader::decode(DSMStateDiagram* e, const string& chart,
 
 void DSMChartReader::cleanup() {
 
+  mods_mutex.lock();
   for (v_modsHdls::iterator it=mods.begin(); it!= mods.end(); it++)
   {
     DSMModule* mod = (*it).mod;
@@ -773,6 +785,7 @@ void DSMChartReader::cleanup() {
     if (h_dl)
       dlclose(h_dl);
   }
+  mods_mutex.unlock();
 
   mods.clear();  
 }

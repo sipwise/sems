@@ -877,6 +877,7 @@ int DSMFactory::preloadModules(AmConfigReader& cfg, string& res, const string& M
 	return -1;
       }
 
+      preload_reader.mods_mutex.lock();
       DSMModule* last_loaded = NULL;
       modLinkHdl modHdl = preload_reader.mods.back();
 
@@ -885,8 +886,10 @@ int DSMFactory::preloadModules(AmConfigReader& cfg, string& res, const string& M
       else
       {
         res = "Error while preloading '"+*it+"'\n";
+        preload_reader.mods_mutex.unlock();
         return -1;
       }
+      preload_reader.mods_mutex.unlock();
 
       if (last_loaded) {
  	if (last_loaded->preload()) {
@@ -931,6 +934,7 @@ void DSMFactory::preloadModule(const AmArg& args, AmArg& ret) {
     return;
   }
 
+  preload_reader.mods_mutex.lock();
   DSMModule* last_loaded = NULL;
   modLinkHdl modHdl = preload_reader.mods.back();
 
@@ -940,8 +944,10 @@ void DSMFactory::preloadModule(const AmArg& args, AmArg& ret) {
   {
     ret.push(500);
     ret.push("Error while preloading '"+mod_name+"'");
+    preload_reader.mods_mutex.unlock();
     return;
   }
+  preload_reader.mods_mutex.unlock();
 
   if (last_loaded) {
     if (last_loaded->preload()) {

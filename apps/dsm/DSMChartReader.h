@@ -103,6 +103,7 @@ class DSMChartReader {
 
   bool importModule(const string& mod_cmd, const string& mod_path);
 
+  AmMutex mods_mutex;
   v_modsHdls mods;
 
   DSMCoreModule core_mod;
