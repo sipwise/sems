@@ -1235,7 +1235,7 @@ void DBRegAgent::run() {
   }
 
   DBG("running DBRegAgent thread...\n");
-  while (!stop_requested()) {
+  while (!stop_requested() || eventPending()) {
     waitForEventTimed(500); // 500 milliseconds
     processEvents();
   }
@@ -1773,7 +1773,7 @@ void DBRegAgentProcessorThread::run() {
     allowance = DBRegAgent::ratelimit_rate;
 
   reg_agent = DBRegAgent::instance();
-  while (!stop_requested()) {
+  while (!stop_requested() || eventPending()) {
     waitForEventTimed(500);
     while (eventPending()) {
       rateLimitWait();
