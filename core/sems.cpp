@@ -258,7 +258,6 @@ static void signal_handler(int sig)
 
   if (sig == SIGHUP) {
     AmSessionContainer::instance()->broadcastShutdown();
-    return;
   }
 
   if (sig == SIGTERM) {
