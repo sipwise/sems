@@ -46,6 +46,8 @@ trsp_socket::trsp_socket(unsigned short if_num, unsigned int opts,
 
 trsp_socket::~trsp_socket()
 {
+    if (sd != -1)
+	close(sd);
 }
 
 const char* trsp_socket::get_ip() const

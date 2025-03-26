@@ -51,9 +51,10 @@
 /** @see trsp_socket */
 int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
 {
-    if(sd){
+    if(sd != -1){
 	WARN("re-binding socket\n");
 	close(sd);
+	sd = -1;
     }
     
     if(am_inet_pton(bind_ip.c_str(),&addr) == 0){
@@ -76,12 +77,11 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
     if((sd = socket(addr.ss_family,SOCK_DGRAM,0)) == -1){
 	ERROR("socket: %s\n",strerror(errno));
 	return -1;
-    } 
-    
+    }
+
     if(::bind(sd,(const struct sockaddr*)&addr,SA_len(&addr))) {
 
 	ERROR("bind: %s\n",strerror(errno));
-	close(sd);
 	return -1;
     }
     
@@ -92,7 +92,6 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
 		      (void*)&true_opt, sizeof (true_opt)) == -1) {
 	    
 	    ERROR("%s\n",strerror(errno));
-	    close(sd);
 	    return -1;
 	}
     } else {
@@ -100,7 +99,6 @@ int udp_trsp_socket::bind(const string& bind_ip, unsigned short bind_port)
 		      (void*)&true_opt, sizeof (true_opt)) == -1) {
 	    
 	    ERROR("%s\n",strerror(errno));
-	    close(sd);
 	    return -1;
 	}
     }
@@ -138,7 +136,7 @@ int udp_trsp_socket::set_recvbuf_size(int rcvbuf_size)
 	    }
 	}
     }
-    
+
     return 0;
 }
 
@@ -230,7 +228,7 @@ int udp_trsp_socket::send(const sockaddr_storage* sa,
 			  unsigned int flags)
 {
     if (log_level_raw_msgs >= 0) {
-	_LOG(log_level_raw_msgs, 
+	_LOG(log_level_raw_msgs,
 	     "send  msg to %s:%i\n--++--\n%.*s--++--\n",
 	     get_addr_str(sa).c_str(),
 	     ntohs(((sockaddr_in*)sa)->sin_port),
@@ -241,7 +239,7 @@ int udp_trsp_socket::send(const sockaddr_storage* sa,
 	return raw_sender::send(msg,msg_len,sys_if_idx,&addr,sa);
 
     if(socket_options & force_outbound_if)
-    	return sendmsg(sa,msg,msg_len);
+	return sendmsg(sa,msg,msg_len);
 
     return sendto(sa,msg,msg_len);
 }
@@ -276,7 +274,7 @@ void udp_trsp::run()
 {
     int buf_len;
 
-    if(sock->get_sd()<=0){
+    if(sock->get_sd() == -1){
 	ERROR("Transport instance not bound\n");
 	return;
     }
@@ -318,7 +316,7 @@ void udp_trsp::run()
 
 	if (trsp_socket::log_level_raw_msgs >= 0) {
 	    char host[NI_MAXHOST] = "";
-	    _LOG(trsp_socket::log_level_raw_msgs, 
+	    _LOG(trsp_socket::log_level_raw_msgs,
 		 "vv M [|] u recvd msg via UDP from %s:%i vv\n"
 		 "--++--\n%.*s--++--\n",
 		 am_inet_ntop_sip(&s_msg->remote_ip,host,NI_MAXHOST),
@@ -332,10 +330,10 @@ void udp_trsp::run()
 	for (cmsghdr* cmsgptr = CMSG_FIRSTHDR(&msg);
              cmsgptr != NULL;
              cmsgptr = CMSG_NXTHDR(&msg, cmsgptr)) {
-	    
+
             if (cmsgptr->cmsg_level == IPPROTO_IP &&
                 cmsgptr->cmsg_type == DSTADDR_SOCKOPT) {
-		
+
 		s_msg->local_ip.ss_family = AF_INET;
 	        am_set_port(&s_msg->local_ip,sock->get_port());
                 memcpy(&((sockaddr_in*)(&s_msg->local_ip))->sin_addr,
@@ -354,6 +352,9 @@ void udp_trsp::run()
 	// pass message to the parser / transaction layer
 	trans_layer::instance()->received_msg(s_msg);
     }
+
+    INFO("Stopped SIP server UDP transport on %s:%i\n",
+	 sock->get_ip(),sock->get_port());
 }
 
 /** @see AmThread */
@@ -362,7 +363,6 @@ void udp_trsp::on_stop()
 
 }
 
-    
 
 /** EMACS **
  * Local variables:

@@ -53,7 +53,7 @@ tcp_trsp_socket::tcp_trsp_socket(tcp_server_socket* server_sock,
   // async parser state
   pst.reset((char*)input_buf);
 
-  if(sd > 0) {
+  if(sd != -1) {
     create_events();
   }
 }
@@ -63,7 +63,7 @@ void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
 				       int sd, const sockaddr_storage* sa,
 				       struct event_base* evbase)
 {
-  if(sd < 0)
+  if(sd == -1)
     return;
 
   tcp_trsp_socket* sock = new tcp_trsp_socket(server_sock,server_worker,
@@ -180,7 +180,7 @@ int tcp_trsp_socket::on_connect(short ev)
 
 int tcp_trsp_socket::connect()
 {
-  if(sd > 0) {
+  if(sd != -1) {
     ERROR("pending connection request: close first.");
     return -1;
   }
@@ -208,7 +208,7 @@ int tcp_trsp_socket::connect()
 
 int tcp_trsp_socket::check_connection()
 {
-  if(sd < 0){
+  if(sd == -1){
     int ret = connect();
     if(ret < 0) {
       if(errno != EINPROGRESS && errno != EALREADY) {
@@ -270,7 +270,7 @@ void tcp_trsp_socket::close()
   event_del(read_ev);
   event_del(write_ev);
 
-  if(sd > 0) {
+  if(sd != -1) {
     ::close(sd);
     sd = -1;
   }
@@ -604,6 +604,7 @@ int tcp_server_socket::bind(const string& bind_ip, unsigned short bind_port)
   if(sd){
     WARN("re-binding socket\n");
     close(sd);
+    sd = -1;
   }
 
   if(am_inet_pton(bind_ip.c_str(),&addr) == 0){
@@ -633,26 +634,22 @@ int tcp_server_socket::bind(const string& bind_ip, unsigned short bind_port)
 		(void*)&true_opt, sizeof (true_opt)) == -1) {
     
     ERROR("%s\n",strerror(errno));
-    close(sd);
     return -1;
   }
 
   if(ioctl(sd, FIONBIO , &true_opt) == -1) {
     ERROR("setting non-blocking: %s\n",strerror(errno));
-    close(sd);
     return -1;
   }
 
   if(::bind(sd,(const struct sockaddr*)&addr,SA_len(&addr)) < 0) {
 
     ERROR("bind: %s\n",strerror(errno));
-    close(sd);
     return -1;
   }
 
   if(::listen(sd, 16) < 0) {
     ERROR("listen: %s\n",strerror(errno));
-    close(sd);
     return -1;
   }
 
@@ -797,7 +794,7 @@ tcp_trsp::~tcp_trsp()
 void tcp_trsp::run()
 {
   int server_sd = sock->get_sd();
-  if(server_sd <= 0){
+  if(server_sd == -1){
     ERROR("Transport instance not bound\n");
     return;
   }

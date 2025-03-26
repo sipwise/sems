@@ -270,7 +270,7 @@ public:
 
 class tcp_trsp: public transport
 {
-  struct event_base *evbase;
+  struct event_base* evbase;
 
 protected:
   /** @see AmThread */
