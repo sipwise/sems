@@ -282,7 +282,7 @@ void udp_trsp::run()
     INFO("Started SIP server UDP transport on %s:%i\n",
 	 sock->get_ip(),sock->get_port());
 
-    while(true){
+    while (!stop_requested()){
 
 	//DBG("before recvmsg (%s:%i)\n",sock->get_ip(),sock->get_port());
 
@@ -360,7 +360,9 @@ void udp_trsp::run()
 /** @see AmThread */
 void udp_trsp::on_stop()
 {
-
+    // wake up thread blocked in recv()
+    if (sock->get_sd() != -1)
+	shutdown(sock->get_sd(), SHUT_RD);
 }
 
 
