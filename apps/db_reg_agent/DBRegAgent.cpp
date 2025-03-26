@@ -820,6 +820,7 @@ void DBRegAgent::process(AmEvent* ev) {
     if(sys_ev){	
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
+	stop();
 	registration_scheduler.stop();
 	registration_scheduler.join();
       }
@@ -1794,7 +1795,6 @@ void DBRegAgentProcessorThread::process(AmEvent* ev) {
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	DBG("stopping processor thread\n");
 	stop();
-	join();
       }
       return;
     }

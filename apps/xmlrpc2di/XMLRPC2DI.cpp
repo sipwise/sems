@@ -489,7 +489,6 @@ void XMLRPC2DIServer::process(AmEvent* ev) {
 	DBG("XMLRPC2DIServer received system Event: ServerShutdown, "
 	    "stopping thread\n");
 	stop();
-	join();
       }
       return;
     }
