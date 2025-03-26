@@ -1257,7 +1257,8 @@ void DBRegAgent::run() {
 }
 
 void DBRegAgent::on_stop() {
-  DBG("DBRegAgent on_stop()...\n");
+  DBG("DBRegAgent on_stop(): removing %s registrations from Event Dispatcher...\n", MOD_NAME);
+  AmEventDispatcher::instance()->delEventQueue(MOD_NAME);
 }
 
 void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
@@ -1723,6 +1724,8 @@ DBRegAgentProcessorThread::~DBRegAgentProcessorThread() {
 }
 
 void DBRegAgentProcessorThread::on_stop() {
+  DBG("removing %s registrations from Event Dispatcher...\n", MOD_NAME "_processor");
+  AmEventDispatcher::instance()->delEventQueue(MOD_NAME "_processor");
 }
 
 void DBRegAgentProcessorThread::rateLimitWait() {
