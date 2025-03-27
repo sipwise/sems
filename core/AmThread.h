@@ -122,6 +122,9 @@ class AmThread
 
   std::atomic<state> _state;
 
+  std::mutex _join_mt;
+  bool _joined;
+
   void _start();
 
 protected:
@@ -135,7 +138,8 @@ public:
   unsigned long _pid;
 
   AmThread()
-    : _state(state::idle)
+    : _state(state::idle),
+      _joined(false)
   {}
 
   virtual ~AmThread();

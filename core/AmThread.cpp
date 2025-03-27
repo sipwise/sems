@@ -82,9 +82,18 @@ void AmThread::stop()
 
 void AmThread::join()
 {
-  // only when neither stopped nor joined
-  if (_td.joinable())
-    _td.join();
+  // don't attempt to join thread that doesn't exist
+  if (_state == state::idle)
+    return;
+
+  // make sure only one other thread joins this one. all others
+  // are made to wait through the mutex
+  std::lock_guard<std::mutex> _l(_join_mt);
+  if (!_joined) {
+    if (_td.joinable())
+      _td.join();
+    _joined = true;
+  }
 }
 
 
