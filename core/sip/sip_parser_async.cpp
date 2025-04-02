@@ -212,7 +212,7 @@ int parse_headers_async(parser_state* pst, char* end)
     }
 
     // reset header struct
-    hdr = {}; //memset(hdr, 0, sizeof(sip_header));
+    *hdr = {};
     st = 0;
     saved_st = 0;
     pst->beg = c;
