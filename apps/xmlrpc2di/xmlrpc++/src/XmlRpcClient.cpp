@@ -505,7 +505,7 @@ XmlRpcClient::readResponse()
   }
 
   // Otherwise, parse and return the result
-  XmlRpcUtil::log(3, "XmlRpcClient::readResponse (read %d bytes)", _response.length());
+  XmlRpcUtil::log(3, "XmlRpcClient::readResponse (read %zu bytes)", static_cast<size_t>(_response.length()));
   XmlRpcUtil::log(5, "response:\n%s", _response.c_str());
 
   _connectionState = IDLE;
