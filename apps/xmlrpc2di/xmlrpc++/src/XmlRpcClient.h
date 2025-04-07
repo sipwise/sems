@@ -141,6 +141,9 @@ namespace XmlRpc {
     // Event dispatcher
     XmlRpcDispatch _disp;
 
+  private:
+    //! Sets the fault flag and returns true.
+    bool setFault() { _isFault = true; return true; }
   };	// class XmlRpcClient
 
 }	// namespace XmlRpc
