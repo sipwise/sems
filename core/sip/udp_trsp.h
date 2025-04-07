@@ -109,7 +109,7 @@ protected:
     void run();
     /** @see AmThread */
     void on_stop();
-    
+
 public:
     /** @see transport */
     udp_trsp(udp_trsp_socket* sock);

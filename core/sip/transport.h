@@ -51,7 +51,7 @@ public:
     };
 
     static int log_level_raw_msgs;
-    
+
 protected:
     // socket descriptor
     int sd;
@@ -97,7 +97,7 @@ public:
      * Getter for IP address
      */
     const char* get_ip() const;
-    
+
     /**
      * Getter for the port number
      */
@@ -107,7 +107,7 @@ public:
      * Setter for public IP address
      */
     void set_public_ip(const string& ip);
-    
+
     /**
      * Getter for advertised IP address
      * @return either bound IP or public IP
@@ -149,7 +149,7 @@ public:
      * Sends a message.
      * @return -1 if error(s) occured.
      */
-    virtual int send(const sockaddr_storage* sa, const char* msg, 
+    virtual int send(const sockaddr_storage* sa, const char* msg,
 		     const int msg_len, unsigned int flags)=0;
 };
 

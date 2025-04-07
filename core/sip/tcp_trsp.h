@@ -30,14 +30,14 @@ class tcp_trsp_socket: public trsp_socket
 {
   tcp_server_socket* server_sock;
   tcp_server_worker* server_worker;
-  
+
   bool             closed;
   bool             connected;
   sockaddr_storage peer_addr;
   string           peer_ip;
   unsigned short   peer_port;
   bool             peer_addr_valid;
-  
+
   parser_state     pst;
   unsigned char    input_buf[MAX_TCP_MSGLEN];
   size_t           input_len;
@@ -51,8 +51,8 @@ class tcp_trsp_socket: public trsp_socket
     char*            msg;
     int              msg_len;
     char*            cursor;
-    
-    msg_buf(const sockaddr_storage* sa, const char* msg, 
+
+    msg_buf(const sockaddr_storage* sa, const char* msg,
 	    const int msg_len);
     ~msg_buf();
 
@@ -60,7 +60,7 @@ class tcp_trsp_socket: public trsp_socket
   };
 
   deque<msg_buf*> send_q;
-  
+
   AmMutex sock_mut;
 
   unsigned char*   get_input() { return input_buf + input_len; }
@@ -86,7 +86,7 @@ class tcp_trsp_socket: public trsp_socket
    */
   void create_events();
 
-  /* 
+  /*
    * Connects the socket to the destination
    * given in constructor.
    */
@@ -102,7 +102,7 @@ class tcp_trsp_socket: public trsp_socket
    * Closes the connection/socket
    *
    * Warning: never do anything with the object
-   *          after close as it could have been 
+   *          after close as it could have been
    *          destroyed.
    */
   void close();
@@ -164,11 +164,11 @@ public:
 
   void copy_peer_addr(sockaddr_storage* sa);
 
-  const string& get_peer_ip() { 
-    return peer_ip; 
+  const string& get_peer_ip() {
+    return peer_ip;
   }
 
-  unsigned short get_peer_port() { 
+  unsigned short get_peer_port() {
     return peer_port;
   }
 
@@ -277,7 +277,7 @@ protected:
   void run();
   /** @see AmThread */
   void on_stop();
-    
+
 public:
   /** @see transport */
   tcp_trsp(tcp_server_socket* sock);

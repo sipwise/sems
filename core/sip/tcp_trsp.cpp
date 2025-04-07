@@ -108,7 +108,7 @@ void tcp_trsp_socket::add_read_event_ul()
 {
   sock_mut.unlock();
   add_read_event();
-  sock_mut.lock();  
+  sock_mut.lock();
 }
 
 void tcp_trsp_socket::add_read_event()
@@ -133,7 +133,7 @@ void tcp_trsp_socket::copy_peer_addr(sockaddr_storage* sa)
   memcpy(sa,&peer_addr,sizeof(sockaddr_storage));
 }
 
-tcp_trsp_socket::msg_buf::msg_buf(const sockaddr_storage* sa, const char* msg, 
+tcp_trsp_socket::msg_buf::msg_buf(const sockaddr_storage* sa, const char* msg,
 				  const int msg_len)
   : msg_len(msg_len)
 {
@@ -188,7 +188,7 @@ int tcp_trsp_socket::connect()
   if((sd = socket(peer_addr.ss_family,SOCK_STREAM,0)) == -1){
     ERROR("socket: %s\n",strerror(errno));
     return -1;
-  } 
+  }
 
   int true_opt = 1;
   if(ioctl(sd, FIONBIO , &true_opt) == -1) {
@@ -202,7 +202,7 @@ int tcp_trsp_socket::connect()
       am_inet_ntop(&peer_addr).c_str(),
       am_get_port(&peer_addr));
 
-  return ::connect(sd, (const struct sockaddr*)&peer_addr, 
+  return ::connect(sd, (const struct sockaddr*)&peer_addr,
 		   SA_len(&peer_addr));
 }
 
@@ -241,7 +241,7 @@ int tcp_trsp_socket::check_connection()
   return 0;
 }
 
-int tcp_trsp_socket::send(const sockaddr_storage* sa, const char* msg, 
+int tcp_trsp_socket::send(const sockaddr_storage* sa, const char* msg,
 			  const int msg_len, unsigned int flags)
 {
   lock_guard<AmMutex> _l(sock_mut);
@@ -608,14 +608,14 @@ int tcp_server_socket::bind(const string& bind_ip, unsigned short bind_port)
   }
 
   if(am_inet_pton(bind_ip.c_str(),&addr) == 0){
-	
+
     ERROR("am_inet_pton(%s): %s\n",bind_ip.c_str(),strerror(errno));
     return -1;
   }
-    
-  if( ((addr.ss_family == AF_INET) && 
+
+  if( ((addr.ss_family == AF_INET) &&
        (SAv4(&addr)->sin_addr.s_addr == INADDR_ANY)) ||
-      ((addr.ss_family == AF_INET6) && 
+      ((addr.ss_family == AF_INET6) &&
        IN6_IS_ADDR_UNSPECIFIED(&SAv6(&addr)->sin6_addr)) ){
 
     ERROR("Sorry, we cannot bind to 'ANY' address\n");
@@ -627,12 +627,12 @@ int tcp_server_socket::bind(const string& bind_ip, unsigned short bind_port)
   if((sd = socket(addr.ss_family,SOCK_STREAM,0)) == -1){
     ERROR("socket: %s\n",strerror(errno));
     return -1;
-  } 
+  }
 
   int true_opt = 1;
   if(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR,
 		(void*)&true_opt, sizeof (true_opt)) == -1) {
-    
+
     ERROR("%s\n",strerror(errno));
     return -1;
   }
@@ -732,7 +732,7 @@ void tcp_server_socket::on_accept(int sd, short ev)
 
   uint32_t h = hash_addr(&src_addr);
   unsigned int idx = h % workers.size();
-  
+
   // in case of thread pooling, do following in worker thread
   DBG("tcp_trsp_socket::create_connected (idx = %u)",idx);
   tcp_trsp_socket::create_connected(this,workers[idx],connection_sd,
