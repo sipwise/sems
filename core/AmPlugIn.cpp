@@ -835,7 +835,7 @@ AmSessionFactory* AmPlugIn::findSessionFactory(const AmSipRequest& req, string& 
       ERROR("AmPlugIn::findSessionFactory: application '%s' not found !\n", m_app_name.c_str());
     }
     
-    app_name = m_app_name;
+    app_name = std::move(m_app_name);
     return session_factory;
 }
 

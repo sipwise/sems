@@ -1336,7 +1336,7 @@ static bool readPayloadList(std::vector<PayloadDesc> &dst, const std::string &sr
   for (vector<string>::iterator it=elems.begin(); it != elems.end(); ++it) {
     PayloadDesc payload;
     if (!payload.read(*it)) return false;
-    dst.push_back(payload);
+    dst.push_back(std::move(payload));
   }
   return true;
 }

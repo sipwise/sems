@@ -209,7 +209,7 @@ bool object_parse(std::istream& input, AmArg& res) {
       return false;
     }
     res[key] = AmArg(); // using the reference
-    if (!json2arg(input, res[key])) {
+    if (!json2arg(input, res[std::move(key)])) {
       res.clear();
       return false;
     }

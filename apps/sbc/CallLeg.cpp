@@ -1487,7 +1487,7 @@ void CallLeg::addExistingCallee(const string &session_tag, ReconnectLegEvent *ev
     return;
   }
 
-  other_legs.push_back(b);
+  other_legs.push_back(std::move(b));
   if (call_status == Disconnected) updateCallStatus(NoReply);
 }
 

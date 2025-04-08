@@ -665,7 +665,7 @@ void DSMCall::process(AmEvent* event)
     }
     /* add headers if any */
     if (!hdrs.empty()) {
-        b2b_ev->params["hdrs"] = hdrs;
+        b2b_ev->params["hdrs"] = std::move(hdrs);
     }
   }
 

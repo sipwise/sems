@@ -104,7 +104,7 @@ using namespace re2;
     { \
         ERROR(config_var " file does not exist ('%s').\n", \
               member.c_str()); \
-        filename = failAnnouncement; \
+        filename = std::move(failAnnouncement); \
         goto out; \
     }
 
@@ -961,7 +961,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         ERROR("UnknownAnnouncement file does not exist ('%s').\n",
               unknownAnnouncement.c_str());
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -975,14 +975,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         ERROR("Error connecting to provisioning db: %s",
               mysql_error(my_handler));
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
     if (mysql_options(my_handler, MYSQL_OPT_RECONNECT, &recon) != 0)
     {
         ERROR("Error setting reconnect-option for provisioning db: %s",
               mysql_error(my_handler));
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -990,7 +990,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         &domain, domId, profId, &username);
     if (!subId)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1009,40 +1009,40 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         /// Remove CFU
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFB
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFT
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         attId = getAttributeId(my_handler, "ringtimeout");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (foundPref && !deletePreferenceId(my_handler, prefId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1054,38 +1054,38 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         /// Remove CFNA
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFS
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFS, "cfs", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFR
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFR, "cfr", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFO
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFO, "cfo", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// END
-        filename = cfOffAnnouncement;
+        filename = std::move(cfOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1097,20 +1097,20 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "cfu");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if(!checkSubscriberProfile(my_handler, profId, attId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
@@ -1118,7 +1118,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                       SW_VSC_DESTSET_CFU, "cfu");
         if (!mapId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1129,14 +1129,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC CFU to '%s' using mapping id '%llu' for uuid '%s'",
@@ -1146,19 +1146,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC CFU to '%s' using mapping id '%llu' for uuid '%s'",
                  uri.c_str(), (unsigned long long int)mapId, uuid.c_str());
         }
 
-        filename = cfuOnAnnouncement;
+        filename = std::move(cfuOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1169,16 +1169,16 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
-        filename = cfuOffAnnouncement;
+        filename = std::move(cfuOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1190,20 +1190,20 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "cfb");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if(!checkSubscriberProfile(my_handler, profId, attId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
@@ -1211,7 +1211,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                       SW_VSC_DESTSET_CFB, "cfb");
         if (!mapId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1222,14 +1222,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC CFB to '%s' for uuid '%s'",
@@ -1239,19 +1239,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC CFB to '%s' for uuid '%s'",
                  uri.c_str(), uuid.c_str());
         }
 
-        filename = cfbOnAnnouncement;
+        filename = std::move(cfbOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1262,16 +1262,16 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
-        filename = cfbOffAnnouncement;
+        filename = std::move(cfbOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1283,13 +1283,13 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "cft");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if(!checkSubscriberProfile(my_handler, profId, attId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
@@ -1301,7 +1301,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         if (!number2uri(req, my_handler, uuid, subId, domain,
                         domId, timend + 1, uri, username))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
@@ -1309,7 +1309,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                       SW_VSC_DESTSET_CFT, "cft");
         if (!mapId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1320,14 +1320,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC CFT to '%s' for uuid '%s'",
@@ -1337,7 +1337,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC CFT to '%s' for uuid '%s'",
@@ -1347,20 +1347,20 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         attId = getAttributeId(my_handler, "ringtimeout");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, tim))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC ringtimeout to '%s' for uuid '%s'",
@@ -1370,19 +1370,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, tim))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC ringtimeout to '%s' for uuid '%s'",
                  tim.c_str(), uuid.c_str());
         }
 
-        filename = cftOnAnnouncement;
+        filename = std::move(cftOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1393,25 +1393,25 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         u_int64_t attId = getAttributeId(my_handler, "ringtimeout");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         u_int64_t prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (foundPref && !deletePreferenceId(my_handler, prefId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1421,12 +1421,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         }
 
 
-        filename = cftOffAnnouncement;
+        filename = std::move(cftOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1438,20 +1438,20 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "cfna");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if(!checkSubscriberProfile(my_handler, profId, attId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
                 uri, username))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
@@ -1459,7 +1459,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                       SW_VSC_DESTSET_CFNA, "cfna");
         if (!mapId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         snprintf(map_str, sizeof(mapStr), "%llu",
@@ -1470,14 +1470,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC CFNA to '%s' for uuid '%s'",
@@ -1487,19 +1487,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, mapStr))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC CFNA to '%s' for uuid '%s'",
                  uri.c_str(), uuid.c_str());
         }
 
-        filename = cfnaOnAnnouncement;
+        filename = std::move(cfnaOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1510,16 +1510,16 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
 
-        filename = cfnaOffAnnouncement;
+        filename = std::move(cfnaOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1532,12 +1532,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5,
                 uri, username))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         if (!insertSpeedDialSlot(my_handler, subId, slot, uri))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1546,12 +1546,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                  slot.c_str(), uuid.c_str());
         }
 
-        filename = speedDialAnnouncement;
+        filename = std::move(speedDialAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1567,14 +1567,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if (hour < 0 || hour > 23)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             INFO("Invalid hour '%s' in reminder data for uuid '%s'",
                  req.user.substr(4, 2).c_str(), uuid.c_str());
             goto out;
         }
         if (min < 0 || min > 59)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             INFO("Invalid minute '%s' in reminder data for uuid '%s'",
                  req.user.substr(6, 2).c_str(), uuid.c_str());
             goto out;
@@ -1585,7 +1585,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if (!insertReminder(my_handler, subId, recur, tim))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1594,12 +1594,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                  c_tim, uuid.c_str());
         }
 
-        filename = reminderOnAnnouncement;
+        filename = std::move(reminderOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1610,7 +1610,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         if (!deleteReminder(my_handler, subId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1619,12 +1619,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                  uuid.c_str());
         }
 
-        filename = reminderOffAnnouncement;
+        filename = std::move(reminderOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1638,21 +1638,21 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
         {
             if (!insertPreference(my_handler, subId, attId, val))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully set VSC block_in_clir for uuid '%s'",
@@ -1662,19 +1662,19 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         {
             if (!updatePreferenceId(my_handler, prefId, val))
             {
-                filename = failAnnouncement;
+                filename = std::move(failAnnouncement);
                 goto out;
             }
             INFO("Successfully updated VSC block_in_clir for uuid '%s'",
                  uuid.c_str());
         }
 
-        filename = blockinclirOnAnnouncement;
+        filename = std::move(blockinclirOnAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
@@ -1686,14 +1686,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         u_int64_t attId = getAttributeId(my_handler, "block_in_clir");
         if (!attId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         u_int64_t prefId = getPreference(my_handler, subId, attId,
                                          &foundPref, &prefStr);
         if (!prefId)
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else if (!foundPref)
@@ -1703,7 +1703,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         }
         else if (!deletePreferenceId(my_handler, prefId))
         {
-            filename = failAnnouncement;
+            filename = std::move(failAnnouncement);
             goto out;
         }
         else
@@ -1712,18 +1712,18 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                  uuid.c_str());
         }
 
-        filename = blockinclirOffAnnouncement;
+        filename = std::move(blockinclirOffAnnouncement);
         goto out;
     }
     else if (ret != REG_NOMATCH)
     {
-        filename = failAnnouncement;
+        filename = std::move(failAnnouncement);
         goto out;
     }
 
 
     INFO("Unkown VSC code '%s' found", req.user.c_str());
-    filename = unknownAnnouncement;
+    filename = std::move(unknownAnnouncement);
 
 out:
 

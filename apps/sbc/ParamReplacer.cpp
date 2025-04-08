@@ -521,7 +521,7 @@ string replaceParameters(const string& s,
 					   call_profile, app_param, 
 					   ruri_parser, from_parser, to_parser,
 					   rebuild_ruri, rebuild_from, rebuild_to);
-		  val = &it->second[vn];
+		  val = &it->second[std::move(vn)];
 		} else {
 		  DBG("CC variable '%s' has wrong type: '%s'\n",
 		      vn.c_str(), AmArg::print(it->second).c_str());

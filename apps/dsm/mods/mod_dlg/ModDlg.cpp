@@ -323,9 +323,9 @@ EXEC_ACTION_START(DLGDialoutAction) {
       break;
     string varname = lb->first.substr(varprefix.length());
     if (!has_auth) // sess_params is variable struct
-      (*sess_params)[varname] = lb->second;
+      (*sess_params)[std::move(varname)] = lb->second;
     else // variable struct is in sess_params array
-      var_struct[varname] = lb->second;
+      var_struct[std::move(varname)] = lb->second;
 
     lb++;
     has_vars = true;
@@ -522,7 +522,7 @@ EXEC_ACTION_START(DLGInfoAction) {
 		       "call doesn't have SIP dialog (OOPS!)");
   }
 
-  string body_crlf = body_str;
+  string body_crlf = std::move(body_str);
   AmMimeBody *body = new AmMimeBody();
   if (!content_type.empty()) {
     DBG("body_crlf is '%s'\n", body_crlf.c_str());

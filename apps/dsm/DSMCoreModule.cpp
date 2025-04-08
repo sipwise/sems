@@ -1579,7 +1579,7 @@ EXEC_ACTION_START(SCB2BGetHeaderRequestAction) {
 
   /* write only if we got something */
   if (!result.empty())
-    sc_sess->var[destination_variable] = result;
+    sc_sess->var[destination_variable] = std::move(result);
   else
     DBG("No header with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;

@@ -858,7 +858,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
         if (next > media_line)
           media = string(media_line, int(next-media_line) - 1);
 
-        m.type = media_type(media);
+        m.type = media_type(std::move(media));
 
         if (m.type == MT_NONE) {
           ERROR("parse_sdp_media: Unknown media type\n");

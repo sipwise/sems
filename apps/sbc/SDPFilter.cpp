@@ -72,7 +72,7 @@ int filterSDP(AmSdp& sdp, const vector<FilterEntry>& filter_list) {
         media_line_filtered_out = true;
       }
       else media_line_left = true;
-      media.payloads = new_pl;
+      media.payloads = std::move(new_pl);
     }
     if ((!media_line_left) && media_line_filtered_out) {
       // no filter adds new payloads, we can safely return error

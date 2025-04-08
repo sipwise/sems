@@ -505,7 +505,7 @@ bool DSMStateEngine::runactions(vector<DSMElement*>::iterator from,
 
       if (array_for->for_type == DSMArrayFor::Struct) {
 	if (v_exists)
-	  sc_sess->var[v_name] = v_save;
+	  sc_sess->var[v_name] = std::move(v_save);
 	else
 	  sc_sess->var.erase(v_name);
       }
