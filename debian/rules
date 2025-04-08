@@ -9,7 +9,7 @@ EXCLUDED_MODULES=conf_auth examples/db_announce fast_ack gateway ivr mailbox mp3
 EXCLUDED_DSM_MODULES=mod_aws mod_py
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
 
-CPPFLAGS += -DHAVE_XMLRPCPP_SSL -std=c++20
+CPPFLAGS += -DHAVE_XMLRPCPP_SSL
 
 export USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)"
 

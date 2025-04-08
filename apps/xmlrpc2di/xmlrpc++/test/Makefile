@@ -5,7 +5,7 @@ CPPFLAGS	= -I$(SRC)
 DEBUG		= -g
 #OPTIMIZE	= -O2
 GCCWARN		= -Wall -Wstrict-prototypes
-CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
+CXXFLAGS	= -std=c++20 $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
 
 LIB		= ../libXmlRpc.a -lssl
 
