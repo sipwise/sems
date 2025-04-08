@@ -11,6 +11,7 @@
 # include <stdio.h>
 #endif
 
+
 namespace XmlRpc {
 
 
@@ -43,7 +44,7 @@ namespace XmlRpc {
   static const char STRUCT_ETAG[]   = "</struct>";
 
 
-      
+
   // Format strings
   std::string XmlRpcValue::_doubleFormat("%f");
 
@@ -52,19 +53,10 @@ namespace XmlRpc {
   // Clean up
   void XmlRpcValue::invalidate()
   {
-    switch (_type) {
-      case TypeString:    delete _value.asString; break;
-      case TypeDateTime:  delete _value.asTime;   break;
-      case TypeBase64:    delete _value.asBinary; break;
-      case TypeArray:     delete _value.asArray;  break;
-      case TypeStruct:    delete _value.asStruct; break;
-      default: break;
-    }
-    _type = TypeInvalid;
-    _value.asBinary = 0;
+    _value = std::monostate();
   }
 
-  
+
   // Type checking
   void XmlRpcValue::assertTypeOrInvalid(Type t)
   {
@@ -72,12 +64,15 @@ namespace XmlRpc {
     {
       _type = t;
       switch (_type) {    // Ensure there is a valid value for the type
-        case TypeString:   _value.asString = new std::string(); break;
-        case TypeDateTime: _value.asTime = new struct tm();     break;
-        case TypeBase64:   _value.asBinary = new BinaryData();  break;
-        case TypeArray:    _value.asArray = new ValueArray();   break;
-        case TypeStruct:   _value.asStruct = new ValueStruct(); break;
-        default:           _value.asBinary = 0; break;
+        case TypeString:   _value = std::string();     break;
+        case TypeDateTime: _value = tm();              break;
+        case TypeBase64:   _value = BinaryData();      break;
+        case TypeArray:    _value = ValueArray();      break;
+        case TypeStruct:   _value = ValueStruct();     break;
+        case TypeInt:      _value = 0;                 break;
+        case TypeDouble:   _value = 0.0;               break;
+        case TypeBoolean:  _value = false;             break;
+	case TypeInvalid:  _value = std::monostate();  break;
       }
     }
     else if (_type != t)
@@ -88,7 +83,7 @@ namespace XmlRpc {
   {
     if (_type != TypeArray)
       throw XmlRpcException("type error: expected an array");
-    else if (_value.asArray->size() < size)
+    else if (std::get<ValueArray>(_value).size() < size)
       throw XmlRpcException("range error: array index too large");
   }
 
@@ -97,10 +92,10 @@ namespace XmlRpc {
   {
     if (_type == TypeInvalid) {
       _type = TypeArray;
-      _value.asArray = new ValueArray(size);
+      _value = ValueArray(size);
     } else if (_type == TypeArray) {
-      if (_value.asArray->size() < size)
-        _value.asArray->resize(size);
+      if (std::get<ValueArray>(_value).size() < size)
+        std::get<ValueArray>(_value).resize(size);
     } else
       throw XmlRpcException("type error: expected an array");
   }
@@ -109,83 +104,9 @@ namespace XmlRpc {
   {
     if (_type == TypeInvalid) {
       _type = TypeStruct;
-      _value.asStruct = new ValueStruct();
+      _value = ValueStruct();
     } else if (_type != TypeStruct)
       throw XmlRpcException("type error: expected a struct");
-  }
-
-
-  // Operators
-  XmlRpcValue& XmlRpcValue::operator=(XmlRpcValue const& rhs)
-  {
-    if (this != &rhs)
-    {
-      invalidate();
-      _type = rhs._type;
-      switch (_type) {
-        case TypeBoolean:  _value.asBool = rhs._value.asBool; break;
-        case TypeInt:      _value.asInt = rhs._value.asInt; break;
-        case TypeDouble:   _value.asDouble = rhs._value.asDouble; break;
-        case TypeDateTime: _value.asTime = new struct tm(*rhs._value.asTime); break;
-        case TypeString:   _value.asString = new std::string(*rhs._value.asString); break;
-        case TypeBase64:   _value.asBinary = new BinaryData(*rhs._value.asBinary); break;
-        case TypeArray:    _value.asArray = new ValueArray(*rhs._value.asArray); break;
-        case TypeStruct:   _value.asStruct = new ValueStruct(*rhs._value.asStruct); break;
-        default:           _value.asBinary = 0; break;
-      }
-    }
-    return *this;
-  }
-
-
-  // Predicate for tm equality
-  static bool tmEq(struct tm const& t1, struct tm const& t2) {
-    return t1.tm_sec == t2.tm_sec && t1.tm_min == t2.tm_min &&
-            t1.tm_hour == t2.tm_hour && t1.tm_mday == t2.tm_mday &&
-            t1.tm_mon == t2.tm_mon && t1.tm_year == t2.tm_year;
-  }
-
-  bool XmlRpcValue::operator==(XmlRpcValue const& other) const
-  {
-    if (_type != other._type)
-      return false;
-
-    switch (_type) {
-      case TypeBoolean:  return ( !_value.asBool && !other._value.asBool) ||
-                                ( _value.asBool && other._value.asBool);
-      case TypeInt:      return _value.asInt == other._value.asInt;
-      case TypeDouble:   return _value.asDouble == other._value.asDouble;
-      case TypeDateTime: return tmEq(*_value.asTime, *other._value.asTime);
-      case TypeString:   return *_value.asString == *other._value.asString;
-      case TypeBase64:   return *_value.asBinary == *other._value.asBinary;
-      case TypeArray:    return *_value.asArray == *other._value.asArray;
-
-      // The map<>::operator== requires the definition of value< for kcc
-      case TypeStruct:   //return *_value.asStruct == *other._value.asStruct;
-        {
-          if (_value.asStruct->size() != other._value.asStruct->size())
-            return false;
-          
-          ValueStruct::const_iterator it1=_value.asStruct->begin();
-          ValueStruct::const_iterator it2=other._value.asStruct->begin();
-          while (it1 != _value.asStruct->end()) {
-            const XmlRpcValue& v1 = it1->second;
-            const XmlRpcValue& v2 = it2->second;
-            if ( ! (v1 == v2))
-              return false;
-            it1++;
-            it2++;
-          }
-          return true;
-        }
-      default: break;
-    }
-    return true;    // Both invalid values ...
-  }
-
-  bool XmlRpcValue::operator!=(XmlRpcValue const& other) const
-  {
-    return !(*this == other);
   }
 
 
@@ -193,10 +114,10 @@ namespace XmlRpc {
   size_t XmlRpcValue::size() const
   {
     switch (_type) {
-      case TypeString: return _value.asString->size();
-      case TypeBase64: return _value.asBinary->size();
-      case TypeArray:  return _value.asArray->size();
-      case TypeStruct: return _value.asStruct->size();
+      case TypeString: return std::get<std::string>(_value).size();
+      case TypeBase64: return std::get<BinaryData>(_value).size();
+      case TypeArray:  return std::get<ValueArray>(_value).size();
+      case TypeStruct: return std::get<ValueStruct>(_value).size();
       default: break;
     }
 
@@ -206,10 +127,10 @@ namespace XmlRpc {
   // Checks for existence of struct member
   bool XmlRpcValue::hasMember(const std::string& name) const
   {
-    return _type == TypeStruct && _value.asStruct->find(name) != _value.asStruct->end();
+    return _type == TypeStruct && std::get<ValueStruct>(_value).find(name) != std::get<ValueStruct>(_value).end();
   }
 
-  // Set the value from xml. The chars at *offset into valueXml 
+  // Set the value from xml. The chars at *offset into valueXml
   // should be the start of a <value> tag. Destroys any existing value.
   bool XmlRpcValue::fromXml(std::string const& valueXml, size_t* offset)
   {
@@ -281,7 +202,7 @@ namespace XmlRpc {
       return false;
 
     _type = TypeBoolean;
-    _value.asBool = (ivalue == 1);
+    _value = (ivalue == 1);
     *offset += valueEnd - valueStart;
     return true;
   }
@@ -290,7 +211,7 @@ namespace XmlRpc {
   {
     std::string xml = VALUE_TAG;
     xml += BOOLEAN_TAG;
-    xml += (_value.asBool ? "1" : "0");
+    xml += (std::get<bool>(_value) ? "1" : "0");
     xml += BOOLEAN_ETAG;
     xml += VALUE_ETAG;
     return xml;
@@ -306,7 +227,7 @@ namespace XmlRpc {
       return false;
 
     _type = TypeInt;
-    _value.asInt = ivalue;
+    _value = ivalue;
     *offset += valueEnd - valueStart;
     return true;
   }
@@ -314,7 +235,7 @@ namespace XmlRpc {
   std::string XmlRpcValue::intToXml() const
   {
     char buf[256];
-    snprintf(buf, sizeof(buf)-1, "%ld", _value.asInt);
+    snprintf(buf, sizeof(buf)-1, "%ld", std::get<long>(_value));
     buf[sizeof(buf)-1] = 0;
     std::string xml = VALUE_TAG;
     xml += I4_TAG;
@@ -334,7 +255,7 @@ namespace XmlRpc {
       return false;
 
     _type = TypeDouble;
-    _value.asDouble = dvalue;
+    _value = dvalue;
     *offset += valueEnd - valueStart;
     return true;
   }
@@ -342,7 +263,7 @@ namespace XmlRpc {
   std::string XmlRpcValue::doubleToXml() const
   {
     char buf[256];
-    snprintf(buf, sizeof(buf)-1, getDoubleFormat().c_str(), _value.asDouble);
+    snprintf(buf, sizeof(buf)-1, getDoubleFormat().c_str(), std::get<double>(_value));
     buf[sizeof(buf)-1] = 0;
 
     std::string xml = VALUE_TAG;
@@ -361,8 +282,8 @@ namespace XmlRpc {
       return false;     // No end tag;
 
     _type = TypeString;
-    _value.asString = new std::string(XmlRpcUtil::xmlDecode(valueXml.substr(*offset, valueEnd-*offset)));
-    *offset += _value.asString->length();
+    _value.emplace<std::string>(XmlRpcUtil::xmlDecode(valueXml.substr(*offset, valueEnd-*offset)));
+    *offset += std::get<std::string>(_value).length();
     return true;
   }
 
@@ -370,7 +291,7 @@ namespace XmlRpc {
   {
     std::string xml = VALUE_TAG;
     //xml += STRING_TAG; optional
-    xml += XmlRpcUtil::xmlEncode(*_value.asString);
+    xml += XmlRpcUtil::xmlEncode(std::get<std::string>(_value));
     //xml += STRING_ETAG;
     xml += VALUE_ETAG;
     return xml;
@@ -395,18 +316,18 @@ namespace XmlRpc {
     t.tm_mon--; /* sscanf reads months as 1-12, but tm_mon expects 0-11. So not adjusting it can lead to an incorrect date. */
 
     _type = TypeDateTime;
-    _value.asTime = new struct tm(t);
+    _value = t;
     *offset += stime.length();
     return true;
   }
 
   std::string XmlRpcValue::timeToXml() const
   {
-    struct tm* t = _value.asTime;
+    const tm& t = std::get<tm>(_value);
     char buf[18];
 
     if (snprintf(buf, sizeof(buf), "%04d%02d%02dT%02d:%02d:%02d",
-                (1900 + t->tm_year), (1 + t->tm_mon), t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec) < 0)
+                (1900 + t.tm_year), (1 + t.tm_mon), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec) < 0)
     {
       XmlRpcUtil::log(2,"timeToXml: issues while trying to write data.");
     }
@@ -429,13 +350,13 @@ namespace XmlRpc {
 
     _type = TypeBase64;
     std::string asString = valueXml.substr(*offset, valueEnd-*offset);
-    _value.asBinary = new BinaryData();
+    _value.emplace<BinaryData>();
     // check whether base64 encodings can contain chars xml encodes...
 
     // convert from base64 to binary
     int iostatus = 0;
 	  base64<char> decoder;
-    std::back_insert_iterator<BinaryData> ins = std::back_inserter(*(_value.asBinary));
+    std::back_insert_iterator<BinaryData> ins = std::back_inserter(std::get<BinaryData>(_value));
 		decoder.get(asString.begin(), asString.end(), ins, iostatus);
 
     *offset += asString.length();
@@ -450,7 +371,7 @@ namespace XmlRpc {
     int iostatus = 0;
 	  base64<char> encoder;
     std::back_insert_iterator<std::vector<char> > ins = std::back_inserter(base64data);
-		encoder.put(_value.asBinary->begin(), _value.asBinary->end(), ins, iostatus, base64<>::crlf());
+		encoder.put(std::get<BinaryData>(_value).begin(), std::get<BinaryData>(_value).end(), ins, iostatus, base64<>::crlf());
 
     // Wrap with xml
     std::string xml = VALUE_TAG;
@@ -469,10 +390,10 @@ namespace XmlRpc {
       return false;
 
     _type = TypeArray;
-    _value.asArray = new ValueArray;
+    _value.emplace<ValueArray>();
     XmlRpcValue v;
     while (v.fromXml(valueXml, offset))
-      _value.asArray->push_back(v);       // copy...
+      std::get<ValueArray>(_value).push_back(v);       // copy...
 
     // Skip the trailing </data>
     (void) XmlRpcUtil::nextTagIs(DATA_ETAG, valueXml, offset);
@@ -488,9 +409,9 @@ namespace XmlRpc {
     xml += ARRAY_TAG;
     xml += DATA_TAG;
 
-    size_t s = _value.asArray->size();
+    size_t s = std::get<ValueArray>(_value).size();
     for (size_t i=0; i<s; ++i)
-       xml += _value.asArray->at(i).toXml();
+       xml += std::get<ValueArray>(_value).at(i).toXml();
 
     xml += DATA_ETAG;
     xml += ARRAY_ETAG;
@@ -503,7 +424,7 @@ namespace XmlRpc {
   bool XmlRpcValue::structFromXml(std::string const& valueXml, size_t* offset)
   {
     _type = TypeStruct;
-    _value.asStruct = new ValueStruct;
+    _value.emplace<ValueStruct>();
 
     while (XmlRpcUtil::nextTagIs(MEMBER_TAG, valueXml, offset)) {
       // name
@@ -514,8 +435,8 @@ namespace XmlRpc {
         invalidate();
         return false;
       }
-
-      _value.asStruct->insert(std::make_pair(std::move(name), std::move(val)));
+      const std::pair<const std::string, XmlRpcValue> p(std::move(name), std::move(val));
+      std::get<ValueStruct>(_value).insert(p);
 
       (void) XmlRpcUtil::nextTagIs(MEMBER_ETAG, valueXml, offset);
     }
@@ -531,7 +452,7 @@ namespace XmlRpc {
     xml += STRUCT_TAG;
 
     ValueStruct::const_iterator it;
-    for (it=_value.asStruct->begin(); it!=_value.asStruct->end(); ++it) {
+    for (it=std::get<ValueStruct>(_value).begin(); it!=std::get<ValueStruct>(_value).end(); ++it) {
       xml += MEMBER_TAG;
       xml += NAME_TAG;
       xml += XmlRpcUtil::xmlEncode(it->first);
@@ -551,16 +472,16 @@ namespace XmlRpc {
   std::ostream& XmlRpcValue::write(std::ostream& os) const {
     switch (_type) {
       default:           break;
-      case TypeBoolean:  os << _value.asBool; break;
-      case TypeInt:      os << _value.asInt; break;
-      case TypeDouble:   os << _value.asDouble; break;
-      case TypeString:   os << *_value.asString; break;
+      case TypeBoolean:  os << std::get<bool>(_value);        break;
+      case TypeInt:      os << std::get<long>(_value);        break;
+      case TypeDouble:   os << std::get<double>(_value);      break;
+      case TypeString:   os << std::get<std::string>(_value); break;
       case TypeDateTime:
         {
-          struct tm* t = _value.asTime;
+          const tm& t = std::get<tm>(_value);
           char buf[20];
-          snprintf(buf, sizeof(buf)-1, "%4d%02d%02dT%02d:%02d:%02d", 
-            (1900 + t->tm_year), (1 + t->tm_mon),t->tm_mday,t->tm_hour,t->tm_min,t->tm_sec);
+          snprintf(buf, sizeof(buf)-1, "%4d%02d%02dT%02d:%02d:%02d",
+            (1900 + t.tm_year), (1 + t.tm_mon), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
           buf[sizeof(buf)-1] = 0;
           os << buf;
           break;
@@ -570,17 +491,17 @@ namespace XmlRpc {
           int iostatus = 0;
           std::ostreambuf_iterator<char> out(os);
           base64<char> encoder;
-          encoder.put(_value.asBinary->begin(), _value.asBinary->end(), out, iostatus, base64<>::crlf());
+          encoder.put(std::get<BinaryData>(_value).begin(), std::get<BinaryData>(_value).end(), out, iostatus, base64<>::crlf());
           break;
         }
       case TypeArray:
         {
-          size_t s = _value.asArray->size();
+          size_t s = std::get<ValueArray>(_value).size();
           os << '{';
           for (size_t i=0; i<s; ++i)
           {
             if (i > 0) os << ',';
-            _value.asArray->at(i).write(os);
+	    std::get<ValueArray>(_value).at(i).write(os);
           }
           os << '}';
           break;
@@ -589,18 +510,18 @@ namespace XmlRpc {
         {
           os << '[';
           ValueStruct::const_iterator it;
-          for (it=_value.asStruct->begin(); it!=_value.asStruct->end(); ++it)
+          for (it=std::get<ValueStruct>(_value).begin(); it!=std::get<ValueStruct>(_value).end(); ++it)
           {
-            if (it!=_value.asStruct->begin()) os << ',';
+            if (it!=std::get<ValueStruct>(_value).begin()) os << ',';
             os << it->first << ':';
             it->second.write(os);
           }
           os << ']';
           break;
         }
-      
+
     }
-    
+
     return os;
   }
 
@@ -608,10 +529,10 @@ namespace XmlRpc {
 
 
 // ostream
-std::ostream& operator<<(std::ostream& os, XmlRpc::XmlRpcValue& v) 
-{ 
+std::ostream& operator<<(std::ostream& os, XmlRpc::XmlRpcValue& v)
+{
   // If you want to output in xml format:
-  //return os << v.toXml(); 
+  //return os << v.toXml();
   return v.write(os);
 }
 

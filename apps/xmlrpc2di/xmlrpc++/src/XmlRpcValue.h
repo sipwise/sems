@@ -16,6 +16,8 @@
 # include <time.h>
 #endif
 
+#include <variant>
+
 namespace XmlRpc {
 
   //! A class to represent RPC arguments and results.
@@ -47,38 +49,38 @@ namespace XmlRpc {
 
     // Constructors
     //! Construct an empty XmlRpcValue
-    XmlRpcValue() : _type(TypeInvalid) { _value.asBinary = 0; }
+    XmlRpcValue() : _type(TypeInvalid) { }
 
     //! Construct an XmlRpcValue with a bool value
-    XmlRpcValue(bool value) : _type(TypeBoolean) { _value.asBool = value; }
+    XmlRpcValue(bool value) : _type(TypeBoolean) { _value = value; }
 
     //! Construct an XmlRpcValue with a long value
-    XmlRpcValue(long value)  : _type(TypeInt) { _value.asInt = value; }
-    XmlRpcValue(int value)   : _type(TypeInt) { _value.asInt = value; }
+    XmlRpcValue(long value)  : _type(TypeInt) { _value = value; }
+    XmlRpcValue(int value)   : _type(TypeInt) { _value = value; }
 
     //! Construct an XmlRpcValue with a double value
-    XmlRpcValue(double value)  : _type(TypeDouble) { _value.asDouble = value; }
+    XmlRpcValue(double value)  : _type(TypeDouble) { _value = value; }
 
     //! Construct an XmlRpcValue with a string value
-    XmlRpcValue(std::string const& value) : _type(TypeString) 
-    { _value.asString = new std::string(value); }
+    XmlRpcValue(std::string const& value) : _type(TypeString)
+    { _value = value; }
 
     //! Construct an XmlRpcValue with a string value.
     //! @param value A null-terminated (C) string.
     XmlRpcValue(const char* value)  : _type(TypeString)
-    { _value.asString = new std::string(value); }
+    { _value.emplace<std::string>(value); }
 
     //! Construct an XmlRpcValue with a date/time value.
     //! @param value A pointer to a struct tm (see localtime)
-    XmlRpcValue(struct tm* value)  : _type(TypeDateTime) 
-    { _value.asTime = new struct tm(*value); }
+    XmlRpcValue(const tm& value)  : _type(TypeDateTime)
+    { _value = value; }
 
     //! Construct an XmlRpcValue with a binary data value
     //! @param value A pointer to data
     //! @param nBytes The length of the data pointed to, in bytes
-    XmlRpcValue(void* value, size_t nBytes)  : _type(TypeBase64)
+    XmlRpcValue(const void* value, size_t nBytes)  : _type(TypeBase64)
     {
-      _value.asBinary = new BinaryData((char*)value, ((char*)value)+nBytes);
+      _value.emplace<BinaryData>((char*)value, ((char*)value)+nBytes);
     }
 
     //! Construct from xml, beginning at *offset chars into the string, updates offset
@@ -97,7 +99,7 @@ namespace XmlRpc {
     // Operators
     //! Assignment from one XmlRpcValue to this one.
     //! @param rhs The value in rhs is copied to this value.
-    XmlRpcValue& operator=(XmlRpcValue const& rhs);
+    XmlRpcValue& operator=(XmlRpcValue const& rhs) = default;
 
     //! Assign a long to this XmlRpcValue.
     XmlRpcValue& operator=(long const& rhs) { return operator=(XmlRpcValue(rhs)); }
@@ -110,66 +112,66 @@ namespace XmlRpc {
     XmlRpcValue& operator=(const char* rhs) { return operator=(XmlRpcValue(std::string(rhs))); }
 
     //! Tests two XmlRpcValues for equality
-    bool operator==(XmlRpcValue const& other) const;
+    bool operator==(XmlRpcValue const& other) const = default;
 
     //! Tests two XmlRpcValues for inequality
-    bool operator!=(XmlRpcValue const& other) const;
+    bool operator!=(XmlRpcValue const& other) const = default;
 
     //! Treat an XmlRpcValue as a bool.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeBoolean.
-    operator bool&()          { assertTypeOrInvalid(TypeBoolean); return _value.asBool; }
+    operator bool&()          { assertTypeOrInvalid(TypeBoolean); return std::get<bool>(_value); }
 
     //! Treat an XmlRpcValue as an int.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeInt.
-    operator long&()           { assertTypeOrInvalid(TypeInt); return _value.asInt; }
+    operator long&()           { assertTypeOrInvalid(TypeInt); return std::get<long>(_value); }
 
     //! Treat an XmlRpcValue as a double.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeDouble.
-    operator double&()        { assertTypeOrInvalid(TypeDouble); return _value.asDouble; }
+    operator double&()        { assertTypeOrInvalid(TypeDouble); return std::get<double>(_value); }
 
     //! Treat an XmlRpcValue as a string.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeString.
-    operator std::string&()   { assertTypeOrInvalid(TypeString); return *_value.asString; }
+    operator std::string&()   { assertTypeOrInvalid(TypeString); return std::get<std::string>(_value); }
 
     //! Access the BinaryData value.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeBase64.
-    operator BinaryData&()    { assertTypeOrInvalid(TypeBase64); return *_value.asBinary; }
+    operator BinaryData&()    { assertTypeOrInvalid(TypeBase64); return std::get<BinaryData>(_value); }
 
     //! Access the DateTime value.
-    //! Throws XmlRpcException if the value is initialized to 
+    //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeDateTime.
-    operator struct tm&()     { assertTypeOrInvalid(TypeDateTime); return *_value.asTime; }
+    operator struct tm&()     { assertTypeOrInvalid(TypeDateTime); return std::get<tm>(_value); }
 
 
     //! Const array value accessor.
     //! Access the ith value of the array.
     //! Throws XmlRpcException if the value is not an array or if the index i is
     //! not a valid index for the array.
-    XmlRpcValue const& operator[](size_t i) const   { assertArray(i+1); return _value.asArray->at(i); }
-    XmlRpcValue const& operator[](int i) const      { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue const& operator[](size_t i) const   { assertArray(i+1); return std::get<ValueArray>(_value).at(i); }
+    XmlRpcValue const& operator[](int i) const      { assertArray(i+1); return std::get<ValueArray>(_value).at(i); }
 
     //! Array value accessor.
     //! Access the ith value of the array, growing the array if necessary.
     //! Throws XmlRpcException if the value is not an array.
-    XmlRpcValue& operator[](size_t i)               { assertArray(i+1); return _value.asArray->at(i); }
-    XmlRpcValue& operator[](int i)                  { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue& operator[](size_t i)               { assertArray(i+1); return std::get<ValueArray>(_value).at(i); }
+    XmlRpcValue& operator[](int i)                  { assertArray(i+1); return std::get<ValueArray>(_value).at(i); }
 
     //! Struct entry accessor.
     //! Returns the value associated with the given entry, creating one if necessary.
-    XmlRpcValue& operator[](std::string const& k) { assertStruct(); return (*_value.asStruct)[k]; }
+    XmlRpcValue& operator[](std::string const& k) { assertStruct(); return std::get<ValueStruct>(_value)[k]; }
 
     //! Struct entry accessor.
     //! Returns the value associated with the given entry, creating one if necessary.
-    XmlRpcValue& operator[](const char* k) { assertStruct(); std::string s(k); return (*_value.asStruct)[s]; }
+    XmlRpcValue& operator[](const char* k) { assertStruct(); std::string s(k); return std::get<ValueStruct>(_value)[s]; }
 
     //! Access the struct value map.
     //! Can be used to iterate over the entries in the map to find all defined entries.
-    operator ValueStruct const&() { assertStruct(); return *_value.asStruct; } 
+    operator ValueStruct const&() { assertStruct(); return std::get<ValueStruct>(_value); }
 
     // Accessors
     //! Return true if the value has been set to something.
@@ -239,20 +241,8 @@ namespace XmlRpc {
 
     // Type tag and values
     Type _type;
+    std::variant<std::monostate, bool, long, double, std::string, tm, BinaryData, ValueArray, ValueStruct> _value;
 
-    // At some point I will split off Arrays and Structs into
-    // separate ref-counted objects for more efficient copying.
-    union {
-      bool          asBool;
-      long          asInt;
-      double        asDouble;
-      struct tm*    asTime;
-      std::string*  asString;
-      BinaryData*   asBinary;
-      ValueArray*   asArray;
-      ValueStruct*  asStruct;
-    } _value;
-    
   };
 } // namespace XmlRpc
 
