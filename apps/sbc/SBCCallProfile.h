@@ -52,7 +52,7 @@ struct CCInterface {
   string cc_module;
   map<string, string> cc_values;
 
-  CCInterface(string cc_name)
+  CCInterface(const string& cc_name)
   : cc_name(cc_name) { }
   CCInterface() { }
 };
