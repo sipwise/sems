@@ -84,22 +84,22 @@ namespace XmlRpc {
       throw XmlRpcException("type error");
   }
 
-  void XmlRpcValue::assertArray(int size) const
+  void XmlRpcValue::assertArray(size_t size) const
   {
     if (_type != TypeArray)
       throw XmlRpcException("type error: expected an array");
-    else if (int(_value.asArray->size()) < size)
+    else if (_value.asArray->size() < size)
       throw XmlRpcException("range error: array index too large");
   }
 
 
-  void XmlRpcValue::assertArray(int size)
+  void XmlRpcValue::assertArray(size_t size)
   {
     if (_type == TypeInvalid) {
       _type = TypeArray;
       _value.asArray = new ValueArray(size);
     } else if (_type == TypeArray) {
-      if (int(_value.asArray->size()) < size)
+      if (_value.asArray->size() < size)
         _value.asArray->resize(size);
     } else
       throw XmlRpcException("type error: expected an array");
@@ -190,13 +190,13 @@ namespace XmlRpc {
 
 
   // Works for strings, binary data, arrays, and structs.
-  int XmlRpcValue::size() const
+  size_t XmlRpcValue::size() const
   {
     switch (_type) {
-      case TypeString: return int(_value.asString->size());
-      case TypeBase64: return int(_value.asBinary->size());
-      case TypeArray:  return int(_value.asArray->size());
-      case TypeStruct: return int(_value.asStruct->size());
+      case TypeString: return _value.asString->size();
+      case TypeBase64: return _value.asBinary->size();
+      case TypeArray:  return _value.asArray->size();
+      case TypeStruct: return _value.asStruct->size();
       default: break;
     }
 
@@ -211,15 +211,15 @@ namespace XmlRpc {
 
   // Set the value from xml. The chars at *offset into valueXml 
   // should be the start of a <value> tag. Destroys any existing value.
-  bool XmlRpcValue::fromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::fromXml(std::string const& valueXml, size_t* offset)
   {
-    int savedOffset = *offset;
+    size_t savedOffset = *offset;
 
     invalidate();
     if ( ! XmlRpcUtil::nextTagIs(VALUE_TAG, valueXml, offset))
       return false;       // Not a value, offset not updated
 
-	int afterValueOffset = *offset;
+	size_t afterValueOffset = *offset;
     std::string typeTag = XmlRpcUtil::getNextTag(valueXml, offset);
     bool result = false;
     if (typeTag == BOOLEAN_TAG)
@@ -272,7 +272,7 @@ namespace XmlRpc {
 
 
   // Boolean
-  bool XmlRpcValue::boolFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::boolFromXml(std::string const& valueXml, size_t* offset)
   {
     const char* valueStart = valueXml.c_str() + *offset;
     char* valueEnd;
@@ -282,7 +282,7 @@ namespace XmlRpc {
 
     _type = TypeBoolean;
     _value.asBool = (ivalue == 1);
-    *offset += int(valueEnd - valueStart);
+    *offset += valueEnd - valueStart;
     return true;
   }
 
@@ -297,7 +297,7 @@ namespace XmlRpc {
   }
 
   // Int
-  bool XmlRpcValue::intFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::intFromXml(std::string const& valueXml, size_t* offset)
   {
     const char* valueStart = valueXml.c_str() + *offset;
     char* valueEnd;
@@ -307,7 +307,7 @@ namespace XmlRpc {
 
     _type = TypeInt;
     _value.asInt = int(ivalue);
-    *offset += int(valueEnd - valueStart);
+    *offset += valueEnd - valueStart;
     return true;
   }
 
@@ -325,7 +325,7 @@ namespace XmlRpc {
   }
 
   // Double
-  bool XmlRpcValue::doubleFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::doubleFromXml(std::string const& valueXml, size_t* offset)
   {
     const char* valueStart = valueXml.c_str() + *offset;
     char* valueEnd;
@@ -335,7 +335,7 @@ namespace XmlRpc {
 
     _type = TypeDouble;
     _value.asDouble = dvalue;
-    *offset += int(valueEnd - valueStart);
+    *offset += valueEnd - valueStart;
     return true;
   }
 
@@ -354,7 +354,7 @@ namespace XmlRpc {
   }
 
   // String
-  bool XmlRpcValue::stringFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::stringFromXml(std::string const& valueXml, size_t* offset)
   {
     size_t valueEnd = valueXml.find('<', *offset);
     if (valueEnd == std::string::npos)
@@ -362,7 +362,7 @@ namespace XmlRpc {
 
     _type = TypeString;
     _value.asString = new std::string(XmlRpcUtil::xmlDecode(valueXml.substr(*offset, valueEnd-*offset)));
-    *offset += int(_value.asString->length());
+    *offset += _value.asString->length();
     return true;
   }
 
@@ -377,7 +377,7 @@ namespace XmlRpc {
   }
 
   // DateTime (stored as a struct tm)
-  bool XmlRpcValue::timeFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::timeFromXml(std::string const& valueXml, size_t* offset)
   {
     size_t valueEnd = valueXml.find('<', *offset);
     if (valueEnd == std::string::npos)
@@ -393,7 +393,7 @@ namespace XmlRpc {
     t.tm_isdst = -1;
     _type = TypeDateTime;
     _value.asTime = new struct tm(t);
-    *offset += int(stime.length());
+    *offset += stime.length();
     return true;
   }
 
@@ -418,7 +418,7 @@ namespace XmlRpc {
 
 
   // Base64
-  bool XmlRpcValue::binaryFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::binaryFromXml(std::string const& valueXml, size_t* offset)
   {
     size_t valueEnd = valueXml.find('<', *offset);
     if (valueEnd == std::string::npos)
@@ -435,7 +435,7 @@ namespace XmlRpc {
     std::back_insert_iterator<BinaryData> ins = std::back_inserter(*(_value.asBinary));
 		decoder.get(asString.begin(), asString.end(), ins, iostatus);
 
-    *offset += int(asString.length());
+    *offset += asString.length();
     return true;
   }
 
@@ -460,7 +460,7 @@ namespace XmlRpc {
 
 
   // Array
-  bool XmlRpcValue::arrayFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::arrayFromXml(std::string const& valueXml, size_t* offset)
   {
     if ( ! XmlRpcUtil::nextTagIs(DATA_TAG, valueXml, offset))
       return false;
@@ -485,8 +485,8 @@ namespace XmlRpc {
     xml += ARRAY_TAG;
     xml += DATA_TAG;
 
-    int s = int(_value.asArray->size());
-    for (int i=0; i<s; ++i)
+    size_t s = _value.asArray->size();
+    for (size_t i=0; i<s; ++i)
        xml += _value.asArray->at(i).toXml();
 
     xml += DATA_ETAG;
@@ -497,7 +497,7 @@ namespace XmlRpc {
 
 
   // Struct
-  bool XmlRpcValue::structFromXml(std::string const& valueXml, int* offset)
+  bool XmlRpcValue::structFromXml(std::string const& valueXml, size_t* offset)
   {
     _type = TypeStruct;
     _value.asStruct = new ValueStruct;
@@ -572,9 +572,9 @@ namespace XmlRpc {
         }
       case TypeArray:
         {
-          int s = int(_value.asArray->size());
+          size_t s = _value.asArray->size();
           os << '{';
-          for (int i=0; i<s; ++i)
+          for (size_t i=0; i<s; ++i)
           {
             if (i > 0) os << ',';
             _value.asArray->at(i).write(os);

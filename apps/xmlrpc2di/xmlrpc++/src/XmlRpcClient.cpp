@@ -312,7 +312,7 @@ XmlRpcClient::generateRequest(const char* methodName, XmlRpcValue const& params)
     body += PARAMS_TAG;
     if (params.getType() == XmlRpcValue::TypeArray)
     {
-      for (int i=0; i<params.size(); ++i) {
+      for (size_t i=0; i<params.size(); ++i) {
         body += PARAM_TAG;
         body += params[i].toXml();
         body += PARAM_ETAG;
@@ -519,7 +519,7 @@ bool
 XmlRpcClient::parseResponse(XmlRpcValue& result)
 {
   // Parse response xml into result
-  int offset = 0;
+  size_t offset = 0;
   if ( ! XmlRpcUtil::findTag(METHODRESPONSE_TAG,_response,&offset)) {
     XmlRpcUtil::error("Error in XmlRpcClient::parseResponse: Invalid response - no methodResponse. Response:\n%s", _response.c_str());
     return false;

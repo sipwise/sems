@@ -75,13 +75,13 @@ namespace XmlRpc {
     //! Construct an XmlRpcValue with a binary data value
     //! @param value A pointer to data
     //! @param nBytes The length of the data pointed to, in bytes
-    XmlRpcValue(void* value, int nBytes)  : _type(TypeBase64)
+    XmlRpcValue(void* value, size_t nBytes)  : _type(TypeBase64)
     {
       _value.asBinary = new BinaryData((char*)value, ((char*)value)+nBytes);
     }
 
     //! Construct from xml, beginning at *offset chars into the string, updates offset
-    XmlRpcValue(std::string const& xml, int* offset) : _type(TypeInvalid)
+    XmlRpcValue(std::string const& xml, size_t* offset) : _type(TypeInvalid)
     { if ( ! fromXml(xml,offset)) _type = TypeInvalid; }
 
     //! Copy constructor
@@ -148,12 +148,14 @@ namespace XmlRpc {
     //! Access the ith value of the array.
     //! Throws XmlRpcException if the value is not an array or if the index i is
     //! not a valid index for the array.
-    XmlRpcValue const& operator[](int i) const { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue const& operator[](size_t i) const   { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue const& operator[](int i) const      { assertArray(i+1); return _value.asArray->at(i); }
 
     //! Array value accessor.
     //! Access the ith value of the array, growing the array if necessary.
     //! Throws XmlRpcException if the value is not an array.
-    XmlRpcValue& operator[](int i)             { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue& operator[](size_t i)               { assertArray(i+1); return _value.asArray->at(i); }
+    XmlRpcValue& operator[](int i)                  { assertArray(i+1); return _value.asArray->at(i); }
 
     //! Struct entry accessor.
     //! Returns the value associated with the given entry, creating one if necessary.
@@ -175,16 +177,16 @@ namespace XmlRpc {
     Type const &getType() const { return _type; }
 
     //! Return the size for string, base64, array, and struct values.
-    int size() const;
+    size_t size() const;
 
     //! Specify the size for array values. Array values will grow beyond this size if needed.
-    void setSize(int size)    { assertArray(size); }
+    void setSize(size_t size)    { assertArray(size); }
 
     //! Check for the existence of a struct member by name.
     bool hasMember(const std::string& name) const;
 
     //! Decode xml. Destroys any existing value.
-    bool fromXml(std::string const& valueXml, int* offset);
+    bool fromXml(std::string const& valueXml, size_t* offset);
 
     //! Encode the Value in xml
     std::string toXml() const;
@@ -206,19 +208,19 @@ namespace XmlRpc {
 
     // Type checking
     void assertTypeOrInvalid(Type t);
-    void assertArray(int size) const;
-    void assertArray(int size);
+    void assertArray(size_t size) const;
+    void assertArray(size_t size);
     void assertStruct();
 
     // XML decoding
-    bool boolFromXml(std::string const& valueXml, int* offset);
-    bool intFromXml(std::string const& valueXml, int* offset);
-    bool doubleFromXml(std::string const& valueXml, int* offset);
-    bool stringFromXml(std::string const& valueXml, int* offset);
-    bool timeFromXml(std::string const& valueXml, int* offset);
-    bool binaryFromXml(std::string const& valueXml, int* offset);
-    bool arrayFromXml(std::string const& valueXml, int* offset);
-    bool structFromXml(std::string const& valueXml, int* offset);
+    bool boolFromXml(std::string const& valueXml, size_t* offset);
+    bool intFromXml(std::string const& valueXml, size_t* offset);
+    bool doubleFromXml(std::string const& valueXml, size_t* offset);
+    bool stringFromXml(std::string const& valueXml, size_t* offset);
+    bool timeFromXml(std::string const& valueXml, size_t* offset);
+    bool binaryFromXml(std::string const& valueXml, size_t* offset);
+    bool arrayFromXml(std::string const& valueXml, size_t* offset);
+    bool structFromXml(std::string const& valueXml, size_t* offset);
 
     // XML encoding
     std::string boolToXml() const;

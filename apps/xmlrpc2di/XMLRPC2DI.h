@@ -151,7 +151,7 @@ class XMLRPC2DIServer
   void waitUntilStarted() { running.wait_for(); }
   
   static void xmlrpcval2amargarray(XmlRpcValue& v, AmArg& a, 
-				   unsigned int start_index);
+				   size_t start_index);
 
   static void xmlrpcval2amarg(XmlRpcValue& v, AmArg& a);
 

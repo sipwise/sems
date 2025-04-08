@@ -351,7 +351,7 @@ XmlRpcServer::executeRequest(std::string const& request)
 std::string
 XmlRpcServer::parseRequest(std::string const& request, XmlRpcValue& params)
 {
-  int offset = 0;   // Number of chars parsed from the request
+  size_t offset = 0;   // Number of chars parsed from the request
 
   std::string methodName = XmlRpcUtil::parseTag(METHODNAME_TAG, request, &offset);
 

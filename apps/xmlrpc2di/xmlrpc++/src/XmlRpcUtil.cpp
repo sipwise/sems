@@ -96,9 +96,9 @@ void XmlRpcUtil::error(const char* fmt, ...)
 
 // Returns contents between <tag> and </tag>, updates offset to char after </tag>
 std::string 
-XmlRpcUtil::parseTag(const char* tag, std::string const& xml, int* offset)
+XmlRpcUtil::parseTag(const char* tag, std::string const& xml, size_t* offset)
 {
-  if (*offset >= int(xml.length())) return std::string();
+  if (*offset >= xml.length()) return std::string();
   size_t istart = xml.find(tag, *offset);
   if (istart == std::string::npos) return std::string();
   istart += strlen(tag);
@@ -107,21 +107,21 @@ XmlRpcUtil::parseTag(const char* tag, std::string const& xml, int* offset)
   size_t iend = xml.find(etag, istart);
   if (iend == std::string::npos) return std::string();
 
-  *offset = int(iend + etag.length());
+  *offset = iend + etag.length();
   return xml.substr(istart, iend-istart);
 }
 
 
 // Returns true if the tag is found and updates offset to the char after the tag
 bool 
-XmlRpcUtil::findTag(const char* tag, std::string const& xml, int* offset)
+XmlRpcUtil::findTag(const char* tag, std::string const& xml, size_t* offset)
 {
-  if (*offset >= int(xml.length())) return false;
+  if (*offset >= xml.length()) return false;
   size_t istart = xml.find(tag, *offset);
   if (istart == std::string::npos)
     return false;
 
-  *offset = int(istart + strlen(tag));
+  *offset = istart + strlen(tag);
   return true;
 }
 
@@ -129,17 +129,17 @@ XmlRpcUtil::findTag(const char* tag, std::string const& xml, int* offset)
 // Returns true if the tag is found at the specified offset (modulo any whitespace)
 // and updates offset to the char after the tag
 bool 
-XmlRpcUtil::nextTagIs(const char* tag, std::string const& xml, int* offset)
+XmlRpcUtil::nextTagIs(const char* tag, std::string const& xml, size_t* offset)
 {
-  if (*offset >= int(xml.length())) return false;
+  if (*offset >= xml.length()) return false;
   const char* cp = xml.c_str() + *offset;
-  int nc = 0;
+  size_t nc = 0;
   while (*cp && isspace(*cp)) {
     ++cp;
     ++nc;
   }
 
-  int len = int(strlen(tag));
+  size_t len = strlen(tag);
   if  (*cp && (strncmp(cp, tag, len) == 0)) {
     *offset += nc + len;
     return true;
@@ -151,9 +151,9 @@ XmlRpcUtil::nextTagIs(const char* tag, std::string const& xml, int* offset)
 // if the next non-whitespace character is not '<'. Ignores parameters and values within
 // the tag entity.
 std::string 
-XmlRpcUtil::getNextTag(std::string const& xml, int* offset)
+XmlRpcUtil::getNextTag(std::string const& xml, size_t* offset)
 {
-  if (*offset >= int(xml.length())) return std::string();
+  if (*offset >= xml.length()) return std::string();
 
   const char* cp = xml.c_str() + size_t(*offset);
   const char* startcp = cp;
@@ -178,7 +178,7 @@ XmlRpcUtil::getNextTag(std::string const& xml, int* offset)
     s[s.length()-1] = *cp;
   }
 
-  *offset += int(cp - startcp + 1);
+  *offset += cp - startcp + 1;
   return s;
 }
 

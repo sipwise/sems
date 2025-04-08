@@ -628,12 +628,12 @@ void XMLRPC2DIServerDIMethod::execute(XmlRpcValue& params, XmlRpcValue& result) 
 
 
 void XMLRPC2DIServer::xmlrpcval2amargarray(XmlRpcValue& v, AmArg& a, 
-					   unsigned int start_index) {
+					   size_t start_index) {
   if (v.valid()) {
     a.assertArray();
     size_t a_array_pos = a.size();
 
-    for (int i=start_index; i<v.size();i++) {
+    for (size_t i=start_index; i<v.size();i++) {
       xmlrpcval2amarg(v[i], a[a_array_pos]);
       a_array_pos++;
     }

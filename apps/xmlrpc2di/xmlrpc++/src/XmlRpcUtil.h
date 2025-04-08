@@ -28,18 +28,18 @@ namespace XmlRpc {
   public:
     // hokey xml parsing
     //! Returns contents between <tag> and </tag>, updates offset to char after </tag>
-    static std::string parseTag(const char* tag, std::string const& xml, int* offset);
+    static std::string parseTag(const char* tag, std::string const& xml, size_t* offset);
 
     //! Returns true if the tag is found and updates offset to the char after the tag
-    static bool findTag(const char* tag, std::string const& xml, int* offset);
+    static bool findTag(const char* tag, std::string const& xml, size_t* offset);
 
     //! Returns the next tag and updates offset to the char after the tag, or empty string
     //! if the next non-whitespace character is not '<'
-    static std::string getNextTag(std::string const& xml, int* offset);
+    static std::string getNextTag(std::string const& xml, size_t* offset);
 
     //! Returns true if the tag is found at the specified offset (modulo any whitespace)
     //! and updates offset to the char after the tag
-    static bool nextTagIs(const char* tag, std::string const& xml, int* offset);
+    static bool nextTagIs(const char* tag, std::string const& xml, size_t* offset);
 
 
     //! Convert raw text to encoded xml.
