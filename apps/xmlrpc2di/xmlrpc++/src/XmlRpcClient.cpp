@@ -112,6 +112,11 @@ XmlRpcClient::XmlRpcClient(const char* host, int port,
   _ssl = ssl;
   if (!_ssl) { _ssl_ssl = (SSL *) NULL; }
 
+  _sendAttempts = 0;
+  _bytesWritten = 0;
+  _isFault = false;
+  _contentLength = 0;
+
   // Default to keeping the connection open until an explicit close is done
   setKeepOpen();
 }

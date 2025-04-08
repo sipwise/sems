@@ -68,10 +68,10 @@ class AudioStreamData {
     bool enable_dtmf_transcoding;
 
     /** Enables RTP DTMF (2833/4733) filtering */
-    bool enable_dtmf_rtp_filtering;
+    //bool enable_dtmf_rtp_filtering;
 
     /** Enables DTMF detection with RTP DTMF (2833/4733) */
-    bool enable_dtmf_rtp_detection;
+    //bool enable_dtmf_rtp_detection;
 
     /** Low fidelity payloads for which inband DTMF transcoding should be used */
     vector<SdpPayload> lowfi_payloads;

@@ -76,6 +76,7 @@ class RegTimer : public timer {
 DBRegAgent::DBRegAgent(const string& _app_name)
   : AmDynInvokeFactory(_app_name),
     AmEventQueue(this),
+    expires(0),
     uac_auth_i(NULL)
 {
 }

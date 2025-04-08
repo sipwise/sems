@@ -212,7 +212,7 @@ struct sip_target
     sockaddr_storage ss;
     char             trsp[SIP_TRSP_SIZE_MAX+1];
 
-    sip_target();
+    sip_target() : ss{}, trsp{} {};
     sip_target(const sip_target& target);
 
     void clear();

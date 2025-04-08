@@ -37,8 +37,9 @@ AmB2ABSession::AmB2ABSession()
 }
 
 AmB2ABSession::AmB2ABSession(const string& other_local_tag)
-  : other_id(other_local_tag),
-    AmSession()
+  : AmSession(),
+    other_id(other_local_tag),
+    connector(NULL)
 {}
 
 
@@ -268,7 +269,8 @@ AmB2ABCalleeSession* AmB2ABCallerSession::createCalleeSession()
 AmB2ABCalleeSession::AmB2ABCalleeSession(const string& other_local_tag, 
 					 AmSessionAudioConnector* callers_connector)
   : AmB2ABSession(other_local_tag),
-    is_connected(false)
+    is_connected(false),
+    released(NULL)
 { 
   connector=callers_connector;
   connector->block();

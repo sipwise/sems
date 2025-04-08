@@ -57,13 +57,13 @@ class AmPrecodedFileFormat : public AmAudioFileFormat {
   amci_subtype_t subtype;
 
   /* encoded frame size in bytes */
-  int frame_encoded_size;
+  //int frame_encoded_size;
 
  public:
   AmPrecodedFileFormat(precoded_payload_t& precoded_payload);
   ~AmPrecodedFileFormat();
   amci_subtype_t*  getSubtype() { return &subtype; }
-  int getFrameEncodedSize() { return frame_encoded_size; }
+  //int getFrameEncodedSize() { return frame_encoded_size; }
 };
 
 class AmPrecodedRtpFormat : public AmAudioRtpFormat 
@@ -71,13 +71,13 @@ class AmPrecodedRtpFormat : public AmAudioRtpFormat
   precoded_payload_t& precoded_payload;
 
   /* encoded frame size in bytes */
-  int frame_encoded_size;
+  //int frame_encoded_size;
   
  public:
   AmPrecodedRtpFormat(precoded_payload_t& precoded_payload);
   ~AmPrecodedRtpFormat();
 
-  int getFrameEncodedSize() { return frame_encoded_size; }
+  //int getFrameEncodedSize() { return frame_encoded_size; }
 };
 
 class AmPrecodedFileInstance

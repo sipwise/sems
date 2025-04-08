@@ -42,7 +42,7 @@ class _AmSipMsgInDlg
   unsigned short local_port;
   string         trsp;
 
-  _AmSipMsgInDlg() : cseq(0), rseq(0) { }
+  _AmSipMsgInDlg() : cseq(0), rseq(0), remote_port(0), local_port(0) { }
   virtual ~_AmSipMsgInDlg() { };
 
   virtual string print() const = 0;

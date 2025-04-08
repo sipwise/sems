@@ -68,16 +68,20 @@ inline trans_timer** fetch_timer(unsigned int timer_type, trans_timer** base)
 }
 
 sip_trans::sip_trans()
-    : msg(NULL),
+    : timers{},
+      type(0),
+      msg(NULL),
+      reply_status(0),
+      state(0),
+      last_rseq(0),
       targets(NULL),
       retr_buf(NULL),
-      retr_socket(NULL),
       retr_len(0),
-      last_rseq(0),
+      retr_addr{},
+      retr_socket(NULL),
       logger(NULL),
       canceled(false)
 {
-    memset(timers,0,SIP_TRANS_TIMERS*sizeof(void*));
 }
 
 sip_trans::~sip_trans() 

@@ -36,7 +36,7 @@ class tcp_trsp_socket: public trsp_socket
   sockaddr_storage peer_addr;
   string           peer_ip;
   unsigned short   peer_port;
-  bool             peer_addr_valid;
+  //bool             peer_addr_valid;
 
   parser_state     pst;
   unsigned char    input_buf[MAX_TCP_MSGLEN];

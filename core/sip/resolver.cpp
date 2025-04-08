@@ -725,8 +725,6 @@ dns_base_entry* dns_naptr_entry::get_rr(dns_record* rr, u_char* begin, u_char* e
     return naptr_r;
 }
 
-sip_target::sip_target() {}
-
 sip_target::sip_target(const sip_target& target)
 {
     *this = target;
