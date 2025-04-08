@@ -45,7 +45,7 @@
 #define CHECK_TIMEOUT_USECS   500000 // 0.5ms
 #define CHECK_TIMEOUT_INTERVAL (CHECK_TIMEOUT_USECS / CONN_WAIT_USECS)
 
-// #define EXTRA_DEBUG 
+// #define EXTRA_DEBUG
 
 #define CONNECT_CEA_REPLY_TIMEOUT 2 // seconds
 #define RETRY_CONNECTION_INTERVAL 2 // seconds
@@ -53,9 +53,9 @@
 // after syserror, wait 30 secs for retry
 #define RETRY_CONNECTION_SYSERROR 30 // seconds
 
-DiameterServerConnection::DiameterServerConnection()  
-  : in_use(false), dia_conn(0) 
-{ 
+DiameterServerConnection::DiameterServerConnection()
+  : in_use(false), dia_conn(0)
+{
   memset(&rb, 0, sizeof(rd_buf_t));
   h2h = random();
   e2e = (time(NULL) & 0xFFF << 20) | (random() % 0xFFFFF);
@@ -64,9 +64,9 @@ DiameterServerConnection::DiameterServerConnection()
 
 void DiameterServerConnection::terminate(bool tls_shutdown) {
   if (dia_conn) {
-    if (tls_shutdown) 
+    if (tls_shutdown)
       tcp_tls_shutdown(dia_conn);
-    
+
     tcp_close_connection(dia_conn);
     tcp_destroy_connection(dia_conn);
     dia_conn = NULL;
@@ -105,7 +105,7 @@ void ServerConnection::process(AmEvent* ev) {
   req_map_mut.unlock();
 }
 
-ServerConnection::ServerConnection() 
+ServerConnection::ServerConnection()
   : server_port(-1), open(false),
     AmEventQueue(this), request_timeout(3000),
     timeout_check_cntr(0)
@@ -117,11 +117,11 @@ ServerConnection::~ServerConnection() {
   conn.terminate();
 }
 
-int ServerConnection::init(const string& _server_name, 
+int ServerConnection::init(const string& _server_name,
 			   int _server_port,
 			   const string& _ca_file,
 			   const string& _cert_file,
-			   const string& _origin_host, 
+			   const string& _origin_host,
 			   const string& _origin_realm,
 			   const string& _origin_ip,
 			   AAAApplicationId _app_id,
@@ -147,7 +147,7 @@ int ServerConnection::init(const string& _server_name,
 
   struct in_addr inp;
   if (inet_aton(origin_ip.c_str(), &inp) == 0) {
-    ERROR("origin_ip %s could not be decoded.\n", 
+    ERROR("origin_ip %s could not be decoded.\n",
 	  origin_ip.c_str());
   } else {
     origin_ip_address[2] =  inp.s_addr & 0xFF;
@@ -173,7 +173,7 @@ void ServerConnection::openConnection() {
   conn.dia_conn = tcp_create_connection(server_name.c_str(), server_port,
 					ca_file.c_str(), cert_file.c_str());
   if (!conn.dia_conn) {
-    ERROR("establishing connection to %s\n", 
+    ERROR("establishing connection to %s\n",
 	  server_name.c_str());
     setRetryConnectLater();
     return;
@@ -188,10 +188,10 @@ void ServerConnection::openConnection() {
     setRetryConnectLater();
     return;
   }
-  if (addOrigin(cer) 
-      || addDataAVP(cer, AVP_Host_IP_Address, origin_ip_address, sizeof(origin_ip_address)) 
-      || addDataAVP(cer, AVP_Vendor_Id, (char*)&vendorID, sizeof(vendorID)) 
-      || addDataAVP(cer, AVP_Supported_Vendor_Id, (char*)&vendorID, sizeof(vendorID)) 
+  if (addOrigin(cer)
+      || addDataAVP(cer, AVP_Host_IP_Address, origin_ip_address, sizeof(origin_ip_address))
+      || addDataAVP(cer, AVP_Vendor_Id, (char*)&vendorID, sizeof(vendorID))
+      || addDataAVP(cer, AVP_Supported_Vendor_Id, (char*)&vendorID, sizeof(vendorID))
       || addStringAVP(cer, AVP_Product_Name, product_name)) {
     ERROR("openConnection(): adding AVPs failed\n");
     conn.terminate();
@@ -201,7 +201,7 @@ void ServerConnection::openConnection() {
 
   // supported applications
   AAA_AVP* vs_appid;
-  if( (vs_appid=AAACreateAVP(AVP_Vendor_Specific_Application_Id, (AAA_AVPFlag)AAA_AVP_FLAG_NONE, 0, 0, 
+  if( (vs_appid=AAACreateAVP(AVP_Vendor_Specific_Application_Id, (AAA_AVPFlag)AAA_AVP_FLAG_NONE, 0, 0,
 			     0, AVP_DONT_FREE_DATA)) == 0) {
     ERROR( M_NAME":openConnection(): creating AVP failed."
 	   " (no more free memory!)\n");
@@ -211,9 +211,9 @@ void ServerConnection::openConnection() {
   }
 
   // feels like c coding...
-  if (addGroupedAVP(vs_appid, AVP_Auth_Application_Id, 
+  if (addGroupedAVP(vs_appid, AVP_Auth_Application_Id,
 		    (char*)&app_id, sizeof(app_id)) ||
-      addGroupedAVP(vs_appid, AVP_Vendor_Id, 
+      addGroupedAVP(vs_appid, AVP_Vendor_Id,
 		    (char*)&vendorID, sizeof(vendorID)) ||
       (AAAAddAVPToMessage(cer, vs_appid, 0) != AAA_ERR_SUCCESS)
       ) {
@@ -224,18 +224,18 @@ void ServerConnection::openConnection() {
     return;
   }
 
-#ifdef EXTRA_DEBUG 
+#ifdef EXTRA_DEBUG
   AAAPrintMessage(cer);
 #endif
 
   conn.setIDs(cer);
-  
+
   if(AAABuildMsgBuffer(cer) != AAA_ERR_SUCCESS) {
     ERROR( " openConnection(): message buffer not created\n");
     AAAFreeMessage(&cer);
     return;
   }
-  
+
   int ret = tcp_send(conn.dia_conn, cer->buf.s, cer->buf.len);
   if (ret) {
     ERROR( "openConnection(): could not send message\n");
@@ -244,14 +244,14 @@ void ServerConnection::openConnection() {
     AAAFreeMessage(&cer);
     return;
   }
-  
+
   AAAFreeMessage(&cer);
 
   unsigned int cea_receive_cnt = 3;
   while (true) {
     int res = tcp_recv_msg(conn.dia_conn, &conn.rb,
 			 CONNECT_CEA_REPLY_TIMEOUT, 0);
-    
+
     if (res <= 0) {
       if (!res) {
 	ERROR( " openConnection(): did not receive response (CEA).\n");
@@ -262,9 +262,9 @@ void ServerConnection::openConnection() {
       setRetryConnectLater();
       return;
     }
-    
+
     /* obtain the structure corresponding to the message */
-    AAAMessage* cea = AAATranslateMessage(conn.rb.buf, conn.rb.buf_len, 0);	
+    AAAMessage* cea = AAATranslateMessage(conn.rb.buf, conn.rb.buf_len, 0);
     if(!cea) {
       ERROR( " openConnection(): could not decipher response (CEA).\n");
       conn.terminate();
@@ -273,7 +273,7 @@ void ServerConnection::openConnection() {
     }
 
     if (cea->commandCode == AAA_CC_CEA) {
-#ifdef EXTRA_DEBUG 
+#ifdef EXTRA_DEBUG
       AAAPrintMessage(cea);
 #endif
       AAAFreeMessage(&cea);
@@ -289,7 +289,7 @@ void ServerConnection::openConnection() {
       return;
     }
   }
-  
+
   DBG("Connection opened.\n");
   open = true;
 }
@@ -300,35 +300,35 @@ AAAMessage* ServerConnection::ReqEvent2AAAMessage(DiameterRequestEvent* re) {
     ERROR("creating new request message.\n");
     return NULL;
   }
-  
+
   for (int i=re->val.size()-1;i >= 0; i--) {
     //[int avp_id, int flags, int vendor, int len, blob data]
-    
+
     AmArg& row = re->val.get(i);
     int avp_id    = row.get(0).asInt();
     int flags     = row.get(1).asInt();
     int vendor    = row.get(2).asInt();
-    ArgBlob* data = row.get(3).asBlob();
+    const ArgBlob& data = row.get(3).asBlob();
 
 
 #ifdef EXTRA_DEBUG
     DBG("adding avp id %d, flags %d, vendor %d\n", avp_id, flags, vendor);
-#endif 
+#endif
 
-    if (!data->len) {
+    if (!data.len) {
 #ifdef EXTRA_DEBUG
       DBG("skipping empty AVP id %d\n", avp_id);
-#endif 
+#endif
       continue;
     }
 
     AAA_AVP *avp;
-    if( (avp=AAACreateAVP(avp_id, (AAA_AVPFlag)flags, vendor, (const char*)data->data,
-			  data->len, AVP_DUPLICATE_DATA)) == 0) {
+    if( (avp=AAACreateAVP(avp_id, (AAA_AVPFlag)flags, vendor, (const char*)data.data,
+			  data.len, AVP_DUPLICATE_DATA)) == 0) {
       ERROR( M_NAME ": addDataAVP() no more free memory!\n");
       continue;
     }
-    
+
     if( AAAAddAVPToMessage(req, avp, 0)!= AAA_ERR_SUCCESS) {
       ERROR( M_NAME ": addDataAVP(): AVP not added!\n");
       continue;
@@ -339,12 +339,12 @@ AAAMessage* ServerConnection::ReqEvent2AAAMessage(DiameterRequestEvent* re) {
 
 // add origin host and origin realm
 int ServerConnection::addOrigin(AAAMessage* msg) {
-  return addStringAVP(msg, AVP_Origin_Host, origin_host, true) || 
+  return addStringAVP(msg, AVP_Origin_Host, origin_host, true) ||
     addStringAVP(msg, AVP_Origin_Realm, origin_realm, true);
 }
 
 
-int ServerConnection::addStringAVP(AAAMessage* msg, AAA_AVPCode avp_code, string& val, 
+int ServerConnection::addStringAVP(AAAMessage* msg, AAA_AVPCode avp_code, string& val,
 				   bool attail) {
   AAA_AVP *avp;
   if( (avp=AAACreateAVP(avp_code, (AAA_AVPFlag)AAA_AVP_FLAG_NONE, 0, val.c_str(),
@@ -385,11 +385,11 @@ int ServerConnection::addDataAVP(AAAMessage* msg, AAA_AVPCode avp_code, char* va
 }
 
 // add a new group member AVP
-int ServerConnection::addGroupedAVP(AAA_AVP *avp, AAA_AVPCode avp_code, 
+int ServerConnection::addGroupedAVP(AAA_AVP *avp, AAA_AVPCode avp_code,
 				  char* val, unsigned int len) {
   AAA_AVP *m_avp;
 
-  if( (m_avp=AAACreateAVP(avp_code, (AAA_AVPFlag)AAA_AVP_FLAG_NONE, 0, val, 
+  if( (m_avp=AAACreateAVP(avp_code, (AAA_AVPFlag)AAA_AVP_FLAG_NONE, 0, val,
 			  len, AVP_DUPLICATE_DATA)) == 0) {
     ERROR( M_NAME":addGroupedAVP(): no more free memory!\n");
     return -1;
@@ -398,7 +398,7 @@ int ServerConnection::addGroupedAVP(AAA_AVP *avp, AAA_AVPCode avp_code,
   return 0;
 }
 
-// send request and get response  
+// send request and get response
 int ServerConnection::sendRequest(AAAMessage* req, unsigned int& exe) {
   if (addOrigin(req)) {
     return AAA_ERROR_MESSAGE;
@@ -410,7 +410,7 @@ int ServerConnection::sendRequest(AAAMessage* req, unsigned int& exe) {
     ERROR( " sendRequest(): message buffer not created\n");
     return AAA_ERROR_MESSAGE;
   }
-  
+
   int ret = tcp_send(conn.dia_conn, req->buf.s, req->buf.len);
   if (ret) {
     ERROR( " sendRequest(): could not send message\n");
@@ -437,7 +437,7 @@ int ServerConnection::handleRequest(AAAMessage* req) {
     }
 
     AAAMessageSetReply(reply);
-    
+
     if (addOrigin(reply) || addResultCodeAVP(reply, AAA_SUCCESS)) {
       AAAFreeMessage(&reply);
       return AAA_ERROR_MESSAGE;
@@ -451,7 +451,7 @@ int ServerConnection::handleRequest(AAAMessage* req) {
       AAAFreeMessage(&reply);
       return AAA_ERROR_MESSAGE;
     }
-    
+
     DBG("sending Device-Watchdog-Answer...\n");
     int ret = tcp_send(conn.dia_conn, reply->buf.s, reply->buf.len);
     if (ret) {
@@ -492,7 +492,7 @@ int ServerConnection::handleRequest(AAAMessage* req) {
 
     AAAMessageSetReply(reply);
 
-    // always send success (causing retry of requests on 
+    // always send success (causing retry of requests on
     // different connection first, so race is unlikely)
     if (addOrigin(reply) || addResultCodeAVP(reply, AAA_SUCCESS)) {
       AAAFreeMessage(&reply);
@@ -525,7 +525,7 @@ int ServerConnection::handleRequest(AAAMessage* req) {
   }; break;
 
   default: {
-    ERROR("ignoring unknown request with command code %i\n", 
+    ERROR("ignoring unknown request with command code %i\n",
 	  req->commandCode);
   }; break;
   }
@@ -537,7 +537,7 @@ int ServerConnection::handleReply(AAAMessage* rep) {
   unsigned int rep_id = rep->endtoendId;
   int reply_code = AAAMessageGetReplyCode(rep);
   DBG("received reply - id %d, reply code %d\n", rep_id, reply_code);
-  
+
   string sess_link  = "";
   req_map_mut.lock();
   DReqMap::iterator it =  req_map.find(rep_id);
@@ -550,8 +550,8 @@ int ServerConnection::handleReply(AAAMessage* rep) {
   req_map_mut.unlock();
 
   if (!sess_link.empty()) {
-    DiameterReplyEvent* r_ev = 
-      new DiameterReplyEvent((unsigned int)rep->commandCode, (unsigned int)rep->applicationId, 
+    DiameterReplyEvent* r_ev =
+      new DiameterReplyEvent((unsigned int)rep->commandCode, (unsigned int)rep->applicationId,
 			     AAAMessageAVPs2AmArg(rep));
     if (!AmSessionContainer::instance()->postEvent(sess_link, r_ev)) {
       DBG("unhandled reply\n");
@@ -563,14 +563,14 @@ int ServerConnection::handleReply(AAAMessage* rep) {
   if ((reply_code == AAA_OUT_OF_SPACE)
       || reply_code >= AAA_PERMANENT_FAILURE_START) {
     WARN("critical or permanent failure Diameter error reply"
-	 " (code %d) received. Shutdown connection.\n", 
+	 " (code %d) received. Shutdown connection.\n",
 	 reply_code);
     shutdownConnection();
   }
 
   return 0;
 }
-      
+
 AmArg ServerConnection::AAAMessageAVPs2AmArg(AAAMessage* rep) {
   AmArg res;
   for(AAA_AVP* avp=rep->avpList.head;avp;avp=avp->next) {
@@ -624,23 +624,23 @@ void ServerConnection::receive() {
     return;
 
   /* obtain the structure corresponding to the message */
-  AAAMessage* msg = AAATranslateMessage(conn.rb.buf, conn.rb.buf_len, 0);	
+  AAAMessage* msg = AAATranslateMessage(conn.rb.buf, conn.rb.buf_len, 0);
   if(!msg) {
-    ERROR( M_NAME "receive(): message structure not obtained from message.\n");	
+    ERROR( M_NAME "receive(): message structure not obtained from message.\n");
     closeConnection();
     return;
   }
-    
-#ifdef EXTRA_DEBUG 
+
+#ifdef EXTRA_DEBUG
   AAAPrintMessage(msg);
 #endif
-  
-  if (is_req(msg)) 
+
+  if (is_req(msg))
     handleRequest(msg);
-  else 
+  else
     handleReply(msg);
-  
-  AAAFreeMessage(&msg);  
+
+  AAAFreeMessage(&msg);
 }
 
 void ServerConnection::run() {
@@ -649,7 +649,7 @@ void ServerConnection::run() {
     if (!open) {
       struct timeval now;
       gettimeofday(&now, NULL);
-      
+
       if(timercmp(&now,&connect_ts,>)){
 	DBG("(re)trying to open the connection\n");
 	openConnection();
@@ -666,7 +666,7 @@ void ServerConnection::run() {
 }
 
 void ServerConnection::checkTimeouts() {
-  if ((++timeout_check_cntr)%CHECK_TIMEOUT_INTERVAL) 
+  if ((++timeout_check_cntr)%CHECK_TIMEOUT_INTERVAL)
     return;
 
   req_map_mut.lock();
@@ -675,23 +675,23 @@ void ServerConnection::checkTimeouts() {
   DBG("checking request timeout of %zd pending requests....\n",
       req_map.size());
 #endif
-  
+
   struct timeval now;
   gettimeofday(&now, NULL);
 
-  for (DReqMap::iterator it = 
+  for (DReqMap::iterator it =
 	 req_map.begin();it != req_map.end();) {
 
     struct timeval diff;
     timersub(&now,&it->second.second,&diff);
     // millisec
     if (diff.tv_sec * 1000 + diff.tv_usec / 1000 > request_timeout) {
-      WARN("timeout for DIAMETER request '%u'\n", it->first);      
+      WARN("timeout for DIAMETER request '%u'\n", it->first);
       string& sess_link = it->second.first;
 
-      DBG("notify session '%s' of diameter request timeout\n", 
+      DBG("notify session '%s' of diameter request timeout\n",
 	  sess_link.c_str());
-      DiameterTimeoutEvent* r_ev = 
+      DiameterTimeoutEvent* r_ev =
 	new DiameterTimeoutEvent(it->first);
       if (!AmSessionContainer::instance()->postEvent(sess_link, r_ev)) {
 	DBG("unhandled timout event.\n");
@@ -718,7 +718,7 @@ void ServerConnection::shutdownConnection() {
   for (DReqMap::iterator it = req_map.begin();
        it != req_map.end();it++) {
       string& sess_link = it->second.first;
-      DiameterTimeoutEvent* r_ev = 
+      DiameterTimeoutEvent* r_ev =
 	new DiameterTimeoutEvent(it->first);
       if (!AmSessionContainer::instance()->postEvent(sess_link, r_ev)) {
 	DBG("unhandled timout event.\n");

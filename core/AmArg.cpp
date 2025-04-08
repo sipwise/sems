@@ -46,65 +46,35 @@ const char* AmArg::t2str(int type) {
   }
 }
 
-AmArg::AmArg(const AmArg& v)
-{ 
-  type = Undef;
-
-  *this = v;
-}
-
-AmArg& AmArg::operator=(const AmArg& v) {
-  if (this != &v) {
-    invalidate();
-    
-    type = v.type;
-    switch(type){
-    case Int:    { v_int = v.v_int; } break;
-    case LongLong: { v_long = v.v_long; } break;
-    case Bool:   { v_bool = v.v_bool; } break;
-    case Double: { v_double = v.v_double; } break;
-    case CStr:   { v_cstr = strdup(v.v_cstr); } break;
-    case AObject:{ v_obj = v.v_obj; } break;
-    case ADynInv:{ v_inv = v.v_inv; } break;
-    case Array:  { v_array = new ValueArray(*v.v_array); } break;
-    case Struct: { v_struct = new ValueStruct(*v.v_struct); } break;
-    case Blob:   {  v_blob = new ArgBlob(*v.v_blob); } break;
-    case Undef: break;
-    default: assert(0);
-    }
-  }
-  return *this;
-}
-
-AmArg::AmArg(std::map<std::string, std::string>& v) 
+AmArg::AmArg(std::map<std::string, std::string>& v)
   : type(Undef) {
   assertStruct();
   for (std::map<std::string, std::string>::iterator it=
 	 v.begin();it!= v.end();it++)
-    (*v_struct)[it->first] = AmArg(it->second.c_str());
+    (*std::get<ValueStruct*>(value))[it->first] = AmArg(it->second.c_str());
 }
 
-AmArg::AmArg(std::map<std::string, AmArg>& v) 
+AmArg::AmArg(std::map<std::string, AmArg>& v)
   : type(Undef) {
   assertStruct();
   for (std::map<std::string, AmArg>::iterator it=
 	 v.begin();it!= v.end();it++)
-    (*v_struct)[it->first] = it->second;
+    (*std::get<ValueStruct*>(value))[it->first] = it->second;
 }
 
 AmArg::AmArg(vector<std::string>& v)
   : type(Array) {
   assertArray(0);
-  for (vector<std::string>::iterator it 
+  for (vector<std::string>::iterator it
 	 = v.begin(); it != v.end(); it++) {
     push(AmArg(it->c_str()));
   }
 }
-    
-AmArg::AmArg(const vector<int>& v ) 
+
+AmArg::AmArg(const vector<int>& v )
   : type(Array) {
   assertArray(0);
-  for (vector<int>::const_iterator it 
+  for (vector<int>::const_iterator it
 	 = v.begin(); it != v.end(); it++) {
     push(AmArg(*it));
   }
@@ -113,7 +83,7 @@ AmArg::AmArg(const vector<int>& v )
 AmArg::AmArg(const vector<double>& v)
   : type(Array) {
   assertArray(0);
-  for (vector<double>::const_iterator it 
+  for (vector<double>::const_iterator it
 	 = v.begin(); it != v.end(); it++) {
     push(AmArg(*it));
   }
@@ -124,9 +94,9 @@ void AmArg::assertArray() {
     return;
   if (Undef == type) {
     type = Array;
-    v_array = new ValueArray();
+    std::get<ValueArray*>(value) = new ValueArray();
     return;
-  } 
+  }
   throw TypeMismatchException();
 }
 
@@ -136,15 +106,15 @@ void AmArg::assertArray() const {
 }
 
 void AmArg::assertArray(size_t s) {
-    
+
   if (Undef == type) {
     type = Array;
-    v_array = new ValueArray();
+    std::get<ValueArray*>(value) = new ValueArray();
   } else if (Array != type) {
     throw TypeMismatchException();
   }
-  if (v_array->size() < s)
-    v_array->resize(s);
+  if (std::get<ValueArray*>(value)->size() < s)
+    std::get<ValueArray*>(value)->resize(s);
 }
 
 void AmArg::assertStruct() {
@@ -152,9 +122,9 @@ void AmArg::assertStruct() {
     return;
   if (Undef == type) {
     type = Struct;
-    v_struct = new ValueStruct();
+    value = new ValueStruct();
     return;
-  } 
+  }
   throw TypeMismatchException();
 }
 
@@ -164,214 +134,196 @@ void AmArg::assertStruct() const {
 }
 
 void AmArg::invalidate() {
-  if(type == CStr) { free((void*)v_cstr); }
-  else if(type == Array) { delete v_array; }
-  else if(type == Struct) { delete v_struct; }
-  else if(type == Blob) { delete v_blob; }
+  if(type == Array) { delete std::get<ValueArray*>(value); }
+  else if(type == Struct) { delete std::get<ValueStruct*>(value); }
   type = Undef;
+  value = std::monostate();
 }
 
 void AmArg::push(const AmArg& a) {
   assertArray();
-  v_array->push_back(a);
+  std::get<ValueArray*>(value)->push_back(a);
 }
 
 void AmArg::push(const string &key, const AmArg &val) {
   assertStruct();
-  (*v_struct)[key] = val;
+  (*std::get<ValueStruct*>(value))[key] = val;
 }
 
 void AmArg::pop(AmArg &a) {
   assertArray();
   if (!size()) {
-    if (a.getType() == AmArg::Undef) 
+    if (a.getType() == AmArg::Undef)
       return;
     a = AmArg();
     return;
   }
-  a = v_array->front();
-  v_array->erase(v_array->begin());
+  a = std::get<ValueArray*>(value)->front();
+  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->begin());
 }
 
 void AmArg::pop_back(AmArg &a) {
   assertArray();
   if (!size()) {
-    if (a.getType() == AmArg::Undef) 
+    if (a.getType() == AmArg::Undef)
       return;
     a = AmArg();
     return;
   }
-  a = v_array->back();
-  v_array->erase(v_array->end());
+  a = std::get<ValueArray*>(value)->back();
+  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->end());
 }
 
 void AmArg::pop_back() {
   assertArray();
   if (!size())
     return;
-  v_array->erase(v_array->end());
+  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->end());
 }
 
 void AmArg::concat(const AmArg& a) {
   assertArray();
-  if (a.getType() == Array) { 
+  if (a.getType() == Array) {
   for (size_t i=0;i<a.size();i++)
-    v_array->push_back(a[i]);
+    std::get<ValueArray*>(value)->push_back(a[i]);
   } else {
-    v_array->push_back(a);
+    std::get<ValueArray*>(value)->push_back(a);
   }
 }
 
 size_t AmArg::size() const {
   if (Array == type)
-    return v_array->size(); 
+    return std::get<ValueArray*>(value)->size();
 
   if (Struct == type)
-    return v_struct->size(); 
+    return std::get<ValueStruct*>(value)->size();
 
   throw TypeMismatchException();
 }
 
 AmArg& AmArg::back() {
-  assertArray();  
-  if (!v_array->size())
+  assertArray();
+  if (!std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
 
-  return (*v_array)[v_array->size()-1];
+  return (*std::get<ValueArray*>(value))[std::get<ValueArray*>(value)->size()-1];
 }
 
 AmArg& AmArg::back() const {
   assertArray();
-  if (!v_array->size())
+  if (!std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
 
-  return (*v_array)[v_array->size()-1];
+  return (*std::get<ValueArray*>(value))[std::get<ValueArray*>(value)->size()-1];
 }
 
 AmArg& AmArg::get(size_t idx) {
   assertArray();
-  if (idx >= v_array->size())
+  if (idx >= std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
-    
-  return (*v_array)[idx];
+
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
 AmArg& AmArg::get(size_t idx) const {
   assertArray();
-  if (idx >= v_array->size())
+  if (idx >= std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
-    
-  return (*v_array)[idx];
+
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
-AmArg& AmArg::operator[](size_t idx) { 
-  assertArray(idx+1); 
-  return (*v_array)[idx];
+AmArg& AmArg::operator[](size_t idx) {
+  assertArray(idx+1);
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
-AmArg& AmArg::operator[](size_t idx) const { 
-  assertArray();  
-  if (idx >= v_array->size())
+AmArg& AmArg::operator[](size_t idx) const {
+  assertArray();
+  if (idx >= std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
-    
-  return (*v_array)[idx];
+
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
-AmArg& AmArg::operator[](int idx) { 
+AmArg& AmArg::operator[](int idx) {
   if (idx<0)
     throw OutOfBoundsException();
 
-  assertArray(idx+1); 
-  return (*v_array)[idx];
+  assertArray(idx+1);
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
-AmArg& AmArg::operator[](int idx) const { 
+AmArg& AmArg::operator[](int idx) const {
   if (idx<0)
     throw OutOfBoundsException();
 
-  assertArray();  
-  if ((size_t)idx >= v_array->size())
+  assertArray();
+  if ((size_t)idx >= std::get<ValueArray*>(value)->size())
     throw OutOfBoundsException();
-    
-  return (*v_array)[idx];
+
+  return (*std::get<ValueArray*>(value))[idx];
 }
 
 AmArg& AmArg::operator[](std::string key) {
   assertStruct();
-  return (*v_struct)[key];
+  return (*std::get<ValueStruct*>(value))[key];
 }
 
 AmArg& AmArg::operator[](std::string key) const {
   assertStruct();
-  return (*v_struct)[key];
+  return (*std::get<ValueStruct*>(value))[key];
 }
 
 AmArg& AmArg::operator[](const char* key) {
   assertStruct();
-  return (*v_struct)[key];
+  return (*std::get<ValueStruct*>(value))[key];
 }
 
 AmArg& AmArg::operator[](const char* key) const {
   assertStruct();
-  return (*v_struct)[key];
+  return (*std::get<ValueStruct*>(value))[key];
 }
 
-bool operator==(const AmArg& lhs, const AmArg& rhs) {
-  if (lhs.type != rhs.type)
-    return false;
-
-  switch(lhs.type){
-  case AmArg::Int:    { return lhs.v_int == rhs.v_int; } break;
-  case AmArg::LongLong: { return lhs.v_long == rhs.v_long; } break;
-  case AmArg::Bool:   { return lhs.v_bool == rhs.v_bool; } break;
-  case AmArg::Double: { return lhs.v_double == rhs.v_double; } break;
-  case AmArg::CStr:   { return !strcmp(lhs.v_cstr,rhs.v_cstr); } break;
-  case AmArg::AObject:{ return lhs.v_obj == rhs.v_obj; } break;
-  case AmArg::ADynInv:{ return lhs.v_inv == rhs.v_inv; } break;
-  case AmArg::Array:  { return lhs.v_array == rhs.v_array;  } break;
-  case AmArg::Struct: { return lhs.v_struct == rhs.v_struct;  } break;
-  case AmArg::Blob:   {  return (lhs.v_blob->len == rhs.v_blob->len) &&  
-	!memcmp(lhs.v_blob->data, rhs.v_blob->data, lhs.v_blob->len); } break;
-  case AmArg::Undef:  return true;
-  default: assert(0);
-  }
+bool AmArg::operator==(const char *val) const {
+  return type == CStr && std::get<std::string>(value) == val;
 }
 
 bool AmArg::hasMember(const char* name) const {
-  return type == Struct && v_struct->find(name) != v_struct->end();
+  return type == Struct && std::get<ValueStruct*>(value)->find(name) != std::get<ValueStruct*>(value)->end();
 }
 
 bool AmArg::hasMember(const string& name) const {
-  return type == Struct && v_struct->find(name) != v_struct->end();
+  return type == Struct && std::get<ValueStruct*>(value)->find(name) != std::get<ValueStruct*>(value)->end();
 }
 
 std::vector<std::string> AmArg::enumerateKeys() const {
   assertStruct();
   std::vector<std::string> res;
-  for (ValueStruct::iterator it = 
-	 v_struct->begin(); it != v_struct->end(); it++)
+  for (ValueStruct::iterator it =
+	 std::get<ValueStruct*>(value)->begin(); it != std::get<ValueStruct*>(value)->end(); it++)
     res.push_back(it->first);
   return res;
 }
 
 AmArg::ValueStruct::const_iterator AmArg::begin() const {
   assertStruct();
-  return v_struct->begin();
+  return std::get<ValueStruct*>(value)->begin();
 }
 
 AmArg::ValueStruct::const_iterator AmArg::end() const {
   assertStruct();
-  return v_struct->end();
+  return std::get<ValueStruct*>(value)->end();
 }
 
 void AmArg::erase(const char* name) {
   assertStruct();
-  v_struct->erase(name);
+  std::get<ValueStruct*>(value)->erase(name);
 }
 
 void AmArg::erase(const std::string& name) {
   assertStruct();
-  v_struct->erase(name);
+  std::get<ValueStruct*>(value)->erase(name);
 }
 
 void AmArg::assertArrayFmt(const char* format) const {
@@ -390,7 +342,7 @@ void AmArg::assertArrayFmt(const char* format) const {
       case 'a': assertArgArray(get(i)); got+='a'; break;
       case 'b': assertArgBlob(get(i)); got+='b'; break;
       case 'u': assertArgStruct(get(i)); got+='u'; break;
-      default: got+='?'; ERROR("ignoring unknown format type '%c'\n", 
+      default: got+='?'; ERROR("ignoring unknown format type '%c'\n",
 			       format[i]); break;
       }
     }
@@ -407,7 +359,7 @@ void AmArg::assertArrayFmt(const char* format) const {
     for (size_t i=0;i<size();i++)		\
       res.push_back(get(i).getter());		\
     return res;					\
-  }			
+  }
 VECTOR_GETTER(string, asStringVector, asCStr)
 VECTOR_GETTER(int, asIntVector, asInt)
 VECTOR_GETTER(bool, asBoolVector, asBool)
@@ -415,12 +367,12 @@ VECTOR_GETTER(double, asDoubleVector, asDouble)
 VECTOR_GETTER(AmObject*, asAmObjectVector, asObject)
 #undef  VECTOR_GETTER
 
-vector<ArgBlob> AmArg::asArgBlobVector() const {		
-  vector<ArgBlob> res;				
-  for (size_t i=0;i<size();i++)		
-    res.push_back(*get(i).asBlob());		
-  return res;					
-}			
+vector<ArgBlob> AmArg::asArgBlobVector() const {
+  vector<ArgBlob> res;
+  for (size_t i=0;i<size();i++)
+    res.push_back(get(i).asBlob());
+  return res;
+}
 
 void AmArg::clear() {
   invalidate();
@@ -446,7 +398,7 @@ string AmArg::print(const AmArg &a) {
     case ADynInv:
       return "<DynInv>";
     case Blob:
-      s = "<Blob of size:" + int2str(a.asBlob()->len) + ">";
+      s = "<Blob of size:" + int2str(a.asBlob().len) + ">";
       return s;
     case Array:
       s = "[";

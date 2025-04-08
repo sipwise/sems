@@ -243,18 +243,21 @@ bool json2arg(std::istream& input, AmArg& res) {
     return true;
   }
 
-  if (parse_float(input, &res.v_double)) {
-    res.type = AmArg::Double;
+  double d;
+  if (parse_float(input, &d)) {
+    res = d;
     return true;
   }
 
-  if (parse_number(input, &res.v_int)) {
-    res.type = AmArg::Int;
+  long l;
+  if (parse_number(input, &l)) {
+    res = l;
     return true;
   }
-  
-  if (parse_bool(input, &res.v_bool)) {
-    res.type = AmArg::Bool;
+
+  bool b;
+  if (parse_bool(input, &b)) {
+    res = b;
     return true;
   }
 

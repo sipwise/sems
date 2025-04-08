@@ -39,6 +39,7 @@ using std::vector;
 using std::string;
 
 #include <map>
+#include <variant>
 
 #include "log.h"
 
@@ -49,14 +50,14 @@ class AmObject {
   virtual ~AmObject() { }
 };
 
-struct ArgBlob {  
+struct ArgBlob {
 
   void* data;
   int   len;
-  
-  ArgBlob() 
+
+  ArgBlob()
   : data(NULL),len(0)
-  {  
+  {
   }
 
   ArgBlob(const ArgBlob& a) {
@@ -65,14 +66,14 @@ struct ArgBlob {
     if (data)
       memcpy(data, a.data, len);
   }
-  
+
   ArgBlob(const void* _data, int _len) {
     len = _len;
     data = malloc(len);
     if (data)
       memcpy(data, _data, len);
   }
-  
+
   ~ArgBlob() { if (data) free(data); }
 };
 
@@ -95,7 +96,7 @@ class AmArg
     AObject, // pointer to an object not owned by AmArg
     ADynInv, // pointer to a AmDynInvoke (useful for call backs)
     Blob,
-    
+
     Array,
     Struct
   };
@@ -107,90 +108,77 @@ class AmArg
   struct TypeMismatchException {
     TypeMismatchException() { }
   };
-  
+
   typedef std::vector<AmArg> ValueArray;
-  typedef std::map<std::string, AmArg> ValueStruct; 
+  typedef std::map<std::string, AmArg> ValueStruct;
 
  private:
   // type
   short type;
-    
+
   // value
-  union {
-    long int       v_int;
-    long long int  v_long;
-    bool           v_bool;
-    double         v_double;
-    const char*    v_cstr;
-    AmObject*     v_obj;
-    AmDynInvoke*   v_inv;
-    ArgBlob*       v_blob;
-    ValueArray*    v_array;
-    ValueStruct*   v_struct;
-  };
+  std::variant<std::monostate, long int, long long int, bool, double, std::string, AmObject*,
+    AmDynInvoke*, ArgBlob, ValueArray*, ValueStruct*> value;
 
   void invalidate();
 
  public:
 
- AmArg() 
-   : type(Undef) 
+ AmArg()
+   : type(Undef)
   { }
-  
-  AmArg(const AmArg& v);
-  
+
+ AmArg(const AmArg& v) = default;
+
  AmArg(const int& v)
    : type(Int),
-    v_int(v)
+    value(static_cast<long>(v))
     { }
 
  AmArg(const long int& v)
    : type(Int),
-    v_int(v)
+    value(v)
     { }
 
  AmArg(const long long int& v)
    : type(LongLong),
-    v_long(v)
+    value(v)
     { }
 
  AmArg(const bool& v)
    : type(Bool),
-    v_bool(v)
+    value(v)
     { }
-  
+
  AmArg(const double& v)
    : type(Double),
-    v_double(v)
+    value(v)
     { }
-  
+
  AmArg(const char* v)
-   : type(CStr)
-  {
-    v_cstr = strdup(v);
-  }
-  
+   : type(CStr),
+    value(v)
+    { }
+
  AmArg(const string &v)
-   : type(CStr)
-  {
-    v_cstr = strdup(v.c_str());
-  }
-  
- AmArg(const ArgBlob v)
-   : type(Blob)
-  {
-    v_blob = new ArgBlob(v);
-  }
+   : type(CStr),
+    value(v)
+    { }
 
-  AmArg(AmObject* v) 
-    : type(AObject),
-    v_obj(v) 
-   { }
+ AmArg(const ArgBlob& v)
+   : type(Blob),
+    value(v)
+    { }
 
-  AmArg(AmDynInvoke* v) 
-    : type(ADynInv),
-    v_inv(v) 
-   { }
+  AmArg(AmObject* v)
+   : type(AObject),
+    value(v)
+    { }
+
+  AmArg(AmDynInvoke* v)
+   : type(ADynInv),
+    value(v)
+    { }
 
   // convenience constructors
   AmArg(vector<std::string>& v);
@@ -198,7 +186,7 @@ class AmArg
   AmArg(const vector<double>& v);
   AmArg(std::map<std::string, std::string>& v);
   AmArg(std::map<std::string, AmArg>& v);
-  
+
   ~AmArg() { invalidate(); }
 
   void assertArray();
@@ -209,7 +197,7 @@ class AmArg
 
   short getType() const { return type; }
 
-  AmArg& operator=(const AmArg& rhs);
+  AmArg& operator=(const AmArg& rhs) = default;
 
 #define isArgUndef(a) (AmArg::Undef == a.getType())
 #define isArgArray(a) (AmArg::Array == a.getType())
@@ -227,7 +215,7 @@ class AmArg
 	do { \
 		ERROR("type mismatch: expected: %d; received: %d.\n", AmArg::exp, got.getType()); \
 		throw AmArg::TypeMismatchException(); \
-	} while (0) 
+	} while (0)
 
 #define assertArgArray(a)			\
   if (!isArgArray(a))				\
@@ -263,26 +251,26 @@ class AmArg
   void setBorrowedPointer(AmObject* v) {
     invalidate();
     type = AObject;
-    v_obj = v;
+    value = v;
   }
 
-  int         asInt()    const { return (int)v_int; }
-  long int    asLong()   const { return v_int; }
-  long long   asLongLong() const { return v_long; }
-  int         asBool()   const { return v_bool; }
-  double      asDouble() const { return v_double; }
-  const char* asCStr()   const { return v_cstr; }
-  AmObject*  asObject() const { return v_obj; }
-  AmDynInvoke* asDynInv() const { return v_inv; }
-  ArgBlob*    asBlob()   const { return v_blob; }
-  ValueStruct* asStruct() const { return v_struct; }
+  int             asInt()      const { return std::get<long>(value); }
+  long int        asLong()     const { return std::get<long>(value); }
+  long long       asLongLong() const { return std::get<long long>(value); }
+  bool            asBool()     const { return std::get<bool>(value); }
+  double          asDouble()   const { return std::get<double>(value); }
+  const char*     asCStr()     const { return std::get<std::string>(value).c_str(); }
+  AmObject*       asObject()   const { return std::get<AmObject*>(value); }
+  AmDynInvoke*    asDynInv()   const { return std::get<AmDynInvoke*>(value); }
+  const ArgBlob&  asBlob()     const { return std::get<ArgBlob>(value); }
+  ValueStruct*    asStruct()   const { return std::get<ValueStruct*>(value); }
 
-  vector<string>     asStringVector()    const; 
-  vector<int>        asIntVector()       const; 
-  vector<bool>       asBoolVector()      const; 
-  vector<double>     asDoubleVector()    const; 
-  vector<AmObject*> asAmObjectVector() const; 
-  vector<ArgBlob>    asArgBlobVector()   const; 
+  vector<string>     asStringVector()   const;
+  vector<int>        asIntVector()      const;
+  vector<bool>       asBoolVector()     const;
+  vector<double>     asDoubleVector()   const;
+  vector<AmObject*> asAmObjectVector()  const;
+  vector<ArgBlob>    asArgBlobVector()  const;
 
   // operations on arrays
   void assertArray(size_t s);
@@ -294,7 +282,7 @@ class AmArg
   void pop_back();
 
   void concat(const AmArg& a);
-  
+
   size_t size() const;
 
   /** throws OutOfBoundsException if array too small */
@@ -324,6 +312,8 @@ class AmArg
   AmArg& operator[](const char* key);
   AmArg& operator[](const char* key) const;
 
+  bool operator==(const char *) const;
+
   /** Check for the existence of a struct member by name. */
   bool hasMember(const std::string& name) const;
   bool hasMember(const char* name) const;
@@ -337,9 +327,9 @@ class AmArg
   /** remove struct member */
   void erase(const std::string& name);
 
-  /** 
-   * throws exception if arg array does not conform to spec 
-   *   i  - int 
+  /**
+   * throws exception if arg array does not conform to spec
+   *   i  - int
    *   l  - long long
    *   t  - bool
    *   f  - double
@@ -355,7 +345,6 @@ class AmArg
   void assertArrayFmt(const char* format) const;
 
   void clear();
-  friend bool operator==(const AmArg& lhs, const AmArg& rhs);
 
   friend bool json2arg(std::istream& input, AmArg& res);
 
@@ -363,9 +352,6 @@ class AmArg
 
   static const char* t2str(int type);
 };
-
-// equality
-bool operator==(const AmArg& lhs, const AmArg& rhs);
 
 const int arg2int(const AmArg &a);
 string arg2str(const AmArg &a);
