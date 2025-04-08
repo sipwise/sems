@@ -306,7 +306,7 @@ namespace XmlRpc {
       return false;
 
     _type = TypeInt;
-    _value.asInt = int(ivalue);
+    _value.asInt = ivalue;
     *offset += valueEnd - valueStart;
     return true;
   }
@@ -314,7 +314,7 @@ namespace XmlRpc {
   std::string XmlRpcValue::intToXml() const
   {
     char buf[256];
-    snprintf(buf, sizeof(buf)-1, "%d", _value.asInt);
+    snprintf(buf, sizeof(buf)-1, "%ld", _value.asInt);
     buf[sizeof(buf)-1] = 0;
     std::string xml = VALUE_TAG;
     xml += I4_TAG;

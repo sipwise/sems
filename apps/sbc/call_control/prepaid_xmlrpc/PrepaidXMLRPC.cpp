@@ -171,7 +171,7 @@ void PrepaidXMLRPC::invoke(const string& method, const AmArg& args, AmArg& ret)
 
 void PrepaidXMLRPC::start(const string& cc_name, const string& ltag,
 			  SBCCallProfile* call_profile,
-			  int start_ts_sec, int start_ts_usec,
+			  time_t start_ts_sec, suseconds_t start_ts_usec,
 			  const AmArg& values, int timer_id, AmArg& res) {
 
   if (!call_profile) return;
@@ -193,7 +193,7 @@ void PrepaidXMLRPC::start(const string& cc_name, const string& ltag,
   call_profile->cc_vars[cc_name+"::"+SBCVAR_PREPAID_XMLRPC_UUID] = uuid;
 
   bool found;
-  int credit = getCredit(uuid, found);
+  long credit = getCredit(uuid, found);
   if (!found) {
     ERROR("Failed to fetch credit for uuid '%s'\n", uuid.c_str());
     res_cmd[SBC_CC_ACTION] = SBC_CC_REFUSE_ACTION;
@@ -210,7 +210,7 @@ void PrepaidXMLRPC::start(const string& cc_name, const string& ltag,
   }
 
   // Set Timer:
-  DBG("setting prepaid call timer ID %i of %i seconds\n", timer_id, credit);
+  DBG("setting prepaid call timer ID %d of %ld seconds\n", timer_id, credit);
   res_cmd[SBC_CC_ACTION] = SBC_CC_SET_CALL_TIMER_ACTION;
   res_cmd[SBC_CC_TIMER_TIMEOUT] = credit;
 }
@@ -218,15 +218,15 @@ void PrepaidXMLRPC::start(const string& cc_name, const string& ltag,
 void PrepaidXMLRPC::connect(const string& cc_name,
 			    const string& ltag, SBCCallProfile* call_profile,
 			    const string& other_tag,
-			    int connect_ts_sec, int connect_ts_usec) {
+			    time_t connect_ts_sec, suseconds_t connect_ts_usec) {
   // DBG("call '%s' gets connected\n", ltag.c_str());
 }
 
 void PrepaidXMLRPC::end(const string& cc_name, const string& ltag,
 			SBCCallProfile* call_profile,
-			int start_ts_sec, int start_ts_usec,
-			int connect_ts_sec, int connect_ts_usec,
-			int end_ts_sec, int end_ts_usec) {
+			time_t start_ts_sec, suseconds_t start_ts_usec,
+			time_t connect_ts_sec, suseconds_t connect_ts_usec,
+			time_t end_ts_sec, suseconds_t end_ts_usec) {
 
   if (!call_profile) return;
 
@@ -234,10 +234,10 @@ void PrepaidXMLRPC::end(const string& cc_name, const string& ltag,
   SBCVarMapIteratorT vars_it = call_profile->cc_vars.find(cc_name+"::"+SBCVAR_PREPAID_XMLRPC_UUID);
   if (vars_it == call_profile->cc_vars.end() || !isArgCStr(vars_it->second)) {
     ERROR("internal: could not find UUID for call '%s' - "
-	  "not accounting (start_ts %i.%i, connect_ts %i.%i, end_ts %i.%i)\n",
-	  ltag.c_str(), start_ts_sec, start_ts_usec,
-	  connect_ts_sec, connect_ts_usec,
-	  end_ts_sec, end_ts_usec);
+	  "not accounting (start_ts %ld.%06ld, connect_ts %ld.%06ld, end_ts %ld.%06ld)\n",
+	  ltag.c_str(), static_cast<long>(start_ts_sec), static_cast<long>(start_ts_usec),
+	  static_cast<long>(connect_ts_sec), static_cast<long>(connect_ts_usec),
+	  static_cast<long>(end_ts_sec), static_cast<long>(end_ts_usec));
     return;
   }
 
@@ -265,7 +265,7 @@ void PrepaidXMLRPC::end(const string& cc_name, const string& ltag,
   if (diff.tv_usec >= 500000)
     diff.tv_sec++;
 
-  DBG("call ltag '%s' for uuid '%s' lasted %lds\n", ltag.c_str(), uuid.c_str(), diff.tv_sec);
+  DBG("call ltag '%s' for uuid '%s' lasted %lds\n", ltag.c_str(), uuid.c_str(), static_cast<long>(diff.tv_sec));
 
   bool found;
   subtractCredit(uuid, diff.tv_sec, found);
@@ -275,7 +275,7 @@ void PrepaidXMLRPC::end(const string& cc_name, const string& ltag,
 }
 
 /* accounting functions... */
-int PrepaidXMLRPC::getCredit(string pin, bool& found) {
+long PrepaidXMLRPC::getCredit(string pin, bool& found) {
 
   const char* _uri = 0;
   if (!uri.empty())
@@ -286,14 +286,14 @@ int PrepaidXMLRPC::getCredit(string pin, bool& found) {
   XmlRpcValue xmlArg;
   xmlArg[0] = pin;
   found = xmlrpccall.execute("getCredit", xmlArg, result);
-  int res = 0;
+  long res = 0;
   if (found)
     res = result;
-  DBG("Credit Left '%u' .\n", res);
+  DBG("Credit Left '%ld' .\n", res);
   return res;
 }
 
-int PrepaidXMLRPC::subtractCredit(string pin, int amount, bool& found) {
+long PrepaidXMLRPC::subtractCredit(string pin, long amount, bool& found) {
   const char* _uri = 0;
   if (!uri.empty())
     _uri = uri.c_str();
@@ -303,14 +303,13 @@ int PrepaidXMLRPC::subtractCredit(string pin, int amount, bool& found) {
   XmlRpcValue xmlArg;
   xmlArg[0][0]["methodName"] = "subtractCredit";
   xmlArg[0][0]["pin"] = pin;
-  xmlArg[0][0]["amount"] = amount;	
-  DBG("subtractCredit pin# '%s', Seconds '%u'.\n", pin.c_str(),  
-amount );
+  xmlArg[0][0]["amount"] = amount;
+  DBG("subtractCredit pin# '%s', Seconds '%ld'.\n", pin.c_str(), amount );
   found = xmlrpccall.execute("subtractCredit", xmlArg, result);
-  int res = 0;
+  long res = 0;
   if (found)
     res = result;
-  DBG("Credit Left '%u' .\n", res);
+  DBG("Credit Left '%ld' .\n", res);
   return res;
 }
 

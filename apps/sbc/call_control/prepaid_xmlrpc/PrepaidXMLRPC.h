@@ -30,6 +30,7 @@
 
 #include "SBCCallProfile.h"
 
+#include <sys/time.h>
 #include <map>
 
 /**
@@ -43,31 +44,26 @@ class PrepaidXMLRPC : public AmDynInvoke
   unsigned int port;
   string uri;
 
-  std::map<string, unsigned int> credits;
+  std::map<string, unsigned long> credits;
   AmMutex credits_mut;
 
 
   /** @returns credit for pin, found=false if pin wrong */
-  int getCredit(string pin, bool& found);
+  long getCredit(string pin, bool& found);
   /** @returns remaining credit */
-  int subtractCredit(string pin, int amount, bool& found);
-
-  /** adds some amount */
-  int addCredit(string pin, int amount);
-  /** sets the value to some amount */
-  int setCredit(string pin, int amount);
+  long subtractCredit(string pin, long amount, bool& found);
 
 
   void start(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
-	     int start_ts_sec, int start_ts_usec, const AmArg& values,
+	     time_t start_ts_sec, suseconds_t start_ts_usec, const AmArg& values,
 	     int timer_id, AmArg& res);
   void connect(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
 	       const string& other_ltag,
-	       int connect_ts_sec, int connect_ts_usec);
+	       time_t connect_ts_sec, suseconds_t connect_ts_usec);
   void end(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
-	   int start_ts_sec, int start_ts_usec,
-	   int connect_ts_sec, int connect_ts_usec,
-	   int end_ts_sec, int end_ts_usec);
+	   time_t start_ts_sec, suseconds_t start_ts_usec,
+	   time_t connect_ts_sec, suseconds_t connect_ts_usec,
+	   time_t end_ts_sec, suseconds_t end_ts_usec);
 
  public:
   PrepaidXMLRPC();

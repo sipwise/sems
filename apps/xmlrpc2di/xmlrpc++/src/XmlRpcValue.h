@@ -30,7 +30,7 @@ namespace XmlRpc {
     enum Type {
       TypeInvalid,
       TypeBoolean,
-      TypeInt,
+      TypeInt,  // really a long
       TypeDouble,
       TypeString,
       TypeDateTime,
@@ -52,8 +52,9 @@ namespace XmlRpc {
     //! Construct an XmlRpcValue with a bool value
     XmlRpcValue(bool value) : _type(TypeBoolean) { _value.asBool = value; }
 
-    //! Construct an XmlRpcValue with an int value
-    XmlRpcValue(int value)  : _type(TypeInt) { _value.asInt = value; }
+    //! Construct an XmlRpcValue with a long value
+    XmlRpcValue(long value)  : _type(TypeInt) { _value.asInt = value; }
+    XmlRpcValue(int value)   : _type(TypeInt) { _value.asInt = value; }
 
     //! Construct an XmlRpcValue with a double value
     XmlRpcValue(double value)  : _type(TypeDouble) { _value.asDouble = value; }
@@ -98,8 +99,9 @@ namespace XmlRpc {
     //! @param rhs The value in rhs is copied to this value.
     XmlRpcValue& operator=(XmlRpcValue const& rhs);
 
-    //! Assign an int to this XmlRpcValue.
-    XmlRpcValue& operator=(int const& rhs) { return operator=(XmlRpcValue(rhs)); }
+    //! Assign a long to this XmlRpcValue.
+    XmlRpcValue& operator=(long const& rhs) { return operator=(XmlRpcValue(rhs)); }
+    XmlRpcValue& operator=(int const& rhs)  { return operator=(XmlRpcValue(rhs)); }
 
     //! Assign a double to this XmlRpcValue.
     XmlRpcValue& operator=(double const& rhs) { return operator=(XmlRpcValue(rhs)); }
@@ -121,7 +123,7 @@ namespace XmlRpc {
     //! Treat an XmlRpcValue as an int.
     //! Throws XmlRpcException if the value is initialized to 
     //! a type that is not TypeInt.
-    operator int&()           { assertTypeOrInvalid(TypeInt); return _value.asInt; }
+    operator long&()           { assertTypeOrInvalid(TypeInt); return _value.asInt; }
 
     //! Treat an XmlRpcValue as a double.
     //! Throws XmlRpcException if the value is initialized to 
@@ -242,7 +244,7 @@ namespace XmlRpc {
     // separate ref-counted objects for more efficient copying.
     union {
       bool          asBool;
-      int           asInt;
+      long          asInt;
       double        asDouble;
       struct tm*    asTime;
       std::string*  asString;
