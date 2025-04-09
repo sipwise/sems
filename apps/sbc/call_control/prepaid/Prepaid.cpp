@@ -175,7 +175,7 @@ void Prepaid::invoke(const string& method, const AmArg& args, AmArg& ret)
 
 void Prepaid::start(const string& cc_name, const string& ltag,
 		    SBCCallProfile* call_profile,
-		    int start_ts_sec, int start_ts_usec,
+		    time_t start_ts_sec, suseconds_t start_ts_usec,
 		    const AmArg& values, int timer_id, AmArg& res) {
 
   if (!call_profile) return;
@@ -197,7 +197,7 @@ void Prepaid::start(const string& cc_name, const string& ltag,
   call_profile->cc_vars[cc_name+"::"+SBCVAR_PREPAID_UUID] = uuid;
 
   bool found;
-  int credit = getCredit(uuid, found);
+  long credit = getCredit(uuid, found);
   if (!found) {
     ERROR("Failed to fetch credit for uuid '%s'\n", uuid.c_str());
     res_cmd[SBC_CC_ACTION] = SBC_CC_REFUSE_ACTION;
@@ -214,7 +214,7 @@ void Prepaid::start(const string& cc_name, const string& ltag,
   }
 
   // Set Timer:
-  DBG("setting prepaid call timer ID %i of %i seconds\n", timer_id, credit);
+  DBG("setting prepaid call timer ID %d of %ld seconds\n", timer_id, credit);
   res_cmd[SBC_CC_ACTION] = SBC_CC_SET_CALL_TIMER_ACTION;
   res_cmd[SBC_CC_TIMER_TIMEOUT] = credit;
 }
@@ -222,15 +222,15 @@ void Prepaid::start(const string& cc_name, const string& ltag,
 void Prepaid::connect(const string& cc_name, 
 		      const string& ltag, SBCCallProfile* call_profile,
 		      const string& other_tag,
-		      int connect_ts_sec, int connect_ts_usec) {
+		      time_t connect_ts_sec, suseconds_t connect_ts_usec) {
   // DBG("call '%s' gets connected\n", ltag.c_str());
 }
 
 void Prepaid::end(const string& cc_name, 
 		  const string& ltag, SBCCallProfile* call_profile,
-		  int start_ts_sec, int start_ts_usec,
-		  int connect_ts_sec, int connect_ts_usec,
-		  int end_ts_sec, int end_ts_usec) {
+		  time_t start_ts_sec, suseconds_t start_ts_usec,
+		  time_t connect_ts_sec, suseconds_t connect_ts_usec,
+		  time_t end_ts_sec, suseconds_t end_ts_usec) {
 
   if (!call_profile) return;
 
@@ -240,10 +240,10 @@ void Prepaid::end(const string& cc_name,
 
   if (vars_it == call_profile->cc_vars.end() || !isArgCStr(vars_it->second)) {
     ERROR("internal: could not find UUID for call '%s' - "
-	  "not accounting (start_ts %i.%i, connect_ts %i.%i, end_ts %i.%i)\n",
-	  ltag.c_str(), start_ts_sec, start_ts_usec,
-	  connect_ts_sec, connect_ts_usec,
-	  end_ts_sec, end_ts_usec);
+	  "not accounting (start_ts %ld.%06ld, connect_ts %ld.%06ld, end_ts %ld.%06ld)\n",
+	  ltag.c_str(), (long) start_ts_sec, (long) start_ts_usec,
+	  (long) connect_ts_sec, (long) connect_ts_usec,
+	  (long) end_ts_sec, (long) end_ts_usec);
     return;
   }
 
@@ -271,7 +271,7 @@ void Prepaid::end(const string& cc_name,
   if (diff.tv_usec >= 500000)
     diff.tv_sec++;
 
-  DBG("call ltag '%s' for uuid '%s' lasted %lds\n", ltag.c_str(), uuid.c_str(), diff.tv_sec);
+  DBG("call ltag '%s' for uuid '%s' lasted %lds\n", ltag.c_str(), uuid.c_str(), (long) diff.tv_sec);
 
   bool found;
   subtractCredit(uuid, diff.tv_sec, found);
@@ -281,38 +281,38 @@ void Prepaid::end(const string& cc_name,
 }
 
 /* accounting functions... */
-int Prepaid::getCredit(string pin, bool& found) {
+long Prepaid::getCredit(string pin, bool& found) {
   credits_mut.lock();
-  std::map<string, unsigned int>::iterator it =  credits.find(pin);
+  std::map<string, long>::iterator it =  credits.find(pin);
   if (it == credits.end()) {
     found = false;
     credits_mut.unlock();
     DBG("PIN '%s' does not exist.\n", pin.c_str());
     return 0;
   }
-  unsigned int res = it->second;
+  long res = it->second;
   credits_mut.unlock();
   found = true;
   return res;
 }
 
-int Prepaid::setCredit(string pin, int amount) {
+long Prepaid::setCredit(string pin, long amount) {
   credits_mut.lock();
   credits[pin] = amount;
   credits_mut.unlock();
   return amount;
 }
 
-int Prepaid::addCredit(string pin, int amount) {
+long Prepaid::addCredit(string pin, long amount) {
   credits_mut.lock();
   int res = (credits[pin] += amount);
   credits_mut.unlock();
   return res;
 }
 
-int Prepaid::subtractCredit(string pin, int amount, bool& found) {
+long Prepaid::subtractCredit(string pin, long amount, bool& found) {
   credits_mut.lock();
-  std::map<string, unsigned int>::iterator it =  credits.find(pin);
+  std::map<string, long>::iterator it =  credits.find(pin);
   if (it == credits.end()) {
     credits[pin] = -amount;
     credits_mut.unlock();
@@ -320,7 +320,7 @@ int Prepaid::subtractCredit(string pin, int amount, bool& found) {
     return -amount;
   }
   credits[pin] = it->second - amount;
-  int res =  credits[pin];
+  long res =  credits[pin];
   credits_mut.unlock();
   found = true;
   return res;

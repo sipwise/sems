@@ -31,6 +31,7 @@
 #include "SBCCallProfile.h"
 
 #include <map>
+#include <sys/time.h>
 
 /**
  * sample call control module
@@ -39,31 +40,31 @@ class Prepaid : public AmDynInvoke
 {
   static Prepaid* _instance;
 
-  std::map<string, unsigned int> credits;
+  std::map<string, long> credits;
   AmMutex credits_mut;
 
 
   /** @returns credit for pin, found=false if pin wrong */
-  int getCredit(string pin, bool& found);
+  long getCredit(string pin, bool& found);
   /** @returns remaining credit */
-  int subtractCredit(string pin, int amount, bool& found);
+  long subtractCredit(string pin, long amount, bool& found);
 
   /** adds some amount */
-  int addCredit(string pin, int amount);
+  long addCredit(string pin, long amount);
   /** sets the value to some amount */
-  int setCredit(string pin, int amount);
+  long setCredit(string pin, long amount);
 
 
   void start(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
-	     int start_ts_sec, int start_ts_usec, const AmArg& values,
+	     time_t start_ts_sec, suseconds_t start_ts_usec, const AmArg& values,
 	     int timer_id, AmArg& res);
   void connect(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
 	       const string& other_ltag,
-	       int connect_ts_sec, int connect_ts_usec);
+	       time_t connect_ts_sec, suseconds_t connect_ts_usec);
   void end(const string& cc_name, const string& ltag, SBCCallProfile* call_profile,
-	   int start_ts_sec, int start_ts_usec,
-	   int connect_ts_sec, int connect_ts_usec,
-	   int end_ts_sec, int end_ts_usec);
+	   time_t start_ts_sec, suseconds_t start_ts_usec,
+	   time_t connect_ts_sec, suseconds_t connect_ts_usec,
+	   time_t end_ts_sec, suseconds_t end_ts_usec);
 
  public:
   Prepaid();
