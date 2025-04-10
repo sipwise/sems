@@ -1,3 +1,160 @@
+ngcp-sems (1:1.6.0+0~mr13.4.0.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [8742b3c] MT#61912 DSM: caller reinvite, keep track of PAI if requested
+  * [34a91a2] MT#61912 DSM: caller reinvite, mark with P-DSM-App
+  * [5457cef] MT#62063 Recvonly cannot put on hold
+  * [375ee49] MT#62063 session lvl sendrecv is active
+  * [732ca15] MT#62063 rework `CallLeg::updateHoldMethod()`
+  * [72a2ea2] MT#62063 deprecate `isOnHoldRequested()`
+  * [a8881ea] MT#62063 trigger hook without checking `RecvonlyStream`
+  * [8e95e18] MT#62063 `isSDPBodyHold()` support inactive and sendonly
+  * [d2c5d6c] MT#57728 docs: introduce actual readme content
+  * [c4cf9d7] MT#57728 docs: README add markdown extension
+  * [c0e7b0c] MT#57728 Introduce Read the Docs
+  * [c29205d] MT#57728 Docs: add .readthedocs.yml file
+  * [d62fa30] MT#57728 Docs: add GPL notice and link to sems-server
+  * [cf281de] MT#61878 trixie: AmSession deprecate volatile inc/dec
+  * [9c8ee14] MT#61878 trixie: eliminate implicit operations: enum vs float
+  * [59af8e5] MT#61878 trixie: remove increment for volatiles
+  * [e74ec0d] MT#61878 trixie: AmSession remove volatile qualifiers
+  * [8fbacbb] MT#62063 trixie: updateHoldMethod, default NonHold
+  * [7e5c2d0] MT#62063 trixie: isHoldRequest, sendrecv is None
+  * [b329550] MT#59962 trixie: sw_vsc, Fix type compilation warnings
+  * [3267c8d] MT#61912 AmB2BCallerSession::onB2BEvent: remove unused part
+  * [0a5449a] MT#61912 DSM: DSMCallCalleeSession::onSipReply keep last reply
+  * [a28baa2] MT#61912 AmB2BSession: move `established_body` to dlg level
+  * [ede52ab] MT#61912 OA: save the established body when it's generated
+  * [aa84add] MT#61912 OA: onReplyOut, add more logging
+  * [b10e704] MT#61912 OA: onReplyOut, ignore SDP only for OA_OfferSent
+  * [d483ac9] MT#61912 DSM: add `replaceHdrsCRLF()`
+  * [4754441] MT#61912 DSM: B2B.sendEstablishedReinvite: replace CRLF
+  * [c40121c] MT#62181 AmThread: Initialize `t` static member outside of class
+  * [26d55a4] MT#59962 my_bool isn't supported anymore (mysql > 8.0.1)
+  * [85b108b] MT#57728 docs: add installation and usage guides
+  * [35f6dd3] MT#62253 log: CallLeg depreacte TRACE()
+  * [e7c16e6] MT#62253 log: SBCCallLeg depreacte TRACE()
+  * [823d98b] MT#62253 log: CCDSM depreacte TRACE()
+  * [2622a18] MT#62253 log: CallLeg/SBCCallLeg: add call-id based logging
+  * [f49cd62] MT#62253 log: AmB2BSession: add call-id based logging
+  * [9ea2234] MT#62253 log: AmSession: add call-id based logging
+  * [17a94f0] MT#57728 docs: add a packaging guide
+  * [9cccc1f] MT#61912 DSM triggered updates, get hdrs directly from event
+  * [b45be96] MT#57728 docs: add a usage guide
+  * [3d83dd6] MT#57728 docs: add preamble for the main page
+  * [bfcb9f8] MT#59962 Coverity Scan: Unchecked return value (wav_hdr)
+  * [7e4bb65] MT#59962 Coverity Scan: Untrusted allocation size (wav_hdr)
+  * [6702bea] MT#59962 Coverity Scan: Uninitialized pointer field (reg_agent)
+  * [f977718] MT#59962 Coverity Scan: Unchecked return value from library (ilbc)
+  * [204a335] MT#59962 Coverity Scan: Logically dead code (AmConferenceChannel::get)
+  * [22eea89] MT#59962 Coverity Scan:  Division or modulo by float zero (AmAudio)
+  * [bdb9a10] MT#59962 XMLRPC2DI: possible mem.leak in `load()`
+  * [815e124] MT#59962 XMLRPC2DI: XMLRPC2DIServer constructor, use refs
+  * [a190508] MT#59962 XMLRPC2DI: Compare `time_t` without any cast.
+  * [819a0cf] MT#59962 XMLRPC2DI: Convert `ServerRetryAfter` to `time_t`
+  * [dafa639] MT#59962 XMLRPC2DI: make general members static
+  * [168d6ee] MT#59962 XMLRPC2DI: properly free heap allocated objects
+  * [68c8241] MT#59962 XMLRPC2DI: `time_t` use long unsigned for printing
+  * [4541e4d] MT#62253 AmSession: no dlg based loging when dlg gone
+  * [f8f5726] MT#59962 XMLRPC2DI: first allocate `XmlRpcServer`
+  * [f19f652] MT#62330 DSM: introduce header param getters
+  * [326430e] MT#59962 CallLeg: `replaceExistingLeg()` use smart ptr
+  * [a3d4fab] MT#59962 sip/trans_table: check dynamic_cast for nullptr
+  * [659a2e9] MT#59962 DSMStateEngine: initialize current_diag to NULL
+  * [f6b48fa] MT#59962 wheeltimer: make timer dealloc variable
+  * [82ee9a0] MT#59962 db_reg_agent: Memory - corruptions  (USE_AFTER_FREE)
+  * [85842fd] MT#59962 db_reg_agent: check iterator's object befor using
+  * [3bea968] MT#59962 db_reg_agent: refactoring (types)
+  * [7b050a4] MT#59962 db_reg_agent: refactor RegTimer's constructor
+  * [c1fb63d] MT#59962 db_reg_agent: check what it->second points to
+  * [e0734d2] MT#59962 db_reg_agent: refactor to use enum types
+  * [6820f63] MT#59962 db_reg_agent: use macro func for type prints
+  * [9be3856] MT#59962 db_reg_agent: timer insertion by types
+  * [33607e7] MT#59962 udp_trsp: memset the `from_addr`
+  * [af444f4] MT#59962 db_reg_agent: fix some dead-locks
+  * [f2c620d] MT#56025 DSM: ModUtils, add base64 strings handling
+  * [5d858dd] MT#56025 DSM Utils: new function for voucher code enc/decryption
+  * [8b0473c] MT#62330 utils.playRingTone: fix parameters handling
+  * [bbc387c] MT#56025 Extend linkers flags (mod_utils)
+  * [68afc10] MT#56025 db_reg_agent: handle `RegistrationActionEvent::Unknown`
+  * [13a8a50] MT#59962 DSMChartReader: add dl handler cleanup
+  * [65b3eed] MT#59962 DSMChartReader: cover mods with std::lock
+  * [1b2aa62] MT#59962 DSMChartReader: follow up for 65b3eed61c8c261
+  * [80d986e] MT#57408 3745ff0778d6a55 causes seg.faults
+
+  [ Richard Fuchs ]
+  * [b7aedef] MT#62181 Replace AmLock
+  * [6556465] MT#62181 obsolete recursive AmMutex
+  * [bdb3f2c] MT#62181 use std::mutex for AmMutex
+  * [5f332df] MT#62181 replace atomic_int class
+  * [1a412a3] MT#62181 replace AmSharedVar
+  * [70ba23f] MT#62181 rework AmCondition
+  * [036ac6c] MT#62181 obsolete thread cancellation
+  * [41819b4] MT#62181 obsolete setRealTime()
+  * [087def8] MT#62181 use std::thread instead of pthread
+  * [3e4c616] MT#62181 use C++ thread_local
+  * [aa63785] MT#62181 deprecate AmThreadLocalStorage
+  * [e0ee900] MT#62181 timer: provide copy constructor
+  * [f106c25] MT#62181 wheeltimer: use lock guards
+  * [cf89d56] MT#62181 wheeltimer: deprecate fixed resolution
+  * [f91b497] MT#62181 wheeltimer: use virtual destructor
+  * [fff6cb3] MT#62181 wheeltimer: use std::list
+  * [06466ee] MT#62181 wheeltimer: use local reqs_process
+  * [b58cb99] MT#62181 wheeltimer: rework using std::map
+  * [b01bf05] MT#62181 wheeltimer: obsolete timer_req
+  * [84f54dc] MT#62181 wheeltimer: refactor arming logic
+  * [4c3e900] MT#62181 wheeltimer: move out expiry values
+  * [aa356b3] MT#62181 wheeltimer: further encapsulate timer
+  * [debca6d] MT#62181 wheeltimer: support absolute expiry
+  * [d78b38d] MT#62181 wheeltimer: add range support
+  * [7e59c46] MT#62181 wheeltimer: add logging
+  * [eb377da] MT#62181 wheeltimer: add shutdown procedure
+  * [a80ab9b] MT#62181 wheeltimer: add comments
+  * [6996031] MT#62181 RegistrationTimer: refactor as wheeltimer
+  * [9214f5c] MT#62181 specialise RegTimer
+  * [d987917] MT#59962 SBCCallProfile: remove unused member
+  * [7d64a8e] MT#59962 UACAuth: add explicit cast to int
+  * [11e0ef4] MT#59962 core: fix insignificant mem leak
+  * [39cfdbe] MT#59962 call_control: free cURL handle at the end
+  * [f6cc901] MT#59962 click2dial: use smart pointer
+  * [ea964e5] MT#59962 DSM: use smart pointer
+  * [e44f99e] MT#59962 core/MixerBufferState: fix mem leak
+  * [5f81890] MT#59962 wav: use stack buffer instead of heap
+  * [d349c5f] MT#59962 core/AmB2BMedia: fix resource leak
+  * [3b86b6d] MT#59962 core/MultiPartyMixer: use smart pointers
+  * [b885e47] MT#59962 libisac: fix off-by-one
+  * [4cc3d70] MT#59962 AmSIPRegistration: remove type cast
+  * [3c04c08] MT#59962 opus: fix memory leak
+  * [4750c4b] MT#59962 AmSdp: add missing initialiser
+  * [c1d1240] MT#62181 core: fix thread exception
+  * [5233ee2] MT#62181 Click2Dial: use smart pointer
+  * [b91f4f6] MT#59962 DSM: switch config file loading to STL
+  * [8fc034f] MT#62181 AmThread: remove onIdle()
+  * [80dc4e6] MT#59962 AmUtils: use overloading for str2int
+  * [2120c72] MT#59962 tcp_trsp: use correct return type
+  * [5279358] MT#59962 stats: guard against failed socket()
+  * [a432cf3] MT#59962 xmlrpc: add va_end
+  * [ed80696] MT#59962 AmB2BSession: add missing initialiser
+  * [c69a982] MT#59962 AmMultiPartyMixer: protect against /0
+  * [d26fc6b] MT#59962 SBCCallProfile: fix typo
+  * [adbb343] MT#62181 AmThread: streamline
+  * [e1c2d31] MT#62181 AmThreadWatcher: overhaul
+  * [9f70206] MT#62181 AmThread: provide stop_requested()
+  * [8b4e26b] MT#62181 global: use AmThread stop_requested
+  * [6fdde08] MT#62181 DBRegAgent: don't wait forever
+  * [06edeb7] MT#62181 AmThread: add destructor
+  * [8d0c121] MT#62181 global: fix AmThread/AmEventQueue order
+  * [42a3ef3] MT#62181 transport: fix up socket usage
+  * [b8fde4d] MT#62181 udp_trsp: break out of blocking recv()
+  * [4fa42c0] MT#62181 fix thread::join usage
+  * [ddd7f00] MT#62181 don't shut thread with pending events
+  * [7bd489e] MT#62181 remove event queue during shut down
+  * [805aad9] MT#62181 don't bail early on SIGHUP
+  * [fb18792] MT#62181 fix join race condition
+  * [c2c70d0] MT#62181 transport: slight reformat
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 10 Apr 2025 08:31:15 +0200
+
 ngcp-sems (1:1.6.0+0~mr13.3.0.0) unstable; urgency=medium
 
   [ Michael Prokop ]
