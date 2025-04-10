@@ -194,6 +194,21 @@ _LOG(L_WARN, error_category " " fmt, ##args)
     } \
   } while (0)
 
+#define ILOG_SDLG(level__, _get_callid, fmt, args...) \
+  do { \
+    int level_ = FIX_LOG_LEVEL(level__); \
+    if ((level_) <= log_level) { \
+      char formatted_msg[LOG_BUFFER_LEN]; \
+      int n_ = snprintf(formatted_msg, sizeof(formatted_msg), fmt, ##args); \
+      if (n_ > 0 && formatted_msg[n_ - 1] == '\n') \
+        formatted_msg[n_ - 1] = '\0'; \
+      if (strlen(_get_callid()) > 0) \
+        CALL_LOG_FUNC(level__, "%s - '%s'", formatted_msg, _get_callid()); \
+      else \
+        CALL_LOG_FUNC(level__, "%s - 'undefined call-id'", formatted_msg); \
+    } \
+  } while (0)
+
 /** @} */
 
 extern int log_level;
