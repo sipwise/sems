@@ -36,6 +36,8 @@
 
 #include <assert.h>
 
+#define GET_CALL_ID() (dlg->getCallid().c_str())
+
 // helpers
 static const string sdp_content_type(SIP_APPLICATION_SDP);
 static const string empty;

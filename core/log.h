@@ -179,7 +179,6 @@ _LOG(L_WARN, error_category " " fmt, ##args)
     } \
   } while (0)
 
-/* dlg->getCallid() based */
 #define ILOG_DLG(level__, fmt, args...) \
   do { \
     int level_ = FIX_LOG_LEVEL(level__); \
@@ -188,8 +187,8 @@ _LOG(L_WARN, error_category " " fmt, ##args)
       int n_ = snprintf(formatted_msg, sizeof(formatted_msg), fmt, ##args); \
       if (n_ > 0 && formatted_msg[n_ - 1] == '\n') \
         formatted_msg[n_ - 1] = '\0'; \
-      if (dlg) \
-        CALL_LOG_FUNC(level__, "%s - '%s'", formatted_msg, dlg->getCallid().c_str()); \
+      if (strlen(GET_CALL_ID()) > 0) \
+        CALL_LOG_FUNC(level__, "%s - '%s'", formatted_msg, GET_CALL_ID()); \
       else \
         CALL_LOG_FUNC(level__, "%s - 'undefined call-id'", formatted_msg); \
     } \

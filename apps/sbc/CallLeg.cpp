@@ -35,6 +35,8 @@
 
 #include "global_defs.h"
 
+#define GET_CALL_ID() (dlg->getCallid().c_str())
+
 // helper functions
 
 static const char *callStatus2str(const CallLeg::CallStatus state)

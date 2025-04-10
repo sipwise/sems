@@ -55,6 +55,8 @@
 
 using namespace std;
 
+#define GET_CALL_ID() (dlg->getCallid().c_str())
+
 // helper functions
 
 static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)

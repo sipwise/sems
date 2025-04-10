@@ -53,6 +53,8 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 
+#define GET_CALL_ID() (dlg->getCallid().c_str())
+
 unsigned int AmSession::session_num = 0;
 AmMutex AmSession::session_num_mut;
 unsigned int AmSession::max_session_num = 0;
