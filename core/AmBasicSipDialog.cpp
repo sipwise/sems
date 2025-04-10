@@ -11,6 +11,8 @@
 #include "sip/msg_logger.h"
 #include "sip/sip_parser.h"
 
+#define GET_CALL_ID() (getCallid().c_str())
+
 const char* AmBasicSipDialog::status2str[AmBasicSipDialog::__max_Status] = {
   "Disconnected",
   "Trying",
@@ -80,7 +82,7 @@ bool AmBasicSipDialog::getUACTransPending()
 
 void AmBasicSipDialog::setStatus(Status new_status) 
 {
-  DBG("setting SIP dialog status: %s->%s. Local_tag: <%s>\n",
+  ILOG_DLG(L_DBG, "setting SIP dialog status: %s->%s. Local_tag: <%s>\n",
       getStatusStr(), getStatusStr(new_status), getLocalTag().c_str());
   status = new_status;
 }
@@ -157,7 +159,7 @@ string AmBasicSipDialog::getRoute()
 }
 
 void AmBasicSipDialog::setOutboundInterface(int interface_id) {
-  DBG("setting outbound interface to %i\n",  interface_id);
+  ILOG_DLG(L_DBG, "setting outbound interface to %i\n",  interface_id);
   outbound_interface = interface_id;
 }
 
@@ -202,7 +204,7 @@ int AmBasicSipDialog::getOutboundIf()
     fr.value = stl2cstr(route);
     sip_uri* route_uri = get_first_route_uri(&fr);
     if(!route_uri){
-      ERROR("Could not parse route (local_tag='%s';route='%s')",
+      ILOG_DLG(L_ERR, "Could not parse route (local_tag='%s';route='%s')",
 	    local_tag.c_str(),route.c_str());
       goto error;
     }
@@ -214,14 +216,14 @@ int AmBasicSipDialog::getOutboundIf()
   }
 
   if(dest_uri.empty() && dest_ip.empty()) {
-    ERROR("No destination found (local_tag='%s')",local_tag.c_str());
+    ILOG_DLG(L_ERR, "No destination found (local_tag='%s')",local_tag.c_str());
     goto error;
   }
   
   if(!dest_uri.empty()){
     sip_uri d_uri;
     if(parse_uri(&d_uri,dest_uri.c_str(),dest_uri.length()) < 0){
-      ERROR("Could not parse destination URI (local_tag='%s';dest_uri='%s')",
+      ILOG_DLG(L_ERR, "Could not parse destination URI (local_tag='%s';dest_uri='%s')",
 	    local_tag.c_str(),dest_uri.c_str());
       goto error;
     }
@@ -230,13 +232,13 @@ int AmBasicSipDialog::getOutboundIf()
   }
 
   if(get_local_addr_for_dest(dest_ip,local_ip) < 0){
-    ERROR("No local address for dest '%s' (local_tag='%s')",dest_ip.c_str(),local_tag.c_str());
+    ILOG_DLG(L_ERR, "No local address for dest '%s' (local_tag='%s')",dest_ip.c_str(),local_tag.c_str());
     goto error;
   }
 
   if_it = AmConfig::LocalSIPIP2If.find(local_ip);
   if(if_it == AmConfig::LocalSIPIP2If.end()){
-    ERROR("Could not find a local interface for resolved local IP (local_tag='%s';local_ip='%s')",
+    ILOG_DLG(L_ERR, "Could not find a local interface for resolved local IP (local_tag='%s';local_ip='%s')",
 	  local_tag.c_str(), local_ip.c_str());
     goto error;
   }
@@ -245,7 +247,7 @@ int AmBasicSipDialog::getOutboundIf()
   return if_it->second;
 
  error:
-  WARN("Error while computing outbound interface: default interface will be used instead.");
+  ILOG_DLG(L_WARN, "Error while computing outbound interface: default interface will be used instead.");
   setOutboundInterface(0);
   return 0;
 }
@@ -277,7 +279,7 @@ bool AmBasicSipDialog::onRxReqSanity(const AmSipRequest& req)
   // Sanity checks
   if(!remote_tag.empty() && !req.from_tag.empty() &&
      (req.from_tag != remote_tag)){
-    DBG("remote_tag = '%s'; req.from_tag = '%s'\n",
+    ILOG_DLG(L_DBG, "remote_tag = '%s'; req.from_tag = '%s'\n",
 	remote_tag.c_str(), req.from_tag.c_str());
     reply_error(req, 481, SIP_REPLY_NOT_EXIST);
     return false;
@@ -291,14 +293,14 @@ bool AmBasicSipDialog::onRxReqSanity(const AmSipRequest& req)
 	// for implementations which follow 3265 instead of 5057
 	string hdrs = SIP_HDR_COLSP(SIP_HDR_RETRY_AFTER)  "0"  CRLF;
 
-	INFO("remote cseq lower than previous ones - refusing request\n");
+	ILOG_DLG(L_INFO, "remote cseq lower than previous ones - refusing request\n");
 	// see 12.2.2
 	reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR, hdrs);
 	return false;
       }
     }
     else {
-      INFO("remote cseq lower than previous ones - refusing request\n");
+      ILOG_DLG(L_INFO, "remote cseq lower than previous ones - refusing request\n");
       // see 12.2.2
       reply_error(req, 500, SIP_REPLY_SERVER_INTERNAL_ERROR);
       return false;
@@ -313,7 +315,7 @@ bool AmBasicSipDialog::onRxReqSanity(const AmSipRequest& req)
 
 void AmBasicSipDialog::onRxRequest(const AmSipRequest& req)
 {
-  DBG("AmBasicSipDialog::onRxRequest(req = %s)\n", req.method.c_str());
+  ILOG_DLG(L_DBG, "AmBasicSipDialog::onRxRequest(req = %s)\n", req.method.c_str());
 
   if (logger && (req.method != SIP_METH_ACK)) {
     /* log only non-initial received requests, the initial one is already logged
@@ -408,7 +410,7 @@ void AmBasicSipDialog::termUasTrans()
     TransMap::iterator it = uas_trans.begin();
     int req_cseq = it->first;
     const AmSipRequest& req = it->second;
-    DBG("terminating UAS transaction (%u %s)",req.cseq,req.cseq_method.c_str());
+    ILOG_DLG(L_DBG, "terminating UAS transaction (%u %s)",req.cseq,req.cseq_method.c_str());
 
     reply(req,481,SIP_REPLY_NOT_EXIST);
 
@@ -441,14 +443,14 @@ bool AmBasicSipDialog::onRxReplySanity(const AmSipReply& reply)
 {
   if(ext_local_tag.empty()) {
     if(reply.from_tag != local_tag) {
-      ERROR("received reply with wrong From-tag ('%s' vs. '%s')",
+      ILOG_DLG(L_ERR, "received reply with wrong From-tag ('%s' vs. '%s')",
 	    reply.from_tag.c_str(), local_tag.c_str());
       throw string("reply has wrong from-tag");
       //return;
     }
   }
   else if(reply.from_tag != ext_local_tag) {
-    ERROR("received reply with wrong From-tag ('%s' vs. '%s')",
+    ILOG_DLG(L_ERR, "received reply with wrong From-tag ('%s' vs. '%s')",
 	  reply.from_tag.c_str(), ext_local_tag.c_str());
     throw string("reply has wrong from-tag");
     //return;
@@ -464,12 +466,12 @@ void AmBasicSipDialog::onRxReply(const AmSipReply& reply)
 
   TransMap::iterator t_it = uac_trans.find(reply.cseq);
   if(t_it == uac_trans.end()){
-    ERROR("could not find any transaction matching reply: %s\n", 
+    ILOG_DLG(L_ERR, "could not find any transaction matching reply: %s\n", 
         ((AmSipReply)reply).print().c_str());
     return;
   }
 
-  DBG("onRxReply(rep = %u %s): transaction found!\n",
+  ILOG_DLG(L_DBG, "onRxReply(rep = %u %s): transaction found!\n",
       reply.code, reply.reason.c_str());
 
   updateDialogTarget(reply);
@@ -598,8 +600,8 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
   TransMap::const_iterator t_it = uas_trans.find(req.cseq);
 
   if (t_it == uas_trans.end()) {
-    ERROR("could not find any transaction matching request cseq\n");
-    ERROR("request cseq=%i; reply code=%i; callid=%s; local_tag=%s; "
+    ILOG_DLG(L_ERR, "could not find any transaction matching request cseq\n");
+    ILOG_DLG(L_ERR, "request cseq=%i; reply code=%i; callid=%s; local_tag=%s; "
 	  "remote_tag=%s\n",
 	  req.cseq,code,callid.c_str(),
 	  local_tag.c_str(),remote_tag.c_str());
@@ -607,7 +609,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
     return -1;
   }
 
-  DBG("reply: transaction found!\n");
+  ILOG_DLG(L_DBG, "reply: transaction found!\n");
 
   AmSipReply reply;
 
@@ -631,7 +633,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
     reply.body = *body;
 
   if (onTxReply(req,reply,flags)) {
-    DBG("onTxReply failed\n");
+    ILOG_DLG(L_DBG, "onTxReply failed\n");
     return -1;
   }
 
@@ -648,7 +650,7 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
 
   int ret = SipCtrlInterface::send(reply,local_tag,logger);
   if (ret) {
-    ERROR("Could not send reply: code=%i; reason='%s'; method=%s; call-id=%s; cseq=%i\n",
+    ILOG_DLG(L_ERR, "Could not send reply: code=%i; reason='%s'; method=%s; call-id=%s; cseq=%i\n",
           reply.code,reply.reason.c_str(),
           reply.cseq_method.c_str(),
           callid.c_str(),
@@ -703,7 +705,7 @@ int AmBasicSipDialog::sendRequest(const string& method,
   req.method = method;
   req.r_uri = remote_uri;
 
-  DBG("sendRequest: remote_uri='%s'; callid='%s'; cseq='%i'; from_tag='%s'; to_tag='%s';\n",
+  ILOG_DLG(L_DBG, "sendRequest: remote_uri='%s'; callid='%s'; cseq='%i'; from_tag='%s'; to_tag='%s';\n",
       remote_uri.c_str(),
       callid.c_str(),
       cseq,
@@ -760,7 +762,7 @@ int AmBasicSipDialog::sendRequest(const string& method,
                                     send_flags,logger);
 
   if (res) {
-    ERROR("Could not send request: method=%s; call-id=%s; cseq=%i\n",
+    ILOG_DLG(L_ERR, "Could not send request: method=%s; call-id=%s; cseq=%i\n",
     req.method.c_str(),req.callid.c_str(),req.cseq);
     return res;
   }
@@ -771,22 +773,22 @@ int AmBasicSipDialog::sendRequest(const string& method,
 
 void AmBasicSipDialog::dump()
 {
-  DBG("callid = %s\n",callid.c_str());
-  DBG("local_tag = %s\n",local_tag.c_str());
-  DBG("uac_trans.size() = %zu\n",uac_trans.size());
+  ILOG_DLG(L_DBG, "callid = %s\n",callid.c_str());
+  ILOG_DLG(L_DBG, "local_tag = %s\n",local_tag.c_str());
+  ILOG_DLG(L_DBG, "uac_trans.size() = %zu\n",uac_trans.size());
   if(uac_trans.size()){
     for(TransMap::iterator it = uac_trans.begin();
 	it != uac_trans.end(); it++){
 	    
-      DBG("    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
+      ILOG_DLG(L_DBG, "    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
     }
   }
-  DBG("uas_trans.size() = %zu\n",uas_trans.size());
+  ILOG_DLG(L_DBG, "uas_trans.size() = %zu\n",uas_trans.size());
   if(uas_trans.size()){
     for(TransMap::iterator it = uas_trans.begin();
 	it != uas_trans.end(); it++){
 	    
-      DBG("    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
+      ILOG_DLG(L_DBG, "    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
     }
   }
 }
