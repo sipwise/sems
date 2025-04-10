@@ -88,9 +88,10 @@ AmSession::AmSession(AmSipDialog* p_dlg)
   , _pid(this)
 #endif
 {
-  ILOG_DLG(L_DBG, "dlg = %p",dlg);
   if(!dlg) dlg = new AmSipDialog(this);
   else dlg->setEventhandler(this);
+
+  ILOG_DLG(L_DBG, "dlg = %p",dlg);
 }
 
 AmSession::~AmSession()
