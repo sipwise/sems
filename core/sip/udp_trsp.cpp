@@ -283,9 +283,6 @@ void udp_trsp::run()
 	 sock->get_ip(),sock->get_port());
 
     while (!stop_requested()){
-
-	//DBG("before recvmsg (%s:%i)\n",sock->get_ip(),sock->get_port());
-
 	buf_len = recvmsg(sock->get_sd(),&msg,0);
 	if(buf_len <= 0){
 	    if(!buf_len) continue;
