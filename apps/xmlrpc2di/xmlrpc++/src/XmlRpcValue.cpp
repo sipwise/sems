@@ -514,8 +514,8 @@ namespace XmlRpc {
         invalidate();
         return false;
       }
-      const std::pair<const std::string, XmlRpcValue> p(name, val);
-      _value.asStruct->insert(p);
+
+      _value.asStruct->insert(std::make_pair(std::move(name), std::move(val)));
 
       (void) XmlRpcUtil::nextTagIs(MEMBER_ETAG, valueXml, offset);
     }
