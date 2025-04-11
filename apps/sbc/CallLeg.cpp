@@ -189,8 +189,9 @@ CallLeg::CallLeg(const CallLeg* caller, AmSipDialog* p_dlg, AmSipSubscription* p
   if (dlg) {
     dlg->setOAEnabled(true);
     dlg->setOAForceSDP(false);
+  } else {
+    WARN("can't enable OA!\n");
   }
-  else ILOG_DLG(L_WARN, "can't enable OA!\n");
 
   // code below taken from createCalleeSession
 
@@ -255,10 +256,11 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
   if (dlg) {
     dlg->setOAEnabled(true);
     dlg->setOAForceSDP(false);
+  } else {
+    WARN("can't enable OA!\n");
   }
-  else ILOG_DLG(L_WARN, "can't enable OA!\n");
 }
-    
+
 CallLeg::~CallLeg()
 {
   // do necessary cleanup (might be needed if the call leg is destroyed other
