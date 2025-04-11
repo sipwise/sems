@@ -385,12 +385,15 @@ namespace XmlRpc {
 
     std::string stime = valueXml.substr(*offset, valueEnd-*offset);
 
-    struct tm t;
+    /* zero-initialize */
+    struct tm t = {};
     if (sscanf(stime.c_str(),"%4d%2d%2dT%2d:%2d:%2d",&t.tm_year,&t.tm_mon,&t.tm_mday,&t.tm_hour,&t.tm_min,&t.tm_sec) != 6)
       return false;
 
     t.tm_year -= 1900;
     t.tm_isdst = -1;
+    t.tm_mon--; /* sscanf reads months as 1-12, but tm_mon expects 0-11. So not adjusting it can lead to an incorrect date. */
+
     _type = TypeDateTime;
     _value.asTime = new struct tm(t);
     *offset += stime.length();
@@ -403,7 +406,7 @@ namespace XmlRpc {
     char buf[18];
 
     if (snprintf(buf, sizeof(buf), "%04d%02d%02dT%02d:%02d:%02d",
-                (1900 + t->tm_year), t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec) < 0)
+                (1900 + t->tm_year), (1 + t->tm_mon), t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec) < 0)
     {
       XmlRpcUtil::log(2,"timeToXml: issues while trying to write data.");
     }
@@ -557,7 +560,7 @@ namespace XmlRpc {
           struct tm* t = _value.asTime;
           char buf[20];
           snprintf(buf, sizeof(buf)-1, "%4d%02d%02dT%02d:%02d:%02d", 
-            t->tm_year,t->tm_mon,t->tm_mday,t->tm_hour,t->tm_min,t->tm_sec);
+            (1900 + t->tm_year), (1 + t->tm_mon),t->tm_mday,t->tm_hour,t->tm_min,t->tm_sec);
           buf[sizeof(buf)-1] = 0;
           os << buf;
           break;
