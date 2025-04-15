@@ -94,7 +94,7 @@ void AmArg::assertArray() {
     return;
   if (Undef == type) {
     type = Array;
-    std::get<ValueArray*>(value) = new ValueArray();
+    value = new ValueArray();
     return;
   }
   throw TypeMismatchException();
@@ -109,7 +109,7 @@ void AmArg::assertArray(size_t s) {
 
   if (Undef == type) {
     type = Array;
-    std::get<ValueArray*>(value) = new ValueArray();
+    value = new ValueArray();
   } else if (Array != type) {
     throw TypeMismatchException();
   }
