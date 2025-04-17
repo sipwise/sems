@@ -46,15 +46,6 @@ const char* AmArg::t2str(int type) {
   }
 }
 
-AmArg::AmArg(const AmArg& v)
-  : type(v.type) {
-  switch (type) {
-    default:
-      value = v.value;
-      break;
-  }
-}
-
 AmArg::AmArg(std::map<std::string, std::string>& v)
   : type(Undef) {
   assertStruct();
@@ -238,17 +229,6 @@ const AmArg& AmArg::get(size_t idx) const {
     throw OutOfBoundsException();
 
   return std::get<ValueArray>(value)[idx];
-}
-
-AmArg& AmArg::operator=(const AmArg& v) {
-  invalidate();
-  type = v.type;
-  switch (type) {
-    default:
-      value = v.value;
-      break;
-  }
-  return *this;
 }
 
 AmArg& AmArg::operator[](size_t idx) {
