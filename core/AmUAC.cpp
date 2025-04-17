@@ -39,7 +39,7 @@ string AmUAC::dialout(const string& user,
 		      const string& to,
 		      const string& local_tag,
 		      const string& hdrs,
-		      AmArg*  session_params) {
+		      const AmArg*  session_params) {
  
   AmSipRequest req;
   string m_app_name = app_name;

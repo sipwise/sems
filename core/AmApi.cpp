@@ -50,7 +50,7 @@ AmSessionFactory::AmSessionFactory(const string& name)
 }
 
 AmSession* AmSessionFactory::onInvite(const AmSipRequest& req, const string& app_name,
-				      AmArg& session_params) {
+				      const AmArg& session_params) {
   WARN(" discarding session parameters to new session.\n");
   map<string,string> app_params;
   return onInvite(req,app_name,app_params);
@@ -62,7 +62,7 @@ AmSession* AmSessionFactory::onRefer(const AmSipRequest& req, const string& app_
 }
 
 AmSession* AmSessionFactory::onRefer(const AmSipRequest& req, const string& app_name,
-				     AmArg& session_params)
+				     const AmArg& session_params)
 {
   WARN(" discarding session parameters to new session.\n");
   map<string,string> app_params;
@@ -146,7 +146,7 @@ AmSessionEventHandlerFactory::AmSessionEventHandlerFactory(const string& name)
 }
 
 bool AmSessionEventHandlerFactory::onInvite(const AmSipRequest& req, 
-					    AmArg& session_params,
+					    const AmArg& session_params,
 					    AmConfigReader& cfg) {
   WARN("discarding session parameters for new session.\n");
   return onInvite(req, cfg);

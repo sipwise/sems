@@ -128,7 +128,7 @@ string DIDial::dialout(const string& application,
 		       const string& user, 
 		       const string& from, 
 		       const string& to,
-		       AmArg* extra_params) {
+		       const AmArg* extra_params) {
   DBG("dialout application '%s', user '%s', from '%s', to '%s'\n", 
       application.c_str(), user.c_str(), from.c_str(), to.c_str());
 
@@ -148,7 +148,7 @@ string DIDial::dialout_auth(const string& application,
 			    const string& a_realm, 
 			    const string& a_user, 
 			    const string& a_pwd,
-			    AmArg* extra_params
+			    const AmArg* extra_params
 		       ) {
   DBG("dialout application '%s', user '%s', from '%s', to '%s', authrealm '%s', authuser '%s', authpass '%s'", 
       application.c_str(), user.c_str(), from.c_str(), to.c_str(), a_realm.c_str(), a_user.c_str(), a_pwd.c_str());

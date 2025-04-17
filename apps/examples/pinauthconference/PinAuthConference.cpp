@@ -92,7 +92,7 @@ AmSession* PinAuthConferenceFactory::onInvite(const AmSipRequest&, const string&
 
 // outgoing calls
 AmSession* PinAuthConferenceFactory::onInvite(const AmSipRequest& req, const string& app_name,
-					      AmArg& session_params)
+					      const AmArg& session_params)
 {
   return new PinAuthConferenceDialog(prompts);
 }

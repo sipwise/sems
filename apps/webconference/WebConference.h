@@ -154,7 +154,7 @@ public:
   AmSession* onInvite(const AmSipRequest&, const string& app_name,
 		      const map<string,string>& app_params);
   AmSession* onInvite(const AmSipRequest& req, const string& app_name,
-		      AmArg& session_params);
+		      const AmArg& session_params);
   int onLoad();
 
   bool isValidConference(const string& conf_id, const string& participant_id);

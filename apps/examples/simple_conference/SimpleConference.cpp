@@ -51,7 +51,7 @@ AmSession* SimpleConferenceFactory::onInvite(const AmSipRequest& req, const stri
 
 // outgoing calls - rep is 200 class response to INVITE
 AmSession* SimpleConferenceFactory::onInvite(const AmSipRequest& req, const string& app_name,
-					     AmArg& session_params)
+					     const AmArg& session_params)
 {
   return new SimpleConferenceDialog();
 }

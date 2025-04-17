@@ -205,7 +205,7 @@ void AmSessionContainer::destroySession(AmSession* s)
     }
 }
 
-string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_name, AmArg* session_params) {
+string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_name, const AmArg* session_params) {
 
   unique_ptr<AmSession> session;
   try {
@@ -490,7 +490,7 @@ bool AmSessionContainer::check_and_add_cps(bool emergency_flag)
 
 AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
 					     string& app_name,
-					     AmArg* session_params)
+					     const AmArg* session_params)
 {
   if (AmConfig::ShutdownMode) {
     _run_cond.set(true); // so that thread stops

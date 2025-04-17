@@ -100,7 +100,7 @@ AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req, const string& 
 }
 
 AmSession* AnnouncementFactory::onInvite(const AmSipRequest& req, const string& app_name,
-					 AmArg& session_params)
+					 const AmArg& session_params)
 {
   UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
   AmSession* s = new AnnouncementDialog(getAnnounceFile(req), cred);

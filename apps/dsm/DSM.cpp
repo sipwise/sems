@@ -729,7 +729,7 @@ AmSession* DSMFactory::onInvite(const AmSipRequest& req, const string& app_name,
 
 // outgoing call
 AmSession* DSMFactory::onInvite(const AmSipRequest& req, const string& app_name,
-				AmArg& session_params) 
+				const AmArg& session_params)
 {
 
   string start_diag;

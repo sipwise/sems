@@ -102,7 +102,7 @@ string Click2DialFactory::getAnnounceFile(const AmSipRequest& req)
 }
 
 
-AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& app_name, AmArg& session_params)
+AmSession* Click2DialFactory::onInvite(const AmSipRequest& req, const string& app_name, const AmArg& session_params)
 {
   string callee_uri, a_realm, a_user, a_pwd;
 

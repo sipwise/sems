@@ -115,7 +115,7 @@ class AmSessionEventHandlerFactory: public AmPluginFactory
    * @return false if session creation should be stopped
    */
   virtual bool onInvite(const AmSipRequest& req, AmConfigReader& cfg)=0;
-  virtual bool onInvite(const AmSipRequest& req, AmArg& session_params, AmConfigReader& cfg);
+  virtual bool onInvite(const AmSipRequest& req, const AmArg& session_params, AmConfigReader& cfg);
 };
 
 /** \brief Interface for plugins to create sessions */
@@ -162,7 +162,7 @@ class AmSessionFactory: public AmPluginFactory
    *   processing as it would block the server.
    */
   virtual AmSession* onInvite(const AmSipRequest& req, const string& app_name,
-			      AmArg& session_params);
+			      const AmArg& session_params);
 
   /**
    * Creates a dialog state on new REFER with local-tag.
@@ -185,7 +185,7 @@ class AmSessionFactory: public AmPluginFactory
    *   processing as it would block the server.
    */
   virtual AmSession* onRefer(const AmSipRequest& req, const string& app_name,
-			     AmArg& session_params);
+			     const AmArg& session_params);
 
   /**
    * Method to receive any out-of-dialog request 

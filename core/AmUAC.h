@@ -46,7 +46,7 @@ class AmUAC {
 			const string& to,
 			const string& local_tag = "",
 			const string& hdrs = "",
-			AmArg*  session_params = NULL);
+			const AmArg*  session_params = NULL);
 
 };
 

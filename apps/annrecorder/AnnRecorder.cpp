@@ -207,7 +207,7 @@ AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req, const string& a
 }
 
 AmSession* AnnRecorderFactory::onInvite(const AmSipRequest& req, const string& app_name,
-					 AmArg& session_params)
+					 const AmArg& session_params)
 {
   UACAuthCred* cred = AmUACAuth::unpackCredentials(session_params);
 

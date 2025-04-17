@@ -172,7 +172,7 @@ AmSession* CallGenFactory::onInvite(const AmSipRequest& req, const string& app_n
 
 // outgoing calls 
 AmSession* CallGenFactory::onInvite(const AmSipRequest& req, const string& app_name,
-				    AmArg& args)
+				    const AmArg& args)
 {  
   size_t cnt = 0; 
   cnt++; // int    ncalls           = args.get(cnt++).asInt();

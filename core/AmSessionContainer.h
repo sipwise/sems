@@ -119,7 +119,7 @@ class AmSessionContainer : public AmThread
    */
   AmSession* createSession(const AmSipRequest& req, 
 			   string& app_name,
-			   AmArg* session_params = NULL);
+			   const AmArg* session_params = NULL);
 
   /**
    * Adds a session to the container (UAS only).
@@ -150,7 +150,7 @@ class AmSessionContainer : public AmThread
    */
   string startSessionUAC(const AmSipRequest& req, 
 			 string& app_name,
-			 AmArg* session_params = NULL);
+			 const AmArg* session_params = NULL);
 
   /**
    * Detroys a session.

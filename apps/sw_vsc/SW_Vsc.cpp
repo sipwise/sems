@@ -246,7 +246,7 @@ AmSession *SW_VscFactory::onInvite(const AmSipRequest &req,
 
 AmSession *SW_VscFactory::onInvite(const AmSipRequest &req,
                                    const string &app_name,
-                                   AmArg &session_params)
+                                   const AmArg &session_params)
 {
     UACAuthCred *cred = AmUACAuth::unpackCredentials(session_params);
     AmSession *s = new SW_VscDialog(&m_patterns, cred);

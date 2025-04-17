@@ -158,7 +158,7 @@ AmSession* CallBackFactory::onInvite(const AmSipRequest& req, const string& app_
 
 // outgoing calls 
 AmSession* CallBackFactory::onInvite(const AmSipRequest& req, const string& app_name,
-				     AmArg& session_params)
+				     const AmArg& session_params)
 {
   UACAuthCred* cred = NULL;
   if (session_params.getType() == AmArg::AObject) {
