@@ -114,7 +114,7 @@ void DiameterClient::sendRequest(const AmArg& args,
   string app_name     = args.get(0).asCStr();
   int    command_code = args.get(1).asInt();
   int    app_id       = args.get(2).asInt();
-  AmArg& val          = args.get(3);
+  const AmArg& val    = args.get(3);
   string sess_link    = args.get(4).asCStr();
 
   vector<ServerConnection*> scs;    
@@ -159,9 +159,9 @@ void DiameterClient::invoke(const string& method, const AmArg& args,
   } else if(method == "sendRequest"){
     args.assertArrayFmt("siias");
     // check values
-    AmArg& vals = args.get(3);
+    const AmArg& vals = args.get(3);
     for (size_t i=0;i<vals.size(); i++) {
-      AmArg& row = vals.get(i);
+      const AmArg& row = vals.get(i);
       //    [int avp_id, int flags, int vendor, blob data]
       row.assertArrayFmt("iiib");
     }

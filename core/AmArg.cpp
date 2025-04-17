@@ -49,9 +49,6 @@ const char* AmArg::t2str(int type) {
 AmArg::AmArg(const AmArg& v)
   : type(v.type) {
   switch (type) {
-    case Array:
-      value = new ValueArray(*std::get<ValueArray*>(v.value));
-      break;
     case Struct:
       value = new ValueStruct(*std::get<ValueStruct*>(v.value));
       break;
@@ -109,7 +106,7 @@ void AmArg::assertArray() {
     return;
   if (Undef == type) {
     type = Array;
-    value = new ValueArray();
+    value = ValueArray();
     return;
   }
   throw TypeMismatchException();
@@ -124,12 +121,12 @@ void AmArg::assertArray(size_t s) {
 
   if (Undef == type) {
     type = Array;
-    value = new ValueArray();
+    value = ValueArray();
   } else if (Array != type) {
     throw TypeMismatchException();
   }
-  if (std::get<ValueArray*>(value)->size() < s)
-    std::get<ValueArray*>(value)->resize(s);
+  if (std::get<ValueArray>(value).size() < s)
+    std::get<ValueArray>(value).resize(s);
 }
 
 void AmArg::assertStruct() {
@@ -149,15 +146,14 @@ void AmArg::assertStruct() const {
 }
 
 void AmArg::invalidate() {
-  if(type == Array) { delete std::get<ValueArray*>(value); }
-  else if(type == Struct) { delete std::get<ValueStruct*>(value); }
+  if(type == Struct) { delete std::get<ValueStruct*>(value); }
   type = Undef;
   value = std::monostate();
 }
 
 void AmArg::push(const AmArg& a) {
   assertArray();
-  std::get<ValueArray*>(value)->push_back(a);
+  std::get<ValueArray>(value).push_back(a);
 }
 
 void AmArg::push(const string &key, const AmArg &val) {
@@ -173,8 +169,8 @@ void AmArg::pop(AmArg &a) {
     a = AmArg();
     return;
   }
-  a = std::get<ValueArray*>(value)->front();
-  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->begin());
+  a = std::get<ValueArray>(value).front();
+  std::get<ValueArray>(value).erase(std::get<ValueArray>(value).begin());
 }
 
 void AmArg::pop_back(AmArg &a) {
@@ -185,30 +181,30 @@ void AmArg::pop_back(AmArg &a) {
     a = AmArg();
     return;
   }
-  a = std::get<ValueArray*>(value)->back();
-  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->end());
+  a = std::get<ValueArray>(value).back();
+  std::get<ValueArray>(value).erase(std::get<ValueArray>(value).end());
 }
 
 void AmArg::pop_back() {
   assertArray();
   if (!size())
     return;
-  std::get<ValueArray*>(value)->erase(std::get<ValueArray*>(value)->end());
+  std::get<ValueArray>(value).erase(std::get<ValueArray>(value).end());
 }
 
 void AmArg::concat(const AmArg& a) {
   assertArray();
   if (a.getType() == Array) {
   for (size_t i=0;i<a.size();i++)
-    std::get<ValueArray*>(value)->push_back(a[i]);
+    std::get<ValueArray>(value).push_back(a[i]);
   } else {
-    std::get<ValueArray*>(value)->push_back(a);
+    std::get<ValueArray>(value).push_back(a);
   }
 }
 
 size_t AmArg::size() const {
   if (Array == type)
-    return std::get<ValueArray*>(value)->size();
+    return std::get<ValueArray>(value).size();
 
   if (Struct == type)
     return std::get<ValueStruct*>(value)->size();
@@ -218,43 +214,40 @@ size_t AmArg::size() const {
 
 AmArg& AmArg::back() {
   assertArray();
-  if (!std::get<ValueArray*>(value)->size())
+  if (!std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[std::get<ValueArray*>(value)->size()-1];
+  return std::get<ValueArray>(value)[std::get<ValueArray>(value).size()-1];
 }
 
-AmArg& AmArg::back() const {
+const AmArg& AmArg::back() const {
   assertArray();
-  if (!std::get<ValueArray*>(value)->size())
+  if (!std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[std::get<ValueArray*>(value)->size()-1];
+  return std::get<ValueArray>(value)[std::get<ValueArray>(value).size()-1];
 }
 
 AmArg& AmArg::get(size_t idx) {
   assertArray();
-  if (idx >= std::get<ValueArray*>(value)->size())
+  if (idx >= std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
-AmArg& AmArg::get(size_t idx) const {
+const AmArg& AmArg::get(size_t idx) const {
   assertArray();
-  if (idx >= std::get<ValueArray*>(value)->size())
+  if (idx >= std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
 AmArg& AmArg::operator=(const AmArg& v) {
   invalidate();
   type = v.type;
   switch (type) {
-    case Array:
-      value = new ValueArray(*std::get<ValueArray*>(v.value));
-      break;
     case Struct:
       value = new ValueStruct(*std::get<ValueStruct*>(v.value));
       break;
@@ -267,15 +260,15 @@ AmArg& AmArg::operator=(const AmArg& v) {
 
 AmArg& AmArg::operator[](size_t idx) {
   assertArray(idx+1);
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
-AmArg& AmArg::operator[](size_t idx) const {
+const AmArg& AmArg::operator[](size_t idx) const {
   assertArray();
-  if (idx >= std::get<ValueArray*>(value)->size())
+  if (idx >= std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
 AmArg& AmArg::operator[](int idx) {
@@ -283,18 +276,18 @@ AmArg& AmArg::operator[](int idx) {
     throw OutOfBoundsException();
 
   assertArray(idx+1);
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
-AmArg& AmArg::operator[](int idx) const {
+const AmArg& AmArg::operator[](int idx) const {
   if (idx<0)
     throw OutOfBoundsException();
 
   assertArray();
-  if ((size_t)idx >= std::get<ValueArray*>(value)->size())
+  if ((size_t)idx >= std::get<ValueArray>(value).size())
     throw OutOfBoundsException();
 
-  return (*std::get<ValueArray*>(value))[idx];
+  return std::get<ValueArray>(value)[idx];
 }
 
 AmArg& AmArg::operator[](std::string key) {
@@ -302,7 +295,7 @@ AmArg& AmArg::operator[](std::string key) {
   return (*std::get<ValueStruct*>(value))[key];
 }
 
-AmArg& AmArg::operator[](std::string key) const {
+const AmArg& AmArg::operator[](std::string key) const {
   assertStruct();
   return (*std::get<ValueStruct*>(value))[key];
 }
@@ -312,7 +305,7 @@ AmArg& AmArg::operator[](const char* key) {
   return (*std::get<ValueStruct*>(value))[key];
 }
 
-AmArg& AmArg::operator[](const char* key) const {
+const AmArg& AmArg::operator[](const char* key) const {
   assertStruct();
   return (*std::get<ValueStruct*>(value))[key];
 }

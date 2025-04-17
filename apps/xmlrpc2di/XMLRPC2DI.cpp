@@ -225,7 +225,7 @@ XMLRPCServerEntry* XMLRPC2DI::getServer(const string& app_name) {
 void XMLRPC2DI::sendRequest(const AmArg& args, AmArg& ret) {
   string app_name     = args.get(0).asCStr();
   string method       = args.get(1).asCStr();
-  AmArg& params       = args.get(2);
+  const AmArg& params = args.get(2);
 
   while (true) {
     XMLRPCServerEntry* srv = getServer(app_name);

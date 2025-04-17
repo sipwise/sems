@@ -118,7 +118,7 @@ class AmArg
 
   // value
   std::variant<std::monostate, long int, long long int, bool, double, std::string, AmObject*,
-    AmDynInvoke*, ArgBlob, ValueArray*, ValueStruct*> value;
+    AmDynInvoke*, ArgBlob, ValueArray, ValueStruct*> value;
 
   void invalidate();
 
@@ -289,28 +289,28 @@ class AmArg
   AmArg& get(size_t idx);
 
   /** throws OutOfBoundsException if array too small */
-  AmArg& get(size_t idx) const;
+  const AmArg& get(size_t idx) const;
 
   /** throws OutOfBoundsException if array too small */
   AmArg& back();
 
   /** throws OutOfBoundsException if array too small */
-  AmArg& back() const;
+  const AmArg& back() const;
 
   /** resizes array if too small */
   AmArg& operator[](size_t idx);
   /** throws OutOfBoundsException if array too small */
-  AmArg& operator[](size_t idx) const;
+  const AmArg& operator[](size_t idx) const;
 
   /** resizes array if too small */
   AmArg& operator[](int idx);
   /** throws OutOfBoundsException if array too small */
-  AmArg& operator[](int idx) const;
+  const AmArg& operator[](int idx) const;
 
   AmArg& operator[](std::string key);
-  AmArg& operator[](std::string key) const;
+  const AmArg& operator[](std::string key) const;
   AmArg& operator[](const char* key);
-  AmArg& operator[](const char* key) const;
+  const AmArg& operator[](const char* key) const;
 
   bool operator==(const char *) const;
 
