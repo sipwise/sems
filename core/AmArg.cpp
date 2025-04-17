@@ -46,6 +46,21 @@ const char* AmArg::t2str(int type) {
   }
 }
 
+AmArg::AmArg(const AmArg& v)
+  : type(v.type) {
+  switch (type) {
+    case Array:
+      value = new ValueArray(*std::get<ValueArray*>(v.value));
+      break;
+    case Struct:
+      value = new ValueStruct(*std::get<ValueStruct*>(v.value));
+      break;
+    default:
+      value = v.value;
+      break;
+  }
+}
+
 AmArg::AmArg(std::map<std::string, std::string>& v)
   : type(Undef) {
   assertStruct();
@@ -231,6 +246,23 @@ AmArg& AmArg::get(size_t idx) const {
     throw OutOfBoundsException();
 
   return (*std::get<ValueArray*>(value))[idx];
+}
+
+AmArg& AmArg::operator=(const AmArg& v) {
+  invalidate();
+  type = v.type;
+  switch (type) {
+    case Array:
+      value = new ValueArray(*std::get<ValueArray*>(v.value));
+      break;
+    case Struct:
+      value = new ValueStruct(*std::get<ValueStruct*>(v.value));
+      break;
+    default:
+      value = v.value;
+      break;
+  }
+  return *this;
 }
 
 AmArg& AmArg::operator[](size_t idx) {

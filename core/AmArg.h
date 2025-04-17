@@ -128,7 +128,7 @@ class AmArg
    : type(Undef)
   { }
 
- AmArg(const AmArg& v) = default;
+ AmArg(const AmArg& v);
 
  AmArg(const int& v)
    : type(Int),
@@ -197,7 +197,7 @@ class AmArg
 
   short getType() const { return type; }
 
-  AmArg& operator=(const AmArg& rhs) = default;
+  AmArg& operator=(const AmArg& rhs);
 
 #define isArgUndef(a) (AmArg::Undef == a.getType())
 #define isArgArray(a) (AmArg::Array == a.getType())
