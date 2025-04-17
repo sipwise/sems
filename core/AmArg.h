@@ -118,7 +118,7 @@ class AmArg
 
   // value
   std::variant<std::monostate, long int, long long int, bool, double, std::string, AmObject*,
-    AmDynInvoke*, ArgBlob, ValueArray, ValueStruct*> value;
+    AmDynInvoke*, ArgBlob, ValueArray, ValueStruct> value;
 
   void invalidate();
 
@@ -263,7 +263,8 @@ class AmArg
   AmObject*       asObject()   const { return std::get<AmObject*>(value); }
   AmDynInvoke*    asDynInv()   const { return std::get<AmDynInvoke*>(value); }
   const ArgBlob&  asBlob()     const { return std::get<ArgBlob>(value); }
-  ValueStruct*    asStruct()   const { return std::get<ValueStruct*>(value); }
+  const ValueStruct& asStruct() const { return std::get<ValueStruct>(value); }
+  ValueStruct& asStruct()            { return std::get<ValueStruct>(value); }
 
   vector<string>     asStringVector()   const;
   vector<int>        asIntVector()      const;

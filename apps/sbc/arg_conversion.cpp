@@ -31,8 +31,8 @@ static string arg2string(const AmArg &a)
     case AmArg::Struct:
       sprintf(tmp, "%c%zd/", STRUCT_LABEL, a.size());
       s = tmp;
-      for (AmArg::ValueStruct::const_iterator it = a.asStruct()->begin();
-           it != a.asStruct()->end(); ++it) {
+      for (AmArg::ValueStruct::const_iterator it = a.asStruct().begin();
+           it != a.asStruct().end(); ++it) {
         sprintf(tmp, "%zd/", it->first.size());
         s += tmp;
         s += it->first;

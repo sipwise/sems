@@ -138,8 +138,8 @@ string arg2json(const AmArg &a) {
 
   case AmArg::Struct:
     s = "{";
-    for (AmArg::ValueStruct::const_iterator it = a.asStruct()->begin();
-	 it != a.asStruct()->end(); it ++) {
+    for (AmArg::ValueStruct::const_iterator it = a.asStruct().begin();
+	 it != a.asStruct().end(); it ++) {
       s += '"'+it->first + "\": ";
       s += arg2json(it->second);
       s += ", ";

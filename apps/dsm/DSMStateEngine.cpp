@@ -831,8 +831,8 @@ void varPrintArg(const AmArg& a, map<string, string>& dst, const string& name) {
       varPrintArg(a.get(i), dst, name+"["+int2str((unsigned int)i)+"]");
     return;
   case AmArg::Struct:
-    for (AmArg::ValueStruct::const_iterator it = a.asStruct()->begin();
-	 it != a.asStruct()->end(); it ++) {
+    for (AmArg::ValueStruct::const_iterator it = a.asStruct().begin();
+	 it != a.asStruct().end(); it ++) {
       varPrintArg(it->second, dst, name+"."+it->first);
     }
     return;

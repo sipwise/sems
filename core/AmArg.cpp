@@ -49,9 +49,6 @@ const char* AmArg::t2str(int type) {
 AmArg::AmArg(const AmArg& v)
   : type(v.type) {
   switch (type) {
-    case Struct:
-      value = new ValueStruct(*std::get<ValueStruct*>(v.value));
-      break;
     default:
       value = v.value;
       break;
@@ -63,7 +60,7 @@ AmArg::AmArg(std::map<std::string, std::string>& v)
   assertStruct();
   for (std::map<std::string, std::string>::iterator it=
 	 v.begin();it!= v.end();it++)
-    (*std::get<ValueStruct*>(value))[it->first] = AmArg(it->second.c_str());
+    std::get<ValueStruct>(value)[it->first] = AmArg(it->second.c_str());
 }
 
 AmArg::AmArg(std::map<std::string, AmArg>& v)
@@ -71,7 +68,7 @@ AmArg::AmArg(std::map<std::string, AmArg>& v)
   assertStruct();
   for (std::map<std::string, AmArg>::iterator it=
 	 v.begin();it!= v.end();it++)
-    (*std::get<ValueStruct*>(value))[it->first] = it->second;
+    std::get<ValueStruct>(value)[it->first] = it->second;
 }
 
 AmArg::AmArg(vector<std::string>& v)
@@ -134,7 +131,7 @@ void AmArg::assertStruct() {
     return;
   if (Undef == type) {
     type = Struct;
-    value = new ValueStruct();
+    value = ValueStruct();
     return;
   }
   throw TypeMismatchException();
@@ -146,7 +143,6 @@ void AmArg::assertStruct() const {
 }
 
 void AmArg::invalidate() {
-  if(type == Struct) { delete std::get<ValueStruct*>(value); }
   type = Undef;
   value = std::monostate();
 }
@@ -158,7 +154,7 @@ void AmArg::push(const AmArg& a) {
 
 void AmArg::push(const string &key, const AmArg &val) {
   assertStruct();
-  (*std::get<ValueStruct*>(value))[key] = val;
+  std::get<ValueStruct>(value)[key] = val;
 }
 
 void AmArg::pop(AmArg &a) {
@@ -207,7 +203,7 @@ size_t AmArg::size() const {
     return std::get<ValueArray>(value).size();
 
   if (Struct == type)
-    return std::get<ValueStruct*>(value)->size();
+    return std::get<ValueStruct>(value).size();
 
   throw TypeMismatchException();
 }
@@ -248,9 +244,6 @@ AmArg& AmArg::operator=(const AmArg& v) {
   invalidate();
   type = v.type;
   switch (type) {
-    case Struct:
-      value = new ValueStruct(*std::get<ValueStruct*>(v.value));
-      break;
     default:
       value = v.value;
       break;
@@ -292,22 +285,22 @@ const AmArg& AmArg::operator[](int idx) const {
 
 AmArg& AmArg::operator[](std::string key) {
   assertStruct();
-  return (*std::get<ValueStruct*>(value))[key];
+  return std::get<ValueStruct>(value)[key];
 }
 
 const AmArg& AmArg::operator[](std::string key) const {
   assertStruct();
-  return (*std::get<ValueStruct*>(value))[key];
+  return std::get<ValueStruct>(value).at(key);
 }
 
 AmArg& AmArg::operator[](const char* key) {
   assertStruct();
-  return (*std::get<ValueStruct*>(value))[key];
+  return std::get<ValueStruct>(value)[key];
 }
 
 const AmArg& AmArg::operator[](const char* key) const {
   assertStruct();
-  return (*std::get<ValueStruct*>(value))[key];
+  return std::get<ValueStruct>(value).at(key);
 }
 
 bool AmArg::operator==(const char *val) const {
@@ -315,40 +308,40 @@ bool AmArg::operator==(const char *val) const {
 }
 
 bool AmArg::hasMember(const char* name) const {
-  return type == Struct && std::get<ValueStruct*>(value)->find(name) != std::get<ValueStruct*>(value)->end();
+  return type == Struct && std::get<ValueStruct>(value).find(name) != std::get<ValueStruct>(value).end();
 }
 
 bool AmArg::hasMember(const string& name) const {
-  return type == Struct && std::get<ValueStruct*>(value)->find(name) != std::get<ValueStruct*>(value)->end();
+  return type == Struct && std::get<ValueStruct>(value).find(name) != std::get<ValueStruct>(value).end();
 }
 
 std::vector<std::string> AmArg::enumerateKeys() const {
   assertStruct();
   std::vector<std::string> res;
-  for (ValueStruct::iterator it =
-	 std::get<ValueStruct*>(value)->begin(); it != std::get<ValueStruct*>(value)->end(); it++)
+  for (ValueStruct::const_iterator it =
+	 std::get<ValueStruct>(value).begin(); it != std::get<ValueStruct>(value).end(); it++)
     res.push_back(it->first);
   return res;
 }
 
 AmArg::ValueStruct::const_iterator AmArg::begin() const {
   assertStruct();
-  return std::get<ValueStruct*>(value)->begin();
+  return std::get<ValueStruct>(value).begin();
 }
 
 AmArg::ValueStruct::const_iterator AmArg::end() const {
   assertStruct();
-  return std::get<ValueStruct*>(value)->end();
+  return std::get<ValueStruct>(value).end();
 }
 
 void AmArg::erase(const char* name) {
   assertStruct();
-  std::get<ValueStruct*>(value)->erase(name);
+  std::get<ValueStruct>(value).erase(name);
 }
 
 void AmArg::erase(const std::string& name) {
   assertStruct();
-  std::get<ValueStruct*>(value)->erase(name);
+  std::get<ValueStruct>(value).erase(name);
 }
 
 void AmArg::assertArrayFmt(const char* format) const {
@@ -435,8 +428,8 @@ string AmArg::print(const AmArg &a) {
       return s;
     case Struct:
       s = "{";
-      for (AmArg::ValueStruct::const_iterator it = a.asStruct()->begin();
-          it != a.asStruct()->end(); it ++) {
+      for (AmArg::ValueStruct::const_iterator it = a.asStruct().begin();
+          it != a.asStruct().end(); it ++) {
         s += "'"+it->first + "': ";
         s += print(it->second);
         s += ", ";
