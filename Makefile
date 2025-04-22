@@ -114,8 +114,8 @@ rpmtar:
   
 .PHONY: doc
 doc:
-	make -C doc/ doc
+	$(MAKE) -C doc/ doc
 
 .PHONY: fulldoc
 fulldoc:
-	make -C doc/ fulldoc
+	$(MAKE) -C doc/ fulldoc
