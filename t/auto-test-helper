@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+set -x
+
+NAME=$1
+shift
+BINARY=$1
+shift
+
+export BINARY
+
+rm -rf fake-"$NAME"-sockets
+mkdir fake-"$NAME"-sockets
+LD_PRELOAD=t/tests-preload.so TEST_SOCKET_PATH=./fake-"$NAME"-sockets \
+	G_DEBUG=fatal-warnings "$@"
+test "$(ls fake-"$NAME"-sockets)" = ""
+rmdir fake-"$NAME"-sockets

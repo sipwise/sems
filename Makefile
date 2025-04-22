@@ -21,6 +21,8 @@ clean:
 			$(MAKE) -C $$r clean ; \
 		fi ; \
 	done
+	rm -f t/*.so
+	rm -rf t/run
 
 .PHONY: modules
 modules:
@@ -119,3 +121,13 @@ doc:
 .PHONY: fulldoc
 fulldoc:
 	$(MAKE) -C doc/ fulldoc
+
+.PHONY: check
+check:
+	$(MAKE) t/tests-preload.so
+	rm -rf t/run
+	mkdir t/run
+	for X in t/test-*.py; do t/auto-test-helper $$(basename "$$X") "core/$(NAME)" "$$X"; done
+
+t/tests-preload.so: t/tests-preload.c
+	$(CC) -g -pthread -D_GNU_SOURCE -std=c11 -o $@ -shared -fPIC $< -ldl -lm
