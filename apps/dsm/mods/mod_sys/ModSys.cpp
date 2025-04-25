@@ -247,14 +247,33 @@ EXEC_ACTION_START(SCUnlinkArrayAction) {
   }
 } EXEC_ACTION_END;
 
+/**
+ * Must only be used with awareness that dst directory exists,
+ * e.g. with `sys.mkdir` from this lib.
+ * Later, removal not handled automatically, so must be unlinked
+ * with something like `sys.unlink` from this lib.
+ */
+CONST_ACTION_2P(SCTmpNamAction, ',', true);
 EXEC_ACTION_START(SCTmpNamAction) {
-  string varname = resolveVars(arg, sess, sc_sess, event_params);
-  char fname[L_tmpnam];
-  if (!tmpnam(fname)) {
+
+  string varname = resolveVars(par1, sess, sc_sess, event_params);
+  string directory = resolveVars(par2, sess, sc_sess, event_params);
+
+  /* XXXXXX is required for mkstemp, this will be swapped with some random chars */
+  string path_template = directory + "/" + varname + "XXXXXX";
+
+  /* TODO: C-like strings here, possibly to rework later using C++ strings only? */
+  char tmpl[path_template.size() + 1];
+  strcpy(tmpl, path_template.c_str());
+
+  int fd = mkstemp(tmpl);
+
+  if (fd == -1) {
     ERROR("unique name cannot be generated\n");
     sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
   } else {
-    sc_sess->var[varname] = fname;
+    close(fd); /* not needed atm */
+    sc_sess->var[varname] = tmpl;
     sc_sess->SET_ERRNO(DSM_ERRNO_OK);
   }
 } EXEC_ACTION_END;
