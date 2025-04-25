@@ -1402,7 +1402,7 @@ EXEC_ACTION_START(SCDIAction) {
 	
 	string varname = lb->first.substr(varprefix.length());
 	if (varname.find(".") == string::npos)
-	  var_struct[varname] = lb->second;
+	  var_struct[std::move(varname)] = lb->second;
 	else
 	  string2argarray(varname, lb->second, var_struct);
 	
