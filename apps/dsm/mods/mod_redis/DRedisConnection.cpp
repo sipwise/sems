@@ -113,11 +113,10 @@ int DRedisConnection::handle_redis_reply(redisReply *reply, const char* _cmd) {
 
   case REDIS_REPLY_STATUS:
   case REDIS_REPLY_STRING:
-    if (reply->len>=0) {
-      if (cfg.full_logging) {
-        DBG("REDIS %s: str: %.*s\n", _cmd, (int) reply->len, reply->str);
-      }
-    } break;
+    if (cfg.full_logging) {
+        DBG("REDIS %s: str: '%.*s'\n", _cmd, (int) reply->len, reply->str);
+    }
+    break;
 
   case REDIS_REPLY_INTEGER:
     if (cfg.full_logging) {
