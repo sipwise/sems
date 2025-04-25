@@ -63,13 +63,15 @@ bool DRedisConnection::connect()
 						cfg.tv_timeout);
   }
 
-  if (redis_context != NULL && redis_context->err) {
-    ERROR("REDIS Connection error: %s\n", redis_context->errstr);
-    disconnect();
-    return false;
-  }
-
   if (redis_context != NULL) {
+
+    /* handle connection error */
+    if (redis_context->err) {
+      ERROR("REDIS Connection error: %s\n", redis_context->errstr);
+      disconnect();
+      return false;
+    }
+
     int socketFd = redis_context->fd;
     struct sockaddr_in addr;
     socklen_t len = sizeof(addr);
@@ -77,6 +79,9 @@ bool DRedisConnection::connect()
     if (getsockname(socketFd, (struct sockaddr*)&addr, &len) == 0 && addr.sin_family == AF_INET) {
          DBG("Allocated an ephemeral port for this redis connection: '%u'\n", (unsigned int)ntohs(addr.sin_port));
     }
+  } else {
+    ERROR("REDIS Connection error: %s\n", redis_context->errstr);
+    return false;
   }
 
   return true;
