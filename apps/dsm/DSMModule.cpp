@@ -55,10 +55,10 @@ bool isNumber(const std::string& s) {
   return true;
 }
 
-string resolveVars(const string ts, AmSession* sess,
+string resolveVars(const string& _s, AmSession* sess,
 		   DSMSession* sc_sess, map<string,string>* event_params,
 		   bool eval_ops) {
-  string s = ts;
+  string s = _s;
   if (s.length()) {
 
     if(eval_ops) {

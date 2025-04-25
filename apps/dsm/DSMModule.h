@@ -338,7 +338,7 @@ class SCStrArgAction
 #define EXEC_ACTION_STOP			\
   return false;
 
-string resolveVars(const string s, AmSession* sess,
+string resolveVars(const string &s, AmSession* sess,
 		   DSMSession* sc_sess, map<string,string>* event_params,
 		   bool eval_ops = false);
 
