@@ -308,7 +308,7 @@ EXEC_ACTION_START(MODSBCActionProfileSet) {
     EXEC_ACTION_STOP;
   }
 
-  if (profile_param == "aleg_rtprelay_interface") {
+  else if (profile_param == "aleg_rtprelay_interface") {
     profile->aleg_rtprelay_interface=value;
     if (!profile->evaluateRTPRelayAlegInterface()) {
       sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
@@ -319,13 +319,13 @@ EXEC_ACTION_START(MODSBCActionProfileSet) {
     EXEC_ACTION_STOP;
   }
 
-  if (profile_param == "message_filter") {
+  else if (profile_param == "message_filter") {
     mf.filter_type = String2FilterType(value.c_str());
     DBG("message_filter set to '%s'\n", value.c_str());
     EXEC_ACTION_STOP;
   }
 
-  if (profile_param == "message_list") {
+  else if (profile_param == "message_list") {
     vector<string> elems = explode(value, ",");
     for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++)
       mf.filter_list.insert(*it);
