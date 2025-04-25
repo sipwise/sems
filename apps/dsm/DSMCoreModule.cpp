@@ -1409,7 +1409,10 @@ EXEC_ACTION_START(SCDIAction) {
 	lb++;
 	//has_vars = true;
       }
-      di_args.push(var_struct);
+
+      if (var_struct.getType() != AmArg::Undef)
+        di_args.push(var_struct);
+
     } else if (p.length() > 7 &&  
 	       p.substr(0, 7) =="(array)") {
       p.erase(0, 7);
