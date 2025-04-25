@@ -170,7 +170,7 @@ EXEC_ACTION_START(ConfJoinAction) {
       // save channel for later use
       AmArg c_arg;
       c_arg.setBorrowedPointer(dsm_chan);
-      sc_sess->avar[CONF_AKEY_CHANNEL] = c_arg;
+      sc_sess->avar[CONF_AKEY_CHANNEL] = std::move(c_arg);
       
       // add to garbage collector
       sc_sess->transferOwnership(dsm_chan);
@@ -279,7 +279,7 @@ EXEC_ACTION_START(ConfTeeJoinAction) {
     // remember DSMTeeConfChannel in session avar
     AmArg c_arg;
     c_arg.setBorrowedPointer(chan);
-    sc_sess->avar[conf_varname] = c_arg;
+    sc_sess->avar[conf_varname] = std::move(c_arg);
     
     // add to garbage collector
     sc_sess->transferOwnership(chan);
@@ -380,7 +380,7 @@ EXEC_ACTION_START(ConfSetupMixInAction) {
     m_obj = new DSMDisposableT<AmAudioMixIn >(m);
     AmArg c_arg;
     c_arg.setBorrowedPointer(m_obj);
-    sc_sess->avar[CONF_AKEY_MIXER] = c_arg;
+    sc_sess->avar[CONF_AKEY_MIXER] = std::move(c_arg);
       
     // add to garbage collector
     sc_sess->transferOwnership(m_obj);
@@ -429,7 +429,7 @@ EXEC_ACTION_START(ConfPlayMixInListAction) {
     l_obj = new DSMDisposableT<AmPlaylist >(pl);
     AmArg c_arg;
     c_arg.setBorrowedPointer(l_obj);
-    sc_sess->avar[CONF_AKEY_MIXLIST] = c_arg;
+    sc_sess->avar[CONF_AKEY_MIXLIST] = std::move(c_arg);
       
     // add to garbage collector
     sc_sess->transferOwnership(l_obj);
