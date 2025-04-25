@@ -99,7 +99,11 @@ int DRedisConnection::handle_redis_reply(redisReply *reply, const char* _cmd) {
       ERROR("REDIS Protocol error detected\n");
       disconnect();
       return DB_E_CONNECTION;
-    }    
+
+    default:
+      disconnect();
+      return DB_E_CONNECTION;
+    }
   }
 
   switch (reply->type) {
