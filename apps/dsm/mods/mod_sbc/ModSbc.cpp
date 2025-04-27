@@ -332,7 +332,7 @@ EXEC_ACTION_START(MODSBCActionProfileSet) {
       mf.filter_list.insert(*it);
     }
     mf.filter_type = Undefined;
-    profile->messagefilter.push_back(mf);
+    profile->messagefilter.push_back(std::move(mf));
     DBG("message_list set to '%s'\n", value.c_str());
     EXEC_ACTION_STOP;
   }
