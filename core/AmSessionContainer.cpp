@@ -572,7 +572,7 @@ AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
   }
   else {
     // save session parameters
-    session->app_params = app_params;
+    session->app_params = std::move(app_params);
   }
 
   return session;
