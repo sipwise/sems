@@ -207,15 +207,15 @@ void AmSessionContainer::destroySession(AmSession* s)
 
 string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_name, const AmArg* session_params)
 {
-  unique_ptr<AmSession> session;
-
   try {
+    unique_ptr<AmSession> session;
+
     session.reset(createSession(req, app_name, session_params));
 
     if (session.get() != 0) {
       session->dlg->initFromLocalRequest(req);
       session->setCallgroup(req.from_tag);
-      
+
       switch(addSession(req.from_tag,session.get()))
       {
         case AmSessionContainer::Inserted:
@@ -257,6 +257,8 @@ string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_
         AmEventDispatcher::instance()->delEventQueue(req.from_tag);
         throw;
       }
+
+      session.release();
     }
   }
   catch(const AmSession::Exception& e){
@@ -272,7 +274,6 @@ string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_
     return "";
   }
 
-  session.release();
   return req.from_tag;
 }
 
