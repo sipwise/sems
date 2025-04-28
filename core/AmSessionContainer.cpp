@@ -258,6 +258,7 @@ string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_
         throw;
       }
 
+      /* the session ownership transferred to session container in addSession() */
       session.release();
     }
   }
@@ -329,6 +330,7 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
       }
 
       session->postEvent(new AmSipRequestEvent(req));
+      /* the session ownership transferred to session container in addSession() */
       session.release();
     }
   }
