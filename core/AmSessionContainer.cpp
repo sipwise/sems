@@ -208,9 +208,8 @@ void AmSessionContainer::destroySession(AmSession* s)
 string AmSessionContainer::startSessionUAC(const AmSipRequest& req, string& app_name, const AmArg* session_params)
 {
   try {
-    unique_ptr<AmSession> session;
 
-    session.reset(createSession(req, app_name, session_params));
+    auto session = unique_ptr<AmSession>(createSession(req, app_name, session_params));
 
     if (session.get() != 0) {
       session->dlg->initFromLocalRequest(req);
@@ -282,10 +281,8 @@ void AmSessionContainer::startSessionUAS(AmSipRequest& req)
 {
   try {
     /* Call-ID and From-Tag are unknown: it's a new session */
-    unique_ptr<AmSession> session;
     string app_name;
-
-    session.reset(createSession(req,app_name));
+    auto session = unique_ptr<AmSession>(createSession(req, app_name));
 
     if (session.get() != 0) {
       /* update session's local tag (ID) if not already set */
