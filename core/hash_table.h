@@ -123,26 +123,12 @@ protected:
     value_list     elmts;
 };
 
-template<class Value>
-class ht_delete
-{
-public:
-    Value* new_elmt(Value* v) {
-	return v;
-    }
-    void dispose(Value* v) {
-	delete v;
-    }
-};
-
-template<class Key, class Value, 
-	 class ElmtAlloc = ht_delete<Value>,
+template<class Key, class Value,
 	 class ElmtCompare = less<Key> >
 class ht_map_bucket: public AmMutex
 {
 public:
     typedef map<Key,Value*,ElmtCompare> value_map;
-    typedef ElmtAlloc                   allocator;
 
     ht_map_bucket(unsigned long id) : id(id) {}
     virtual ~ht_map_bucket() {}
@@ -167,9 +153,8 @@ public:
      * Insert the value into this bucket.
      */
     virtual bool insert(const Key& k, Value* v) {
-	v = ElmtAlloc().new_elmt(v);
 	bool res = elmts.insert(typename value_map::value_type(k,v)).second;
-	if(!res) ElmtAlloc().dispose(v);
+	if(!res) delete v;
 	return res;
     }
 
@@ -183,7 +168,7 @@ public:
 	if(it != elmts.end()){
 	    Value* v = it->second;
 	    elmts.erase(it);
-	    ElmtAlloc().dispose(v);
+	    delete v;
 	    return true;
 	}
 	return false;

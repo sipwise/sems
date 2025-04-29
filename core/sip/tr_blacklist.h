@@ -27,7 +27,6 @@ struct bl_addr_less
 struct bl_entry;
 
 typedef ht_map_bucket<bl_addr,bl_entry,
-		      ht_delete<bl_entry>,
 		      bl_addr_less> bl_bucket_base;
 
 class blacklist_bucket

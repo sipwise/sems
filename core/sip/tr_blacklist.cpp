@@ -75,7 +75,7 @@ bool blacklist_bucket::remove(const bl_addr& addr)
     bl_entry* v = it->second;
     wheeltimer::instance()->remove_timer(v->t);
     elmts.erase(it);
-    allocator().dispose(v);
+    delete v;
     return true;
   }
 
