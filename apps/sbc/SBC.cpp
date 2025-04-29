@@ -524,7 +524,7 @@ void SBCFactory::reloadProfiles(const AmArg& args, AmArg& ret) {
     profile_list.push(p);
   }
   if (!failed) {
-    call_profiles = new_call_profiles;
+    call_profiles = std::move(new_call_profiles);
     ret.push(200);
   } else {
     ret.push(500);
