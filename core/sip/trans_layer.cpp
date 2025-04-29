@@ -1364,7 +1364,8 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 		msg_buffer = tt->_t->retr_buf;
 		msg_len = tt->_t->retr_len;
 	    }
-	    else {
+		/* p_msg could have been freed already by update_uac_request() */
+	    else if (p_msg) {
 		msg_buffer = p_msg->buf;
 		msg_len = p_msg->len;
 	    }
@@ -2098,7 +2099,9 @@ int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	    t->retr_socket = msg->local_socket;
 
 	    // remove the message;
+
 	    delete msg;
+	    msg = NULL;
 	}
 
 	return 0;
