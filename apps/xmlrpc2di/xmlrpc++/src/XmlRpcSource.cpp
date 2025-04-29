@@ -34,7 +34,7 @@ namespace XmlRpc {
     if (_deleteOnClose) {
       XmlRpcUtil::log(2,"XmlRpcSource::close: deleting this");
       _deleteOnClose = false;
-      delete this;
+      delete this; /* the one who is the last turns off the light */
     }
   }
 
