@@ -2065,7 +2065,7 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
 }
 
 int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
-				     sip_msg* msg)
+				     sip_msg*& msg)
 {
     if(msg->u.request->method != sip_request::ACK){
 	t = bucket->add_trans(msg,TT_UAC);
