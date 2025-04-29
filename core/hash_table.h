@@ -135,19 +135,6 @@ public:
     }
 };
 
-template<class Value>
-class ht_ref_cnt
-{
-public:
-    Value* new_elmt(Value* v) {
-	inc_ref(v);
-	return v;
-    }
-    void dispose(Value* v) {
-	dec_ref(v);
-    }
-};
-
 template<class Key, class Value, 
 	 class ElmtAlloc = ht_delete<Value>,
 	 class ElmtCompare = less<Key> >
