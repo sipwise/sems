@@ -1,5 +1,4 @@
 #include "tr_blacklist.h"
-#include <string.h>
 
 #include "hash.h"
 
@@ -28,14 +27,6 @@ unsigned int bl_addr::hash()
 {
   return hashlittle((sockaddr_storage*)this, SA_len(this), 0)
     & BLACKLIST_HT_MASK;
-}
-
-bool bl_addr_less::operator() (const bl_addr& l, const bl_addr& r) const
-{
-  if(l.ss_family != r.ss_family)
-    return l.ss_family < r.ss_family;
-
-  return memcmp(&l,&r,SA_len(&l));
 }
 
 void bl_timer::fire()

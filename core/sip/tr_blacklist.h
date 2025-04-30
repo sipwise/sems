@@ -7,6 +7,8 @@
 #include "ip_util.h"
 #include "wheeltimer.h"
 
+#include <string.h>
+
 /**
  * Blacklist bucket: key type
  */
@@ -19,15 +21,41 @@ struct bl_addr: public sockaddr_storage
   unsigned int hash();
 };
 
-struct bl_addr_less
-{
-  bool operator() (const bl_addr& l, const bl_addr& r) const;
+template<> struct std::less<bl_addr> {
+  bool operator() (const bl_addr& l, const bl_addr& r) const
+  {
+    if(l.ss_family != r.ss_family) {
+      return l.ss_family < r.ss_family;
+    }
+
+    struct sockaddr_in* l_v4 = (struct sockaddr_in*)&l;
+    struct sockaddr_in* r_v4 = (struct sockaddr_in*)&r;
+
+    struct sockaddr_in6* l_v6 = (struct sockaddr_in6*)&l;
+    struct sockaddr_in6* r_v6 = (struct sockaddr_in6*)&r;
+
+    if(l.ss_family == AF_INET) {
+      if(l_v4->sin_addr.s_addr != r_v4->sin_addr.s_addr) {
+	return l_v4->sin_addr.s_addr < r_v4->sin_addr.s_addr;
+      }
+      return l_v4->sin_port < r_v4->sin_port;
+    }
+
+    int ret = memcmp((void*)&l_v6->sin6_addr,
+		     (void*)&r_v6->sin6_addr,
+		     sizeof(struct in6_addr));
+
+    if(ret != 0) {
+      return ret < 0;
+    }
+
+    return l_v6->sin6_port < r_v6->sin6_port;
+  }
 };
 
 struct bl_entry;
 
-typedef ht_map_bucket<bl_addr,bl_entry,
-		      bl_addr_less> bl_bucket_base;
+typedef ht_map_bucket<bl_addr,bl_entry> bl_bucket_base;
 
 class blacklist_bucket
   : public bl_bucket_base
