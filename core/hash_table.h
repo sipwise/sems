@@ -36,8 +36,10 @@
 
 #include <list>
 #include <map>
+#include <unordered_map>
 using std::list;
 using std::map;
+using std::unordered_map;
 using std::less;
 
 
@@ -253,6 +255,58 @@ public:
     }
 
     unsigned long get_size() { return size; }
+};
+
+template<class Key, class Value, class Container>
+class hash_map : public AmMutex
+{
+public:
+    using parent = Container;
+    using iterator = parent::iterator;
+    using const_iterator = parent::const_iterator;
+
+    hash_map() {}
+    virtual ~hash_map() {}
+
+    virtual void dump_elmt(const Key& k, const Value& v) const = 0;
+
+    // debug method
+    void dump() {
+      	std::lock_guard<AmMutex> _l(*this);
+
+	if(empty())
+	    return;
+
+	for(auto it = cbegin();
+	    it != cend(); ++it) {
+	    dump_elmt(it->first, it->second);
+	}
+    }
+
+    // wrappers
+    bool empty() const { return elems.empty(); }
+    iterator begin() { return elems.begin(); }
+    const_iterator cbegin() const { return elems.cbegin(); }
+    iterator end() { return elems.end(); }
+    const_iterator cend() const { return elems.cend(); }
+    size_t erase(const Key& k) { return elems.erase(k); }
+    iterator erase(iterator it) { return elems.erase(it); }
+    iterator find(const Key& k) { return elems.find(k); }
+    const_iterator find(const Key& k) const { return elems.find(k); }
+    std::pair<iterator, bool> insert(const std::pair<const Key&, const Value &>& value) { return elems.insert(value); }
+
+private:
+    Container elems;
+};
+
+template<class Key, class Value>
+class ordered_hash_map : public hash_map<Key, Value, map<Key, Value>>
+{
+};
+
+template<class Key, class Value>
+class unordered_hash_map : public hash_map<Key, Value, unordered_map<Key, Value>>
+{
 };
 
 
