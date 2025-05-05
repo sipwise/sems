@@ -131,22 +131,18 @@ string ContactHash::getAlias(const string& contact_uri,
   if(it == end())
     return string();
 
-  return *it->second;
+  return it->second;
 }
 
 void ContactHash::remove(const string& contact_uri, const string& remote_ip,
 			   unsigned short remote_port)
 {
-  auto it = find(ContactKey(contact_uri, remote_ip, remote_port));
-  if (it != end()) {
-    delete it->second;
-    erase(it);
-  }
+  erase(ContactKey(contact_uri, remote_ip, remote_port));
 }
 
-void ContactHash::dump_elmt(const ContactKey& key, string* const& alias) const
+void ContactHash::dump_elmt(const ContactKey& key, const string& alias) const
 {
-  DBG("'%s/%s:%u' -> %s", key.uri.c_str(), key.ip.c_str(), key.port, alias? alias->c_str() : "NULL");
+  DBG("'%s/%s:%u' -> %s", key.uri.c_str(), key.ip.c_str(), key.port, alias.c_str());
 }
 
 struct RegCacheLogHandler
@@ -265,7 +261,7 @@ _RegisterCache::compute_alias_hash(const string& aor, const string& contact_uri,
 void ContactHash::insert(const string& contact_uri, const string& remote_ip,
 			   unsigned short remote_port, const string& alias)
 {
-  insert(make_pair(ContactKey(contact_uri, remote_ip, remote_port), new string(alias)));
+  insert(make_pair(ContactKey(contact_uri, remote_ip, remote_port), alias));
 }
 
 bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,

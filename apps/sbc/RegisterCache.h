@@ -189,15 +189,10 @@ template<> struct std::equal_to<ContactKey> {
 };
 
 class ContactHash
-  : public unordered_hash_map<ContactKey, string*>
+  : public unordered_hash_map<ContactKey, string>
 {
 public:
-  ~ContactHash() {
-    for (auto it = begin(); it != end(); it++)
-      delete it->second;
-  }
-
-  using unordered_hash_map<ContactKey, string*>::insert;
+  using unordered_hash_map<ContactKey, string>::insert;
 
   void insert(const string& contact_uri, const string& remote_ip,
 	      unsigned short remote_port, const string& alias);
@@ -208,7 +203,7 @@ public:
   void remove(const string& contact_uri, const string& remote_ip,
 	      unsigned short remote_port);
 
-  void dump_elmt(const ContactKey& key, string* const& alias) const;
+  void dump_elmt(const ContactKey& key, const string& alias) const;
 };
 
 class _RegisterCache
