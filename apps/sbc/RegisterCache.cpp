@@ -76,15 +76,6 @@ void AorHash::gbc(long int now,
   }
 }
 
-AliasEntry* AliasHash::getContact(const string& alias)
-{
-  auto it = find(alias);
-  if(it == end())
-    return NULL;
-
-  return it->second;
-}
-
 void AliasEntry::fire()
 {
   AmArg ev;
@@ -102,10 +93,10 @@ void AliasEntry::fire()
   SBCEventLog::instance()->logEvent(alias,"ua-reg-expired",ev);
 }
 
-void AliasHash::dump_elmt(const string& alias, AliasEntry* const& p_ae) const
+void AliasHash::dump_elmt(const string& alias, const AliasEntry& p_ae) const
 {
   DBG("'%s' -> '%s'", alias.c_str(),
-      p_ae ? p_ae->contact_uri.c_str() : "NULL");
+      p_ae.contact_uri.c_str());
 }
 
 string ContactHash::getAlias(const string& contact_uri,
@@ -358,16 +349,15 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   // and update binding
   binding->reg_expire = reg_expires;
 
-  AliasEntry* alias_e = id_idx.getContact(alias);
+  auto alias_e_it = id_idx.find(alias);
   // if no alias map entry, insert a new one
-  if(!alias_e) {
+  if (alias_e_it == id_idx.end()) {
     DBG("inserting alias map entry: '%s' -> '%s'",
 	alias.c_str(), uri.c_str());
-    alias_e = new AliasEntry(alias_update);
-    id_idx.insert(make_pair(alias, alias_e));
+    alias_e_it = id_idx.insert(make_pair(alias, AliasEntry(alias_update))).first;
   }
   else {
-    *alias_e = alias_update;
+    alias_e_it->second = alias_update;
   }
 
 #if 0 // disabled UA-timer
@@ -377,7 +367,7 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
 #endif
   
   if(storage_handler.get())
-    storage_handler->onUpdate(canon_aor,alias,reg_expires,*alias_e);
+    storage_handler->onUpdate(canon_aor,alias,reg_expires, alias_e_it->second);
 }
 
 void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update)
@@ -468,19 +458,17 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 
   lock_guard<AmMutex> _id_l(id_idx);
 
-  AliasEntry* alias_e = id_idx.getContact(binding->alias);
+  auto alias_e_it = id_idx.find(binding->alias);
   // if no alias map entry, insert a new one
-  if(!alias_e) {
+  if (alias_e_it == id_idx.end()) {
     DBG("inserting alias map entry: '%s' -> '%s'",
 	binding->alias.c_str(), uri.c_str());
-    alias_e = new AliasEntry(alias_update);
-    alias_e->alias = binding->alias;
-    id_idx.insert(make_pair(binding->alias, alias_e));
+    alias_e_it = id_idx.insert(make_pair(binding->alias, AliasEntry(alias_update))).first;
   }
-  else {
-    *alias_e = alias_update;
-    alias_e->alias = binding->alias;
-  }
+  else
+    alias_e_it->second = alias_update;
+
+  alias_e_it->second.alias = binding->alias;
 
 #if 0 // disabled UA-timer
   if(alias_e->ua_expire) {
@@ -490,7 +478,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   
   if(storage_handler.get())
     storage_handler->onUpdate(canon_aor,binding->alias,
-			      reg_expires,*alias_e);
+			      reg_expires, alias_e_it->second);
 }
 
 bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires)
@@ -498,9 +486,9 @@ bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires
   bool res = false;
   lock_guard<AmMutex> _id_l(id_idx);
 
-  AliasEntry* alias_e = id_idx.getContact(alias);
-  if(alias_e) {
-    alias_e->ua_expire = ua_expires;
+  auto alias_e_it = id_idx.find(alias);
+  if (alias_e_it != id_idx.end()) {
+    alias_e_it->second.ua_expire = ua_expires;
 #if 0 // disabled UA-timer
     if(alias_e->ua_expire)
       setAliasUATimer(alias_e);
@@ -586,42 +574,41 @@ void _RegisterCache::removeAlias(const string& alias, bool generate_event)
   lock_guard<AmMutex> _id_l(id_idx);
 
   auto ae_it = id_idx.find(alias);
-  if (ae_it != id_idx.end() && ae_it->second) {
+  if (ae_it != id_idx.end()) {
 #if 0 // disabled UA-timer
     if(ae->ua_expire)
       removeAliasUATimer(ae);
 #endif
-    auto ae = ae_it->second;
+    auto& ae = ae_it->second;
 
     if(generate_event) {
       AmArg ev;
-      ev["aor"]      = ae->aor;
-      ev["to"]       = ae->aor;
-      ev["contact"]  = ae->contact_uri;
-      ev["source"]   = ae->source_ip;
-      ev["src_port"] = ae->source_port;
-      ev["from-ua"]  = ae->remote_ua;
+      ev["aor"]      = ae.aor;
+      ev["to"]       = ae.aor;
+      ev["contact"]  = ae.contact_uri;
+      ev["source"]   = ae.source_ip;
+      ev["src_port"] = ae.source_port;
+      ev["from-ua"]  = ae.remote_ua;
     
       DBG("Alias expired @registrar (UA/%li): '%s' -> '%s'\n",
-	  (long)(AmAppTimer::instance()->unix_clock.get() - ae->ua_expire),
-	  ae->alias.c_str(),ae->aor.c_str());
+	  (long)(AmAppTimer::instance()->unix_clock.get() - ae.ua_expire),
+	  ae.alias.c_str(), ae.aor.c_str());
 
-      SBCEventLog::instance()->logEvent(ae->alias,"reg-expired",ev);
+      SBCEventLog::instance()->logEvent(ae.alias, "reg-expired", ev);
     }
 
     {
       lock_guard<AmMutex> _cl(contact_idx);
-      contact_idx.remove(ae->contact_uri, ae->source_ip, ae->source_port);
+      contact_idx.remove(ae.contact_uri, ae.source_ip, ae.source_port);
     }
 
     // dec stats
     active_regs--;
 
-    storage_handler->onDelete(ae->aor,
-			      ae->contact_uri,
-			      ae->alias);
+    storage_handler->onDelete(ae.aor,
+			      ae.contact_uri,
+			      ae.alias);
 
-    delete ae;
     id_idx.erase(ae_it);
   }
 }
@@ -660,9 +647,9 @@ bool _RegisterCache::findAliasEntry(const string& alias, AliasEntry& alias_entry
 
   lock_guard<AmMutex> _id_l(id_idx);
   
-  AliasEntry* a = id_idx.getContact(alias);
-  if(a) {
-    alias_entry = *a;
+  auto it = id_idx.find(alias);
+  if (it != id_idx.end()) {
+    alias_entry = it->second;
     res = true;
   }
 

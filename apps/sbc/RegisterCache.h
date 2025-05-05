@@ -123,17 +123,10 @@ struct RegisterCacheCtx
  *   Alias -> Contact-URI
  */
 class AliasHash
-  : public unordered_hash_map<string, AliasEntry*>
+  : public unordered_hash_map<string, AliasEntry>
 {
 public:
-  ~AliasHash() {
-    for (auto it = begin(); it != end(); it++)
-      delete it->second;
-  }
-
-  AliasEntry* getContact(const string& alias);
-
-  void dump_elmt(const string& alias, AliasEntry* const& ae) const;
+  void dump_elmt(const string& alias, const AliasEntry& ae) const;
 };
 
 /**
