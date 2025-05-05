@@ -24,23 +24,13 @@ static string unescape_sip(const string& str)
   return str;
 }
 
-AorEntry* AorHash::get(const string& aor)
-{
-  auto it = find(aor);
-  if(it == end())
-    return NULL;
-  
-  return it->second;
-}
-
 void AorHash::dump_elmt(const string& aor,
-			  AorEntry* const& p_aor_entry) const
+			  const AorEntry& p_aor_entry) const
 {
   DBG("'%s' ->", aor.c_str());
-  if(!p_aor_entry) return;
 
-  for(AorEntry::const_iterator it = p_aor_entry->begin();
-      it != p_aor_entry->end(); it++) {
+  for (AorEntry::const_iterator it = p_aor_entry.begin();
+      it != p_aor_entry.end(); it++) {
 
     if(it->second) {
       const RegBinding* b = it->second;
@@ -54,35 +44,30 @@ void AorHash::gbc(long int now,
 		    list<string>& alias_list)
 {
   for(auto it = begin(); it != end();) {
+    AorEntry& aor_e = it->second;
 
-    AorEntry* aor_e = it->second;
-    if(aor_e) {
+    for (AorEntry::iterator reg_it = aor_e.begin();
+	reg_it != aor_e.end();) {
 
-      for(AorEntry::iterator reg_it = aor_e->begin();
-	  reg_it != aor_e->end();) {
+      RegBinding* binding = reg_it->second;
 
-	RegBinding* binding = reg_it->second;
+      if(binding && (binding->reg_expire <= now)) {
 
-	if(binding && (binding->reg_expire <= now)) {
+	alias_list.push_back(binding->alias);
+	AorEntry::iterator del_it = reg_it++;
 
-	  alias_list.push_back(binding->alias);
-	  AorEntry::iterator del_it = reg_it++;
+	DBG("delete binding: '%s' -> '%s' (%li <= %li)",
+	    del_it->first.c_str(),binding->alias.c_str(),
+	    binding->reg_expire,now);
 
-	  DBG("delete binding: '%s' -> '%s' (%li <= %li)",
-	      del_it->first.c_str(),binding->alias.c_str(),
-	      binding->reg_expire,now);
-
-	  delete binding;
-	  aor_e->erase(del_it);
-	  continue;
-	}
-	reg_it++;
+	delete binding;
+	it->second.erase(del_it);
+	continue;
       }
+      reg_it++;
     }
-    if(!aor_e || aor_e->empty()) {
+    if(it->second.empty()) {
       DBG("delete empty AOR: '%s'", it->first.c_str());
-      if (aor_e)
-	delete aor_e;
       auto del_it = it++;
       erase(del_it);
       continue;
@@ -275,10 +260,11 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   bool alias_found = false;
   lock_guard<AmMutex> _rl(reg_cache_ht);
 
-  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
-  if(aor_e){
-    AorEntry::iterator binding_it = aor_e->find(uri + "/" + public_ip);
-    if((binding_it != aor_e->end()) && binding_it->second) {
+  auto aor_e_it = reg_cache_ht.find(canon_aor);
+  if (aor_e_it != reg_cache_ht.end()) {
+    auto& aor_e = aor_e_it->second;
+    AorEntry::iterator binding_it = aor_e.find(uri + "/" + public_ip);
+    if ((binding_it != aor_e.end()) && binding_it->second) {
       alias_found = true;
       out_binding = *binding_it->second;
     }
@@ -332,17 +318,16 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
 
   // Try to get the existing binding
   RegBinding* binding = NULL;
-  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
-  if(!aor_e) {
+  auto aor_e_it = reg_cache_ht.find(canon_aor);
+  if (aor_e_it == reg_cache_ht.end()) {
     // insert AorEntry if none
-    aor_e = new AorEntry();
-    reg_cache_ht.insert(make_pair(canon_aor, aor_e));
+    aor_e_it = reg_cache_ht.insert(make_pair(canon_aor, AorEntry())).first;
     DBG("inserted new AOR '%s'",canon_aor.c_str());
   }
   else {
     string idx = uri + "/" + public_ip;
-    AorEntry::iterator binding_it = aor_e->find(idx);
-    if(binding_it != aor_e->end()) {
+    AorEntry::iterator binding_it = aor_e_it->second.find(idx);
+    if(binding_it != aor_e_it->second.end()) {
       binding = binding_it->second;
     }
   }
@@ -351,7 +336,7 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
     // insert one if none exist
     binding = new RegBinding();
     binding->alias = alias;
-    aor_e->insert(AorEntry::value_type(uri + "/" + public_ip,binding));
+    aor_e_it->second.insert(AorEntry::value_type(uri + "/" + public_ip,binding));
     DBG("inserted new binding: '%s' -> '%s'",
 	uri.c_str(), alias.c_str());
 
@@ -418,12 +403,12 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 
   // Try to get the existing binding
   RegBinding* binding = NULL;
-  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
-  if(aor_e) {
+  auto aor_e_it = reg_cache_ht.find(canon_aor);
+  if (aor_e_it != reg_cache_ht.end()) {
     // take the first, as we do not expect others to be here
-    AorEntry::iterator binding_it = aor_e->begin();
+    AorEntry::iterator binding_it = aor_e_it->second.begin();
 
-    if(binding_it != aor_e->end()) {
+    if(binding_it != aor_e_it->second.end()) {
 
       binding = binding_it->second;
       if(binding && (binding_it->first != idx)) {
@@ -441,19 +426,18 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 	}
 
 	// relink binding with the new index
-      	aor_e->erase(binding_it);
-	aor_e->insert(AorEntry::value_type(idx, binding));
+	aor_e_it->second.erase(binding_it);
+	aor_e_it->second.insert(AorEntry::value_type(idx, binding));
       }
       else if(!binding) {
 	// probably never happens, but who knows?
-	aor_e->erase(binding_it);
+	aor_e_it->second.erase(binding_it);
       }
     }
   } 
   else {
     // insert AorEntry if none
-    aor_e = new AorEntry();
-    reg_cache_ht.insert(make_pair(canon_aor, aor_e));
+    aor_e_it = reg_cache_ht.insert(make_pair(canon_aor, AorEntry())).first;
     DBG("inserted new AOR '%s'",canon_aor.c_str());
   }
   
@@ -467,7 +451,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
     active_regs++;
 
     string idx = uri + "/" + public_ip;
-    aor_e->insert(AorEntry::value_type(idx, binding));
+    aor_e_it->second.insert(AorEntry::value_type(idx, binding));
     DBG("inserted new binding: '%s' -> '%s'",
 	idx.c_str(), binding->alias.c_str());
 
@@ -545,25 +529,24 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
       canon_aor.c_str(), uri.c_str(), alias.c_str());
 
   auto aor_e_it = reg_cache_ht.find(canon_aor);
-  if (aor_e_it != reg_cache_ht.end() && aor_e_it->second) {
-    auto aor_e = aor_e_it->second;
+  if (aor_e_it != reg_cache_ht.end()) {
+    auto& aor_e = aor_e_it->second;
     // remove all bindings for which the alias matches
-    for(AorEntry::iterator binding_it = aor_e->begin();
-	binding_it != aor_e->end();) {
+    for(AorEntry::iterator binding_it = aor_e.begin();
+	binding_it != aor_e.end();) {
 
       RegBinding* binding = binding_it->second;
       if(!binding || (binding->alias == alias)) {
 
 	delete binding;
 	AorEntry::iterator del_it = binding_it++;
-	aor_e->erase(del_it);
+	aor_e.erase(del_it);
 	continue;
       }
 
       binding_it++;
     }
-    if(aor_e->empty()) {
-      delete aor_e;
+    if(aor_e.empty()) {
       reg_cache_ht.erase(aor_e_it);
     }
   }
@@ -583,10 +566,10 @@ void _RegisterCache::remove(const string& aor)
   DBG("removing entries for aor = '%s'", aor.c_str());
 
   auto aor_e_it = reg_cache_ht.find(aor);
-  if (aor_e_it != reg_cache_ht.end() && aor_e_it->second) {
-    auto aor_e = aor_e_it->second;
-    for(AorEntry::iterator binding_it = aor_e->begin();
-	binding_it != aor_e->end(); binding_it++) {
+  if (aor_e_it != reg_cache_ht.end()) {
+    auto& aor_e = aor_e_it->second;
+    for(AorEntry::iterator binding_it = aor_e.begin();
+	binding_it != aor_e.end(); binding_it++) {
 
       RegBinding* binding = binding_it->second;
       if(binding) {
@@ -594,7 +577,6 @@ void _RegisterCache::remove(const string& aor)
 	delete binding;
       }
     }
-    delete aor_e;
     reg_cache_ht.erase(aor_e_it);
   }
 }
@@ -653,10 +635,10 @@ bool _RegisterCache::getAorAliasMap(const string& canon_aor,
   }
 
   lock_guard<AmMutex> _rl(reg_cache_ht);
-  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
-  if(aor_e) {
-    for(AorEntry::iterator it = aor_e->begin();
-	it != aor_e->end(); ++it) {
+  auto aor_e_it = reg_cache_ht.find(canon_aor);
+  if (aor_e_it != reg_cache_ht.end()) {
+    for (AorEntry::iterator it = aor_e_it->second.begin();
+	it != aor_e_it->second.end(); ++it) {
 
       if(!it->second)
 	continue;

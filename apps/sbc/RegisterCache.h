@@ -141,24 +141,13 @@ public:
  *   AoR -> AorEntry
  */
 class AorHash
-  : public unordered_hash_map<string, AorEntry*>
+  : public unordered_hash_map<string, AorEntry>
 {
 public:
-  ~AorHash() {
-    for (auto it = begin(); it != end(); it++)
-      delete it->second;
-  }
-
-  /**
-   * Match and retrieve the cache entry associated with the AOR passed.
-   * aor: canonicalized AOR
-   */
-  AorEntry* get(const string& aor);
-
   /* Maintenance stuff */
 
   void gbc(long int now, list<string>& alias_list);
-  void dump_elmt(const string& aor, AorEntry* const& p_aor_entry) const;
+  void dump_elmt(const string& aor, const AorEntry& p_aor_entry) const;
 };
 
 class ContactKey
