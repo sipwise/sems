@@ -11,8 +11,10 @@
 #include "SBCEventLog.h"
 
 #include <utility>
+#include <mutex>
 using std::pair;
 using std::make_pair;
+using std::lock_guard;
 
 #define REG_CACHE_CYCLE 10L /* 10 seconds to expire all buckets */
 
@@ -107,10 +109,10 @@ void AorBucket::gbc(RegCacheStorageHandler* h, long int now,
   }
 }
 
-AliasEntry* AliasBucket::getContact(const string& alias)
+AliasEntry* AliasHash::getContact(const string& alias)
 {
-  value_map::iterator it = find(alias);
-  if(it == elmts.end())
+  auto it = find(alias);
+  if(it == end())
     return NULL;
 
   return it->second;
@@ -133,7 +135,7 @@ void AliasEntry::fire()
   SBCEventLog::instance()->logEvent(alias,"ua-reg-expired",ev);
 }
 
-void AliasBucket::dump_elmt(const string& alias, const AliasEntry* p_ae) const
+void AliasHash::dump_elmt(const string& alias, AliasEntry* const& p_ae) const
 {
   DBG("'%s' -> '%s'", alias.c_str(),
       p_ae ? p_ae->contact_uri.c_str() : "NULL");
@@ -187,7 +189,6 @@ struct RegCacheLogHandler
 
 _RegisterCache::_RegisterCache()
   : reg_cache_ht(REG_CACHE_TABLE_ENTRIES),
-    id_idx(REG_CACHE_TABLE_ENTRIES),
     contact_idx(REG_CACHE_TABLE_ENTRIES),
     gbc_bucket_id(0),
     shutdown_flag(false)
@@ -328,11 +329,6 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   return alias_found;
 }
 
-AliasBucket* _RegisterCache::getAliasBucket(const string& alias)
-{
-  return id_idx.get_bucket(hash_1str(alias));
-}
-
 ContactBucket* _RegisterCache::getContactBucket(const string& contact_uri,
 						const string& remote_ip,
 						unsigned short remote_port)
@@ -382,10 +378,9 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   }
 
   AorBucket* bucket = getAorBucket(canon_aor);
-  AliasBucket* alias_bucket = getAliasBucket(alias);
 
   bucket->lock();
-  alias_bucket->lock();
+  lock_guard<AmMutex> _id_l(id_idx);
 
   // Try to get the existing binding
   RegBinding* binding = NULL;
@@ -433,13 +428,13 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   // and update binding
   binding->reg_expire = reg_expires;
 
-  AliasEntry* alias_e = alias_bucket->getContact(alias);
+  AliasEntry* alias_e = id_idx.getContact(alias);
   // if no alias map entry, insert a new one
   if(!alias_e) {
     DBG("inserting alias map entry: '%s' -> '%s'",
 	alias.c_str(), uri.c_str());
     alias_e = new AliasEntry(alias_update);
-    alias_bucket->insert(alias,alias_e);
+    id_idx.insert(make_pair(alias, alias_e));
   }
   else {
     *alias_e = alias_update;
@@ -454,7 +449,6 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   if(storage_handler.get())
     storage_handler->onUpdate(canon_aor,alias,reg_expires,*alias_e);
 
-  alias_bucket->unlock();
   bucket->unlock();
 }
 
@@ -556,17 +550,16 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   // and update binding
   binding->reg_expire = reg_expires;
 
-  AliasBucket* alias_bucket = getAliasBucket(binding->alias);
-  alias_bucket->lock();
+  lock_guard<AmMutex> _id_l(id_idx);
 
-  AliasEntry* alias_e = alias_bucket->getContact(binding->alias);
+  AliasEntry* alias_e = id_idx.getContact(binding->alias);
   // if no alias map entry, insert a new one
   if(!alias_e) {
     DBG("inserting alias map entry: '%s' -> '%s'",
 	binding->alias.c_str(), uri.c_str());
     alias_e = new AliasEntry(alias_update);
     alias_e->alias = binding->alias;
-    alias_bucket->insert(binding->alias,alias_e);
+    id_idx.insert(make_pair(binding->alias, alias_e));
   }
   else {
     *alias_e = alias_update;
@@ -583,17 +576,15 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
     storage_handler->onUpdate(canon_aor,binding->alias,
 			      reg_expires,*alias_e);
 
-  alias_bucket->unlock();
   bucket->unlock();
 }
 
 bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires)
 {
   bool res = false;
-  AliasBucket* alias_bucket = getAliasBucket(alias);
-  alias_bucket->lock();
+  lock_guard<AmMutex> _id_l(id_idx);
 
-  AliasEntry* alias_e = alias_bucket->getContact(alias);
+  AliasEntry* alias_e = id_idx.getContact(alias);
   if(alias_e) {
     alias_e->ua_expire = ua_expires;
 #if 0 // disabled UA-timer
@@ -607,7 +598,6 @@ bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires
     res = true;
   }
 
-  alias_bucket->unlock();
   return res;
 }
 
@@ -682,16 +672,16 @@ void _RegisterCache::remove(const string& aor)
 
 void _RegisterCache::removeAlias(const string& alias, bool generate_event)
 {
-  AliasBucket* alias_bucket = getAliasBucket(alias);
-  alias_bucket->lock();
+  lock_guard<AmMutex> _id_l(id_idx);
 
-  AliasEntry* ae = alias_bucket->getContact(alias);
-  if(ae) {
+  auto ae_it = id_idx.find(alias);
+  if (ae_it != id_idx.end() && ae_it->second) {
 #if 0 // disabled UA-timer
     if(ae->ua_expire)
       removeAliasUATimer(ae);
 #endif
-    
+    auto ae = ae_it->second;
+
     if(generate_event) {
       AmArg ev;
       ev["aor"]      = ae->aor;
@@ -721,9 +711,10 @@ void _RegisterCache::removeAlias(const string& alias, bool generate_event)
     storage_handler->onDelete(ae->aor,
 			      ae->contact_uri,
 			      ae->alias);
+
+    delete ae;
+    id_idx.erase(ae_it);
   }
-  alias_bucket->remove(alias);
-  alias_bucket->unlock();
 }
 
 bool _RegisterCache::getAorAliasMap(const string& canon_aor, 
@@ -760,16 +751,14 @@ bool _RegisterCache::findAliasEntry(const string& alias, AliasEntry& alias_entry
 {
   bool res = false;
 
-  AliasBucket* bucket = getAliasBucket(alias);
-  bucket->lock();
+  lock_guard<AmMutex> _id_l(id_idx);
   
-  AliasEntry* a = bucket->getContact(alias);
+  AliasEntry* a = id_idx.getContact(alias);
   if(a) {
     alias_entry = *a;
     res = true;
   }
 
-  bucket->unlock();
   return res;
 }
 

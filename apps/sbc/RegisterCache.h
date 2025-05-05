@@ -113,23 +113,6 @@ public:
   void dump_elmt(const string& aor, const AorEntry* p_aor_entry) const;
 };
 
-/**
- * Hash-table bucket:
- *   Alias -> Contact-URI
- */
-class AliasBucket
-  : public ht_map_bucket<string,AliasEntry>
-{
-public:
-  AliasBucket(unsigned long int id)
-  : ht_map_bucket<string,AliasEntry>(id)
-  {}
-
-  AliasEntry* getContact(const string& alias);
-
-  void dump_elmt(const string& alias, const AliasEntry* ae) const;
-};
-
 class ContactBucket
   : public ht_map_bucket<string,string>
 {
@@ -189,11 +172,29 @@ struct RegisterCacheCtx
   {}
 };
 
+/**
+ * Alias hash table:
+ *   Alias -> Contact-URI
+ */
+class AliasHash
+  : public unordered_hash_map<string, AliasEntry*>
+{
+public:
+  ~AliasHash() {
+    for (auto it = begin(); it != end(); it++)
+      delete it->second;
+  }
+
+  AliasEntry* getContact(const string& alias);
+
+  void dump_elmt(const string& alias, AliasEntry* const& ae) const;
+};
+
 class _RegisterCache
   : public AmThread
 {
   hash_table<AorBucket> reg_cache_ht;
-  hash_table<AliasBucket>        id_idx;
+  AliasHash             id_idx;
   hash_table<ContactBucket>      contact_idx;
 
   unique_ptr<RegCacheStorageHandler> storage_handler;
@@ -231,12 +232,6 @@ protected:
    * aor: canonicalized AOR
    */
   AorBucket* getAorBucket(const string& aor);
-
-  /**
-   * Returns the bucket associated with the alias given
-   * alias: Contact-user
-   */
-  AliasBucket* getAliasBucket(const string& alias);
 
   /**
    * Returns the bucket associated with the contact-URI given
