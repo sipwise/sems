@@ -18,10 +18,6 @@ using std::lock_guard;
 
 #define REG_CACHE_CYCLE 10L /* 10 seconds to expire all buckets */
 
- /* in us */
-#define REG_CACHE_SINGLE_CYCLE \
-  ((REG_CACHE_CYCLE*1000000L)/REG_CACHE_TABLE_ENTRIES)
-
 static unsigned int hash_1str(const string& str)
 {
   unsigned int h=0;
@@ -44,17 +40,17 @@ static string unescape_sip(const string& str)
   return str;
 }
 
-AorEntry* AorBucket::get(const string& aor)
+AorEntry* AorHash::get(const string& aor)
 {
-  value_map::iterator it = find(aor);
-  if(it == elmts.end())
+  auto it = find(aor);
+  if(it == end())
     return NULL;
   
   return it->second;
 }
 
-void AorBucket::dump_elmt(const string& aor, 
-			  const AorEntry* p_aor_entry) const
+void AorHash::dump_elmt(const string& aor,
+			  AorEntry* const& p_aor_entry) const
 {
   DBG("'%s' ->", aor.c_str());
   if(!p_aor_entry) return;
@@ -70,10 +66,10 @@ void AorBucket::dump_elmt(const string& aor,
   }
 }
 
-void AorBucket::gbc(RegCacheStorageHandler* h, long int now, 
+void AorHash::gbc(long int now,
 		    list<string>& alias_list)
 {
-  for(value_map::iterator it = elmts.begin(); it != elmts.end();) {
+  for(auto it = begin(); it != end();) {
 
     AorEntry* aor_e = it->second;
     if(aor_e) {
@@ -101,8 +97,10 @@ void AorBucket::gbc(RegCacheStorageHandler* h, long int now,
     }
     if(!aor_e || aor_e->empty()) {
       DBG("delete empty AOR: '%s'", it->first.c_str());
-      value_map::iterator del_it = it++;
-      elmts.erase(del_it);
+      if (aor_e)
+	delete aor_e;
+      auto del_it = it++;
+      erase(del_it);
       continue;
     }
     it++;
@@ -188,9 +186,7 @@ struct RegCacheLogHandler
 
 
 _RegisterCache::_RegisterCache()
-  : reg_cache_ht(REG_CACHE_TABLE_ENTRIES),
-    contact_idx(REG_CACHE_TABLE_ENTRIES),
-    gbc_bucket_id(0),
+  : contact_idx(REG_CACHE_TABLE_ENTRIES),
     shutdown_flag(false)
 {
   // debug register cache WRITE operations
@@ -208,38 +204,29 @@ _RegisterCache::~_RegisterCache()
   DBG("##### DUMP END #####");
 }
 
-void _RegisterCache::gbc(unsigned int bucket_id)
+void _RegisterCache::gbc()
 {
-  // if(!bucket_id) {
-  //   DBG("REG CACHE GBC CYCLE starting...");
-  // }
-
   struct timeval now;
   gettimeofday(&now,NULL);
 
-  AorBucket* bucket = reg_cache_ht.get_bucket(bucket_id);
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
   list<string> alias_list;
-  bucket->gbc(storage_handler.get(),now.tv_sec,alias_list);
+  reg_cache_ht.gbc(now.tv_sec, alias_list);
   for(list<string>::iterator it = alias_list.begin();
       it != alias_list.end(); it++){
     removeAlias(*it,true);
   }
-  bucket->unlock();
 }
 
 void _RegisterCache::run()
 {
-  gbc_bucket_id = 0;
   while (!stop_requested()) {
-    gbc(gbc_bucket_id);
-    gbc_bucket_id = (gbc_bucket_id+1);
-    gbc_bucket_id &= (REG_CACHE_TABLE_ENTRIES-1);
+    gbc();
 
     std::unique_lock<std::mutex> _l(shutdown_mutex);
     if (shutdown_flag)
       break;
-    sleep_cond.wait_for(_l, std::chrono::microseconds(REG_CACHE_SINGLE_CYCLE));
+    sleep_cond.wait_for(_l, std::chrono::seconds(REG_CACHE_CYCLE));
   }
 }
 
@@ -291,11 +278,6 @@ _RegisterCache::compute_alias_hash(const string& aor, const string& contact_uri,
   return int2hex(h1,true) + int2hex(h2,true);
 }
 
-AorBucket* _RegisterCache::getAorBucket(const string& aor)
-{
-  return reg_cache_ht.get_bucket(hash_1str(aor));
-}
-
 void ContactBucket::insert(const string& contact_uri, const string& remote_ip,
 			   unsigned short remote_port, const string& alias)
 {
@@ -312,10 +294,9 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   }
 
   bool alias_found = false;
-  AorBucket* bucket = getAorBucket(canon_aor);
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
 
-  AorEntry* aor_e = bucket->get(canon_aor);
+  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
   if(aor_e){
     AorEntry::iterator binding_it = aor_e->find(uri + "/" + public_ip);
     if((binding_it != aor_e->end()) && binding_it->second) {
@@ -323,8 +304,6 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
       out_binding = *binding_it->second;
     }
   }
-
-  bucket->unlock();
 
   return alias_found;
 }
@@ -377,18 +356,16 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
     return;
   }
 
-  AorBucket* bucket = getAorBucket(canon_aor);
-
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
   lock_guard<AmMutex> _id_l(id_idx);
 
   // Try to get the existing binding
   RegBinding* binding = NULL;
-  AorEntry* aor_e = bucket->get(canon_aor);
+  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
   if(!aor_e) {
     // insert AorEntry if none
     aor_e = new AorEntry();
-    bucket->insert(canon_aor,aor_e);
+    reg_cache_ht.insert(make_pair(canon_aor, aor_e));
     DBG("inserted new AOR '%s'",canon_aor.c_str());
   }
   else {
@@ -448,8 +425,6 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   
   if(storage_handler.get())
     storage_handler->onUpdate(canon_aor,alias,reg_expires,*alias_e);
-
-  bucket->unlock();
 }
 
 void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update)
@@ -471,12 +446,11 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   }
 
   string idx = uri + "/" + public_ip;
-  AorBucket* bucket = getAorBucket(canon_aor);
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
 
   // Try to get the existing binding
   RegBinding* binding = NULL;
-  AorEntry* aor_e = bucket->get(canon_aor);
+  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
   if(aor_e) {
     // take the first, as we do not expect others to be here
     AorEntry::iterator binding_it = aor_e->begin();
@@ -518,7 +492,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   else {
     // insert AorEntry if none
     aor_e = new AorEntry();
-    bucket->insert(canon_aor,aor_e);
+    reg_cache_ht.insert(make_pair(canon_aor, aor_e));
     DBG("inserted new AOR '%s'",canon_aor.c_str());
   }
   
@@ -575,8 +549,6 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   if(storage_handler.get())
     storage_handler->onUpdate(canon_aor,binding->alias,
 			      reg_expires,*alias_e);
-
-  bucket->unlock();
 }
 
 bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires)
@@ -609,14 +581,14 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
     return;
   }
 
-  AorBucket* bucket = getAorBucket(canon_aor);
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
 
   DBG("removing entries for aor = '%s', uri = '%s' and alias = '%s'",
       canon_aor.c_str(), uri.c_str(), alias.c_str());
 
-  AorEntry* aor_e = bucket->get(canon_aor);
-  if(aor_e) {
+  auto aor_e_it = reg_cache_ht.find(canon_aor);
+  if (aor_e_it != reg_cache_ht.end() && aor_e_it->second) {
+    auto aor_e = aor_e_it->second;
     // remove all bindings for which the alias matches
     for(AorEntry::iterator binding_it = aor_e->begin();
 	binding_it != aor_e->end();) {
@@ -633,12 +605,12 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
       binding_it++;
     }
     if(aor_e->empty()) {
-      bucket->remove(canon_aor);
+      delete aor_e;
+      reg_cache_ht.erase(aor_e_it);
     }
   }
 
   removeAlias(alias,false);
-  bucket->unlock();
 }
 
 void _RegisterCache::remove(const string& aor)
@@ -648,13 +620,13 @@ void _RegisterCache::remove(const string& aor)
     return;
   }
 
-  AorBucket* bucket = getAorBucket(aor);
-  bucket->lock();
+  lock_guard<AmMutex> _rl(reg_cache_ht);
 
   DBG("removing entries for aor = '%s'", aor.c_str());
 
-  AorEntry* aor_e = bucket->get(aor);
-  if(aor_e) {
+  auto aor_e_it = reg_cache_ht.find(aor);
+  if (aor_e_it != reg_cache_ht.end() && aor_e_it->second) {
+    auto aor_e = aor_e_it->second;
     for(AorEntry::iterator binding_it = aor_e->begin();
 	binding_it != aor_e->end(); binding_it++) {
 
@@ -664,10 +636,9 @@ void _RegisterCache::remove(const string& aor)
 	delete binding;
       }
     }
-    bucket->remove(aor);
+    delete aor_e;
+    reg_cache_ht.erase(aor_e_it);
   }
-
-  bucket->unlock();
 }
 
 void _RegisterCache::removeAlias(const string& alias, bool generate_event)
@@ -725,9 +696,8 @@ bool _RegisterCache::getAorAliasMap(const string& canon_aor,
     return false;
   }
 
-  AorBucket* bucket = getAorBucket(canon_aor);
-  bucket->lock();
-  AorEntry* aor_e = bucket->get(canon_aor);
+  lock_guard<AmMutex> _rl(reg_cache_ht);
+  AorEntry* aor_e = reg_cache_ht.get(canon_aor);
   if(aor_e) {
     for(AorEntry::iterator it = aor_e->begin();
 	it != aor_e->end(); ++it) {
@@ -742,7 +712,6 @@ bool _RegisterCache::getAorAliasMap(const string& canon_aor,
       alias_map[ae.alias] = ae.contact_uri;
     }
   }
-  bucket->unlock();
 
   return true;
 }

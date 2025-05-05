@@ -89,30 +89,6 @@ struct RegCacheStorageHandler
   virtual void onUpdate(const string& alias, long int ua_expires) {}
 };
 
-/**
- * Hash-table bucket:
- *   AoR -> AorEntry
- */
-class AorBucket
-  : public ht_map_bucket<string,AorEntry>
-{
-public:
-  AorBucket(unsigned long id)
-  : ht_map_bucket<string,AorEntry>(id) 
-  {}
-
-  /**
-   * Match and retrieve the cache entry associated with the AOR passed.
-   * aor: canonicalized AOR
-   */
-  AorEntry* get(const string& aor);
-
-  /* Maintenance stuff */
-
-  void gbc(RegCacheStorageHandler* h, long int now, list<string>& alias_list);
-  void dump_elmt(const string& aor, const AorEntry* p_aor_entry) const;
-};
-
 class ContactBucket
   : public ht_map_bucket<string,string>
 {
@@ -190,21 +166,44 @@ public:
   void dump_elmt(const string& alias, AliasEntry* const& ae) const;
 };
 
+/**
+ * AoR hash table:
+ *   AoR -> AorEntry
+ */
+class AorHash
+  : public unordered_hash_map<string, AorEntry*>
+{
+public:
+  ~AorHash() {
+    for (auto it = begin(); it != end(); it++)
+      delete it->second;
+  }
+
+  /**
+   * Match and retrieve the cache entry associated with the AOR passed.
+   * aor: canonicalized AOR
+   */
+  AorEntry* get(const string& aor);
+
+  /* Maintenance stuff */
+
+  void gbc(long int now, list<string>& alias_list);
+  void dump_elmt(const string& aor, AorEntry* const& p_aor_entry) const;
+};
+
 class _RegisterCache
   : public AmThread
 {
-  hash_table<AorBucket> reg_cache_ht;
+  AorHash               reg_cache_ht;
   AliasHash             id_idx;
   hash_table<ContactBucket>      contact_idx;
 
   unique_ptr<RegCacheStorageHandler> storage_handler;
 
-  unsigned int gbc_bucket_id;
-
   // stats
   atomic_int active_regs;
 
-  void gbc(unsigned int bucket_id);
+  void gbc();
   void removeAlias(const string& alias, bool generate_event);
 
   std::mutex shutdown_mutex;
@@ -226,12 +225,6 @@ protected:
     shutdown_flag = true;
     sleep_cond.notify_all();
   }
-
-  /**
-   * Returns the bucket associated with the passed contact-uri
-   * aor: canonicalized AOR
-   */
-  AorBucket* getAorBucket(const string& aor);
 
   /**
    * Returns the bucket associated with the contact-URI given
