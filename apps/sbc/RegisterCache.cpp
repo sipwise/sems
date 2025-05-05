@@ -139,29 +139,30 @@ void AliasHash::dump_elmt(const string& alias, AliasEntry* const& p_ae) const
       p_ae ? p_ae->contact_uri.c_str() : "NULL");
 }
 
-string ContactBucket::getAlias(const string& contact_uri,
+string ContactHash::getAlias(const string& contact_uri,
 			       const string& remote_ip,
 			       unsigned short remote_port)
 {
-  string key = contact_uri + "/" + remote_ip + ":" + int2str(remote_port);
-
-  value_map::iterator it = find(key);
-  if(it == elmts.end())
+  auto it = find(ContactKey(contact_uri, remote_ip, remote_port));
+  if(it == end())
     return string();
 
   return *it->second;
 }
 
-void ContactBucket::remove(const string& contact_uri, const string& remote_ip,
+void ContactHash::remove(const string& contact_uri, const string& remote_ip,
 			   unsigned short remote_port)
 {
-  string k = contact_uri + "/" + remote_ip + ":" + int2str(remote_port);
-  elmts.erase(k);
+  auto it = find(ContactKey(contact_uri, remote_ip, remote_port));
+  if (it != end()) {
+    delete it->second;
+    erase(it);
+  }
 }
 
-void ContactBucket::dump_elmt(const string& key, const string* alias) const
+void ContactHash::dump_elmt(const ContactKey& key, string* const& alias) const
 {
-  DBG("'%s' -> %s", key.c_str(), alias? alias->c_str() : "NULL");
+  DBG("'%s/%s:%u' -> %s", key.uri.c_str(), key.ip.c_str(), key.port, alias? alias->c_str() : "NULL");
 }
 
 struct RegCacheLogHandler
@@ -186,8 +187,7 @@ struct RegCacheLogHandler
 
 
 _RegisterCache::_RegisterCache()
-  : contact_idx(REG_CACHE_TABLE_ENTRIES),
-    shutdown_flag(false)
+  : shutdown_flag(false)
 {
   // debug register cache WRITE operations
   setStorageHandler(new RegCacheLogHandler());
@@ -278,11 +278,10 @@ _RegisterCache::compute_alias_hash(const string& aor, const string& contact_uri,
   return int2hex(h1,true) + int2hex(h2,true);
 }
 
-void ContactBucket::insert(const string& contact_uri, const string& remote_ip,
+void ContactHash::insert(const string& contact_uri, const string& remote_ip,
 			   unsigned short remote_port, const string& alias)
 {
-  string k = contact_uri + "/" + remote_ip + ":" + int2str(remote_port);
-  insert(k,new string(alias));
+  insert(make_pair(ContactKey(contact_uri, remote_ip, remote_port), new string(alias)));
 }
 
 bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
@@ -306,14 +305,6 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   }
 
   return alias_found;
-}
-
-ContactBucket* _RegisterCache::getContactBucket(const string& contact_uri,
-						const string& remote_ip,
-						unsigned short remote_port)
-{
-  unsigned int h = hash_2str_1int(contact_uri,remote_ip,remote_port);
-  return contact_idx.get_bucket(h);
 }
 
 void _RegisterCache::setAliasUATimer(AliasEntry* alias_e)
@@ -387,12 +378,9 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
     // inc stats
     active_regs++;
 
-    ContactBucket* ct_bucket = getContactBucket(uri,alias_update.source_ip,
-						alias_update.source_port);
-    ct_bucket->lock();
-    ct_bucket->insert(uri,alias_update.source_ip,
-		      alias_update.source_port,alias);
-    ct_bucket->unlock();
+    lock_guard<AmMutex> _cl(contact_idx);
+    contact_idx.insert(uri, alias_update.source_ip,
+		      alias_update.source_port, alias);
   }
   else {
     DBG("updating existing binding: '%s' -> '%s'",
@@ -467,16 +455,9 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 	if(findAliasEntry(alias,ae)) {
 
 	  // change contact index
-	  ContactBucket* ct_bucket = 
-	    getContactBucket(ae.contact_uri,ae.source_ip,ae.source_port);
-	  ct_bucket->lock();
-	  ct_bucket->remove(ae.contact_uri,ae.source_ip,ae.source_port);
-	  ct_bucket->unlock();
-
-	  ct_bucket = getContactBucket(uri,public_ip,alias_update.source_port);
-	  ct_bucket->lock();
-	  ct_bucket->insert(uri,public_ip,alias_update.source_port,alias);
-	  ct_bucket->unlock();
+	  lock_guard<AmMutex> _cl(contact_idx);
+	  contact_idx.remove(ae.contact_uri, ae.source_ip, ae.source_port);
+	  contact_idx.insert(uri, public_ip, alias_update.source_port, alias);
 	}
 
 	// relink binding with the new index
@@ -510,12 +491,9 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
     DBG("inserted new binding: '%s' -> '%s'",
 	idx.c_str(), binding->alias.c_str());
 
-    ContactBucket* ct_bucket = getContactBucket(uri,alias_update.source_ip,
-						alias_update.source_port);
-    ct_bucket->lock();
-    ct_bucket->insert(uri,alias_update.source_ip,
-		      alias_update.source_port,binding->alias);
-    ct_bucket->unlock();
+    lock_guard<AmMutex> _cl(contact_idx);
+    contact_idx.insert(uri, alias_update.source_ip,
+		      alias_update.source_port, binding->alias);
   }
   else {
     DBG("updating existing binding: '%s' -> '%s'",
@@ -669,12 +647,10 @@ void _RegisterCache::removeAlias(const string& alias, bool generate_event)
       SBCEventLog::instance()->logEvent(ae->alias,"reg-expired",ev);
     }
 
-    ContactBucket* ct_bucket = getContactBucket(ae->contact_uri,
-						ae->source_ip,
-						ae->source_port);
-    ct_bucket->lock();
-    ct_bucket->remove(ae->contact_uri,ae->source_ip,ae->source_port);
-    ct_bucket->unlock();
+    {
+      lock_guard<AmMutex> _cl(contact_idx);
+      contact_idx.remove(ae->contact_uri, ae->source_ip, ae->source_port);
+    }
 
     // dec stats
     active_regs--;
@@ -738,11 +714,11 @@ bool _RegisterCache::findAEByContact(const string& contact_uri,
 {
   bool res = false;
 
-  ContactBucket* ct_bucket = getContactBucket(contact_uri,remote_ip,
-					      remote_port);
-  ct_bucket->lock();
-  string alias = ct_bucket->getAlias(contact_uri,remote_ip,remote_port);
-  ct_bucket->unlock();
+  string alias;
+  {
+    lock_guard<AmMutex> _cl(contact_idx);
+    alias = contact_idx.getAlias(contact_uri, remote_ip, remote_port);
+  }
 
   if(alias.empty())
     return false;

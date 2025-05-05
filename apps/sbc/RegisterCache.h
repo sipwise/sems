@@ -89,36 +89,6 @@ struct RegCacheStorageHandler
   virtual void onUpdate(const string& alias, long int ua_expires) {}
 };
 
-class ContactBucket
-  : public ht_map_bucket<string,string>
-{
-  typedef ht_map_bucket<string,string> Bucket;
-
-  bool insert(const string& k, string* v) {
-    return Bucket::insert(k,v);
-  }
-
-  bool remove(const string& k) {
-    return Bucket::remove(k);
-  }
-
-public:
-  ContactBucket(unsigned long int id)
-  : ht_map_bucket<string,string>(id)
-  {}
-
-  void insert(const string& contact_uri, const string& remote_ip,
-	      unsigned short remote_port, const string& alias);
-
-  string getAlias(const string& contact_uri, const string& remote_ip,
-		  unsigned short remote_port);
-
-  void remove(const string& contact_uri, const string& remote_ip,
-	      unsigned short remote_port);
-
-  void dump_elmt(const string& key, const string* alias) const;
-};
-
 /** 
  * Registrar/Reg-Caching 
  * parsing/processing context 
@@ -191,12 +161,62 @@ public:
   void dump_elmt(const string& aor, AorEntry* const& p_aor_entry) const;
 };
 
+class ContactKey
+{
+public:
+  string uri;
+  string ip;
+  unsigned short port;
+
+  ContactKey(string _uri, string _ip, unsigned short _port)
+    : uri(_uri),
+      ip(_ip),
+      port(_port)
+  {}
+};
+
+template<> struct std::hash<ContactKey> {
+  size_t operator()(const ContactKey& k) const {
+    return std::hash<string>{}(k.uri) ^ std::hash<string>{}(k.ip) ^ std::hash<unsigned int>{}(k.port);
+  }
+};
+template<> struct std::equal_to<ContactKey> {
+  size_t operator()(const ContactKey& a, const ContactKey& b) const {
+    return a.uri == b.uri
+      && a.ip == b.ip
+      && a.port == b.port;
+  }
+};
+
+class ContactHash
+  : public unordered_hash_map<ContactKey, string*>
+{
+public:
+  ~ContactHash() {
+    for (auto it = begin(); it != end(); it++)
+      delete it->second;
+  }
+
+  using unordered_hash_map<ContactKey, string*>::insert;
+
+  void insert(const string& contact_uri, const string& remote_ip,
+	      unsigned short remote_port, const string& alias);
+
+  string getAlias(const string& contact_uri, const string& remote_ip,
+		  unsigned short remote_port);
+
+  void remove(const string& contact_uri, const string& remote_ip,
+	      unsigned short remote_port);
+
+  void dump_elmt(const ContactKey& key, string* const& alias) const;
+};
+
 class _RegisterCache
   : public AmThread
 {
   AorHash               reg_cache_ht;
   AliasHash             id_idx;
-  hash_table<ContactBucket>      contact_idx;
+  ContactHash           contact_idx;
 
   unique_ptr<RegCacheStorageHandler> storage_handler;
 
@@ -225,13 +245,6 @@ protected:
     shutdown_flag = true;
     sleep_cond.notify_all();
   }
-
-  /**
-   * Returns the bucket associated with the contact-URI given
-   */
-  ContactBucket* getContactBucket(const string& contact_uri,
-				  const string& remote_ip,
-				  unsigned short remote_port);
 
   int parseAoR(RegisterCacheCtx& ctx, const AmSipRequest& req, msg_logger *logger);
   int parseContacts(RegisterCacheCtx& ctx, const AmSipRequest& req, msg_logger *logger);
