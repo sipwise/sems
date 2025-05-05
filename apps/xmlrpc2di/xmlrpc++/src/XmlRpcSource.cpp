@@ -14,6 +14,13 @@ namespace XmlRpc {
 
   XmlRpcSource::~XmlRpcSource()
   {
+    if (_ssl_ssl) {
+      SSL_free(_ssl_ssl);
+    }
+
+    if (_ssl_ctx) {
+      SSL_CTX_free(_ssl_ctx);
+    }
   }
 
 
@@ -29,7 +36,9 @@ namespace XmlRpc {
     if (_ssl_ssl != (SSL *) NULL) {
       SSL_shutdown (_ssl_ssl);
       SSL_free (_ssl_ssl);
+      _ssl_ssl = NULL;
       SSL_CTX_free (_ssl_ctx);
+      _ssl_ctx = NULL;
     }
     if (_deleteOnClose) {
       XmlRpcUtil::log(2,"XmlRpcSource::close: deleting this");
