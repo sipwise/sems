@@ -18,22 +18,6 @@ using std::lock_guard;
 
 #define REG_CACHE_CYCLE 10L /* 10 seconds to expire all buckets */
 
-static unsigned int hash_1str(const string& str)
-{
-  unsigned int h=0;
-  h = hashlittle(str.c_str(),str.length(),h);
-  return h & (REG_CACHE_TABLE_ENTRIES-1);
-}
-
-static unsigned int hash_2str_1int(const string& str1, const string& str2,
-				   unsigned int i)
-{
-  unsigned int h=i;
-  h = hashlittle(str1.c_str(),str1.length(),h);
-  h = hashlittle(str2.c_str(),str2.length(),h);
-  return h & (REG_CACHE_TABLE_ENTRIES-1);
-}
-
 static string unescape_sip(const string& str)
 {
   // TODO
