@@ -32,11 +32,9 @@ void AorHash::dump_elmt(const string& aor,
   for (AorEntry::const_iterator it = p_aor_entry.begin();
       it != p_aor_entry.end(); it++) {
 
-    if(it->second) {
-      const RegBinding* b = it->second;
-      DBG("\t'%s' -> '%s'", it->first.c_str(),
-	  b ? b->alias.c_str() : "NULL");
-    }
+    const RegBinding& b = it->second;
+    DBG("\t'%s' -> '%s'", it->first.c_str(),
+	b.alias.c_str());
   }
 }
 
@@ -49,18 +47,17 @@ void AorHash::gbc(long int now,
     for (AorEntry::iterator reg_it = aor_e.begin();
 	reg_it != aor_e.end();) {
 
-      RegBinding* binding = reg_it->second;
+      auto& binding = reg_it->second;
 
-      if(binding && (binding->reg_expire <= now)) {
+      if (binding.reg_expire <= now) {
 
-	alias_list.push_back(binding->alias);
+	alias_list.push_back(binding.alias);
 	AorEntry::iterator del_it = reg_it++;
 
 	DBG("delete binding: '%s' -> '%s' (%li <= %li)",
-	    del_it->first.c_str(),binding->alias.c_str(),
-	    binding->reg_expire,now);
+	    del_it->first.c_str(), binding.alias.c_str(),
+	    binding.reg_expire, now);
 
-	delete binding;
 	it->second.erase(del_it);
 	continue;
       }
@@ -255,9 +252,9 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   if (aor_e_it != reg_cache_ht.end()) {
     auto& aor_e = aor_e_it->second;
     AorEntry::iterator binding_it = aor_e.find(uri + "/" + public_ip);
-    if ((binding_it != aor_e.end()) && binding_it->second) {
+    if ((binding_it != aor_e.end())) {
       alias_found = true;
-      out_binding = *binding_it->second;
+      out_binding = binding_it->second;
     }
   }
 
@@ -308,26 +305,23 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   lock_guard<AmMutex> _id_l(id_idx);
 
   // Try to get the existing binding
-  RegBinding* binding = NULL;
+  AorEntry::iterator binding_it;
   auto aor_e_it = reg_cache_ht.find(canon_aor);
   if (aor_e_it == reg_cache_ht.end()) {
     // insert AorEntry if none
     aor_e_it = reg_cache_ht.insert(make_pair(canon_aor, AorEntry())).first;
     DBG("inserted new AOR '%s'",canon_aor.c_str());
+    binding_it = aor_e_it->second.end();
   }
   else {
     string idx = uri + "/" + public_ip;
-    AorEntry::iterator binding_it = aor_e_it->second.find(idx);
-    if(binding_it != aor_e_it->second.end()) {
-      binding = binding_it->second;
-    }
+    binding_it = aor_e_it->second.find(idx);
   }
 
-  if(!binding) {
+  if (binding_it == aor_e_it->second.end()) {
     // insert one if none exist
-    binding = new RegBinding();
-    binding->alias = alias;
-    aor_e_it->second.insert(AorEntry::value_type(uri + "/" + public_ip,binding));
+    binding_it = aor_e_it->second.insert(make_pair(uri + "/" + public_ip, RegBinding())).first;
+    binding_it->second.alias = alias;
     DBG("inserted new binding: '%s' -> '%s'",
 	uri.c_str(), alias.c_str());
 
@@ -340,14 +334,14 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
   }
   else {
     DBG("updating existing binding: '%s' -> '%s'",
-	uri.c_str(), binding->alias.c_str());
-    if(alias != binding->alias) {
+	uri.c_str(), binding_it->second.alias.c_str());
+    if(alias != binding_it->second.alias) {
       ERROR("used alias ('%s') is different from stored one ('%s')",
-	    alias.c_str(), binding->alias.c_str());
+	    alias.c_str(), binding_it->second.alias.c_str());
     }
   }
   // and update binding
-  binding->reg_expire = reg_expires;
+  binding_it->second.reg_expire = reg_expires;
 
   auto alias_e_it = id_idx.find(alias);
   // if no alias map entry, insert a new one
@@ -392,19 +386,18 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   lock_guard<AmMutex> _rl(reg_cache_ht);
 
   // Try to get the existing binding
-  RegBinding* binding = NULL;
+  AorEntry::iterator binding_it;
   auto aor_e_it = reg_cache_ht.find(canon_aor);
   if (aor_e_it != reg_cache_ht.end()) {
     // take the first, as we do not expect others to be here
-    AorEntry::iterator binding_it = aor_e_it->second.begin();
+    binding_it = aor_e_it->second.begin();
 
-    if(binding_it != aor_e_it->second.end()) {
+    if  (binding_it != aor_e_it->second.end()) {
 
-      binding = binding_it->second;
-      if(binding && (binding_it->first != idx)) {
+      if ((binding_it->first != idx)) {
 
 	// contact-uri and/or public IP has changed...
-	string alias = binding->alias;
+	string alias = binding_it->second.alias;
 
 	AliasEntry ae;
 	if(findAliasEntry(alias,ae)) {
@@ -416,12 +409,9 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 	}
 
 	// relink binding with the new index
+	auto binding = binding_it->second;
 	aor_e_it->second.erase(binding_it);
-	aor_e_it->second.insert(AorEntry::value_type(idx, binding));
-      }
-      else if(!binding) {
-	// probably never happens, but who knows?
-	aor_e_it->second.erase(binding_it);
+	binding_it = aor_e_it->second.insert(make_pair(idx, binding)).first;
       }
     }
   } 
@@ -429,46 +419,47 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
     // insert AorEntry if none
     aor_e_it = reg_cache_ht.insert(make_pair(canon_aor, AorEntry())).first;
     DBG("inserted new AOR '%s'",canon_aor.c_str());
+    binding_it = aor_e_it->second.end();
   }
   
-  if(!binding) {
+  if (binding_it == aor_e_it->second.end()) {
     // insert one if none exist
-    binding = new RegBinding();
-    binding->alias = _RegisterCache::
+    RegBinding binding;
+    binding.alias = _RegisterCache::
       compute_alias_hash(canon_aor,uri,public_ip);
 
     // inc stats
     active_regs++;
 
     string idx = uri + "/" + public_ip;
-    aor_e_it->second.insert(AorEntry::value_type(idx, binding));
+    binding_it = aor_e_it->second.insert(make_pair(idx, std::move(binding))).first;
     DBG("inserted new binding: '%s' -> '%s'",
-	idx.c_str(), binding->alias.c_str());
+	idx.c_str(), binding_it->second.alias.c_str());
 
     lock_guard<AmMutex> _cl(contact_idx);
     contact_idx.insert(uri, alias_update.source_ip,
-		      alias_update.source_port, binding->alias);
+		      alias_update.source_port, binding_it->second.alias);
   }
   else {
     DBG("updating existing binding: '%s' -> '%s'",
-	uri.c_str(), binding->alias.c_str());
+	uri.c_str(), binding_it->second.alias.c_str());
   }
   // and update binding
-  binding->reg_expire = reg_expires;
+  binding_it->second.reg_expire = reg_expires;
 
   lock_guard<AmMutex> _id_l(id_idx);
 
-  auto alias_e_it = id_idx.find(binding->alias);
+  auto alias_e_it = id_idx.find(binding_it->second.alias);
   // if no alias map entry, insert a new one
   if (alias_e_it == id_idx.end()) {
     DBG("inserting alias map entry: '%s' -> '%s'",
-	binding->alias.c_str(), uri.c_str());
-    alias_e_it = id_idx.insert(make_pair(binding->alias, AliasEntry(alias_update))).first;
+	binding_it->second.alias.c_str(), uri.c_str());
+    alias_e_it = id_idx.insert(make_pair(binding_it->second.alias, AliasEntry(alias_update))).first;
   }
   else
     alias_e_it->second = alias_update;
 
-  alias_e_it->second.alias = binding->alias;
+  alias_e_it->second.alias = binding_it->second.alias;
 
 #if 0 // disabled UA-timer
   if(alias_e->ua_expire) {
@@ -477,7 +468,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 #endif
   
   if(storage_handler.get())
-    storage_handler->onUpdate(canon_aor,binding->alias,
+    storage_handler->onUpdate(canon_aor, binding_it->second.alias,
 			      reg_expires, alias_e_it->second);
 }
 
@@ -523,10 +514,9 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
     for(AorEntry::iterator binding_it = aor_e.begin();
 	binding_it != aor_e.end();) {
 
-      RegBinding* binding = binding_it->second;
-      if(!binding || (binding->alias == alias)) {
+      auto& binding = binding_it->second;
+      if (binding.alias == alias) {
 
-	delete binding;
 	AorEntry::iterator del_it = binding_it++;
 	aor_e.erase(del_it);
 	continue;
@@ -559,11 +549,8 @@ void _RegisterCache::remove(const string& aor)
     for(AorEntry::iterator binding_it = aor_e.begin();
 	binding_it != aor_e.end(); binding_it++) {
 
-      RegBinding* binding = binding_it->second;
-      if(binding) {
-	removeAlias(binding->alias,false);
-	delete binding;
-      }
+      auto& binding = binding_it->second;
+      removeAlias(binding.alias, false);
     }
     reg_cache_ht.erase(aor_e_it);
   }
@@ -627,11 +614,8 @@ bool _RegisterCache::getAorAliasMap(const string& canon_aor,
     for (AorEntry::iterator it = aor_e_it->second.begin();
 	it != aor_e_it->second.end(); ++it) {
 
-      if(!it->second)
-	continue;
-
       AliasEntry ae;
-      if(!findAliasEntry(it->second->alias,ae))
+      if(!findAliasEntry(it->second.alias,ae))
 	continue;
 
       alias_map[ae.alias] = ae.contact_uri;

@@ -45,7 +45,7 @@ struct RegBinding
 };
 
 // Contact-URI/Public-IP -> RegBinding
-typedef map<string,RegBinding*> AorEntry;
+typedef map<string, RegBinding> AorEntry;
 
 struct AliasEntry
   : public DirectAppTimer
