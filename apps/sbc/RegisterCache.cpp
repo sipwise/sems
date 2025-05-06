@@ -41,8 +41,14 @@ void AorHash::dump_elmt(const string& aor,
 void AorHash::gbc(long int now,
 		    list<string>& alias_list)
 {
-  for(auto it = begin(); it != end();) {
+  for (auto set_it = entries_by_time.begin(); set_it != entries_by_time.end();) {
+    iterator it = *set_it;
+    auto next = set_it;
+    next++;
+
     AorEntry& aor_e = it->second;
+    if (aor_e.get_lowest_expire() > now)
+      break;
 
     for (AorEntry::iterator reg_it = aor_e.begin();
 	reg_it != aor_e.end();) {
@@ -63,13 +69,11 @@ void AorHash::gbc(long int now,
       }
       reg_it++;
     }
-    if(it->second.empty()) {
+    if (aor_e.empty()) {
       DBG("delete empty AOR: '%s'", it->first.c_str());
-      auto del_it = it++;
-      erase(del_it);
-      continue;
+      erase(it);
     }
-    it++;
+    set_it = next;
   }
 }
 
