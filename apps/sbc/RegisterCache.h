@@ -11,9 +11,11 @@
 
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <memory>
 using std::string;
 using std::map;
+using std::unordered_map;
 using std::unique_ptr;
 
 #define REG_CACHE_TABLE_POWER   10
@@ -45,7 +47,9 @@ struct RegBinding
 };
 
 // Contact-URI/Public-IP -> RegBinding
-typedef map<string, RegBinding> AorEntry;
+class AorEntry : public unordered_map<string, RegBinding>
+{
+};
 
 struct AliasEntry
   : public DirectAppTimer
