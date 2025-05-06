@@ -13,10 +13,12 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <set>
 using std::string;
 using std::map;
 using std::unordered_map;
 using std::unique_ptr;
+using std::set;
 
 #define REG_CACHE_TABLE_POWER   10
 #define REG_CACHE_TABLE_ENTRIES (1<<REG_CACHE_TABLE_POWER)
@@ -54,14 +56,42 @@ public:
   friend class AorEntry;
 };
 
+template<> struct std::less<unordered_map<string, RegBinding>::iterator>
+{
+  bool operator()(const unordered_map<string, RegBinding>::iterator& a,
+      const unordered_map<string, RegBinding>::iterator& b) const
+  {
+    if (a->second.get_expire() < b->second.get_expire())
+      return true;
+    if (a->second.get_expire() > b->second.get_expire())
+      return false;
+    // for identical expire values we compare the pointer values of the original object
+    return &a->second < &b->second;
+  }
+};
+
 // Contact-URI/Public-IP -> RegBinding
 class AorEntry : public unordered_map<string, RegBinding>
 {
+  // members protected by AorEntry::lock
+
+  set<iterator> bindings_by_time;
+
   void set_expire(const iterator& it, long int expire) {
+    if (it->second.reg_expire == expire)
+      return;
+    bindings_by_time.erase(it);
     it->second.reg_expire = expire;
+    bindings_by_time.insert(it);
   }
 
   friend class AorHash;
+
+public:
+  void erase(const iterator& it) {
+    bindings_by_time.erase(it);
+    unordered_map<string, RegBinding>::erase(it);
+  }
 };
 
 struct AliasEntry
