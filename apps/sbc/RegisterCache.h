@@ -85,13 +85,12 @@ class AorEntry : public unordered_map<string, RegBinding>
     bindings_by_time.insert(it);
   }
 
-  friend class AorHash;
-
-public:
   void erase(const iterator& it) {
     bindings_by_time.erase(it);
     unordered_map<string, RegBinding>::erase(it);
   }
+
+  friend class AorHash;
 };
 
 struct AliasEntry
@@ -186,6 +185,10 @@ class AorHash
 public:
   void set_expire(const iterator& aor_it, const AorEntry::iterator& binding_it, long int expire) {
     aor_it->second.set_expire(binding_it, expire);
+  }
+
+  void erase_binding(const iterator& aor_it, const AorEntry::iterator& binding_it) {
+    aor_it->second.erase(binding_it);
   }
 
   /* Maintenance stuff */

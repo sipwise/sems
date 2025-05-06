@@ -58,7 +58,7 @@ void AorHash::gbc(long int now,
 	    del_it->first.c_str(), binding.alias.c_str(),
 	    binding.get_expire(), now);
 
-	it->second.erase(del_it);
+	erase_binding(it, del_it);
 	continue;
       }
       reg_it++;
@@ -410,7 +410,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 
 	// relink binding with the new index
 	auto binding = binding_it->second;
-	aor_e_it->second.erase(binding_it);
+	reg_cache_ht.erase_binding(aor_e_it, binding_it);
 	binding_it = aor_e_it->second.insert(make_pair(idx, binding)).first;
       }
     }
@@ -518,7 +518,7 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
       if (binding.alias == alias) {
 
 	AorEntry::iterator del_it = binding_it++;
-	aor_e.erase(del_it);
+	reg_cache_ht.erase_binding(aor_e_it, del_it);
 	continue;
       }
 
