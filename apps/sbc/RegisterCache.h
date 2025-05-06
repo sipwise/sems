@@ -91,6 +91,14 @@ class AorEntry : public unordered_map<string, RegBinding>
   }
 
   friend class AorHash;
+
+public:
+  long int get_lowest_expire() const {
+    auto it = bindings_by_time.cbegin();
+    if (it == bindings_by_time.cend())
+      return LONG_MAX; // empty sets go last
+    return (*it)->second.reg_expire;
+  }
 };
 
 struct AliasEntry
