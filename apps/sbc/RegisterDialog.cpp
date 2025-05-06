@@ -204,7 +204,7 @@ int RegisterDialog::fixUacContacts(const AmSipRequest& req)
       if(!reg_cache_reply)
 	continue;
 
-      if(is_a_dereg || !reg_binding.reg_expire) { // no contact with expires=0
+      if(is_a_dereg || !reg_binding.get_expire()) { // no contact with expires=0
 	reg_cache_reply = false;
       }
 
@@ -220,12 +220,12 @@ int RegisterDialog::fixUacContacts(const AmSipRequest& req)
       DBG("min_reg_expire = %u", min_reg_expire);
       DBG("max_ua_expire = %u", max_ua_expire);
       DBG("contact_expires = %lu", contact_expires);
-      DBG("reg_expires = %li", reg_binding.reg_expire - now.tv_sec);
+      DBG("reg_expires = %li", reg_binding.get_expire() - now.tv_sec);
 
       contact_expires += now.tv_sec;
 
       if(contact_expires + 4 /* 4 seconds buffer */ 
-	 >= reg_binding.reg_expire) {
+	 >= reg_binding.get_expire()) {
 	reg_cache_reply = false;
 	continue;
       }

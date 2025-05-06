@@ -33,22 +33,35 @@ using std::unique_ptr;
 
 struct RegBinding
 {
+private:
   // Absolute timestamp representing
   // the expiration timer at the 
   // registrar side
   long int reg_expire;
 
+public:
   // unique-id used as contact user toward the registrar
   string alias;
 
   RegBinding()
     : reg_expire(0)
   {}
+
+  long int get_expire() const {
+    return reg_expire;
+  }
+
+  friend class AorEntry;
 };
 
 // Contact-URI/Public-IP -> RegBinding
 class AorEntry : public unordered_map<string, RegBinding>
 {
+  void set_expire(const iterator& it, long int expire) {
+    it->second.reg_expire = expire;
+  }
+
+  friend class AorHash;
 };
 
 struct AliasEntry
@@ -141,6 +154,10 @@ class AorHash
   : public unordered_hash_map<string, AorEntry>
 {
 public:
+  void set_expire(const iterator& aor_it, const AorEntry::iterator& binding_it, long int expire) {
+    aor_it->second.set_expire(binding_it, expire);
+  }
+
   /* Maintenance stuff */
 
   void gbc(long int now, list<string>& alias_list);

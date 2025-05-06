@@ -49,14 +49,14 @@ void AorHash::gbc(long int now,
 
       auto& binding = reg_it->second;
 
-      if (binding.reg_expire <= now) {
+      if (binding.get_expire() <= now) {
 
 	alias_list.push_back(binding.alias);
 	AorEntry::iterator del_it = reg_it++;
 
 	DBG("delete binding: '%s' -> '%s' (%li <= %li)",
 	    del_it->first.c_str(), binding.alias.c_str(),
-	    binding.reg_expire, now);
+	    binding.get_expire(), now);
 
 	it->second.erase(del_it);
 	continue;
@@ -341,7 +341,7 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
     }
   }
   // and update binding
-  binding_it->second.reg_expire = reg_expires;
+  reg_cache_ht.set_expire(aor_e_it, binding_it, reg_expires);
 
   auto alias_e_it = id_idx.find(alias);
   // if no alias map entry, insert a new one
@@ -445,7 +445,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 	uri.c_str(), binding_it->second.alias.c_str());
   }
   // and update binding
-  binding_it->second.reg_expire = reg_expires;
+  reg_cache_ht.set_expire(aor_e_it, binding_it, reg_expires);
 
   lock_guard<AmMutex> _id_l(id_idx);
 
@@ -793,7 +793,7 @@ bool _RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
     const string& uri = contact_it->uri_str();
 
     if(!getAlias(ctx.from_aor,uri,req.remote_ip,reg_binding) ||
-       !reg_binding.reg_expire) {
+       !reg_binding.get_expire()) {
       DBG("!getAlias(%s,%s,...) || !reg_binding.reg_expire",
 	  ctx.from_aor.c_str(),uri.c_str());
       return false; // fwd
@@ -804,8 +804,8 @@ bool _RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
     contact_expires += now.tv_sec;
 
     if(contact_expires + 4 /* 4 seconds buffer */ 
-       >= reg_binding.reg_expire) {
-      DBG("%li + 4 >= %li",contact_expires,reg_binding.reg_expire);
+       >= reg_binding.get_expire()) {
+      DBG("%li + 4 >= %li",contact_expires,reg_binding.get_expire());
       return false; // fwd
     }
     
