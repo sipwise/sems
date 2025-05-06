@@ -189,7 +189,8 @@ _RegisterCache::_RegisterCache()
   : reg_cache_ht(REG_CACHE_TABLE_ENTRIES),
     id_idx(REG_CACHE_TABLE_ENTRIES),
     contact_idx(REG_CACHE_TABLE_ENTRIES),
-    gbc_bucket_id(0)
+    gbc_bucket_id(0),
+    shutdown_flag(false)
 {
   // debug register cache WRITE operations
   setStorageHandler(new RegCacheLogHandler());
@@ -228,17 +229,17 @@ void _RegisterCache::gbc(unsigned int bucket_id)
 
 void _RegisterCache::run()
 {
-  struct timespec tick,rem;
-  tick.tv_sec  = (REG_CACHE_SINGLE_CYCLE/1000000L);
-  tick.tv_nsec = (REG_CACHE_SINGLE_CYCLE - (tick.tv_sec)*1000000L) * 1000L;
-
   gbc_bucket_id = 0;
   while (!stop_requested()) {
     gbc(gbc_bucket_id);
     gbc_bucket_id = (gbc_bucket_id+1);
     gbc_bucket_id &= (REG_CACHE_TABLE_ENTRIES-1);
-    nanosleep(&tick,&rem);
-  }  
+
+    std::unique_lock<std::mutex> _l(shutdown_mutex);
+    if (shutdown_flag)
+      break;
+    sleep_cond.wait_for(_l, std::chrono::microseconds(REG_CACHE_SINGLE_CYCLE));
+  }
 }
 
 /**

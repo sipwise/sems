@@ -206,6 +206,10 @@ class _RegisterCache
   void gbc(unsigned int bucket_id);
   void removeAlias(const string& alias, bool generate_event);
 
+  std::mutex shutdown_mutex;
+  std::condition_variable sleep_cond;
+  bool shutdown_flag;
+
 protected:
   _RegisterCache();
   ~_RegisterCache();
@@ -215,6 +219,12 @@ protected:
   /* AmThread interface */
   void run();
   const char *identify() { return "register cache"; }
+
+  void on_stop() {
+    std::lock_guard<std::mutex> _l(shutdown_mutex);
+    shutdown_flag = true;
+    sleep_cond.notify_all();
+  }
 
   /**
    * Returns the bucket associated with the passed contact-uri
