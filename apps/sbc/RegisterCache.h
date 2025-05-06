@@ -183,6 +183,22 @@ public:
   void dump_elmt(const string& alias, const AliasEntry& ae) const;
 };
 
+template<> struct std::less<unordered_map<string, AorEntry>::iterator>
+{
+  bool operator()(const unordered_map<string, AorEntry>::iterator& a,
+      const unordered_map<string, AorEntry>::iterator& b) const
+  {
+    auto lowest_a = a->second.get_lowest_expire();
+    auto lowest_b = b->second.get_lowest_expire();
+    if (lowest_a < lowest_b)
+      return true;
+    if (lowest_a > lowest_b)
+      return false;
+    // for identical set we compare the pointer values of the original object
+    return &a->second < &b->second;
+  }
+};
+
 /**
  * AoR hash table:
  *   AoR -> AorEntry
@@ -190,13 +206,24 @@ public:
 class AorHash
   : public unordered_hash_map<string, AorEntry>
 {
+  set<iterator> entries_by_time;
+
 public:
   void set_expire(const iterator& aor_it, const AorEntry::iterator& binding_it, long int expire) {
+    entries_by_time.erase(aor_it);
     aor_it->second.set_expire(binding_it, expire);
+    entries_by_time.insert(aor_it);
   }
 
   void erase_binding(const iterator& aor_it, const AorEntry::iterator& binding_it) {
+    entries_by_time.erase(aor_it);
     aor_it->second.erase(binding_it);
+    entries_by_time.insert(aor_it);
+  }
+
+  void erase(const iterator& aor_it) {
+    entries_by_time.erase(aor_it);
+    unordered_hash_map<string, AorEntry>::erase(aor_it);
   }
 
   /* Maintenance stuff */
