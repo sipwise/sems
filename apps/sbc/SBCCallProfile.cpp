@@ -871,7 +871,7 @@ bool SBCCallProfile::evaluateOutboundInterface() {
   } else {
     map<string,unsigned short>::iterator name_it =
       AmConfig::SIP_If_names.find(outbound_interface);
-    if (name_it != AmConfig::RTP_If_names.end()) {
+    if (name_it != AmConfig::SIP_If_names.end()) {
       outbound_interface_value = name_it->second;
     } else {
       ERROR("selected outbound_interface '%s' does not exist as a signaling"
