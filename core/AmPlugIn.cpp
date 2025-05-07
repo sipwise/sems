@@ -46,6 +46,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <filesystem>
 using std::set;
 
 static unsigned int pcm16_bytes2samples(long h_codec, unsigned int num_bytes)
@@ -180,44 +181,38 @@ int AmPlugIn::load(const string& directory, const string& plugins)
   if (!plugins.length()) {
     INFO("AmPlugIn: loading modules in directory '%s':\n", directory.c_str());
 
-    DIR* dir = opendir(directory.c_str());
-    if (!dir){
-      ERROR("while opening plug-in directory (%s): %s\n",
-	    directory.c_str(), strerror(errno));
-      return -1;
-    }
-    
     vector<string> excluded_plugins = explode(AmConfig::ExcludePlugins, ";");
     set<string> excluded_plugins_s; 
     for (vector<string>::iterator it = excluded_plugins.begin(); 
 	 it != excluded_plugins.end();it++)
       excluded_plugins_s.insert(*it);
 
-    struct dirent* entry;
+    try {
+      for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+	const auto& plugin_name = entry.path().filename().string();
+	const auto& plugin_file = entry.path().string();
 
-    while( ((entry = readdir(dir)) != NULL) && (err == 0) ){
-      string plugin_name = string(entry->d_name);
+	if(plugin_name.find(".so",plugin_name.length()-3) == string::npos ){
+	  continue;
+	}
 
-      if(plugin_name.find(".so",plugin_name.length()-3) == string::npos ){
-        continue;
-      }
-      
-      if (excluded_plugins_s.find(plugin_name.substr(0, plugin_name.length()-3)) 
-	  != excluded_plugins_s.end()) {
-	DBG("skipping excluded plugin %s\n", plugin_name.c_str());
-	continue;
-      }
-      
-      string plugin_file = directory + "/" + plugin_name;
+	if (excluded_plugins_s.find(plugin_name.substr(0, plugin_name.length()-3))
+	    != excluded_plugins_s.end()) {
+	  DBG("skipping excluded plugin %s\n", plugin_name.c_str());
+	  continue;
+	}
 
-      DBG("loading %s ...\n",plugin_file.c_str());
-      if( (err = loadPlugIn(plugin_file, plugin_name, loaded_plugins)) < 0 ) {
-        ERROR("while loading plug-in '%s'\n",plugin_file.c_str());
-        return -1;
+	DBG("loading %s ...\n",plugin_file.c_str());
+	if( (err = loadPlugIn(plugin_file, plugin_name, loaded_plugins)) < 0 ) {
+	  ERROR("while loading plug-in '%s'\n",plugin_file.c_str());
+	  return -1;
+	}
       }
     }
-    
-    closedir(dir);
+    catch (std::filesystem::filesystem_error& e) {
+      ERROR("while opening/reading plug-in directory (%s): %s\n",
+	  directory.c_str(), e.what());
+    }
   } 
   else {
     INFO("AmPlugIn: loading modules: '%s'\n", plugins.c_str());
