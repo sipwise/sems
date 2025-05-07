@@ -528,11 +528,9 @@ bool DBRegAgent::loadRegistrationsPeerings() {
  * Must only be used with registrations_mut lock held.
  */
 void DBRegAgent::handleRegistrationTimer(long object_id, const regType type) {
-      registrations_mut.unlock();
       WARN("Registration for %s with ID %ld already exists, removing.\n", TYPE_TO_STRING(type), object_id);
       removeRegistration(object_id, type);
       clearRegistrationTimer(object_id, type);
-      registrations_mut.lock();
 }
 
 /**
@@ -713,11 +711,13 @@ void DBRegAgent::updateRegistration(long object_id,
   }
 }
 
-/** remove registration from our list */
+/**
+ * Remove registration from our list.
+ * Must only be used with registrations_mut lock held.
+ */
 void DBRegAgent::removeRegistration(long object_id, const regType type) {
   bool res = false;
   string handle;
-  registrations_mut.lock();
 
   map<long, AmSIPRegistration*>::iterator it = (type == TYPE_PEERING ? registrations_peers.find(object_id) : registrations.find(object_id));
 
@@ -727,7 +727,6 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
   {
     if (!it->second) {
       WARN("Something went wrong while removing '%ld'\n", object_id);
-      registrations_mut.unlock();
       return;
     }
 
@@ -746,7 +745,6 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
   {
     if (!it->second) {
       WARN("Something went wrong while removing '%ld'\n", object_id);
-      registrations_mut.unlock();
       return;
     }
 
@@ -759,8 +757,6 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
     registrations.erase(it);
     res = true;
   }
-
-  registrations_mut.unlock();
 
   if (res) {
     // deregister us as SIP event receiver for this ltag
@@ -1193,9 +1189,7 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
       if (ev->reply.code >= 200 && !auth_pending) {
         // remove unregistered
         if (registration->getUnregistering()) {
-          registrations_mut.unlock();
           removeRegistration(object_id, type);
-          registrations_mut.lock();
         }
       }
 
