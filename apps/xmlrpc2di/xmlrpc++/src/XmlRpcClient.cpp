@@ -329,7 +329,7 @@ XmlRpcClient::generateRequest(const char* methodName, XmlRpcValue const& params)
   body += REQUEST_END;
 
   std::string header = generateHeader(body);
-  XmlRpcUtil::log(4, "XmlRpcClient::generateRequest: header is %d bytes, content-length is %d.", 
+  XmlRpcUtil::log(4, "XmlRpcClient::generateRequest: header is %zu bytes, content-length is %zu.",
                   header.length(), body.length());
 
   _request = header + body;
@@ -399,7 +399,7 @@ XmlRpcClient::writeRequest()
     return false;
   }
     
-  XmlRpcUtil::log(3, "XmlRpcClient::writeRequest: wrote %zd of %d bytes.", _bytesWritten, _request.length());
+  XmlRpcUtil::log(3, "XmlRpcClient::writeRequest: wrote %zd of %zu bytes.", _bytesWritten, _request.length());
 
   // Wait for the result
   if (_bytesWritten == _request.length()) {
@@ -434,7 +434,7 @@ XmlRpcClient::readHeader()
     return false;
   }
 
-  XmlRpcUtil::log(4, "XmlRpcClient::readHeader: client has read %d bytes", _header.length());
+  XmlRpcUtil::log(4, "XmlRpcClient::readHeader: client has read %zu bytes", _header.length());
 
   char *hp = (char*)_header.c_str();  // Start of header
   char *ep = hp + _header.length();   // End of string
