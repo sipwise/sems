@@ -50,10 +50,10 @@ namespace XmlRpc {
 
 
     //! Dump messages somewhere
-    static void log(int level, const char* fmt, ...);
+    static void log(int level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 
     //! Dump error messages somewhere
-    static void error(const char* fmt, ...);
+    static void error(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
   };
 } // namespace XmlRpc
