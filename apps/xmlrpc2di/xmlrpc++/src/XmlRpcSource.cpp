@@ -33,13 +33,22 @@ namespace XmlRpc {
       XmlRpcUtil::log(2,"XmlRpcSource::close: done closing socket %d.", _fd);
       _fd = -1;
     }
+
     if (_ssl_ssl != (SSL *) NULL) {
       SSL_shutdown (_ssl_ssl);
+
+      XmlRpcUtil::log(4, "XmlRpcClient::close: before SSL_free(_ssl_ssl)");
       SSL_free (_ssl_ssl);
       _ssl_ssl = NULL;
+      XmlRpcUtil::log(4, "XmlRpcClient::close: SSL shutdown successful!");
+    }
+
+    if (_ssl_ctx != (SSL_CTX *) NULL) {
+      XmlRpcUtil::log(4, "XmlRpcClient::close: before SSL_CTX_free(_ssl_ctx)");
       SSL_CTX_free (_ssl_ctx);
       _ssl_ctx = NULL;
     }
+
     if (_deleteOnClose) {
       XmlRpcUtil::log(2,"XmlRpcSource::close: deleting this");
       _deleteOnClose = false;

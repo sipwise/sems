@@ -144,18 +144,8 @@ XmlRpcClient::close()
     XmlRpcUtil::log(4, "XmlRpcClient::close: after SSL_shutdown");
   }
 
-  bool source_deleted = XmlRpcSource::getsDeletedOnClose();
-
-  XmlRpcSource::close(); /* potentially removes the owner of _ssl via `this` */
-
-  if (!source_deleted && _ssl) {
-    // Post-socket shutdown
-    XmlRpcUtil::log(4, "XmlRpcClient::close: before SSL_free(_ssl_ssl)");
-    SSL_free(_ssl_ssl);
-    XmlRpcUtil::log(4, "XmlRpcClient::close: before SSL_CTX_free(_ssl_ctx)");
-    SSL_CTX_free(_ssl_ctx);
-    XmlRpcUtil::log(4, "XmlRpcClient::close: SSL shutdown successful!");
-  }
+  /* potentially frees the `XmlRpcSource` itself via this */
+  XmlRpcSource::close();
 }
 
 
