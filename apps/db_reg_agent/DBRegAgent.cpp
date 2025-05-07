@@ -1061,7 +1061,7 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
       ev->reply.local_tag.c_str()
 #endif
       );
-  registrations_mut.lock();
+  std::lock_guard<AmMutex> _l(registrations_mut);
 
   string local_tag =
 #ifdef HAS_OFFER_ANSWER
@@ -1215,7 +1215,6 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
   } else {
     DBG("ignoring reply for unknown registration\n");
   }
-  registrations_mut.unlock();
 }
 
 void DBRegAgent::run() {
