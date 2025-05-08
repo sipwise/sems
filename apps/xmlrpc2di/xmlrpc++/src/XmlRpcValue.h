@@ -56,7 +56,6 @@ namespace XmlRpc {
 
     //! Construct an XmlRpcValue with a long value
     XmlRpcValue(long value)  : _type(TypeInt) { _value = value; }
-    XmlRpcValue(int value)   : _type(TypeInt) { _value = value; }
 
     //! Construct an XmlRpcValue with a double value
     XmlRpcValue(double value)  : _type(TypeDouble) { _value = value; }
@@ -103,7 +102,6 @@ namespace XmlRpc {
 
     //! Assign a long to this XmlRpcValue.
     XmlRpcValue& operator=(long const& rhs) { return operator=(XmlRpcValue(rhs)); }
-    XmlRpcValue& operator=(int const& rhs)  { return operator=(XmlRpcValue(rhs)); }
 
     //! Assign a double to this XmlRpcValue.
     XmlRpcValue& operator=(double const& rhs) { return operator=(XmlRpcValue(rhs)); }

@@ -90,7 +90,7 @@ int CCAcc::subtractCredit(string pin, int amount) {
    XmlRpcValue xmlArg;
    xmlArg[0][0]["methodName"] = "subtractCredit";
    xmlArg[0][0]["pin"] = pin;
-   xmlArg[0][0]["amount"] = amount;	
+   xmlArg[0][0]["amount"] = static_cast<long>(amount);
    DBG("subtractCredit pin# '%s', Seconds '%u'.\n", pin.c_str(),  
 amount );
    xmlrpccall.execute("subtractCredit", xmlArg, result);

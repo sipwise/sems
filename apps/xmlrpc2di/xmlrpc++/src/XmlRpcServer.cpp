@@ -407,7 +407,7 @@ XmlRpcServer::executeMulticall(const std::string& methodName,
 
     if ( ! params[0][i].hasMember(METHODNAME) ||
          ! params[0][i].hasMember(PARAMS)) {
-      result[i][FAULTCODE] = -1;
+      result[i][FAULTCODE] = -1L;
       result[i][FAULTSTRING] = MULTICALL +
               ": Invalid argument (expected a struct with members methodName and params)";
       continue;
@@ -422,14 +422,14 @@ XmlRpcServer::executeMulticall(const std::string& methodName,
       if ( ! executeMethod(methodName, methodParams, resultValue[0]) &&
            ! executeMulticall(methodName, params, resultValue[0]))
       {
-        result[i][FAULTCODE] = -1;
+        result[i][FAULTCODE] = -1L;
         result[i][FAULTSTRING] = methodName + ": unknown method name";
       }
       else
         result[i] = resultValue;
 
     } catch (const XmlRpcException& fault) {
-        result[i][FAULTCODE] = fault.getCode();
+        result[i][FAULTCODE] = static_cast<long>(fault.getCode());
         result[i][FAULTSTRING] = fault.getMessage();
     }
   }
@@ -486,7 +486,7 @@ XmlRpcServer::generateFaultResponse(std::string const& errorMsg, int errorCode)
     "\r\n</fault></methodResponse>\r\n";
 
   XmlRpcValue faultStruct;
-  faultStruct[FAULTCODE] = errorCode;
+  faultStruct[FAULTCODE] = static_cast<long>(errorCode);
   faultStruct[FAULTSTRING] = errorMsg;
   std::string body = RESPONSE_1 + faultStruct.toXml() + RESPONSE_2;
   std::string header = generateHeader(body);

@@ -501,14 +501,14 @@ void XMLRPC2DIServer::on_stop() {
 }
 
 void XMLRPC2DIServerCallsMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
-  int res = AmSession::getSessionNum();
-  DBG("XMLRPC2DI: calls = %d\n", res);
+  long res = AmSession::getSessionNum();
+  DBG("XMLRPC2DI: calls = %ld\n", res);
   result = res;
 }
 
 void XMLRPC2DIServerGetLoglevelMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
-  int res = log_level;
-  DBG("XMLRPC2DI: get_loglevel returns %d\n", res);
+  long res = log_level;
+  DBG("XMLRPC2DI: get_loglevel returns %ld\n", res);
   result = res;
 }
 
@@ -544,22 +544,22 @@ void XMLRPC2DIServerSetCPSLimitMethod::execute(XmlRpcValue& params, XmlRpcValue&
 }
 
 void XMLRPC2DIServerGetCpsavgMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
-  int l = AmSessionContainer::instance()->getAvgCPS();
-  DBG("XMLRPC2DI: get_cpsavg returns %d\n", l);
+  long l = AmSessionContainer::instance()->getAvgCPS();
+  DBG("XMLRPC2DI: get_cpsavg returns %ld\n", l);
   result = l;
 }
 
 void XMLRPC2DIServerGetCpsmaxMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
-  int l = AmSessionContainer::instance()->getMaxCPS();
-  DBG("XMLRPC2DI: get_cpsmax returns %d\n", l);
+  long l = AmSessionContainer::instance()->getMaxCPS();
+  DBG("XMLRPC2DI: get_cpsmax returns %ld\n", l);
   result = l;
 }
 
 #define XMLMETH_EXEC(_meth, _sess_func, _descr)				\
   void _meth::execute(XmlRpcValue& params, XmlRpcValue& result) {	\
-  unsigned int res = AmSession::_sess_func();				\
-  result = (int)res;							\
-  DBG("XMLRPC2DI: " _descr "(): %u\n", res);				\
+  unsigned long res = AmSession::_sess_func();				\
+  result = (long)res;							\
+  DBG("XMLRPC2DI: " _descr "(): %lu\n", res);				\
 }
 
 XMLMETH_EXEC(XMLRPC2DIServerGetCallsavgMethod, getAvgSessionNum, "get_callsavg");
@@ -680,7 +680,7 @@ void XMLRPC2DIServer::amarg2xmlrpcval(const AmArg& a,
   switch (a.getType()) {
 
   case AmArg::Undef:
-    result = 0; // XmlRpcValue();
+    result = static_cast<long>(0); // XmlRpcValue();
     break;
   
   case AmArg::Bool:  
@@ -693,7 +693,7 @@ void XMLRPC2DIServer::amarg2xmlrpcval(const AmArg& a,
 
   case AmArg::Int:
     //    DBG("a->X INT\n");  
-    result=a.asInt(); break;
+    result = static_cast<long>(a.asInt()); break;
 
   case AmArg::Double: 
     //    DBG("a->X DOUBLE\n");  
