@@ -642,7 +642,7 @@ void XMLRPC2DIServer::xmlrpcval2amargarray(XmlRpcValue& v, AmArg& a,
 void XMLRPC2DIServer::xmlrpcval2amarg(XmlRpcValue& v, AmArg& a) {
   if (v.valid()) {
     switch (v.getType()) {
-    case XmlRpcValue::TypeInt:   {  /* DBG("X->A INT\n"); */ a = static_cast<long>(v);    }  break;
+    case XmlRpcValue::TypeLong:   {  /* DBG("X->A INT\n"); */ a = static_cast<long>(v);    }  break;
     case XmlRpcValue::TypeDouble:{  /*  DBG("X->A DBL\n"); */ a = static_cast<double>(v); }  break;
     case XmlRpcValue::TypeString:{  /*  DBG("X->A STR\n"); */ a = (static_cast<string>(v)).c_str(); }  break;
     case XmlRpcValue::TypeBoolean : { /*   DBG("X->A BOL\n"); */ a = static_cast<bool>(v);  }

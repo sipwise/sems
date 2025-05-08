@@ -69,7 +69,7 @@ namespace XmlRpc {
         case TypeBase64:   _value = BinaryData();      break;
         case TypeArray:    _value = ValueArray();      break;
         case TypeStruct:   _value = ValueStruct();     break;
-        case TypeInt:      _value = 0;                 break;
+        case TypeLong:      _value = 0;                 break;
         case TypeDouble:   _value = 0.0;               break;
         case TypeBoolean:  _value = false;             break;
 	case TypeInvalid:  _value = std::monostate();  break;
@@ -146,7 +146,7 @@ namespace XmlRpc {
     if (typeTag == BOOLEAN_TAG)
       result = boolFromXml(valueXml, offset);
     else if (typeTag == I4_TAG || typeTag == INT_TAG)
-      result = intFromXml(valueXml, offset);
+      result = longFromXml(valueXml, offset);
     else if (typeTag == DOUBLE_TAG)
       result = doubleFromXml(valueXml, offset);
     else if (typeTag.empty() || typeTag == STRING_TAG)
@@ -179,7 +179,7 @@ namespace XmlRpc {
   {
     switch (_type) {
       case TypeBoolean:  return boolToXml();
-      case TypeInt:      return intToXml();
+      case TypeLong:      return longToXml();
       case TypeDouble:   return doubleToXml();
       case TypeString:   return stringToXml();
       case TypeDateTime: return timeToXml();
@@ -218,7 +218,7 @@ namespace XmlRpc {
   }
 
   // Int
-  bool XmlRpcValue::intFromXml(std::string const& valueXml, size_t* offset)
+  bool XmlRpcValue::longFromXml(std::string const& valueXml, size_t* offset)
   {
     const char* valueStart = valueXml.c_str() + *offset;
     char* valueEnd;
@@ -226,13 +226,13 @@ namespace XmlRpc {
     if (valueEnd == valueStart)
       return false;
 
-    _type = TypeInt;
+    _type = TypeLong;
     _value = ivalue;
     *offset += valueEnd - valueStart;
     return true;
   }
 
-  std::string XmlRpcValue::intToXml() const
+  std::string XmlRpcValue::longToXml() const
   {
     char buf[256];
     snprintf(buf, sizeof(buf)-1, "%ld", std::get<long>(_value));
@@ -473,7 +473,7 @@ namespace XmlRpc {
     switch (_type) {
       default:           break;
       case TypeBoolean:  os << std::get<bool>(_value);        break;
-      case TypeInt:      os << std::get<long>(_value);        break;
+      case TypeLong:      os << std::get<long>(_value);        break;
       case TypeDouble:   os << std::get<double>(_value);      break;
       case TypeString:   os << std::get<std::string>(_value); break;
       case TypeDateTime:

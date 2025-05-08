@@ -32,7 +32,7 @@ namespace XmlRpc {
     enum Type {
       TypeInvalid,
       TypeBoolean,
-      TypeInt,  // really a long
+      TypeLong,
       TypeDouble,
       TypeString,
       TypeDateTime,
@@ -55,7 +55,7 @@ namespace XmlRpc {
     XmlRpcValue(bool value) : _type(TypeBoolean) { _value = value; }
 
     //! Construct an XmlRpcValue with a long value
-    XmlRpcValue(long value)  : _type(TypeInt) { _value = value; }
+    XmlRpcValue(long value)  : _type(TypeLong) { _value = value; }
 
     //! Construct an XmlRpcValue with a double value
     XmlRpcValue(double value)  : _type(TypeDouble) { _value = value; }
@@ -125,8 +125,8 @@ namespace XmlRpc {
 
     //! Treat an XmlRpcValue as an int.
     //! Throws XmlRpcException if the value is initialized to
-    //! a type that is not TypeInt.
-    operator long&()           { assertTypeOrInvalid(TypeInt); return std::get<long>(_value); }
+    //! a type that is not TypeLong.
+    operator long&()           { assertTypeOrInvalid(TypeLong); return std::get<long>(_value); }
 
     //! Treat an XmlRpcValue as a double.
     //! Throws XmlRpcException if the value is initialized to
@@ -219,7 +219,7 @@ namespace XmlRpc {
 
     // XML decoding
     bool boolFromXml(std::string const& valueXml, size_t* offset);
-    bool intFromXml(std::string const& valueXml, size_t* offset);
+    bool longFromXml(std::string const& valueXml, size_t* offset);
     bool doubleFromXml(std::string const& valueXml, size_t* offset);
     bool stringFromXml(std::string const& valueXml, size_t* offset);
     bool timeFromXml(std::string const& valueXml, size_t* offset);
@@ -229,7 +229,7 @@ namespace XmlRpc {
 
     // XML encoding
     std::string boolToXml() const;
-    std::string intToXml() const;
+    std::string longToXml() const;
     std::string doubleToXml() const;
     std::string stringToXml() const;
     std::string timeToXml() const;
