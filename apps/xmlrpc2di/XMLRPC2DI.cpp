@@ -521,7 +521,7 @@ void XMLRPC2DIServerSetLoglevelMethod::execute(XmlRpcValue& params, XmlRpcValue&
 
 void XMLRPC2DIServerGetShutdownmodeMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
   DBG("XMLRPC2DI: get_shutdownmode returns %s\n", AmConfig::ShutdownMode?"true":"false");
-  result = (bool)AmConfig::ShutdownMode;
+  result = AmConfig::ShutdownMode;
 }
 
 void XMLRPC2DIServerSetShutdownmodeMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
