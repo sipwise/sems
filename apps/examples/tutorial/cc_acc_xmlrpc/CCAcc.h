@@ -12,9 +12,9 @@ class CCAcc : public AmDynInvoke
 
 {
   /** returns credit for pin, -1 if pin wrong */
-  int getCredit(string pin);
+  long getCredit(string pin);
   /** returns remaining credit */
-  int subtractCredit(string pin, int amount);
+  long subtractCredit(string pin, long amount);
 
   static CCAcc* _instance;
  public:

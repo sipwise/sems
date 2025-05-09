@@ -63,7 +63,7 @@ void CCAcc::invoke(const string& method, const AmArg& args, AmArg& ret)
 }
 
 /* accounting functions... */;
-int CCAcc::getCredit(string pin) {	
+long CCAcc::getCredit(string pin) {
    const char* serverAddress;
    int port;
    serverAddress = "localhost";
@@ -74,12 +74,12 @@ int CCAcc::getCredit(string pin) {
    XmlRpcValue xmlArg;
    xmlArg[0] = pin;
    xmlrpccall.execute("getCredit", xmlArg, result);
-   int res = result;
-   DBG("Credit Left '%u' .\n", res);
+   long res = result;
+   DBG("Credit Left '%ld' .\n", res);
    return res;
 }
 
-int CCAcc::subtractCredit(string pin, int amount) {
+long CCAcc::subtractCredit(string pin, long amount) {
    const char* serverAddress;
    int port;
    serverAddress = "localhost";
@@ -90,11 +90,11 @@ int CCAcc::subtractCredit(string pin, int amount) {
    XmlRpcValue xmlArg;
    xmlArg[0][0]["methodName"] = "subtractCredit";
    xmlArg[0][0]["pin"] = pin;
-   xmlArg[0][0]["amount"] = static_cast<long>(amount);
-   DBG("subtractCredit pin# '%s', Seconds '%u'.\n", pin.c_str(),  
+   xmlArg[0][0]["amount"] = amount;
+   DBG("subtractCredit pin# '%s', Seconds '%ld'.\n", pin.c_str(),
 amount );
    xmlrpccall.execute("subtractCredit", xmlArg, result);
-   int res = result;
-   DBG("Credit Left '%u' .\n", res);
+   long res = result;
+   DBG("Credit Left '%ld' .\n", res);
    return res;
 }
