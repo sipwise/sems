@@ -16,24 +16,24 @@ if($ARGV[0] and $ARGV[0] eq 'config') {
         exit 0;
 }
 
-open(FILE, "sems-stats|");
+open my $fh_active, "sems-stats|";
 
-while(<FILE>)
+while (<$fh_active>)
 {
 	if($_ =~ /Active calls: (.*)\n/)
 	{
 		print "calls.value $1\n";
 	}
 }
-close FILE;
+close $fh_active;
 
-open(FILE, "sems-stats -c get_callsmax|");
+open my $fh_max, "sems-stats -c get_callsmax|";
 
-while(<FILE>)
+while (<$fh_max>)
 {
 	if($_ =~ /Maximum active calls: (.*)\n/)
 	{
 		print "peak.value $1\n";
 	}
 }
-close FILE;
+close $fh_max;
