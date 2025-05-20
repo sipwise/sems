@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use strict;
+use warnings;
+
 if($ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_title SEMS calls\n";
         print "graph_args --base 1000 -l 0\n";
