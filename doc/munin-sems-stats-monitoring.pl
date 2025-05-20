@@ -16,7 +16,7 @@ if($ARGV[0] and $ARGV[0] eq 'config') {
         exit 0;
 }
 
-open my $fh_active, "sems-stats|";
+open my $fh_active, '-|', 'sems-stats';
 
 while (<$fh_active>)
 {
@@ -27,7 +27,7 @@ while (<$fh_active>)
 }
 close $fh_active;
 
-open my $fh_max, "sems-stats -c get_callsmax|";
+open my $fh_max, '-|', 'sems-stats -c get_callsmax';
 
 while (<$fh_max>)
 {
