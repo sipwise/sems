@@ -371,25 +371,21 @@ int _SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     return res;
 }
 
-int _SipCtrlInterface::run()
+int _SipCtrlInterface::run(SdNotifier& sd)
 {
     DBG("Starting SIP control interface\n");
     wheeltimer::instance()->start();
 
     if (NULL != udp_servers) {
 	for(int i=0; i<nr_udp_servers;i++){
-	    udp_servers[i]->start();
+	    udp_servers[i]->start(sd);
 	}
     }
 
     if (NULL != tcp_servers) {
 	for(int i=0; i<nr_tcp_servers;i++){
-	    tcp_servers[i]->start();
+	    tcp_servers[i]->start(sd);
 	}
-    }
-
-    while (!stopped.get()) {
-        stopped.wait_for();
     }
 
     DBG("SIP control interface ending\n");

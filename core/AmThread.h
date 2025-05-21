@@ -37,9 +37,12 @@
 #include <atomic>
 #include <condition_variable>
 #include <thread>
+#include <optional>
 
 using std::lock_guard;
 using std::atomic_bool;
+
+class SdNotifier;
 
 /**
  * \brief Wrapper class for std::mutex
@@ -127,6 +130,9 @@ class AmThread
 
   void _start();
 
+  /** Initialise to true in subclasses that call the ready() method */
+  bool _triggers_ready;
+
 protected:
   virtual void run()=0;
   virtual void on_stop() {};
@@ -134,18 +140,25 @@ protected:
   /** @return true if this thread ought to stop. */
   bool stop_requested() { return _state == stopping; }
 
+  std::optional<std::reference_wrapper<SdNotifier>> _sd_notifier;
+
+  /** Signal that the thread is ready to do its job */
+  void ready();
+
 public:
   unsigned long _pid;
 
-  AmThread()
+  AmThread(bool triggers_ready = false)
     : _state(state::idle),
-      _joined(false)
+      _joined(false),
+      _triggers_ready(triggers_ready)
   {}
 
   virtual ~AmThread();
 
   /** Start it ! */
   void start();
+  void start(SdNotifier&);
 
   /** Stop it ! */
   void stop();

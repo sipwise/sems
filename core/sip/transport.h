@@ -159,7 +159,9 @@ protected:
     trsp_socket* sock;
 
 public:
-    transport(trsp_socket* sock): sock(sock) {}
+    transport(trsp_socket* sock, bool triggers_ready = false):
+      AmThread(triggers_ready), sock(sock)
+    {}
     virtual ~transport();
 };
 

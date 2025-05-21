@@ -94,7 +94,7 @@ public:
 
     int load();
 
-    int run();
+    int run(SdNotifier&);
     void stop();
     void cleanup();
 

@@ -35,6 +35,7 @@
 #include "AmEventDispatcher.h"
 #include "AmSessionProcessor.h"
 #include "AmAppTimer.h"
+#include "SdNotify.h"
 
 #ifdef WITH_ZRTP
 # include "AmZRTP.h"
@@ -348,6 +349,8 @@ int main(int argc, char* argv[])
   int fd[2] = {0,0};
   #endif
 
+  SdNotifier sd;
+
   progname = strrchr(argv[0], '/');
   progname = (progname == NULL ? argv[0] : progname + 1);
 
@@ -646,8 +649,13 @@ int main(int argc, char* argv[])
   INFO("SEMS " SEMS_VERSION " (" ARCH "/" OS") started");
 
   // running the server
-  if(sip_ctrl.run() != -1)
+  if(sip_ctrl.run(sd) != -1)
     success = true;
+
+  sd.ready();
+
+  while (!is_shutting_down.get())
+    is_shutting_down.wait_for();
 
   // session container stops active sessions
   INFO("Disposing session container\n");
@@ -667,6 +675,9 @@ int main(int argc, char* argv[])
   AmEventDispatcher::dispose();
 
  error:
+
+  sd.stopping();
+
   INFO("Disposing plug-ins\n");
   AmPlugIn::dispose();
 

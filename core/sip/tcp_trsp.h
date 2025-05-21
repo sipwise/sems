@@ -238,7 +238,7 @@ public:
   ~tcp_server_socket() {}
 
   void add_threads(unsigned int n);
-  void start_threads();
+  void start_threads(SdNotifier&);
   void stop_threads();
 
   const char* get_transport() const { return "tcp"; }

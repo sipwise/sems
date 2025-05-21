@@ -27,6 +27,7 @@
 
 #include "AmThread.h"
 #include "log.h"
+#include "SdNotify.h"
 
 #include <unistd.h>
 #include "errno.h"
@@ -46,6 +47,10 @@ void AmThread::_start()
 {
   _pid = static_cast<unsigned long>(_td.native_handle());
   DBG("Thread %lu is starting.\n", _pid);
+
+  if (!_triggers_ready)
+    ready();
+
   run();
 
   DBG("Thread %lu is ending.\n", _pid);
@@ -64,6 +69,20 @@ void AmThread::start()
   _pid = 0;
 
   _td = std::thread(&AmThread::_start, this);
+}
+
+void AmThread::start(SdNotifier& sd)
+{
+  _sd_notifier = sd;
+  sd.waiter();
+  start();
+}
+
+void AmThread::ready()
+{
+  if (!_sd_notifier)
+    return;
+  _sd_notifier->get().running();
 }
 
 void AmThread::stop()

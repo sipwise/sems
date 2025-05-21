@@ -248,7 +248,7 @@ int udp_trsp_socket::send(const sockaddr_storage* sa,
 /** @see trsp_socket */
 
 udp_trsp::udp_trsp(udp_trsp_socket* sock)
-    : transport(sock)
+    : transport(sock, true)
 {
   iov[0].iov_base = buf;
   iov[0].iov_len  = MAX_UDP_MSGLEN;
@@ -281,6 +281,8 @@ void udp_trsp::run()
 
     INFO("Started SIP server UDP transport on %s:%i\n",
 	 sock->get_ip(),sock->get_port());
+
+    ready();
 
     while (!stop_requested()){
 	buf_len = recvmsg(sock->get_sd(),&msg,0);

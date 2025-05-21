@@ -18,6 +18,7 @@ Build-Depends:
  libspandsp-dev,
  libspeex-dev,
  libssl-dev,
+ libsystemd-dev,
  libxml2-dev,
  openssl,
  pkgconf,

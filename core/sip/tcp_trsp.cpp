@@ -698,10 +698,10 @@ void tcp_server_socket::add_threads(unsigned int n)
   }
 }
 
-void tcp_server_socket::start_threads()
+void tcp_server_socket::start_threads(SdNotifier& sd)
 {
   for(unsigned int i=0; i<workers.size(); i++) {
-    workers[i]->start();
+    workers[i]->start(sd);
   }
 }
 
@@ -777,7 +777,7 @@ struct timeval* tcp_server_socket::get_idle_timeout()
 }
 
 tcp_trsp::tcp_trsp(tcp_server_socket* sock)
-    : transport(sock)
+    : transport(sock, true)
 {
   evbase = event_base_new();
   sock->add_event(evbase);
@@ -800,10 +800,12 @@ void tcp_trsp::run()
   }
 
   tcp_server_socket* tcp_sock = static_cast<tcp_server_socket*>(sock);
-  tcp_sock->start_threads();
+  tcp_sock->start_threads(*_sd_notifier);
 
   INFO("Started SIP server TCP transport on %s:%i\n",
        sock->get_ip(),sock->get_port());
+
+  ready();
 
   /* Start the event loop. */
   int ret = event_base_dispatch(evbase);
