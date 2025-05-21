@@ -601,7 +601,7 @@ tcp_server_socket::tcp_server_socket(unsigned short if_num)
 
 int tcp_server_socket::bind(const string& bind_ip, unsigned short bind_port)
 {
-  if(sd){
+  if(sd != -1){
     WARN("re-binding socket\n");
     close(sd);
     sd = -1;
