@@ -34,7 +34,7 @@ namespace XmlRpc {
     static bool nbRead(int socket, std::string& s, bool *eof, SSL *ssl);
 
     //! Write text to the specified socket. Returns false on error.
-    static bool nbWrite(int socket, std::string& s, int *bytesSoFar, SSL* ssl);
+    static bool nbWrite(int socket, std::string& s, size_t &bytesSoFar, SSL* ssl);
 
 
     // The next four methods are appropriate for servers.

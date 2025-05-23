@@ -72,7 +72,7 @@ namespace XmlRpc {
     std::string _response;
 
     //! Number of bytes of the response written so far
-    int _bytesWritten;
+    size_t _bytesWritten;
 
     //! Whether to keep the current client connection open for further requests
     bool _keepAlive;

@@ -123,7 +123,7 @@ namespace XmlRpc {
     int _sendAttempts;
 
     // Number of bytes of the request that have been written to the socket so far
-    int _bytesWritten;
+    size_t _bytesWritten;
 
     // True if we are currently executing a request. If you want to multithread,
     // each thread should have its own client.

@@ -35,9 +35,10 @@ extern "C" {
 #include <string.h>
 #include <strings.h>
 
+#include <limits>
+using std::numeric_limits;
+
 using namespace XmlRpc;
-
-
 
 #if defined(_WINDOWS)
   
@@ -214,35 +215,51 @@ XmlRpcSocket::nbRead(int fd, std::string& s, bool *eof, SSL* ssl)
 }
 
 
-// Write text to the specified socket. Returns false on error.
-bool 
-XmlRpcSocket::nbWrite(int fd, std::string& s, int *bytesSoFar, SSL* ssl)
+/* Write text to the specified socket. Returns false on error. */
+bool XmlRpcSocket::nbWrite(int fd, std::string& s, size_t &bytesSoFar, SSL* ssl)
 {
-  int nToWrite = int(s.length()) - *bytesSoFar;
-  char *sp = const_cast<char*>(s.c_str()) + *bytesSoFar;
+  /* a guard against overflow */
+  if (bytesSoFar < 0 || bytesSoFar > s.length()) {
+    XmlRpcUtil::log(1, "XmlRpcSocket::nbWrite: Invalid bytesSoFar='%zu' for string length='%zu'",
+                    bytesSoFar, s.length());
+    return false;
+  }
+
   bool wouldBlock = false;
 
-  while ( nToWrite > 0 && ! wouldBlock ) {
-#if defined(_WINDOWS)
-    int n = send(fd, sp, nToWrite, 0);
-#else
-    int n;
-    if (ssl != (SSL *) NULL) {
-      n = SSL_write(ssl, sp, nToWrite);
-    } else {
-      n = write(fd, sp, nToWrite);
-    }
-#endif
-    XmlRpcUtil::log(5, "XmlRpcSocket::nbWrite: send/write returned %d.", n);
+  size_t totalLen = s.length();
+  size_t bytesRemaining = totalLen - static_cast<size_t>(bytesSoFar);
+  char *sp = const_cast<char*>(s.c_str()) + bytesSoFar;
 
-    if (n > 0) {
-      sp += n;
-      *bytesSoFar += n;
-      nToWrite -= n;
+  while (bytesRemaining > 0 && !wouldBlock)
+  {
+    ssize_t bytesWritten;
+
+    if (ssl != nullptr) {
+      if (bytesRemaining > static_cast<size_t>(numeric_limits<int>::max())) {
+        XmlRpcUtil::log(1, "Too much data to be written at once via SSL_write().");
+        return false;
+      }
+      bytesWritten = SSL_write(ssl, sp, static_cast<int>(bytesRemaining));
+    } else {
+      bytesWritten = write(fd, sp, bytesRemaining);
+      /* guard */
+      if (bytesWritten > 0 && static_cast<size_t>(bytesWritten) > bytesRemaining) {
+          XmlRpcUtil::log(1, "XmlRpcSocket::nbWrite: write() returned more than requested (%zd vs %zu)", bytesWritten, bytesRemaining);
+          return false;
+      }
+    }
+
+    XmlRpcUtil::log(5, "XmlRpcSocket::nbWrite: send/write returned '%zd'.", bytesWritten);
+
+    if (bytesWritten > 0) {
+      sp += bytesWritten;
+      bytesSoFar += bytesWritten;
+      bytesRemaining -= bytesWritten;
     } else if (nonFatalError()) {
       wouldBlock = true;
     } else {
-      return false;   // Error
+      return false; /* Error */
     }
   }
   return true;

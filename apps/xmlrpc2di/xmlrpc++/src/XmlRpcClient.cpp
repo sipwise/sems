@@ -394,15 +394,15 @@ XmlRpcClient::writeRequest()
     XmlRpcUtil::log(5, "XmlRpcClient::writeRequest (attempt %d):\n%s\n", _sendAttempts+1, _request.c_str());
 
   // Try to write the request
-  if ( ! XmlRpcSocket::nbWrite(this->getfd(), _request, &_bytesWritten, _ssl_ssl)) {
+  if ( ! XmlRpcSocket::nbWrite(this->getfd(), _request, _bytesWritten, _ssl_ssl)) {
     XmlRpcUtil::error("Error in XmlRpcClient::writeRequest: write error (%s).",XmlRpcSocket::getErrorMsg().c_str());
     return false;
   }
     
-  XmlRpcUtil::log(3, "XmlRpcClient::writeRequest: wrote %d of %d bytes.", _bytesWritten, _request.length());
+  XmlRpcUtil::log(3, "XmlRpcClient::writeRequest: wrote %zd of %d bytes.", _bytesWritten, _request.length());
 
   // Wait for the result
-  if (_bytesWritten == int(_request.length())) {
+  if (_bytesWritten == _request.length()) {
     _header = "";
     _response = "";
     _connectionState = READ_HEADER;

@@ -182,14 +182,14 @@ XmlRpcServerConnection::writeResponse()
   }
 
   // Try to write the response
-  if ( ! XmlRpcSocket::nbWrite(this->getfd(), _response, &_bytesWritten, _ssl_ssl)) {
+  if ( ! XmlRpcSocket::nbWrite(this->getfd(), _response, _bytesWritten, _ssl_ssl)) {
     XmlRpcUtil::error("XmlRpcServerConnection::writeResponse: write error (%s).",XmlRpcSocket::getErrorMsg().c_str());
     return false;
   }
-  XmlRpcUtil::log(3, "XmlRpcServerConnection::writeResponse: wrote %d of %zu bytes.", _bytesWritten, static_cast<size_t>(_response.length()));
+  XmlRpcUtil::log(3, "XmlRpcServerConnection::writeResponse: wrote %zu of %zu bytes.", _bytesWritten, _response.length());
 
   // Prepare to read the next request
-  if (_bytesWritten == int(_response.length())) {
+  if (_bytesWritten == _response.length()) {
     _header = "";
     _request = "";
     _response = "";
