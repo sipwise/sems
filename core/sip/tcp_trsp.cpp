@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-
 void tcp_trsp_socket::on_sock_read(int fd, short ev, void* arg)
 {
   if(ev & (EV_READ|EV_TIMEOUT)){
@@ -301,58 +300,59 @@ void tcp_trsp_socket::on_read(short ev)
   ssize_t bytes = 0;
   char* old_cursor = (char*)get_input();
 
-  {// locked section
+  if(ev & EV_TIMEOUT) {
+    DBG("************ idle timeout: closing connection **********");
+    close();
+    return;
+  }
 
-    if(ev & EV_TIMEOUT) {
-      DBG("************ idle timeout: closing connection **********");
+  lock_guard<AmMutex> _l(sock_mut);
+  DBG("on_read (connected = %i)",connected);
+
+  bytes = ::read(sd, get_input(), get_input_free_space());
+
+  /* read succeeded */
+  if (bytes > 0) {
+    input_len += bytes;
+
+    DBG("received: <%.*s>",(int) bytes,old_cursor);
+
+    /* parse it */
+    if(parse_input() < 0) {
+      DBG("Error while parsing input: closing connection!");
       close();
-      return;
     }
+  }
+  /* failed */
+  else if (bytes < 0) {
 
-    lock_guard<AmMutex> _l(sock_mut);
-    DBG("on_read (connected = %i)",connected);
-
-    bytes = ::read(sd,get_input(),get_input_free_space());
-    if(bytes < 0) {
-      switch(errno) {
+    switch(errno)
+    {
       case EAGAIN:
-	return; // nothing to read
+        return; /* nothing to read */
 
       case ECONNRESET:
       case ENOTCONN:
-	DBG("connection has been closed (sd=%i)",sd);
-	close();
-	return;
+        DBG("connection has been closed (sd=%i)",sd);
+        close();
+        return;
 
       case ETIMEDOUT:
-	DBG("transmission timeout (sd=%i)",sd);
-	close();
-	return;
+        DBG("transmission timeout (sd=%i)",sd);
+        close();
+        return;
 
       default:
-	DBG("unknown error (%i): %s",errno,strerror(errno));
-	close();
-	return;
-      }
+        DBG("unknown error (%i): %s",errno,strerror(errno));
+        close();
+        return;
     }
-    else if(bytes == 0) {
-      // connection closed
-      DBG("connection has been closed (sd=%i)",sd);
-      close();
-      return;
-    }
-  }// end of - locked section
-
-  input_len += bytes;
-
-  DBG("received: <%.*s>",(int) bytes,old_cursor);
-
-  // ... and parse it
-  if(parse_input() < 0) {
-    DBG("Error while parsing input: closing connection!");
-    sock_mut.lock();
+  }
+  /* EOF */
+  else {
+    DBG("connection has been closed (sd=%i)", sd);
     close();
-    sock_mut.unlock();
+    return;
   }
 }
 
