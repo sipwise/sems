@@ -647,16 +647,19 @@ int AmConfig::readConfiguration()
   }
 
   if(cfg.hasParameter("cps_limit")){ 
-    unsigned int CPSLimit;
-    vector<string> limit = explode(cfg.getParameter("cps_limit"), ";");
-    if (limit.size() != 3) {
+    unsigned int CPSLimit = 9999; /* silently make infinite if suddenly was wrong read */
+
+    vector<string> limit_parameters = explode(cfg.getParameter("cps_limit"), ";");
+
+    if (limit_parameters.size() != 3) {
       ERROR("invalid cps_limit specified.\n");
     } else {
-      if (str2int(limit[0], CPSLimit) || str2int(limit[1], CPSLimitErrCode)) {
-	ERROR("invalid cps_limit specified.\n");
+      if (str2int(limit_parameters[0], CPSLimit) || str2int(limit_parameters[1], CPSLimitErrCode)) {
+        ERROR("invalid cps_limit specified.\n");
       }
-      CPSLimitErrReason = limit[2];
+      CPSLimitErrReason = limit_parameters[2];
     }
+
     AmSessionContainer::instance()->setCPSLimit(CPSLimit);
   }
 
