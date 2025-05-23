@@ -468,31 +468,27 @@ void AmRtpAudio::add_to_history(int16_t *buffer, unsigned int size)
 
 void AmRtpAudio::setPlayoutType(PlayoutType type)
 {
+  session->lockAudio();
   if (m_playout_type != type)
-    {
-      if (type == ADAPTIVE_PLAYOUT) {
-	session->lockAudio();
-	m_playout_type = type;
-	if (fmt.get())
-	  playout_buffer.reset(new AmAdaptivePlayout(this,getSampleRate()));
-	session->unlockAudio();
-	DBG("Adaptive playout buffer activated\n");
-      }
-      else if (type == JB_PLAYOUT) {
-	session->lockAudio();
-	m_playout_type = type;
-	if (fmt.get())
-	  playout_buffer.reset(new AmJbPlayout(this,getSampleRate()));
-	session->unlockAudio();
-	DBG("Adaptive jitter buffer activated\n");
-      }
-      else {
-	session->lockAudio();
-	m_playout_type = type;
-	if (fmt.get())
-	  playout_buffer.reset(new AmPlayoutBuffer(this,getSampleRate()));
-	session->unlockAudio();
-	DBG("Simple playout buffer activated\n");
-      }
+  {
+    if (type == ADAPTIVE_PLAYOUT) {
+      m_playout_type = type;
+      if (fmt.get())
+        playout_buffer.reset(new AmAdaptivePlayout(this,getSampleRate()));
+      DBG("Adaptive playout buffer activated\n");
     }
+    else if (type == JB_PLAYOUT) {
+      m_playout_type = type;
+      if (fmt.get())
+        playout_buffer.reset(new AmJbPlayout(this,getSampleRate()));
+      DBG("Adaptive jitter buffer activated\n");
+    }
+    else {
+      m_playout_type = type;
+      if (fmt.get())
+        playout_buffer.reset(new AmPlayoutBuffer(this,getSampleRate()));
+      DBG("Simple playout buffer activated\n");
+    }
+  }
+  session->unlockAudio();
 }
