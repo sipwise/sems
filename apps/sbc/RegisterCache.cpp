@@ -413,7 +413,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 	}
 
 	// relink binding with the new index
-	auto binding = binding_it->second;
+	auto& binding = binding_it->second;
 	reg_cache_ht.erase_binding(aor_e_it, binding_it);
 	binding_it = aor_e_it->second.insert(make_pair(idx, binding)).first;
       }

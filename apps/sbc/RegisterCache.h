@@ -239,7 +239,7 @@ public:
   string ip;
   unsigned short port;
 
-  ContactKey(string _uri, string _ip, unsigned short _port)
+  ContactKey(const string& _uri, const string& _ip, unsigned short _port)
     : uri(_uri),
       ip(_ip),
       port(_port)
