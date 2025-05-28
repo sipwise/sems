@@ -151,7 +151,8 @@ public:
   AmThread(bool triggers_ready = false)
     : _state(state::idle),
       _joined(false),
-      _triggers_ready(triggers_ready)
+      _triggers_ready(triggers_ready),
+      _pid(0)
   {}
 
   virtual ~AmThread();
