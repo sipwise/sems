@@ -41,7 +41,6 @@ RETVAL=0
 
 if test "$SEMS_CREATE_CORE" = "yes" ; then
         ulimit -c unlimited
-        DAEMON_COREFILE_LIMIT="unlimited"
 fi
 
 
