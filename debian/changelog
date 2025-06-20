@@ -1,3 +1,121 @@
+ngcp-sems (1:1.6.0+0~mr13.4.1.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [a24b5d8] MT#62253 log: make ILOG_DLG() call-id file specific
+  * [df47486] MT#62253 log: AmSipDialog: add call-id based logging
+  * [a29e09f] MT#62253 log: AmBasicSipDialog: add call-id based logging
+  * [700c1a0] MT#62253 log: AmOfferAnswer: add call-id based logging
+  * [10ddc69] MT#62253 log: Introduce `ILOG_SDLG()`
+  * [7719eb7] MT#62253 log: AmSession: log only when dlg is added already
+  * [775eaeb] MT#59962 XmlRpcValue: initialize `tm`
+  * [838c136] MT#59962 XmlRpcValue: avoid unnecessary copy
+  * [39bd31e] MT#59962 CallLeg: use WARN() instead of ILOG_DLG()
+  * [3cea2a6] MT#59962 DSM: initialize DSMScriptConfig diags to NULL
+  * [5faf948] MT#59962 DSMChartReader: close `h_dl` if import failed
+  * [a7b654c] MT#59962 DSMCoreModule: ensure AmArg is actually set
+  * [5a602ae] MT#59962 DSMCoreModule: move instead of copy
+  * [d2833bb] MT#59962 DSMCoreModule: make `resolveVars()` be using reference
+  * [e8941a5] MT#59962 ModConference: do not leave allocated chan
+  * [4160072] MT#59962 ModConference: use move instead of copy
+  * [d63305f] MT#59962 ModSbc: `profile_param` can be only one
+  * [8211e8c] MT#59962 ModSbc: FilterEntry define type before using
+  * [ccdebb2] MT#59962 ModSys: refactor SCTmpNamAction using `mkstemp()`
+  * [305d860] MT#59962 DRedisConnection: no reply means something went wrong
+  * [6dfc04d] MT#59962 DRedisConnection: size_t is always >= 0
+  * [8f95edc] MT#59962 DRedisConnection: ensure redis_context isn't NULL
+  * [5523520] MT#59962 DRedisConnection: handle empty context case
+  * [357b204] MT#59962 ModSbc: use move instead of copy for mf
+  * [db1c069] MT#59962 AmSessionContainer: move app_params
+  * [197c5c6] MT#59962 AmSessionContainer: refactor indentation
+  * [282d173] MT#59962 AmSessionContainer: move session ptr into try statement
+  * [e406d1d] MT#59962 AmSessionContainer: add some code commentaries
+  * [3ed4f30] MT#59962 AmSessionContainer: smart pointer in one code row
+  * [987e4ef] MT#59962 SBC: `reloadProfiles()` use move for profiles
+  * [78a45d1] MT#59962 _trans_layer: `update_uac_request()` use ref. to ptr
+  * [aba95f8] MT#59962 _trans_layer: `send_request()` check `p_msg` before using
+  * [0a5b30d] MT#59962 xmlrpc2di: check XmlRpcSource existence before using
+  * [afea04b] MT#59962 xmlrpc2di: add `_ssl_ssl` and `_ssl_ctx` free handling
+  * [7a46e8e] MT#59962 xmlrpc2di: refactor `XmlRpcClient::close()`
+  * [77cc7e4] MT#59962 xmlrpc2di: int is long indeed
+  * [cd4eb94] MT#59962 xmlrpc2di: `xmlrpcval2amarg()` use static_cast
+  * [27cd7bc] MT#59962 xmlrpc2di: add bool operator overloading
+  * [6847869] MT#59962 xmlrpc2di: deprecate int support
+  * [a9e8578] MT#59962 xmlrpc2di: rename TypeInt into TypeLong
+  * [9a74726] MT#59962 XmlRpcSocket: refactor `nbWrite()`, make it safer
+  * [5e2bfa9] MT#59962 AmSdp: `parse_sdp_attr()` initialize integers
+  * [8e0ef6d] MT#59962 CPSLimit: AmConfig, by default 9999
+  * [72a5549] MT#59962 tcp_trsp_socket: `on_read()` protect against data overflow
+  * [7c75c8e] MT#59962 AmRtpAudio: setPlayoutType properly acquire the lock
+
+  [ Richard Fuchs ]
+  * [6dbeb92] MT#62181 XmlRpcClient: add setFault()
+  * [7267f87] MT#62181 XmlRpc*: fix printf argument type
+  * [b357698] MT#62181 use size_t for offsets and lengths
+  * [e4e55f1] MT#62181 Prepaid: update to long
+  * [c966c37] MT#62181 AmArg: fix missing return
+  * [5669abc] MT#62181 ilbc: fix wrong order of NULL check
+  * [bf6d218] MT#62181 SBCCallProfile: pass string by reference
+  * [3311712] MT#62181 use std::move
+  * [05506cd] MT#62181 remove debugging remnant
+  * [1b695fa] MT#62181 fix initialisers
+  * [a8b96ba] MT#62181 move -std= option
+  * [41eaaae] MT#62181 AmArg: refactor as std::variant
+  * [5fd2cfa] MT#62181 AmArg: fix variant access
+  * [c7c12a1] MT#62181 AmArg: add missing copy/assignment ctor
+  * [1ae0702] MT#62181 onInvite et al: const updates
+  * [74c87bc] MT#62181 AmArg: take ownership of ValueArray
+  * [900875b] MT#62181 AmArg: take ownership of ValueStruct
+  * [82d9cd7] MT#62181 AmArg: switch to default ctors
+  * [d29059b] MT#62181 make: use $(MAKE) macro
+  * [4970eef] MT#62181 XMLRPC: use more appropriate int types
+  * [0f0ad41] MT#62181 XmlRpcValue: refactor as std::variant
+  * [b87875f] MT#62181 AmConfig: fix fd resource leak
+  * [326f8d3] MT#62181 AmRtpStream: fix fd resource leak
+  * [29690cd] MT#62181 AmPlugin: change to std::filesystem
+  * [5a6a99f] MT#62181 opus: fix memory leak
+  * [52288b9] MT#62181 XmlRpcUtil: add missing va_end
+  * [53060d0] MT#62181 DBRegAgent: extend lock span
+  * [cbeee27] MT#62181 DBRegAgent: use lock_guard
+  * [0edbcfa] MT#62181 XmlRpcUtil: annotate printf format
+  * [56eddd4] MT#62181 XmlRpcClient: fix incorrect printf format
+  * [d6a99ee] MT#62181 SBCCallProfile: fix wrong iterator
+  * [b95a9dd] MT#62181 trans_layer: fix NULL dereference
+  * [0e73877] MT#59962 CCAcc example: change to long
+  * [2eb9cf5] MT#62181 hash_table: remove unused class
+  * [41dcbac] MT#62181 hash_table: obsolete allocator
+  * [f183d63] MT#62181 tr_blacklist: specialise std::less
+  * [f9fdee6] MT#62181 introduce hash_map template
+  * [62f2602] MT#62181 RegisterCache: add shutdown condition
+  * [15667d8] MT#62181 RegisterCache: refactor id_idx
+  * [11dd048] MT#62181 RegisterCache: refactor reg_cache_ht
+  * [d068c60] MT#62181 RegisterCache: refactor contact_idx
+  * [a076152] MT#62181 RegisterCache: remove unused functions
+  * [c0ef3c1] MT#62181 RegisterCache: use ContactHash storage
+  * [9b8b9d8] MT#62181 RegisterCache: use AorHash storage
+  * [8818b46] MT#62181 RegisterCache: use AliasHash storage
+  * [ea6b3e1] MT#62181 RegisterCache: use AorEntry storage
+  * [3b90286] MT#62181 RegisterCache: turn AorEntry into class
+  * [f0fcaa7] MT#62181 RegisterCache: make reg_expire private
+  * [d00be5a] MT#62181 RegisterCache: add bindings set
+  * [819e45e] MT#62181 RegisterCache: private AorEntry::erase
+  * [4fa78ee] MT#62181 RegisterCache: add get_lowest_expire
+  * [d62a847] MT#62181 RegisterCache: add entries_by_time
+  * [1e02557] MT#62181 RegisterCache: use entries_by_time
+  * [200ba57] MT#62181 tcp: fix fd != -1 handling
+  * [12317f7] MT#62181 add systemd support
+  * [4856e65] MT#62181 add testing framework
+  * [c4d6774] MT#62181 use references instead of copies
+  * [099b35d] MT#62181 add missing initialiser
+  * [5cca07f] MT#62181 do graceful shutdown
+  * [f176fb2] MT#55283 fix shellcheck issues
+
+  [ Guillem Jover ]
+  * [61897b7] MT#62763 perl: Use strictures
+  * [fc7149b] MT#62763 perl: Do not use bareword file handles
+  * [5d1ccbb] MT#62763 perl: Use three argument form for open
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 20 Jun 2025 10:45:56 +0200
+
 ngcp-sems (1:1.6.0+0~mr13.4.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
