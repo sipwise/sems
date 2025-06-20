@@ -2,7 +2,7 @@
 # -*- makefile -*-
 
 # Uncomment this to turn on verbose mode.
-export DH_VERBOSE = 1
+#export DH_VERBOSE = 1
 
 EXCLUDED_MODULES = \
 	conf_auth \
@@ -50,17 +50,20 @@ override_dh_auto_build:
 		cfg_target=/etc/$(APP_NAME)/ prefix=/usr \
 		exclude_app_modules="$(EXCLUDED_MODULES)" \
 		exclude_dsm_modules="$(EXCLUDED_DSM_MODULES)" \
-		DESTDIR=$(CURDIR)/debian/$(APP_NAME)
+		DESTDIR=$(CURDIR)/debian/$(APP_NAME) \
+		# EOL
 
 override_dh_auto_install:
 	$(MAKE) -C core/ install \
 		DESTDIR=$(CURDIR)/debian/$(APP_NAME) \
 		prefix=/usr \
-		cfg_target=/etc/$(APP_NAME)/
+		cfg_target=/etc/$(APP_NAME)/ \
+		# EOL
 
 	$(MAKE) -C apps/ install \
 		exclude_app_modules="$(EXCLUDED_MODULES) $(PYTHON_MODULES)" \
 		exclude_dsm_modules="$(EXCLUDED_DSM_PY_MODULES)" \
 		DESTDIR=$(CURDIR)/debian/$(APP_NAME) \
 		prefix=/usr \
-		cfg_target=/etc/$(APP_NAME)/
+		cfg_target=/etc/$(APP_NAME)/ \
+		# EOL

@@ -1,10 +1,8 @@
 Source: ngcp-sems
 Section: net
-Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
 Homepage: https://www.sipwise.com/
-Standards-Version: 4.6.2
-Rules-Requires-Root: no
+Standards-Version: 4.7.2
 Build-Depends:
  debhelper-compat (= 13),
  flite-dev,
