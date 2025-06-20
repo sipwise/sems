@@ -48,7 +48,7 @@ public:
       QueueEntry(AmEventQueueInterface* q)
         : q(q), id() {} 
 
-      QueueEntry(AmEventQueueInterface* q, string id)
+      QueueEntry(AmEventQueueInterface* q, const string& id)
 	: q(q), id(id){} 
     };
 

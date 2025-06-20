@@ -203,7 +203,7 @@ public:
     int code;
     string reason;
     string hdrs;
-    Exception(int c, string r, string h="") : code(c), reason(r), hdrs(h) {}
+    Exception(int c, const string& r, const string& h="") : code(c), reason(r), hdrs(h) {}
   };
 
   /** 

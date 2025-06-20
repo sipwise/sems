@@ -95,7 +95,7 @@ struct B2BSipReplyEvent: public B2BSipEvent
   string sender_ltag;
 
  B2BSipReplyEvent(const AmSipReply& reply, bool forward,
-		  string trans_method, string sender_ltag)
+		  const string& trans_method, const string& sender_ltag)
    : B2BSipEvent(B2BSipReply,forward),
     reply(reply), trans_method(trans_method), sender_ltag(sender_ltag)
   { }

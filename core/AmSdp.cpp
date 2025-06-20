@@ -52,8 +52,8 @@ static char* parse_until(char* s, char* end, char c);
 static bool contains(char* s, char* next_line, char c);
 static bool is_wsp(char s);
 
-static MediaType media_type(std::string media);
-static TransProt transport_type(std::string transport);
+static MediaType media_type(const std::string& media);
+static TransProt transport_type(const std::string& transport);
 static bool attr_check(std::string attr);
 
 enum parse_st {SDP_DESCR, SDP_MEDIA};
@@ -858,7 +858,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
         if (next > media_line)
           media = string(media_line, int(next-media_line) - 1);
 
-        m.type = media_type(std::move(media));
+        m.type = media_type(media);
 
         if (m.type == MT_NONE) {
           ERROR("parse_sdp_media: Unknown media type\n");
@@ -1501,7 +1501,7 @@ inline char* skip_till_next_line(char* s, size_t& line_len)
 /*
  *Check if known media type is used
  */
-static MediaType media_type(std::string media)
+static MediaType media_type(const std::string& media)
 {
   if(media == "audio")
     return MT_AUDIO;
@@ -1519,7 +1519,7 @@ static MediaType media_type(std::string media)
     return MT_NONE;
 }
 
-static TransProt transport_type(string transport)
+static TransProt transport_type(const string& transport)
 {
   string transport_uc = transport;
   std::transform(transport_uc.begin(), transport_uc.end(), transport_uc.begin(), toupper);

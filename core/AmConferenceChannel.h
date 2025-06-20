@@ -81,7 +81,7 @@ class AmConferenceChannel: public AmAudio
 
  public:
   AmConferenceChannel(AmConferenceStatus* status,
-		      int channel_id, string channel_tag, bool own_channel);
+		      int channel_id, const string& channel_tag, bool own_channel);
 
   ~AmConferenceChannel();
 
