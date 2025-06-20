@@ -2,21 +2,37 @@
 # -*- makefile -*-
 
 # Uncomment this to turn on verbose mode.
-export DH_VERBOSE=1
+export DH_VERBOSE = 1
 
-EXCLUDED_MODULES=conf_auth examples/db_announce fast_ack gateway ivr mailbox mp3 pin_collect twit webconference
-
-EXCLUDED_DSM_MODULES=mod_aws mod_py
-EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
+EXCLUDED_MODULES = \
+	conf_auth \
+	examples/db_announce \
+	fast_ack \
+	gateway \
+	ivr \
+	mailbox \
+	mp3 \
+	pin_collect \
+	twit \
+	webconference \
+	# EOL
+EXCLUDED_DSM_MODULES = \
+	mod_aws \
+	mod_py \
+	# EOL
+EXCLUDED_DSM_PY_MODULES = \
+	mod_aws \
+	mod_py \
+	# EOL
 
 export DEB_CPPFLAGS_APPEND = -DHAVE_XMLRPCPP_SSL
 
-export APP_NAME=ngcp-sems
-export SYSTEM_SAMPLECLOCK_RATE=48000LL
-export LONG_DEBUG_MESSAGE=yes
-export USE_THREADPOOL=yes
-export USE_SPANDSP=yes
-export PYTHON_VERSION=3
+export APP_NAME = ngcp-sems
+export PYTHON_VERSION = 3
+export SYSTEM_SAMPLECLOCK_RATE = 48000LL
+export LONG_DEBUG_MESSAGE = yes
+export USE_THREADPOOL = yes
+export USE_SPANDSP = yes
 
 
 # Enable parallel builds for overrides.
@@ -31,10 +47,10 @@ endif
 
 override_dh_auto_build:
 	$(MAKE) \
-	cfg_target=/etc/$(APP_NAME)/ prefix=/usr \
-	exclude_app_modules="$(EXCLUDED_MODULES)" \
-	exclude_dsm_modules="$(EXCLUDED_DSM_MODULES)" \
-	DESTDIR=$(CURDIR)/debian/$(APP_NAME)
+		cfg_target=/etc/$(APP_NAME)/ prefix=/usr \
+		exclude_app_modules="$(EXCLUDED_MODULES)" \
+		exclude_dsm_modules="$(EXCLUDED_DSM_MODULES)" \
+		DESTDIR=$(CURDIR)/debian/$(APP_NAME)
 
 override_dh_auto_install:
 	$(MAKE) -C core/ install \
