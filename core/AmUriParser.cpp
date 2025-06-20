@@ -436,7 +436,7 @@ string AmUriParser::add_param_to_param_list(const string& param_name,
 
   // if param_string empty - set it
   if (list_of_params.empty()) {
-    list_of_params = param;
+    list_of_params = std::move(param);
   }
   else {
     // check if parameter already exists; if yes - replace it

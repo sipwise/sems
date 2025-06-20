@@ -332,7 +332,7 @@ void SyslogCDR::end(const string& ltag, SBCCallProfile* call_profile,
 	    AmArg* v = &var_it->second;
 	    if (!prop.empty()) {
 	      try {
-		v = &var_it->second[prop];
+		v = &var_it->second[std::move(prop)];
 	      }	catch(...) { }
 	    }
 	    if (isArgCStr((*v))) {

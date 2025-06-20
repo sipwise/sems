@@ -309,7 +309,7 @@ EXEC_ACTION_START(SCPopenAction) {
     res += string(buf, rlen);
   }
 
-  sc_sess->var[dst_var] = res;
+  sc_sess->var[dst_var] = std::move(res);
   
   int status = pclose(fp);
   if (status==-1) {

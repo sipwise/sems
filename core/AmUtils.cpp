@@ -1096,7 +1096,7 @@ std::vector<string> explode(const string& s, const string& delim,
     subend = search(substart, s.end(), delim.begin(), delim.end());
     string temp(substart, subend);
     if (keep_empty || !temp.empty()) {
-      result.push_back(temp);
+      result.push_back(std::move(temp));
     }
     if (subend == s.end()) {
       break;

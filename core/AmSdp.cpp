@@ -430,7 +430,7 @@ void AmSdp::print(string& body) const
       }
   }
 
-  body = out_buf;
+  body = std::move(out_buf);
 }
 
 const SdpPayload* AmSdp::telephoneEventPayload() const
@@ -1080,7 +1080,7 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
           if(contains(s, line_end, '/')){
             next = parse_until(attr_line, '/');
             string enc_name(attr_line, int(next-attr_line)-1);
-            encoding_name = enc_name;
+            encoding_name = std::move(enc_name);
             attr_line = next;
             rtpmap_st = CLK_RATE;
             break;
@@ -1270,7 +1270,7 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
           break;
         }
         string user(origin_line, int(next-origin_line)-1);
-        origin.user = user;
+        origin.user = std::move(user);
         origin_line = next;
         origin_st = ID;
         break;

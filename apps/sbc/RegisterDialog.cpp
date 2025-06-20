@@ -50,7 +50,7 @@ int RegisterDialog::parseContacts(const string& contacts, vector<AmUriParser>& c
       DBG("successfully parsed contact %s@%s\n",
 	  contact.uri_user.c_str(), 
 	  contact.uri_host.c_str());
-      cv.push_back(contact);
+      cv.push_back(std::move(contact));
     }
   }
   
@@ -333,7 +333,7 @@ int RegisterDialog::removeTransport(AmUriParser& uri)
   }
 
   free_gen_params(&uri_params);
-  uri.uri_param = new_params;
+  uri.uri_param = std::move(new_params);
   return 0;
 }
 
@@ -485,7 +485,7 @@ void RegisterDialog::onSipReply(const AmSipRequest& req,
 
 	if(!orig_expires || (expires < orig_expires)) {
 	  orig_expires = expires;
-	  orig_expires_str = expires_str;
+	  orig_expires_str = std::move(expires_str);
 	}
 
 	if(max_ua_expire && (orig_expires > max_ua_expire)) {
@@ -498,7 +498,7 @@ void RegisterDialog::onSipReply(const AmSipRequest& req,
 	  // -> use the original
 	// }
 
-	it->params["expires"] = orig_expires_str;
+	it->params["expires"] = std::move(orig_expires_str);
 
 	// Update global reg cache & alias map
 	// with new 'expire' value and new entries

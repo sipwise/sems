@@ -499,7 +499,7 @@ bool DSMStateEngine::runactions(vector<DSMElement*>::iterator from,
 
       // restore the counter[s]
       if (k_exists)
-	sc_sess->var[k_name] = k_save;
+	sc_sess->var[k_name] = std::move(k_save);
       else
 	sc_sess->var.erase(k_name);
 

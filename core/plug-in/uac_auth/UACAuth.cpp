@@ -206,7 +206,7 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	    }
 
 	    if (hdrs == "\r\n" || hdrs == "\r" || hdrs == "\n")
-	      hdrs = result;
+	      hdrs = std::move(result);
 	    else
 	      hdrs += result;
 
@@ -274,7 +274,7 @@ bool UACAuth::onSendRequest(AmSipRequest& req, int& flags)
 	      req.method, dlg->getRemoteUri(), &req.body, result)) {
     // add headers
     if (req.hdrs == "\r\n" || req.hdrs == "\r" || req.hdrs == "\n")
-      req.hdrs = result;
+      req.hdrs = std::move(result);
     else
       req.hdrs += result;
 

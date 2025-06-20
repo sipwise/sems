@@ -597,7 +597,7 @@ EXEC_ACTION_START(SCUSAddAction) {
 
   DBG("setting var[%s] = %s + %s = %s\n", 
       varname.c_str(), n1.c_str(), n2.c_str(), res.c_str());
-  sc_sess->var[varname] = res;
+  sc_sess->var[std::move(varname)] = std::move(res);
 
 } EXEC_ACTION_END;
 
@@ -615,7 +615,7 @@ EXEC_ACTION_START(SCUSSubAction) {
 
   DBG("setting var[%s] = %s - %s = %s\n", 
       varname.c_str(), n1.c_str(), n2.c_str(), res.c_str());
-  sc_sess->var[varname] = res;
+  sc_sess->var[std::move(varname)] = std::move(res);
 
 } EXEC_ACTION_END;
 

@@ -171,7 +171,7 @@ DSMCondition* DSMCoreModule::getCondition(const string& from_str) {
     DSMCondition* c = new DSMCondition();
     c->name = "key pressed: " + params;
     c->type = DSMCondition::Key;
-    c->params["key"] = params;
+    c->params["key"] = std::move(params);
     return c;
   }
 
@@ -1046,7 +1046,7 @@ EXEC_ACTION_START(SCGetErrorCodePlaybackAction) {
       string current_var = pair.substr(0, separator_pos);
       string current_val = pair.substr(separator_pos + 1);
       if (current_var == pattern) {
-        result = current_val;
+        result = std::move(current_val);
         break;
       }
     }
@@ -1054,7 +1054,7 @@ EXEC_ACTION_START(SCGetErrorCodePlaybackAction) {
   }
   /* rewrite only if we got something */
   if (!result.empty())
-    sc_sess->var[destination_variable] = result;
+    sc_sess->var[std::move(destination_variable)] = std::move(result);
 } EXEC_ACTION_END;
 
 CONST_ACTION_2P(SCAppendAction,',', false);
@@ -1616,7 +1616,7 @@ EXEC_ACTION_START(SCB2BGetHeaderReplyAction) {
 
   /* write only if we got something */
   if (!result.empty())
-    sc_sess->var[destination_variable] = result;
+    sc_sess->var[std::move(destination_variable)] = std::move(result);
   else
     DBG("No header with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;
@@ -1632,7 +1632,7 @@ EXEC_ACTION_START(SCB2BGetHeaderParamReplyAction) {
   sc_sess->B2BgetHeaderParamReply(hdr_name, param_name, result);
   /* write only if we got something */
   if (!result.empty())
-    sc_sess->var[destination_variable] = result;
+    sc_sess->var[std::move(destination_variable)] = std::move(result);
   else
     DBG("No header param with name '%s' found.\n", hdr_name.c_str());
 } EXEC_ACTION_END;

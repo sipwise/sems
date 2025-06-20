@@ -83,10 +83,10 @@ bool readFilter(AmConfigReader& cfg, const char* cfg_key_filter, const char* cfg
     for (vector<string>::iterator it=elems.begin(); it != elems.end(); it++) {
         string c = *it;
         std::transform(c.begin(), c.end(), c.begin(), ::tolower);
-        hf.filter_list.insert(c);
+        hf.filter_list.insert(std::move(c));
     }
 
-    filter_list.push_back(hf);
+    filter_list.push_back(std::move(hf));
     return true;
 }
 

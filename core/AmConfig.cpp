@@ -1019,7 +1019,7 @@ static bool fillSysIntfList()
 	AmConfig::SysIfs.resize(sys_if_idx+1);
 
       intf_it = AmConfig::SysIfs.begin() + sys_if_idx;
-      intf_it->name  = iface_name;
+      intf_it->name  = std::move(iface_name);
       intf_it->flags = p_if->ifa_flags;
 
       struct ifreq ifr;
@@ -1195,7 +1195,7 @@ int AmConfig::finalizeIPConfig()
       ERROR("could not determine default signaling IP.");
       return -1;
     }
-    SIP_Ifs.push_back(intf);
+    SIP_Ifs.push_back(std::move(intf));
     SIP_If_names["default"] = 0;
   }
 
@@ -1206,7 +1206,7 @@ int AmConfig::finalizeIPConfig()
       ERROR("could not determine default media IP.");
       return -1;
     }
-    RTP_Ifs.push_back(intf);
+    RTP_Ifs.push_back(std::move(intf));
     RTP_If_names["default"] = 0;
   }
 

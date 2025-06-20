@@ -165,7 +165,7 @@ int  AmConfigReader::loadFile(const string& path)
 
       // small hack to make include work with right path
       if (keyname == "plugin_config_path")
-	AmConfig::ModConfigPath = val;
+	AmConfig::ModConfigPath = std::move(val);
 
     } else
       goto syntax_error;
@@ -321,7 +321,7 @@ int AmConfigReader::loadString(const char* cfg_lines, size_t cfg_len)
 	     val.c_str());
       }
 
-      keys[keyname] = val;
+      keys[std::move(keyname)] = std::move(val);
     } else
       goto syntax_error;
   }

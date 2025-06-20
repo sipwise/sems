@@ -1539,7 +1539,7 @@ void CallLeg::replaceExistingLeg(const string &session_tag, const AmSipRequest &
     return;
   }
 
-  other_legs.push_back(b);
+  other_legs.push_back(std::move(b));
   if (call_status == Disconnected) updateCallStatus(NoReply); // we are something like connected to another leg
 }
 
@@ -1573,7 +1573,7 @@ void CallLeg::replaceExistingLeg(const string &session_tag, const string &hdrs)
     return;
   }
 
-  other_legs.push_back(b);
+  other_legs.push_back(std::move(b));
   if (call_status == Disconnected) updateCallStatus(NoReply); // we are something like connected to another leg
 }
 

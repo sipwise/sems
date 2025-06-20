@@ -953,7 +953,7 @@ int SBCCallProfile::apply_a_routing(ParamReplacerCtx& ctx,
   if (!aleg_outbound_proxy.empty()) {
     string aleg_op = 
       ctx.replaceParameters(aleg_outbound_proxy, "aleg_outbound_proxy", req);
-    dlg.outbound_proxy = aleg_op;
+    dlg.outbound_proxy = std::move(aleg_op);
     dlg.force_outbound_proxy = aleg_force_outbound_proxy;
   }
 
@@ -989,7 +989,7 @@ int SBCCallProfile::apply_b_routing(ParamReplacerCtx& ctx,
 
   if (!outbound_proxy.empty()) {
     string op = ctx.replaceParameters(outbound_proxy, "outbound_proxy", req);
-    dlg.outbound_proxy = op;
+    dlg.outbound_proxy = std::move(op);
     dlg.force_outbound_proxy = force_outbound_proxy;
   }
 
@@ -1291,7 +1291,7 @@ string SBCCallProfile::retarget(const string& alias)
       nh += ":" + int2str(alias_entry.source_port);
 
     DBG("setting from registration cache: next_hop='%s'\n", nh.c_str());
-    next_hop = nh;
+    next_hop = std::move(nh);
 
     // sticky interface
     DBG("setting from registration cache: outbound_interface='%s'\n",

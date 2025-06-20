@@ -149,7 +149,7 @@ static void set_default_interface(const string& iface_name)
   if(if_it == AmConfig::SIP_If_names.end()) {
     AmConfig::SIP_interface intf;
     intf.name = "default";
-    AmConfig::SIP_Ifs.push_back(intf);
+    AmConfig::SIP_Ifs.push_back(std::move(intf));
     AmConfig::SIP_If_names["default"] = AmConfig::SIP_Ifs.size()-1;
     idx = AmConfig::SIP_Ifs.size()-1;
   }

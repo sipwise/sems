@@ -196,7 +196,7 @@ bool retarget(const string& r_uri, const AmArg& values, SBCCallProfile* call_pro
 	string out_if = AmConfig::SIP_Ifs[alias_entry.local_if].name;
 	DBG("out_if = '%s'",out_if.c_str());
 	
-	call_profile->outbound_interface = out_if;
+	call_profile->outbound_interface = std::move(out_if);
 	DBG("setting from registration cache: outbound_interface='%s'\n",
 	    call_profile->outbound_interface.c_str());
       }
