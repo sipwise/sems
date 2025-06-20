@@ -53,7 +53,7 @@
 #define DEAD_RTP_TIME       5*60
 
 /* Session Timer default configuration: */
-#define DEFAULT_ENABLE_SESSION_TIMER 1
+#define DEFAULT_ENABLE_SESSION_TIMER true
 #define SESSION_EXPIRES              60 // seconds
 #define MINIMUM_TIMER                5   //seconds
 

@@ -48,7 +48,7 @@ class AmTimeoutEvent;
 #define ID_SESSION_REFRESH_TIMER  -2
 
 /* Session Timer default configuration: */
-#define DEFAULT_ENABLE_SESSION_TIMER 1
+#define DEFAULT_ENABLE_SESSION_TIMER true
 #define SESSION_EXPIRES              120  // seconds
 #define MINIMUM_TIMER                90   // seconds
 
@@ -74,7 +74,7 @@ class AmSessionTimerConfig
 {
 
   /** Session Timer: enable? */
-  int EnableSessionTimer;
+  bool EnableSessionTimer;
   /** Session Timer: Desired Session-Expires */
   unsigned int SessionExpires;
   /** Session Timer: Minimum Session-Expires */

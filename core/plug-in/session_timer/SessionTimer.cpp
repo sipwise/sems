@@ -355,7 +355,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   if (!remote_timer_aware) {
     // timer NOT supported by B leg
     DBG("Session Timer NOT supported by leg B, removing internal session timer intervals");
-    session_timer_conf.setEnableSessionTimer("no");
+    session_timer_conf.setEnableSessionTimer(false);
     removeTimers(s);
     return;
   }
