@@ -9,15 +9,15 @@ EXCLUDED_MODULES=conf_auth examples/db_announce fast_ack gateway ivr mailbox mp3
 EXCLUDED_DSM_MODULES=mod_aws mod_py
 EXCLUDED_DSM_PY_MODULES=mod_aws mod_py
 
-CPPFLAGS += -DHAVE_XMLRPCPP_SSL
-
-export USE_SPANDSP=yes LONG_DEBUG_MESSAGE=yes CPPFLAGS="$(CPPFLAGS)"
+export DEB_CPPFLAGS_APPEND = -DHAVE_XMLRPCPP_SSL
 
 export APP_NAME=ngcp-sems
 export SYSTEM_SAMPLECLOCK_RATE=48000LL
+export LONG_DEBUG_MESSAGE=yes
 export USE_THREADPOOL=yes
-
+export USE_SPANDSP=yes
 export PYTHON_VERSION=3
+
 
 # Enable parallel builds for overrides.
 NUMJOBS = 1
