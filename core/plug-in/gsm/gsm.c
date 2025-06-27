@@ -27,10 +27,11 @@
 
 #include "amci.h"
 #include "codecs.h"
-#include "gsm-1.0-pl10/inc/gsm.h"
 #include "../../log.h"
 
 #include <stdlib.h>
+
+#include <gsm.h>
 
 
 static int pcm16_2_gsm(unsigned char* out_buf, unsigned char* in_buf, unsigned int size, 

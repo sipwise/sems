@@ -12,6 +12,7 @@ Build-Depends:
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libev-dev,
  libevent-dev (>= 2.1.12),
+ libgsm1-dev,
  libhiredis-dev,
  libmysql++-dev,
  libopus-dev,

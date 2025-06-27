@@ -16,7 +16,7 @@ BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:	python >= 2.3
 BuildRequires:	sip-devel
 #BuildRequires:	libsamplerate-devel
-#BuildRequires:	gsm-devel
+BuildRequires:	gsm-devel
 #BuildRequires:	spandsp-devel
 # TODO consider enabling flite support in apps/conference
 #BuildRequires:	flite-devel
@@ -96,7 +96,6 @@ This application collects a PIN and then transfers using a
 
 %prep
 %setup -q
-#rm -rf core/plug-in/gsm/gsm-1.0-pl10/
 #%patch0 -p0 -b .openser_enable
 #%patch2 -p0 -b .gsm_ext
 iconv -f iso8859-1 -t UTF-8 apps/diameter_client/Readme.diameter_client > apps/diameter_client/Readme.diameter_client.utf8 && mv apps/diameter_client/Readme.diameter_client{.utf8,}
