@@ -34,7 +34,7 @@
 using std::queue;
 using std::string;
 
-#include "librtmp/rtmp.h"
+#include <librtmp/rtmp.h>
 
 class RtmpSender
   : public AmThread

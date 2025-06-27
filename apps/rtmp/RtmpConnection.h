@@ -29,7 +29,7 @@
 #define _RtmpConnection_h_
 
 #include "AmThread.h"
-#include "librtmp/rtmp.h"
+#include <librtmp/rtmp.h>
 
 #include "Rtmp.h"
 

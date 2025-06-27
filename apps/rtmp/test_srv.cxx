@@ -28,7 +28,7 @@
 #include <string.h>
 
 #include "RtmpServer.h"
-#include "librtmp/log.h"
+#include <librtmp/log.h>
 
 void print_usage(char* prog)
 {

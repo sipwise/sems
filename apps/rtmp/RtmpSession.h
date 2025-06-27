@@ -31,7 +31,7 @@
 #include "Rtmp.h"
 #include "AmSession.h"
 
-#include "librtmp/rtmp.h"
+#include <librtmp/rtmp.h>
 
 class RtmpSessionEvent
   : public AmEvent

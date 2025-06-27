@@ -31,8 +31,8 @@
 #include "RtmpConnection.h"
 #include "log.h"
 
-#include "librtmp/rtmp.h"
-#include "librtmp/log.h"
+#include <librtmp/rtmp.h>
+#include <librtmp/log.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>

@@ -41,7 +41,7 @@
 #include "AmSessionContainer.h"
 #include "log.h"
 
-#include "librtmp/log.h"
+#include <librtmp/log.h>
 
 #include <fcntl.h>
 
@@ -152,7 +152,7 @@ int RtmpConnection::processPacket(RTMPPacket* packet)
   switch (packet->m_packetType) {
   case 0x01:
     // chunk size
-    HandleChangeChunkSize(&rtmp, packet);
+    //HandleChangeChunkSize(&rtmp, packet);
     break;
 
   case 0x03:

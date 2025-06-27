@@ -17,6 +17,7 @@ Build-Depends:
  libmysql++-dev,
  libopus-dev,
  libre2-dev,
+ librtmp-dev,
  libspandsp-dev,
  libspeex-dev,
  libssl-dev,

@@ -32,7 +32,7 @@
 #include "AmPlayoutBuffer.h"
 #include "AmRtpAudio.h"
 
-#include "librtmp/rtmp.h"
+#include <librtmp/rtmp.h>
 
 #include <queue>
 using std::queue;

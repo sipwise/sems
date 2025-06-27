@@ -28,7 +28,7 @@
 #ifndef _RtmpUtils_h_
 #define _RtmpUtils_h_
 
-#include "librtmp/amf.h"
+#include <librtmp/amf.h>
 
 #define INVOKE_PTYPE    0x14
 #define CONTROL_CHANNEL 0x03
