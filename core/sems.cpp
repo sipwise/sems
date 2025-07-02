@@ -424,6 +424,8 @@ int main(int argc, char* argv[])
 #endif
 	 AmConfig::Application.empty() ? "<not set>" : AmConfig::Application.c_str());
 
+  fflush(stdout);
+
   AmConfig::dump_Ifs();
 
   if(set_fd_limit() < 0) {
