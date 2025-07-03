@@ -36,6 +36,15 @@ StatsFactory::StatsFactory(const std::string& _app_name)
 {
 }
 
+StatsFactory::~StatsFactory()
+{
+  StatsUDPServer* stat_srv = StatsUDPServer::instance();
+  if (stat_srv) {
+    stat_srv->stop();
+    stat_srv->join();
+  }
+}
+
 int StatsFactory::onLoad()
 {
   StatsUDPServer* stat_srv = StatsUDPServer::instance();
