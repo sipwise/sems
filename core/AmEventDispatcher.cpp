@@ -97,18 +97,15 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
     }
     unsigned int id_bucket = hash(id);
 
-    id_lookup_mut[id_bucket].lock();
+    lock_guard<AmMutex> lock_l(id_lookup_mut[id_bucket]);
     
     if (id_lookup[id_bucket].find(id) != 
 	id_lookup[id_bucket].end()) {
-      id_lookup_mut[id_bucket].unlock();
       return false;
     }
 
     queues[queue_bucket][local_tag] = QueueEntry(q,id);
     id_lookup[id_bucket][id] = local_tag;
-
-    id_lookup_mut[id_bucket].unlock();
     
     return true;
 }
@@ -130,14 +127,14 @@ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
       if(!qe.id.empty()) {
 	unsigned int id_bucket = hash(qe.id);
 	
-	id_lookup_mut[id_bucket].lock();
+	lock_guard<AmMutex> lock_l(id_lookup_mut[id_bucket]);
 	
 	DictIter di = id_lookup[id_bucket].find(qe.id);
 	if(di != id_lookup[id_bucket].end()) {	    
 	  id_lookup[id_bucket].erase(di);
 	}
 	
-	id_lookup_mut[id_bucket].unlock();
+
       }
     }
     
@@ -173,15 +170,13 @@ bool AmEventDispatcher::post(const string& callid,
     }
     unsigned int id_bucket = hash(id);
 
-    id_lookup_mut[id_bucket].lock();
+    lock_guard<AmMutex> lock(id_lookup_mut[id_bucket]);
 
     DictIter di = id_lookup[id_bucket].find(id);
     if (di == id_lookup[id_bucket].end()) {
-      id_lookup_mut[id_bucket].unlock();
       return false;
     }
     string local_tag = di->second;
-    id_lookup_mut[id_bucket].unlock();
  
     return post(local_tag, ev);
 }
@@ -237,11 +232,10 @@ void AmEventDispatcher::dump()
       }
       queues_mut[i].unlock();
 
-      id_lookup_mut[i].lock();
+      lock_guard<AmMutex> lock(id_lookup_mut[i]);
       if(!id_lookup[i].empty()) {
 	DBG("id_lookup[%zu].size() = %zu",i,id_lookup[i].size());
       }
-      id_lookup_mut[i].unlock();
     }
     DBG("*** End of Event dispatcher bucket dump ***\n");
 }
