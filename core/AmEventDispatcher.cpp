@@ -59,16 +59,13 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
 {
     unsigned int queue_bucket = hash(local_tag);
 
-    queues_mut[queue_bucket].lock();
+    lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
 
     if (queues[queue_bucket].find(local_tag) != queues[queue_bucket].end()) {
-      queues_mut[queue_bucket].unlock();
       return false;
     }
 
     queues[queue_bucket][local_tag] = QueueEntry(q);
-    queues_mut[queue_bucket].unlock();
-    
     return true;
 }
 
@@ -87,10 +84,9 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
 
     unsigned int queue_bucket = hash(local_tag);
 
-    queues_mut[queue_bucket].lock();
+    lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
 
     if (queues[queue_bucket].find(local_tag) != queues[queue_bucket].end()) {
-      queues_mut[queue_bucket].unlock();
       return false;
     }
 
@@ -106,7 +102,6 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
     if (id_lookup[id_bucket].find(id) != 
 	id_lookup[id_bucket].end()) {
       id_lookup_mut[id_bucket].unlock();
-      queues_mut[queue_bucket].unlock();
       return false;
     }
 
@@ -114,7 +109,6 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
     id_lookup[id_bucket][id] = local_tag;
 
     id_lookup_mut[id_bucket].unlock();
-    queues_mut[queue_bucket].unlock();
     
     return true;
 }
@@ -124,7 +118,7 @@ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
     AmEventQueueInterface* q = NULL;
     unsigned int queue_bucket = hash(local_tag);
 
-    queues_mut[queue_bucket].lock();
+    lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
     
     EvQueueMapIter qi = queues[queue_bucket].find(local_tag);
     if(qi != queues[queue_bucket].end()) {
@@ -146,7 +140,6 @@ AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
 	id_lookup_mut[id_bucket].unlock();
       }
     }
-    queues_mut[queue_bucket].unlock();
     
     return q;
 }
@@ -157,15 +150,13 @@ bool AmEventDispatcher::post(const string& local_tag, AmEvent* ev)
   
     unsigned int queue_bucket = hash(local_tag);
   
-    queues_mut[queue_bucket].lock();
+    lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
  
     EvQueueMapIter it = queues[queue_bucket].find(local_tag);
     if(it != queues[queue_bucket].end()){
 	it->second.q->postEvent(ev);
 	posted = true;
     }
-
-    queues_mut[queue_bucket].unlock();
     
     return posted;
 }
@@ -224,9 +215,8 @@ bool AmEventDispatcher::broadcast(AmEvent* ev)
 bool AmEventDispatcher::empty() {
     bool res = true;
     for (size_t i=0;i<EVENT_DISPATCHER_BUCKETS;i++) {
-      queues_mut[i].lock();
+      lock_guard<AmMutex> lock(queues_mut[i]);
       res = res&queues[i].empty();
-      queues_mut[i].unlock();    
       if (!res)
 	break;
     }
@@ -295,7 +285,7 @@ bool AmEventDispatcher::postSipRequest(const AmSipRequest& req)
     // post(local_tag)
     unsigned int queue_bucket = hash(local_tag);
   
-    queues_mut[queue_bucket].lock();
+    lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
  
     EvQueueMapIter it = queues[queue_bucket].find(local_tag);
     if(it != queues[queue_bucket].end()){
@@ -303,7 +293,5 @@ bool AmEventDispatcher::postSipRequest(const AmSipRequest& req)
 	posted = true;
     }
 
-    queues_mut[queue_bucket].unlock();
-    
     return posted;
 }
