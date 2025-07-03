@@ -233,6 +233,12 @@ void StatsUDPServer::run()
     
 }
 
+void StatsUDPServer::on_stop()
+{
+  if (sd != -1)
+    shutdown(sd, SHUT_RD);
+}
+
 static int msg_get_line(char*& msg_c, char* str, size_t len)
 {
   size_t l;
