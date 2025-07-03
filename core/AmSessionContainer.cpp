@@ -585,7 +585,7 @@ AmSessionContainer::addSession(const string& callid,
     return ShutDown;
   
   if(AmEventDispatcher::instance()->
-     addEventQueue(local_tag,(AmEventQueue*)session,
+     addEventQueue(local_tag,static_cast<AmEventQueue*>(session),
 		   callid,remote_tag,via_branch)) {
     return Inserted;
   }
@@ -601,7 +601,7 @@ AmSessionContainer::addSession(const string& local_tag,
     return ShutDown;
 
   if(AmEventDispatcher::instance()->
-     addEventQueue(local_tag,(AmEventQueue*)session)){
+     addEventQueue(local_tag,static_cast<AmEventQueue*>(session))){
     return Inserted;
   }
 
