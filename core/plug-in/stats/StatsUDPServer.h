@@ -55,7 +55,7 @@ class StatsUDPServer: public AmThread
 		 const struct sockaddr_in& reply_addr);
 	
   void run();
-  void on_stop(){}
+  void on_stop();
 
 public:
   static StatsUDPServer* instance();
