@@ -114,14 +114,14 @@ StatsUDPServer* StatsUDPServer::instance()
 }
 
 StatsUDPServer::StatsUDPServer()
-  : sd(0)
+  : sd(-1)
 {
   sc = AmSessionContainer::instance();
 }
 
 StatsUDPServer::~StatsUDPServer()
 {
-  if(sd)
+  if (sd != -1)
     close(sd);
 }
 
