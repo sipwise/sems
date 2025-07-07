@@ -91,6 +91,36 @@ AmSession::AmSession(AmSipDialog* p_dlg)
   if(!dlg) dlg = new AmSipDialog(this);
   else dlg->setEventhandler(this);
 
+  /* update snapshot */
+  if (!getCallID().empty())
+  {
+    session_snapshot.call_id = getCallID();
+  }
+  if (!getLocalTag().empty())
+  {
+    session_snapshot.local_tag = getLocalTag();
+  }
+  if (!getRemoteTag().empty())
+  {
+    session_snapshot.remote_tag = getRemoteTag();
+  }
+  if (!getFirstBranch().empty())
+  {
+    session_snapshot.first_branch = getFirstBranch();
+  }
+  if (!app_params.empty())
+  {
+    session_snapshot.app_params = app_params;
+  }
+  if (!dlg->getRemoteParty().empty())
+  {
+    session_snapshot.remote_party = dlg->getRemoteParty();
+  }
+  if (!dlg->getLocalParty().empty())
+  {
+    session_snapshot.local_party = dlg->getLocalParty();
+  }
+
   ILOG_DLG(L_DBG, "dlg = %p",dlg);
 }
 
@@ -225,6 +255,9 @@ void AmSession::setLocalTag()
   if (dlg->getLocalTag().empty()) {
     string new_id = getNewId();
     dlg->setLocalTag(new_id);
+    /* update snapshot */
+    lock_guard<AmMutex> lock(snapshot_lock);
+    session_snapshot.local_tag = new_id;
     ILOG_DLG(L_DBG, "AmSession::setLocalTag() - session id set to %s\n", new_id.c_str());
   }
 }
@@ -233,6 +266,18 @@ void AmSession::setLocalTag(const string& tag)
 {
   ILOG_DLG(L_DBG, "AmSession::setLocalTag(%s)\n",tag.c_str());
   dlg->setLocalTag(tag);
+  /* update snapshot */
+  lock_guard<AmMutex> lock(snapshot_lock);
+  session_snapshot.local_tag = tag;
+}
+
+/**
+ * Used by remote unrelated sessions to get a snapshot of this session data primitives.
+ */
+void AmSession::snapshot(AmSessionSnapshot& copy)
+{
+  lock_guard<AmMutex> lock(snapshot_lock);
+  copy = session_snapshot;
 }
 
 const vector<SdpPayload*>& AmSession::getPayloads()
@@ -463,6 +508,9 @@ void AmSession::finalize()
 }
 
 void AmSession::setStopped(bool wakeup) {
+  /* make snapshot safe */
+  lock_guard<AmMutex> lock(snapshot_lock);
+
   if (!sess_stopped.get()) {
     sess_stopped.set(true); 
     onStop();
@@ -484,6 +532,10 @@ string AmSession::getAppParam(const string& param_name) const
 
 void AmSession::destroy() {
   ILOG_DLG(L_DBG, "AmSession::destroy()\n");
+
+  /* make snapshot safe */
+  lock_guard<AmMutex> lock(snapshot_lock);
+
   AmSessionContainer::instance()->destroySession(this);
 }
 

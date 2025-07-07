@@ -122,6 +122,11 @@ class AmSessionContainer : public AmThread
 			   const AmArg* session_params = NULL);
 
   /**
+   * Used only by a snapshot mechanism.
+   */
+  bool getSessionSnapshot(const string& local_tag, AmSessionSnapshot& snap);
+
+  /**
    * Adds a session to the container (UAS only).
    * @return true if the session is new within the container.
    */

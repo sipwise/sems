@@ -108,6 +108,9 @@ public:
 		       const string& remote_tag,
 		       const string& via_branch);
 
+
+    AmEventQueueInterface* getEventQueue(const string& local_tag);
+
     AmEventQueueInterface* delEventQueue(const string& local_tag);
 
     bool empty();

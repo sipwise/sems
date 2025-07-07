@@ -58,6 +58,21 @@ class AmDtmfEvent;
 /* definition imported from Ser parser/msg_parser.h */
 #define FL_FORCE_ACTIVE 2
 
+/**
+ * A snapshot of the main session's data,
+ * which can be re-used when getting AmSession from other unrelated thread.
+ */
+struct AmSessionSnapshot
+{
+  string local_tag;
+  string remote_tag;
+  string local_party;
+  string remote_party;
+  string call_id;
+  string first_branch;
+  map<string,string> app_params;
+  /* TODO: add more here? */
+};
 
 /**
  * \brief Implements the default behavior of one session
@@ -76,6 +91,13 @@ class AmSession :
   public AmDtmfSink
 {
   AmMutex      audio_mut;
+
+  /* Used by the snapshot mechanism only.
+   * It is used across multiple threads and is multi-thread visible.
+   *
+   * Purpose: it eliminates a race condition with a destructor,
+   * when AmSession used multi-thread by snapshot */
+  AmMutex snapshot_lock;
 
 protected:
   vector<SdpPayload *>  m_payloads;
@@ -193,6 +215,7 @@ public:
 #endif
 
   AmSipDialog* dlg;
+  AmSessionSnapshot session_snapshot;
 
   /** 
    * \brief Exception occured in a Session
@@ -305,6 +328,9 @@ public:
   void setForceDtmfReceiving(bool receive) { RTPStream()->force_receive_dtmf = receive; }
 
   /* ----         SIP dialog attributes                  ---- */
+
+  /** copies the session's snapshot */
+  void snapshot(AmSessionSnapshot& copy);
 
   /** Gets the Session's call ID */
   const string& getCallID() const;

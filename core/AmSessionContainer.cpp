@@ -609,6 +609,34 @@ AmSessionContainer::addSession(const string& local_tag, AmSession* session)
   return AlreadyExist;
 }
 
+/**
+ * Used by AmSession snapshot mechanism only.
+ *
+ * Returns true or false.
+ * Requires: session's tag and reference to existing empty snapshot object.
+ */
+bool AmSessionContainer::getSessionSnapshot(const string& local_tag, AmSessionSnapshot& snap)
+{
+  AmSession * result = NULL;
+
+  if (!_container_closed.get()) {
+
+    result = dynamic_cast<AmSession*>(AmEventDispatcher::instance()->getEventQueue(local_tag));
+    /* TODO: potential unfdefined behavior here, if other thread
+     * manages right now do destroy gotten AmSession,
+     * shortly before the casting is done here, the object is returned
+     * and the `session_snapshot` is acquired by snapshot mechanism.
+     */
+    if (result)
+    {
+      result->snapshot(snap);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void AmSessionContainer::enableUncleanShutdown() {
   enable_unclean_shutdown = true;
 }

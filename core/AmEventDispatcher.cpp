@@ -106,6 +106,36 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
   return true;
 }
 
+/**
+ * Get AmSession for RO pruposes only.
+ * Can only be used with locks acquired down the cast:
+ * AmEventQueueInterface -> AmEventQueue -> AmSession (here),
+ * otherwise object can be demolished, meanwhile attempt to be used by other thread.
+ */
+AmEventQueueInterface* AmEventDispatcher::getEventQueue(const string& local_tag)
+{
+  if(local_tag.empty()) {
+    ERROR("local_tag is empty");
+    return NULL;
+  }
+
+  AmEventQueueInterface* sess = NULL;
+  unsigned int queue_bucket = hash(local_tag);
+
+  lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
+
+  EvQueueMapIter qi = queues[queue_bucket].find(local_tag);
+
+  if (qi != queues[queue_bucket].end()) {
+    QueueEntry& qe = qi->second;
+
+    if (!qe.id.empty())
+      return qe.q;
+  }
+
+  return NULL;
+}
+
 AmEventQueueInterface* AmEventDispatcher::delEventQueue(const string& local_tag)
 {
   AmEventQueueInterface* q = NULL;
