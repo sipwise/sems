@@ -113,6 +113,28 @@ public:
 
     AmEventQueueInterface* delEventQueue(const string& local_tag);
 
+    /**
+     * Exposed interface for locking sessions container.
+     * TODO: rework container so, that there is no need to expose possibilities
+     *       to lock/unlock container (encapsulation violation).
+     * Was developed only for the snapshot mechanism, not recommended to be used
+     * with other things.
+     */
+    void lockQueue(const string& local_tag)
+    {
+        if (local_tag.empty())
+            return;
+        unsigned int queue_bucket = hash(local_tag);
+        queues_mut[queue_bucket].lock();
+    }
+    void unlockQueue(const string& local_tag)
+    {
+        if (local_tag.empty())
+            return;
+        unsigned int queue_bucket = hash(local_tag);
+        queues_mut[queue_bucket].unlock();
+    }
+
     bool empty();
 
     void dump();

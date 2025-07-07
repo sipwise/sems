@@ -107,10 +107,9 @@ bool AmEventDispatcher::addEventQueue(const string& local_tag,
 }
 
 /**
- * Get AmSession for RO pruposes only.
- * Can only be used with locks acquired down the cast:
- * AmEventQueueInterface -> AmEventQueue -> AmSession (here),
- * otherwise object can be demolished, meanwhile attempt to be used by other thread.
+ * Use with queues_mut lock only.
+ *
+ * Get a session via event queue iface, for RO pruposes only.
  */
 AmEventQueueInterface* AmEventDispatcher::getEventQueue(const string& local_tag)
 {
@@ -121,8 +120,6 @@ AmEventQueueInterface* AmEventDispatcher::getEventQueue(const string& local_tag)
 
   AmEventQueueInterface* sess = NULL;
   unsigned int queue_bucket = hash(local_tag);
-
-  lock_guard<AmMutex> lock(queues_mut[queue_bucket]);
 
   EvQueueMapIter qi = queues[queue_bucket].find(local_tag);
 

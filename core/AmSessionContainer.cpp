@@ -619,19 +619,21 @@ bool AmSessionContainer::getSessionSnapshot(const string& local_tag, AmSessionSn
 {
   AmSession * result = NULL;
 
+  if (local_tag.empty())
+    return false;
+
   if (!_container_closed.get()) {
 
+    AmEventDispatcher::instance()->lockQueue(local_tag);
+
     result = dynamic_cast<AmSession*>(AmEventDispatcher::instance()->getEventQueue(local_tag));
-    /* TODO: potential unfdefined behavior here, if other thread
-     * manages right now do destroy gotten AmSession,
-     * shortly before the casting is done here, the object is returned
-     * and the `session_snapshot` is acquired by snapshot mechanism.
-     */
     if (result)
     {
       result->snapshot(snap);
+      AmEventDispatcher::instance()->unlockQueue(local_tag);
       return true;
     }
+    AmEventDispatcher::instance()->unlockQueue(local_tag);
   }
 
   return false;
