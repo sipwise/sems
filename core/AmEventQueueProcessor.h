@@ -41,7 +41,7 @@ class EventQueueWorker
   public AmEventNotificationSink
 {
   AmCondition runcond;
-  std::deque<AmEventQueue*> process_queues;
+  std::deque<AmEventQueueBase*> process_queues;
   AmMutex process_queues_mut;
 
  public:
@@ -53,7 +53,7 @@ class EventQueueWorker
   void on_stop();
 
   // AmEventNotificationSink interface
-  void notify(AmEventQueue* sender);
+  void notify(AmEventQueueBase* sender);
 
   void startEventQueue(AmEventQueue* q);
 };

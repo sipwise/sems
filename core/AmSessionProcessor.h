@@ -70,7 +70,7 @@ class AmSessionProcessorThread
   std::list<AmSession*> sessions;
   std::vector<AmSession*> startup_sessions;
 
-  std::set<AmEventQueue*> process_sessions;
+  std::set<AmEventQueueBase*> process_sessions;
 
   // AmEventHandler interface
   void process(AmEvent* e);
@@ -83,7 +83,7 @@ class AmSessionProcessorThread
   void run();
 
   // AmEventNotificationSink interface
-  void notify(AmEventQueue* sender);
+  void notify(AmEventQueueBase* sender);
 
   void startSession(AmSession* s);
 };

@@ -41,25 +41,29 @@ class AmEventQueueInterface
   virtual void postEvent(AmEvent*)=0;
 };
 
-class AmEventQueue;
+class AmEventQueueBase;
+
 /** a receiver for notifications about 
     the fact that events are pending */
 class AmEventNotificationSink
 {
  public:
   virtual ~AmEventNotificationSink() { }
-  virtual void notify(AmEventQueue* sender) = 0;
+  virtual void notify(AmEventQueueBase* sender) = 0;
 };
 
-/** 
- * \brief Asynchronous event queue implementation 
- * 
+/**
+ * \brief Asynchronous event queue implementation
+ *
  * This class implements an event queue; a queue into which
- * \ref AmEvent can safely be posted at any time from any 
+ * \ref AmEvent can safely be posted at any time from any
  * thread, which are then processed by the registered event
  *  handler.
+ *
+ * This is a generic base class that requires an external
+ * mutex and condition variable.
  */
-class AmEventQueue
+class AmEventQueueBase
   : public AmEventQueueInterface,
     virtual public atomic_ref_cnt
 {
@@ -68,14 +72,21 @@ protected:
   AmEventNotificationSink*  wakeup_handler;
 
   std::queue<AmEvent*>      ev_queue;
-  AmMutex                   m_queue;
-  AmCondition         ev_pending;
 
   bool finalized;
 
+  // mutex must be held
+  virtual bool shouldSleep() const {
+    return ev_queue.empty();
+  }
+
+private:
+  std::mutex& _mut;
+  std::condition_variable& _cond;
+
 public:
-  AmEventQueue(AmEventHandler* handler);
-  virtual ~AmEventQueue();
+  AmEventQueueBase(AmEventHandler* handler, std::mutex& _m, std::condition_variable& _c);
+  virtual ~AmEventQueueBase();
 
   void postEvent(AmEvent*);
   void processEvents();
@@ -92,6 +103,19 @@ public:
   virtual bool startup() { return true; }
   virtual bool processingCycle() { processEvents(); return true; }
   virtual void finalize() { finalized = true; }
+};
+
+/**
+ * \brief Standalone asynchronous event queue
+ *
+ * This class can be used on its own.
+ */
+class AmEventQueue : public AmEventQueueBase {
+  std::mutex _mut;
+  std::condition_variable _cond;
+
+public:
+  AmEventQueue(AmEventHandler* handler) : AmEventQueueBase(handler, _mut, _cond) {}
 };
 
 #endif

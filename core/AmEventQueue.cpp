@@ -30,55 +30,54 @@
 #include "AmConfig.h"
 
 #include <typeinfo>
-AmEventQueue::AmEventQueue(AmEventHandler* handler)
+AmEventQueueBase::AmEventQueueBase(AmEventHandler* handler, std::mutex& _m, std::condition_variable& _c)
   : handler(handler),
     wakeup_handler(NULL),
-    ev_pending(false),
-    finalized(false)
+    finalized(false),
+    _mut(_m),
+    _cond(_c)
 {
 }
 
-AmEventQueue::~AmEventQueue()
+AmEventQueueBase::~AmEventQueueBase()
 {
-  m_queue.lock();
   while(!ev_queue.empty()){
     delete ev_queue.front();
     ev_queue.pop();
   }
-  m_queue.unlock();
 }
 
-void AmEventQueue::postEvent(AmEvent* event)
+void AmEventQueueBase::postEvent(AmEvent* event)
 {
+  if (!event)
+    return;
+
   if (AmConfig::LogEvents) 
     DBG("AmEventQueue: trying to post event\n");
 
-  m_queue.lock();
+  std::lock_guard<std::mutex> _l(_mut);
 
-  if(event)
-    ev_queue.push(event);
+  bool was_empty = ev_queue.empty();
 
-  if(!ev_pending.get()) {
-    ev_pending.set(true);
-    if (NULL != wakeup_handler)
-      wakeup_handler->notify(this);
-  }
+  ev_queue.push(event);
+  _cond.notify_all();
 
-  m_queue.unlock();
+  if (was_empty && NULL != wakeup_handler)
+    wakeup_handler->notify(this);
 
   if (AmConfig::LogEvents) 
     DBG("AmEventQueue: event posted\n");
 }
 
-void AmEventQueue::processEvents()
+void AmEventQueueBase::processEvents()
 {
-  m_queue.lock();
+  std::unique_lock<std::mutex> _l(_mut);
 
-  while(!ev_queue.empty()) {
+  while (!ev_queue.empty()) {
 	
     AmEvent* event = ev_queue.front();
     ev_queue.pop();
-    m_queue.unlock();
+    _l.unlock();
 
     if (AmConfig::LogEvents) 
       DBG("before processing event (%s)\n",
@@ -88,61 +87,55 @@ void AmEventQueue::processEvents()
       DBG("event processed (%s)\n",
 	  typeid(*event).name());
     delete event;
-    m_queue.lock();
+
+    if (!_l.owns_lock())
+      _l.lock();
+
   }
-    
-  ev_pending.set(false);
-  m_queue.unlock();
 }
 
-void AmEventQueue::waitForEvent()
+void AmEventQueueBase::waitForEvent()
 {
-  ev_pending.wait_for();
+  std::unique_lock<std::mutex> _l(_mut);
+  while (shouldSleep())
+    _cond.wait(_l);
 }
 
-void AmEventQueue::waitForEventTimed(unsigned long msec)
+void AmEventQueueBase::waitForEventTimed(unsigned long msec)
 {
-  ev_pending.wait_for_to(msec);
+  std::unique_lock<std::mutex> _l(_mut);
+  if (shouldSleep())
+    _cond.wait_for(_l, std::chrono::milliseconds(msec));
 }
 
-void AmEventQueue::processSingleEvent()
+void AmEventQueueBase::processSingleEvent()
 {
-  m_queue.lock();
+  std::unique_lock<std::mutex> _l(_mut);
 
-  if (!ev_queue.empty()) {
+  if (ev_queue.empty())
+    return;
 
-    AmEvent* event = ev_queue.front();
-    ev_queue.pop();
-    m_queue.unlock();
+  AmEvent* event = ev_queue.front();
+  ev_queue.pop();
+  _l.unlock();
 
-    if (AmConfig::LogEvents) 
-      DBG("before processing event\n");
-    handler->process(event);
-    if (AmConfig::LogEvents) 
-      DBG("event processed\n");
-    delete event;
-
-    m_queue.lock();
-    if (ev_queue.empty())
-      ev_pending.set(false);
-  }
-
-  m_queue.unlock();
+  if (AmConfig::LogEvents)
+    DBG("before processing event\n");
+  handler->process(event);
+  if (AmConfig::LogEvents)
+    DBG("event processed\n");
+  delete event;
 }
 
-bool AmEventQueue::eventPending() {
-  m_queue.lock();
-  bool res = !ev_queue.empty();
-  m_queue.unlock();
-  return res;
+bool AmEventQueueBase::eventPending() {
+  std::lock_guard<std::mutex> _l(_mut);
+  return !shouldSleep();
 }
 
-void AmEventQueue::setEventNotificationSink(AmEventNotificationSink* 
+void AmEventQueueBase::setEventNotificationSink(AmEventNotificationSink*
 					    _wakeup_handler) {
-  // locking actually not necessary - if replacing pointer is atomic 
-  m_queue.lock(); 
+  std::unique_lock<std::mutex> _l(_mut);
   wakeup_handler = _wakeup_handler;
-  if(wakeup_handler && ev_pending.get())
+  if (wakeup_handler && !ev_queue.empty())
     wakeup_handler->notify(this);
-  m_queue.unlock();
 }

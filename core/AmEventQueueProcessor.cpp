@@ -100,7 +100,7 @@ EventQueueWorker::EventQueueWorker()
 EventQueueWorker::~EventQueueWorker() {
 }
 
-void EventQueueWorker::notify(AmEventQueue* sender) 
+void EventQueueWorker::notify(AmEventQueueBase* sender)
 {
   process_queues_mut.lock();
   process_queues.push_back(sender);
@@ -119,7 +119,7 @@ void EventQueueWorker::run()
     process_queues_mut.lock();
     while(!process_queues.empty()) {
 
-      AmEventQueue* ev_q = process_queues.front();
+      auto* ev_q = process_queues.front();
       process_queues.pop_front();
       process_queues_mut.unlock();
 

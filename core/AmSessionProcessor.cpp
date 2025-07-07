@@ -92,7 +92,7 @@ AmSessionProcessorThread::AmSessionProcessorThread()
 AmSessionProcessorThread::~AmSessionProcessorThread() {
 }
 
-void AmSessionProcessorThread::notify(AmEventQueue* sender) {
+void AmSessionProcessorThread::notify(AmEventQueueBase* sender) {
   run_mut.lock();
   process_sessions.insert(sender);
   run_mut.unlock();
@@ -110,8 +110,7 @@ void AmSessionProcessorThread::run() {
     DBG("running processing loop\n");
 
     // get the list of session s that need processing
-    std::set<AmEventQueue*> pending_process_sessions 
-      = process_sessions;
+    auto pending_process_sessions = process_sessions;
     process_sessions.clear();
     _l.unlock();
 
