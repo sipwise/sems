@@ -700,6 +700,10 @@ int main(int argc, char* argv[])
 
   sip_ctrl.cleanup();
 
+  INFO("Stopping application timer scheduler\n");
+  AmAppTimer::instance()->stop();
+  AmAppTimer::instance()->join();
+
   INFO("Exiting (%s)\n", success ? "success" : "failure");
   return (success ? EXIT_SUCCESS : EXIT_FAILURE);
 }
