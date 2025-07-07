@@ -685,6 +685,9 @@ int main(int argc, char* argv[])
 
   async_file_writer::instance()->stop();
 
+  AmThreadWatcher::instance()->stop();
+  AmThreadWatcher::instance()->join();
+
   unlink(AmConfig::DaemonPidFile.c_str());
 
 #ifndef DISABLE_DAEMON_MODE

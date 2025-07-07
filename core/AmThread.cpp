@@ -157,27 +157,23 @@ AmThreadWatcher* AmThreadWatcher::instance()
 void AmThreadWatcher::add(AmThread* t)
 {
   DBG("trying to add thread %lu to thread watcher.\n", t->_pid);
-  q_mut.lock();
+  std::lock_guard<std::mutex> _l(run_mut);
   thread_list.push_back(t);
-  q_mut.unlock();
   DBG("added thread %lu to thread watcher.\n", t->_pid);
+  // TODO: add mechanism a stopping thread can notify AmTreadWatcher
 }
 
 void AmThreadWatcher::run()
 {
-  std::unique_lock<AmMutex> _l(q_mut);
+  std::unique_lock<std::mutex> _l(run_mut);
 
-  while (!stop_requested() || !thread_list.empty()) {
+  while (!stop_requested_unlocked() || !thread_list.empty()) {
 
-    _l.unlock();
-
-    sleep(10);
+    run_cond.wait_for(_l, std::chrono::seconds(10));
 
     DBG("Thread watcher starting its work\n");
 
     try {
-      _l.lock();
-
       auto it = thread_list.begin();
       while (it != thread_list.end()) {
 

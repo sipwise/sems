@@ -206,7 +206,6 @@ class AmThreadWatcher: public AmThread
   static AmMutex          _inst_mut;
 
   std::list<AmThread*> thread_list;
-  AmMutex          q_mut;
 
   AmThreadWatcher() {}
   void run();
