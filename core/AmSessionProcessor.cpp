@@ -85,7 +85,7 @@ void AmSessionProcessor::stopThreads()
 
 
 AmSessionProcessorThread::AmSessionProcessorThread() 
-  : events(this), runcond(false)
+  : events(this)
 {
 }
 
@@ -93,27 +93,27 @@ AmSessionProcessorThread::~AmSessionProcessorThread() {
 }
 
 void AmSessionProcessorThread::notify(AmEventQueue* sender) {
-  process_sessions_mut.lock();
-  runcond.set(true);
+  run_mut.lock();
   process_sessions.insert(sender);
-  process_sessions_mut.unlock();
+  run_mut.unlock();
+  run_cond.notify_all();
 }
 
 void AmSessionProcessorThread::run() {
+  std::unique_lock<std::mutex> _l(run_mut);
 
-  while (!stop_requested()) {
+  while (!stop_requested_unlocked()) {
 
-    runcond.wait_for();
+    if (process_sessions.empty())
+      run_cond.wait(_l);
 
     DBG("running processing loop\n");
 
-    process_sessions_mut.lock();
-    runcond.set(false);
     // get the list of session s that need processing
     std::set<AmEventQueue*> pending_process_sessions 
       = process_sessions;
     process_sessions.clear();
-    process_sessions_mut.unlock();
+    _l.unlock();
 
     // process control events (AmSessionProcessorThreadAddEvent)
     events.processEvents();
@@ -166,11 +166,9 @@ void AmSessionProcessorThread::run() {
 	(*it)->finalize();
       }
     }
-  }
-}
 
-void AmSessionProcessorThread::on_stop() {
-  runcond.set(true);
+    _l.lock();
+  }
 }
 
 // AmEventHandler interface
@@ -195,9 +193,6 @@ void AmSessionProcessorThread::startSession(AmSession* s) {
 
   // trigger processing of events already in queue at startup
   notify(s);
-
-  // wakeup the thread
-  runcond.set(true);
 }
 
 #endif

@@ -70,9 +70,7 @@ class AmSessionProcessorThread
   std::list<AmSession*> sessions;
   std::vector<AmSession*> startup_sessions;
 
-  AmCondition runcond;
   std::set<AmEventQueue*> process_sessions;
-  AmMutex process_sessions_mut;
 
   // AmEventHandler interface
   void process(AmEvent* e);
@@ -83,7 +81,6 @@ class AmSessionProcessorThread
 
   // AmThread interface
   void run();
-  void on_stop();
 
   // AmEventNotificationSink interface
   void notify(AmEventQueue* sender);
