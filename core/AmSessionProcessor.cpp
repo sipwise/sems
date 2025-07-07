@@ -42,10 +42,9 @@ vector<AmSessionProcessorThread*>::iterator
 AmSessionProcessor::threads_it = AmSessionProcessor::threads.begin();
 
 AmSessionProcessorThread* AmSessionProcessor::getProcessorThread() {
-  threads_mut.lock();
+  std::lock_guard<AmMutex> _l(threads_mut);
   if (!threads.size()) {
     ERROR("requesting Session processing thread but none available\n");
-    threads_mut.unlock();
     return NULL;
   }
 
@@ -55,20 +54,18 @@ AmSessionProcessorThread* AmSessionProcessor::getProcessorThread() {
 
   AmSessionProcessorThread* res = *threads_it;
   threads_it++;
-  threads_mut.unlock();
   return res;
 }
 
 void AmSessionProcessor::addThreads(unsigned int num_threads) {
   DBG("starting %u session processor threads\n", num_threads);
-  threads_mut.lock();
+  std::lock_guard<AmMutex> _l(threads_mut);
   for (unsigned int i=0; i < num_threads;i++) {
     threads.push_back(new AmSessionProcessorThread());
     threads.back()->start();
   }
   threads_it = threads.begin();
   DBG("now %zd session processor threads running\n",  threads.size());
-  threads_mut.unlock();
 }
 
 
