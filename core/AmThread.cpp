@@ -55,16 +55,19 @@ void AmThread::_start()
 
   DBG("Thread %lu is ending.\n", _pid);
 
+  std::lock_guard<std::mutex> _l(run_mut);
   _state = state::stopped;
 }
 
 void AmThread::start()
 {
-  state expected = state::idle;
-  if(!_state.compare_exchange_strong(expected, state::running)) {
+  std::lock_guard<std::mutex> _l(run_mut);
+
+  if (_state != state::idle) {
     DBG("Thread %lu already running.\n", _pid);
     return;
   }
+  _state = state::running;
 
   _pid = 0;
 
@@ -87,11 +90,17 @@ void AmThread::ready()
 
 void AmThread::stop()
 {
-  state expected = state::running;
-  if(!_state.compare_exchange_strong(expected, state::stopping)){
+  std::unique_lock<std::mutex> _l(run_mut);
+
+  if (_state != state::running) {
     DBG("Thread %lu already stopped\n", _pid);
     return;
   }
+  _state = state::stopping;
+
+  _l.unlock();
+
+  run_cond.notify_all();
 
   // gives the thread a chance to clean up
   DBG("Thread %lu calling on_stop\n", _pid);
@@ -101,18 +110,32 @@ void AmThread::stop()
 
 void AmThread::join()
 {
+  std::unique_lock<std::mutex> _l(run_mut);
+
   // don't attempt to join thread that doesn't exist
   if (_state == state::idle)
     return;
 
-  // make sure only one other thread joins this one. all others
-  // are made to wait through the mutex
-  std::lock_guard<std::mutex> _l(_join_mt);
-  if (!_joined) {
-    if (_td.joinable())
-      _td.join();
-    _joined = true;
+  // nothing to do if already done
+  if (_joined == join_state::joined)
+    return;
+
+  // is somebody else doing the joining? wait until done
+  while (_joined == join_state::joining)
+    run_cond.wait(_l);
+
+  if (_joined == join_state::joined)
+    return;
+
+  // we have to do the joining (state == unjoined)
+  if (_td.joinable()) {
+    _joined = join_state::joining;
+    _l.unlock();
+    _td.join();
+    _l.lock();
   }
+  _joined = join_state::joined;
+  run_cond.notify_all();
 }
 
 

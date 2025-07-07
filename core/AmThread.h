@@ -123,10 +123,14 @@ class AmThread
     stopped, // after stop
   };
 
-  std::atomic<state> _state;
+  enum join_state {
+    unjoined, // nobody joining/joined yet
+    joining, // one thread is joining
+    joined, // has been joined
+  };
 
-  std::mutex _join_mt;
-  bool _joined;
+  state _state;
+  join_state _joined;
 
   void _start();
 
@@ -134,11 +138,24 @@ class AmThread
   bool _triggers_ready;
 
 protected:
+  // protects `_state`, `_joined`, and anything else the subclass wants to use it for,
+  // primarily meant to determine whether a thread should run or not
+  std::mutex run_mut;
+
+  // can be used as a waker for threads running in a loop
+  std::condition_variable run_cond;
+
   virtual void run()=0;
   virtual void on_stop() {};
 
+  /** @return true if this thread ought to stop, without obtaining run_mut. */
+  bool stop_requested_unlocked() const { return _state == stopping; }
+
   /** @return true if this thread ought to stop. */
-  bool stop_requested() { return _state == stopping; }
+  bool stop_requested() {
+    std::lock_guard<std::mutex> _l(run_mut);
+    return stop_requested_unlocked();
+  }
 
   std::optional<std::reference_wrapper<SdNotifier>> _sd_notifier;
 
@@ -150,7 +167,7 @@ public:
 
   AmThread(bool triggers_ready = false)
     : _state(state::idle),
-      _joined(false),
+      _joined(join_state::unjoined),
       _triggers_ready(triggers_ready),
       _pid(0)
   {}
@@ -168,7 +185,10 @@ public:
   void join();
 
   /** @return true if this thread has finished. */
-  bool is_stopped() { return _state == stopped; }
+  bool is_stopped() {
+    std::lock_guard<std::mutex> _l(run_mut);
+    return _state == stopped;
+  }
 };
 
 /**
