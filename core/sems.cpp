@@ -680,6 +680,11 @@ int main(int argc, char* argv[])
 
   sd.stopping();
 
+#ifdef SESSION_THREADPOOL
+  INFO("Starting session processor threads\n");
+  AmSessionProcessor::stopThreads();
+#endif
+
   INFO("Disposing plug-ins\n");
   AmPlugIn::dispose();
 

@@ -50,6 +50,7 @@ class AmSessionProcessor {
  public: 
   static AmSessionProcessorThread* getProcessorThread();
   static void addThreads(unsigned int num_threads);
+  static void stopThreads();
 };
 
 struct AmSessionProcessorThreadAddEvent 

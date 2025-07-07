@@ -68,6 +68,21 @@ void AmSessionProcessor::addThreads(unsigned int num_threads) {
   DBG("now %zd session processor threads running\n",  threads.size());
 }
 
+void AmSessionProcessor::stopThreads()
+{
+  std::lock_guard<AmMutex> _l(threads_mut);
+  DBG("shutting down %zu session processor threads\n", threads.size());
+  // two-pass: first request stop, then join and delete
+  for (auto it = threads.begin(); it != threads.end(); it++)
+    (*it)->stop();
+  while (!threads.empty()) {
+    auto* thread = threads.back();
+    threads.pop_back();
+    thread->join();
+    delete thread;
+  }
+}
+
 
 AmSessionProcessorThread::AmSessionProcessorThread() 
   : events(this), runcond(false)
