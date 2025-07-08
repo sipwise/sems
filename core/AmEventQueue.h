@@ -118,5 +118,32 @@ public:
   AmEventQueue(AmEventHandler* handler) : AmEventQueueBase(handler, _mut, _cond) {}
 };
 
+/**
+ * \brief Thread-based asynchronous event queue
+ *
+ * This class can be used to run a thread based on an event
+ * queue.
+ */
+class AmEventQueueThread
+  : public AmThread,
+    public AmEventQueueBase
+{
+protected:
+  // mutex must be held
+  bool shouldSleep() const {
+    return !stop_requested_unlocked() && AmEventQueueBase::shouldSleep();
+  }
+
+public:
+  AmEventQueueThread(AmEventHandler* handler)
+    : AmEventQueueBase(handler, run_mut, run_cond)
+  {}
+
+  virtual void on_destroy() {
+    stop();
+    join();
+  }
+};
+
 #endif
 
