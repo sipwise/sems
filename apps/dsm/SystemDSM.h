@@ -24,8 +24,7 @@ class EventProxySession
 };
 
 class SystemDSM
-: public AmEventQueue,
-  public AmThread,
+: public AmEventQueueThread,
   public AmEventHandler,
   public DSMSession 
 
