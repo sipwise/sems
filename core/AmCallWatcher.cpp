@@ -34,8 +34,8 @@
 
 
 AmCallWatcher::AmCallWatcher() 
-  : garbage_collector(new AmCallWatcherGarbageCollector(soft_states_mut, soft_states)),
-    AmEventQueue(this)
+  : AmEventQueueThread(this),
+    garbage_collector(new AmCallWatcherGarbageCollector(soft_states_mut, soft_states))
 { 
 }
 
@@ -46,9 +46,12 @@ AmCallWatcher::~AmCallWatcher()
 void AmCallWatcher::run() {
   DBG("starting call watcher.\n");
   garbage_collector->start();
-  while (true) {
+  std::unique_lock<std::mutex> _l(run_mut);
+  while (!stop_requested_unlocked()) {
+    _l.unlock();
     waitForEvent();
     processEvents();
+    _l.lock();
   }
 }
 
