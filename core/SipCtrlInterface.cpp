@@ -448,6 +448,9 @@ void _SipCtrlInterface::cleanup()
 	tcp_sockets = NULL;
 	nr_tcp_sockets = 0;
     }
+
+    wheeltimer::instance()->stop();
+    wheeltimer::instance()->join();
 }
 
 int _SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
