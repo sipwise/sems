@@ -169,7 +169,7 @@ void AmThreadWatcher::run()
 
   while (!stop_requested_unlocked() || !thread_list.empty()) {
 
-    run_cond.wait_for(_l, std::chrono::seconds(10));
+    run_cond.wait_for(_l, std::chrono::seconds(1));
 
     DBG("Thread watcher starting its work\n");
 
@@ -180,7 +180,14 @@ void AmThreadWatcher::run()
 	AmThread* cur_thread = *it;
 
 	_l.unlock();
+
 	DBG("thread %lu is to be processed in thread watcher.\n", cur_thread->_pid);
+
+        if (stop_requested()) {
+          DBG("thread watcher requesting thread %lu to stop.\n", cur_thread->_pid);
+          cur_thread->stop();
+        }
+
 	if(cur_thread->is_stopped()){
 	  DBG("thread %lu has been destroyed.\n", cur_thread->_pid);
 	  cur_thread->join();
