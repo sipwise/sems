@@ -61,7 +61,7 @@ class AmEventNotificationSink
  */
 class AmEventQueue
   : public AmEventQueueInterface,
-    public atomic_ref_cnt
+    virtual public atomic_ref_cnt
 {
 protected:
   AmEventHandler*           handler;
