@@ -329,7 +329,7 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
 				 string &direct_export,
 				 bool multithreaded,
 				 unsigned int threads)
-  : AmEventQueue(this),
+  : AmEventQueueThread(this),
     port(port),
     bind_ip(bind_ip),
     running(false),

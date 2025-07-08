@@ -96,8 +96,7 @@ struct DIMethodProxy : public XmlRpcServerMethod
 };
 
 class XMLRPC2DIServer
-: public AmEventQueue,
-  public AmThread,
+: public AmEventQueueThread,
   public AmEventHandler
 {
   XmlRpcServer* s;
@@ -135,6 +134,8 @@ class XMLRPC2DIServer
       unsigned int threads = 5);
 
   ~XMLRPC2DIServer() {
+    stop();
+    join();
     if (s) {
       delete s;
     }
