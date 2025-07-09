@@ -684,6 +684,7 @@ int main(int argc, char* argv[])
   AmPlugIn::dispose();
 
   async_file_writer::instance()->stop();
+  async_file_writer::instance()->join();
 
   AmThreadWatcher::instance()->stop();
   AmThreadWatcher::instance()->join();
