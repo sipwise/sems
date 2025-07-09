@@ -48,6 +48,7 @@
 #include <algorithm>
 #include <filesystem>
 using std::set;
+using std::make_shared;
 
 static unsigned int pcm16_bytes2samples(long h_codec, unsigned int num_bytes)
 {
@@ -120,6 +121,10 @@ AmPlugIn::AmPlugIn()
 }
 
 
+AmPlugIn::dlhandle::~dlhandle() {
+  dlclose(_h);
+}
+
 static void delete_plugin_factory(std::pair<string, AmPluginFactory*> pf)
 {
   DBG("decreasing reference to plug-in factory: %s\n", pf.first.c_str());
@@ -135,12 +140,6 @@ AmPlugIn::~AmPlugIn()
   std::for_each(name2di.begin(), name2di.end(), delete_plugin_factory);
   std::for_each(name2logfac.begin(), name2logfac.end(), delete_plugin_factory);
   std::for_each(name2app.begin(), name2app.end(), delete_plugin_factory);
-
-  // if _DEBUG is set do not unload shared libs to allow better debugging
-#ifndef _DEBUG
-  for(vector<void*>::iterator it=dlls.begin();it!=dlls.end();++it)
-    dlclose(*it);
-#endif
 }
 
 void AmPlugIn::dispose()
@@ -297,7 +296,7 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
   free(pname);
 
-  void* h_dl = dlopen(file.c_str(),dlopen_flags);
+  auto h_dl = make_shared<dlhandle>(dlopen(file.c_str(), dlopen_flags));
 
   if(!h_dl){
     ERROR("AmPlugIn::loadPlugIn: %s: %s\n",file.c_str(),dlerror());
@@ -305,7 +304,7 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
 
   FactoryCreate fc = NULL;
-  amci_exports_t* exports = (amci_exports_t*)dlsym(h_dl,"amci_exports");
+  amci_exports_t* exports = (amci_exports_t*)dlsym(*h_dl, "amci_exports");
 
   bool has_sym=false;
   if(exports){
@@ -314,28 +313,28 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
     goto end;
   }
 
-  if((fc = (FactoryCreate)dlsym(h_dl,FACTORY_SESSION_EXPORT_STR)) != NULL){  
+  if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_SESSION_EXPORT_STR)) != NULL) {
     plugin = (AmPluginFactory*)fc();
     if(loadAppPlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
-  if((fc = (FactoryCreate)dlsym(h_dl,FACTORY_SESSION_EVENT_HANDLER_EXPORT_STR)) != NULL){
+  if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_SESSION_EVENT_HANDLER_EXPORT_STR)) != NULL) {
     plugin = (AmPluginFactory*)fc();
     if(loadSehPlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
-  if((fc = (FactoryCreate)dlsym(h_dl,FACTORY_PLUGIN_EXPORT_STR)) != NULL){
+  if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_PLUGIN_EXPORT_STR)) != NULL) {
     plugin = (AmPluginFactory*)fc();
     if(loadBasePlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
-  if((fc = (FactoryCreate)dlsym(h_dl,FACTORY_PLUGIN_CLASS_EXPORT_STR)) != NULL){
+  if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_PLUGIN_CLASS_EXPORT_STR)) != NULL) {
     plugin = (AmPluginFactory*)fc();
     if(loadDiPlugIn(plugin))
       goto error;
@@ -343,7 +342,7 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
     if (NULL != plugin) plugins.push_back(plugin);
   }
 
-  if((fc = (FactoryCreate)dlsym(h_dl,FACTORY_LOG_FACILITY_EXPORT_STR)) != NULL){
+  if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_LOG_FACILITY_EXPORT_STR)) != NULL) {
     plugin = (AmPluginFactory*)fc();
     if(loadLogFacPlugIn(plugin))
       goto error;
@@ -361,7 +360,6 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   return 0;
 
  error:
-  dlclose(h_dl);
   return -1;
 }
 
@@ -494,11 +492,10 @@ AmSessionFactory* AmPlugIn::getFactory4App(const string& app_name)
 {
   AmSessionFactory* res = NULL;
 
-  name2app_mut.lock();
+  std::lock_guard<AmMutex> _l(name2app_mut);
   std::map<std::string,AmSessionFactory*>::iterator it = name2app.find(app_name);
   if(it != name2app.end()) 
     res = it->second;
-  name2app_mut.unlock();
 
   return res;
 }
@@ -577,11 +574,10 @@ int AmPlugIn::loadAppPlugIn(AmPluginFactory* f)
     return -1;
   }
 
-  name2app_mut.lock();
+  std::lock_guard<AmMutex> _l(name2app_mut);
 
   if(name2app.find(sf->getName()) != name2app.end()){
     ERROR("application '%s' already loaded !\n",sf->getName().c_str());
-    name2app_mut.unlock();
     return -1;
   }      
 
@@ -594,7 +590,6 @@ int AmPlugIn::loadAppPlugIn(AmPluginFactory* f)
     // insertion failed
     dec_ref(sf);
   }
-  name2app_mut.unlock();
 
   return 0;
 
@@ -775,7 +770,7 @@ bool AmPlugIn::registerFactory4App(const string& app_name, AmSessionFactory* f)
 {
   bool res;
 
-  name2app_mut.lock();
+  std::lock_guard<AmMutex> _l(name2app_mut);
   std::map<std::string,AmSessionFactory*>::iterator it = name2app.find(app_name);
   if(it != name2app.end()){
     WARN("Application '%s' has already been registered and cannot be "
@@ -787,7 +782,6 @@ bool AmPlugIn::registerFactory4App(const string& app_name, AmSessionFactory* f)
     name2app.insert(make_pair(app_name,f));
     res = true;
   }
-  name2app_mut.unlock();
 
   return res;
 }

@@ -39,6 +39,7 @@
 using std::string;
 using std::vector;
 using std::list;
+using std::shared_ptr;
 
 class AmPluginFactory;
 class AmSessionFactory;
@@ -88,8 +89,20 @@ class AmPlugIn : public AmPayloadProvider
  private:
   static AmPlugIn* _instance;
 
+  class dlhandle {
+    void *_h;
+
+    public:
+      dlhandle(void *h) : _h(h) {}
+      ~dlhandle();
+
+      operator void*() {
+        return _h;
+      }
+  };
+
   std::set<string>                  rtld_global_plugins;
-  vector<void*> dlls;
+  vector<shared_ptr<dlhandle>> dlls;
 
   std::map<int,amci_codec_t*>       codecs;
   std::map<int,amci_payload_t*>     payloads;
