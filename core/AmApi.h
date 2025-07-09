@@ -238,7 +238,7 @@ class AmLoggingFacility : public AmPluginFactory
 	    }
 #endif
 
-typedef void* (*FactoryCreate)();
+typedef AmPluginFactory* (*FactoryCreate)();
 
 #define STR(x) #x
 #define XSTR(x) STR(x)

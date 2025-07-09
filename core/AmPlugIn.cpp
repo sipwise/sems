@@ -314,28 +314,28 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
 
   if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_SESSION_EXPORT_STR)) != NULL) {
-    plugin = (AmPluginFactory*)fc();
+    plugin = fc();
     if(loadAppPlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
   if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_SESSION_EVENT_HANDLER_EXPORT_STR)) != NULL) {
-    plugin = (AmPluginFactory*)fc();
+    plugin = fc();
     if(loadSehPlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
   if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_PLUGIN_EXPORT_STR)) != NULL) {
-    plugin = (AmPluginFactory*)fc();
+    plugin = fc();
     if(loadBasePlugIn(plugin))
       goto error;
     has_sym=true;
     if (NULL != plugin) plugins.push_back(plugin);
   }
   if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_PLUGIN_CLASS_EXPORT_STR)) != NULL) {
-    plugin = (AmPluginFactory*)fc();
+    plugin = fc();
     if(loadDiPlugIn(plugin))
       goto error;
     has_sym=true;
@@ -343,7 +343,7 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
 
   if ((fc = (FactoryCreate) dlsym(*h_dl, FACTORY_LOG_FACILITY_EXPORT_STR)) != NULL) {
-    plugin = (AmPluginFactory*)fc();
+    plugin = fc();
     if(loadLogFacPlugIn(plugin))
       goto error;
     has_sym=true;
