@@ -213,7 +213,7 @@ void AmB2BSession::relayError(const string &method, unsigned cseq, bool forward,
   }
 }
 
-void AmB2BSession::createFakeReply(AmMimeBody *sdp,   AmMimeBody& reply_body) {
+void AmB2BSession::createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_body) {
 
   int rtp_int_tmp = getRtpInterface();
   string rtp_local_ip = AmConfig::RTP_Ifs[rtp_int_tmp].LocalIP;
@@ -280,7 +280,7 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 {
   // reply the INVITE with fake 200 reply
 
-  AmMimeBody *sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
+  const AmMimeBody *sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
   AmMimeBody body;
 
   createFakeReply(sdp, body);
@@ -291,8 +291,7 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 
 void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
 {
-  AmSipRequest copy_invite = invite;
-  AmMimeBody *sdp = copy_invite.body.hasContentType(SIP_APPLICATION_SDP);
+  const AmMimeBody *sdp = invite.body.hasContentType(SIP_APPLICATION_SDP);
 
   AmSipReply n_reply;
   createFakeReply(sdp, n_reply.body);

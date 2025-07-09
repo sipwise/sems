@@ -208,7 +208,7 @@ private:
   int relaySip(const AmSipRequest& orig, const AmSipReply& reply);
 
   /** generate fake body (c=0.0.0.0) reply */
-  void createFakeReply(AmMimeBody *sdp,   AmMimeBody& reply_body);
+  void createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_body);
 
   /** generate 200 SIP reply on a pending INVITE (uses fake body) */
   virtual void acceptPendingInvite(AmSipRequest *invite);
