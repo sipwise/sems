@@ -832,6 +832,10 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
 
     ILOG_DLG(L_DBG, "INVITE pending - planning session update with SDP from INVITE+replaces for later for ltag %s",
 	  getLocalTag().c_str());
+
+    /* we aren't ready to relay to the other leg yet (to the originator of reconnection) */
+    set_sip_relay_only(false);
+
     pending_updates.push_back(u);
     ILOG_DLG(L_DBG, "INVITE pending - accepting with fake SDP\n");
     // remember SDP origin of the other side for our requests
