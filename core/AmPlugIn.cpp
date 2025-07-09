@@ -134,6 +134,7 @@ AmPlugIn::~AmPlugIn()
   std::for_each(name2base.begin(), name2base.end(), delete_plugin_factory);
   std::for_each(name2di.begin(), name2di.end(), delete_plugin_factory);
   std::for_each(name2logfac.begin(), name2logfac.end(), delete_plugin_factory);
+  std::for_each(name2app.begin(), name2app.end(), delete_plugin_factory);
 
   // if _DEBUG is set do not unload shared libs to allow better debugging
 #ifndef _DEBUG
