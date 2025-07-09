@@ -127,10 +127,10 @@ AmB2BSession::~AmB2BSession()
 }
 
 void AmB2BSession::set_sip_relay_only(bool r) { 
-  sip_relay_only = r; 
+  if (!getLocalTag().empty())
+    ILOG_DLG(L_DBG, "Set sip_relay_only=%s for local_tag '%s'\n", (r ? "true" : "false"), getLocalTag().c_str());
 
-  // disable offer/answer if we just relay requests
-  //dlg.setOAEnabled(!sip_relay_only); ???
+  sip_relay_only = r;
 }
 
 void AmB2BSession::clear_other()
