@@ -1146,6 +1146,23 @@ void CallLeg::onSipRequest(const AmSipRequest& req)
         /* in case this INVITE puts on hold, update the method */
         hold_method = updateHoldMethod(sdp);
 
+        /* check if it's relayable */
+        bool fwd = sip_relay_only && (req.method != SIP_METH_CANCEL);
+
+        /* try to post pending updates rather */
+        if (!fwd) {
+          ILOG_DLG(L_DBG, "INVITE not relayable yet for this leg '%s' to other leg '%s', posting pending updates.", getLocalTag().c_str(), getOtherId().c_str());
+          pending_updates.push_back(new Reinvite(req.hdrs,
+                                                 req.body,
+                                                 /* establishing = */ false,
+                                                 /* relayed */ false,
+                                                 /* r_cseq */ 0));
+          ILOG_DLG(L_DBG, "For now replying with fake 200 OK to '%s'\n", req.from_tag.c_str());
+          acceptPendingInviteB2B(req);
+          set_sip_relay_only(true);
+          return;
+        }
+
         /* TODO: do we really need it? There is no MoH handling in this version of SEMS */
       }
 
