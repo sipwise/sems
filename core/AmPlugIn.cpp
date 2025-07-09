@@ -782,6 +782,7 @@ bool AmPlugIn::registerFactory4App(const string& app_name, AmSessionFactory* f)
 	 app_name.c_str());
     res =  false;
   } else {
+    inc_ref(f);
     name2app.insert(make_pair(app_name,f));
     res = true;
   }
