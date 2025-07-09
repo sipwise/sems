@@ -23,10 +23,21 @@ class TestCase(unittest.TestCase):
         if os.environ.get("TEST_SOCKET_PATH"):
             env["TEST_SOCKET_PATH"] = os.environ.get("TEST_SOCKET_PATH")
 
-        binary = os.environ.get('BINARY', 'core/sems')
+        binary = os.environ.get("BINARY", "core/sems")
+
+        cmdline = [
+            binary,
+            "-f",
+            "t/" + cls._config_base + ".conf",
+            "-P",
+            "t/run/" + str(os.getpid()) + ".pid",
+        ]
+
+        if os.environ.get("WITH_VALGRIND"):
+            cmdline.insert(0, "valgrind")
 
         cls._proc = subprocess.Popen(
-            [binary, "-f", "t/" + cls._config_base + ".conf", "-P", "t/run/" + str(os.getpid()) + ".pid"],
+            cmdline,
             env=env,
         )
 
