@@ -214,7 +214,7 @@ private:
   virtual void acceptPendingInvite(AmSipRequest *invite);
 
   /** generate 200 B2B reply on a pending INVITE (uses fake body) */
-  void acceptPendingInviteB2B(AmSipRequest& invite);
+  void acceptPendingInviteB2B(const AmSipRequest& invite);
 
  public:
 

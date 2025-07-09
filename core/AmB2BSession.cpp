@@ -289,11 +289,14 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
   dlg->reply(*invite, 200, "OK", &body);
 }
 
-void AmB2BSession::acceptPendingInviteB2B(AmSipRequest& invite)
+void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
 {
-  AmMimeBody *sdp = invite.body.hasContentType(SIP_APPLICATION_SDP);
+  AmSipRequest copy_invite = invite;
+  AmMimeBody *sdp = copy_invite.body.hasContentType(SIP_APPLICATION_SDP);
+
   AmSipReply n_reply;
   createFakeReply(sdp, n_reply.body);
+
   n_reply.code = 200;
   n_reply.reason = "OK";
   n_reply.cseq = invite.cseq;
