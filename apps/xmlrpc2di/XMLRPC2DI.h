@@ -136,11 +136,11 @@ class XMLRPC2DIServer
   ~XMLRPC2DIServer() {
     stop();
     join();
-    if (s) {
-      delete s;
-    }
     if (di_method) {
       delete di_method;
+    }
+    if (s) {
+      delete s;
     }
   }
 
