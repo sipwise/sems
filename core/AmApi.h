@@ -284,8 +284,8 @@ typedef void* (*FactoryCreate)();
 // - in onLoad, register the capabilities you provide,
 //    e.g. AmPlugIn::registerApplication(...), AmPlugIn::registerDIInterface(...) etc
 
-#define EXPORT_MODULE_FUNC(class_name)	\
-  extern "C" void* base_plugin_create()		\
+#define EXPORT_MODULE_FUNC(class_name)		\
+  extern "C" void* FACTORY_PLUGIN_EXPORT()	\
   {						\
     return class_name::instance();		\
   }
