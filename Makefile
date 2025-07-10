@@ -127,7 +127,7 @@ check:
 	$(MAKE) t/tests-preload.so
 	rm -rf t/run
 	mkdir t/run
-	for X in t/test-*.py; do t/auto-test-helper $$(basename "$$X") "core/$(NAME)" "$$X"; done
+	for X in t/test-*.py; do t/auto-test-helper $$(basename "$$X") "core/$(NAME)" "$$X" || exit 1; done
 
 t/tests-preload.so: t/tests-preload.c
 	$(CC) -g -pthread -D_GNU_SOURCE -std=c11 -o $@ -shared -fPIC $< -ldl -lm
