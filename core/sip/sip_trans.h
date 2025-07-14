@@ -37,6 +37,8 @@
 
 #include <list>
 using std::list;
+#include <memory>
+using std::shared_ptr;
 
 struct sip_msg;
 struct sip_target_set;
@@ -148,7 +150,7 @@ class sip_trans
 
     /** Destination for retransmissions */
     sockaddr_storage retr_addr;
-    trsp_socket*     retr_socket;
+    shared_ptr<trsp_socket> retr_socket;
 
     /** flags used by send_request() */
     unsigned int flags;

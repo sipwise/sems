@@ -19,14 +19,18 @@ using std::deque;
 #include <map>
 #include <deque>
 #include <string>
+#include <memory>
 using std::map;
 using std::deque;
 using std::string;
+using std::shared_ptr;
 
 class tcp_server_worker;
 class tcp_server_socket;
 
-class tcp_trsp_socket: public trsp_socket
+class tcp_trsp_socket
+  : public trsp_socket,
+    public std::enable_shared_from_this<tcp_trsp_socket>
 {
   tcp_server_socket* server_sock;
   tcp_server_worker& server_worker;
@@ -153,7 +157,7 @@ public:
 			       int sd, const sockaddr_storage* sa,
 			       struct event_base* evbase);
 
-  static tcp_trsp_socket* new_connection(tcp_server_socket* server_sock,
+  static shared_ptr<tcp_trsp_socket> new_connection(tcp_server_socket* server_sock,
 					 tcp_server_worker& server_worker,
 					 const sockaddr_storage* sa,
 					 struct event_base* evbase);
@@ -164,15 +168,15 @@ public:
 
   void copy_peer_addr(sockaddr_storage* sa);
 
-  const string& get_peer_ip() {
+  const string& get_peer_ip() const {
     return peer_ip;
   }
 
-  unsigned short get_peer_port() {
+  unsigned short get_peer_port() const {
     return peer_port;
   }
 
-  bool is_connected() {
+  bool is_connected() const {
     return connected;
   }
 
@@ -191,7 +195,7 @@ class tcp_server_worker
   tcp_server_socket* server_sock;
 
   AmMutex                      connections_mut;
-  map<string,tcp_trsp_socket*> connections;
+  map<string, shared_ptr<tcp_trsp_socket>> connections;
 
 protected:
   void run();
@@ -204,8 +208,8 @@ public:
   int send(const sockaddr_storage* sa, const char* msg,
 	   const int msg_len, unsigned int flags);
 
-  void add_connection(tcp_trsp_socket* client_sock);
-  void remove_connection(tcp_trsp_socket* client_sock);
+  void add_connection(const shared_ptr<tcp_trsp_socket>& client_sock);
+  void remove_connection(const tcp_trsp_socket* client_sock);
 };
 
 class tcp_server_socket: public trsp_socket
@@ -280,7 +284,7 @@ protected:
 
 public:
   /** @see transport */
-  tcp_trsp(tcp_server_socket* sock);
+  tcp_trsp(const shared_ptr<tcp_server_socket>& sock);
   ~tcp_trsp();
 };
 

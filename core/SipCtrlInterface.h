@@ -35,9 +35,11 @@
 #include <string>
 #include <list>
 #include <deque>
+#include <memory>
 using std::string;
 using std::list;
 using std::deque;
+using std::shared_ptr;
 
 class AmSipRequest;
 class AmSipReply;
@@ -69,10 +71,10 @@ class SipCtrlInterface:
 
     AmCondition stopped;
     
-    deque<udp_trsp_socket*>   udp_sockets;
-    deque<udp_trsp>           udp_servers;
-    deque<tcp_server_socket*> tcp_sockets;
-    deque<tcp_trsp>           tcp_servers;
+    deque<shared_ptr<udp_trsp_socket>>   udp_sockets;
+    deque<udp_trsp>                      udp_servers;
+    deque<shared_ptr<tcp_server_socket>> tcp_sockets;
+    deque<tcp_trsp>                      tcp_servers;
 
     int init_udp_servers(int if_num);
     int init_tcp_servers(int if_num);

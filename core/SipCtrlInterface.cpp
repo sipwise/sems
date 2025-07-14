@@ -58,13 +58,15 @@
 #include "AmEventDispatcher.h"
 #include "AmSipEvent.h"
 
+using std::make_shared;
+
 bool SipCtrlInterface::log_parsed_messages = true;
 int SipCtrlInterface::udp_rcvbuf = -1;
 
 int SipCtrlInterface::init_udp_servers(int if_num)
 {
-    udp_trsp_socket* udp_socket = 
-	new udp_trsp_socket(if_num,AmConfig::SIP_Ifs[if_num].SigSockOpts
+    auto udp_socket =
+	make_shared<udp_trsp_socket>(if_num,AmConfig::SIP_Ifs[if_num].SigSockOpts
 			    | (AmConfig::ForceOutboundIf ? 
 			       trsp_socket::force_outbound_if : 0)
 			    | (AmConfig::UseRawSockets ?
@@ -82,7 +84,6 @@ int SipCtrlInterface::init_udp_servers(int if_num)
 	      AmConfig::SIP_Ifs[if_num].LocalIP.c_str(),
 	      AmConfig::SIP_Ifs[if_num].LocalPort);
 
-	delete udp_socket;
 	return -1;
     }
 
@@ -92,7 +93,6 @@ int SipCtrlInterface::init_udp_servers(int if_num)
 
     trans_layer::instance()->register_transport(udp_socket);
     udp_sockets.push_back(udp_socket);
-    inc_ref(udp_socket);
 
     for(int j=0; j<AmConfig::SIPServerThreads;j++){
 	udp_servers.emplace_back(udp_socket);
@@ -103,7 +103,7 @@ int SipCtrlInterface::init_udp_servers(int if_num)
 
 int SipCtrlInterface::init_tcp_servers(int if_num)
 {
-    tcp_server_socket* tcp_socket = new tcp_server_socket(if_num);
+    auto tcp_socket = make_shared<tcp_server_socket>(if_num);
 
     if(!AmConfig::SIP_Ifs[if_num].PublicIP.empty()) {
      	tcp_socket->set_public_ip(AmConfig::SIP_Ifs[if_num].PublicIP);
@@ -119,7 +119,6 @@ int SipCtrlInterface::init_tcp_servers(int if_num)
 	      AmConfig::SIP_Ifs[if_num].LocalIP.c_str(),
 	      AmConfig::SIP_Ifs[if_num].LocalPort);
 
-	delete tcp_socket;
 	return -1;
     }
 
@@ -128,7 +127,6 @@ int SipCtrlInterface::init_tcp_servers(int if_num)
 
     trans_layer::instance()->register_transport(tcp_socket);
     tcp_sockets.push_back(tcp_socket);
-    inc_ref(tcp_socket);
 
     tcp_servers.emplace_back(tcp_socket);
 

@@ -90,7 +90,7 @@ void trans_layer::register_ua(sip_ua* ua)
     this->ua = ua;
 }
 
-int trans_layer::register_transport(trsp_socket* trsp)
+int trans_layer::register_transport(const shared_ptr<trsp_socket>& trsp)
 {
     int if_num = trsp->get_if();
     if(transports.size() <= (size_t)if_num)
@@ -147,9 +147,7 @@ int trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
 	}
     }
 
-    if(msg->local_socket) dec_ref(msg->local_socket);
     msg->local_socket = prot_sock_it->second;
-    inc_ref(msg->local_socket);
 
     return 0;
 }
@@ -267,9 +265,10 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     sip_msg* req = t->msg;
     assert(req);
 
-	    // patch Contact-HF
+    auto local_socket = req->local_socket;
+
+    // patch Contact-HF
     vector<string> contact_buf;
-    trsp_socket* local_socket = req->local_socket;
     if(!local_socket->is_opt_set(trsp_socket::no_transport_in_contact)) {
 	    cstring trsp(local_socket->get_transport());
 
@@ -279,7 +278,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	    for(list<sip_header*>::iterator contact_it = msg->contacts.begin();
 		contact_it != msg->contacts.end(); contact_it++, contact_buf_it++) {
 	
-		patch_contact_transport(*contact_it,trsp,*contact_buf_it);
+	        patch_contact_transport(*contact_it, trsp, *contact_buf_it);
 	    }
     }
     
@@ -620,8 +619,6 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     t->retr_buf = reply_buf;
     t->retr_len = reply_len;
     memcpy(&t->retr_addr,&remote_ip,sizeof(sockaddr_storage));
-    inc_ref(local_socket);
-    if(t->retr_socket) dec_ref(t->retr_socket);
     t->retr_socket = local_socket;
 
     if(logger) {
@@ -1197,7 +1194,6 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     // copy msg->remote_ip
     memcpy(&p_msg->remote_ip,&msg->remote_ip,sizeof(sockaddr_storage));
     p_msg->local_socket = msg->local_socket;
-    inc_ref(p_msg->local_socket);
  
     return 0;
 }
@@ -1531,7 +1527,6 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 
     memcpy(&p_msg->remote_ip,&req->remote_ip,sizeof(sockaddr_storage));
     p_msg->local_socket = req->local_socket;
-    inc_ref(p_msg->local_socket);
 
     DBG("Sending to %s:%i:\n<%.*s>\n",
 	get_addr_str(&p_msg->remote_ip).c_str(),
@@ -2095,8 +2090,6 @@ int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	
 	    // copy destination address
 	    memcpy(&t->retr_addr,&msg->remote_ip,sizeof(sockaddr_storage));
-	    inc_ref(msg->local_socket);
-	    if(t->retr_socket) dec_ref(t->retr_socket);
 	    t->retr_socket = msg->local_socket;
 
 	    // remove the message;
@@ -2717,7 +2710,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 	// copy the new address back
 	memcpy(&tr->msg->remote_ip,&sa,sizeof(sockaddr_storage));
 
-	trsp_socket* old_sock = tr->msg->local_socket;
+	auto old_sock = tr->msg->local_socket;
 	int out_interface = old_sock->get_if();
 	if(set_trsp_socket(tr->msg,next_trsp,out_interface) < 0)
 	    return -1;

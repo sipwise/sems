@@ -36,11 +36,13 @@
 #include <string>
 using std::string;
 
+#include <memory>
+using std::shared_ptr;
+
 #define DEFAULT_TCP_CONNECT_TIMEOUT 2000 /* 2 seconds */
 #define DEFAULT_TCP_IDLE_TIMEOUT 3600000 /* 1 hour */
 
 class trsp_socket
-    : public atomic_ref_cnt
 {
 public:
     enum socket_options {
@@ -156,11 +158,11 @@ public:
 class transport: public AmThread
 {
 protected:
-    trsp_socket* sock;
+    shared_ptr<trsp_socket> sock;
 
 public:
-    transport(trsp_socket* sock, bool triggers_ready = false):
-      AmThread(triggers_ready), sock(sock)
+    transport(const shared_ptr<trsp_socket>& sock, bool triggers_ready = false):
+	AmThread(triggers_ready), sock(sock)
     {}
     virtual ~transport();
 };

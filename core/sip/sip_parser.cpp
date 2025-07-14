@@ -115,9 +115,6 @@ sip_msg::~sip_msg()
 	    delete u.reply;
 	}
     }
-    
-    if(local_socket)
-	dec_ref(local_socket);
 }
 
 void sip_msg::copy_msg_buf(const char* msg_buf, int msg_len)

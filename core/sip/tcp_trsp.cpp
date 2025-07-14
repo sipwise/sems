@@ -65,23 +65,21 @@ void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
   if(sd == -1)
     return;
 
-  tcp_trsp_socket* sock = new tcp_trsp_socket(server_sock, server_worker,
-					      sd,sa,evbase);
+  shared_ptr<tcp_trsp_socket> sock(new tcp_trsp_socket(server_sock, server_worker,
+					      sd, sa, evbase));
 
-  inc_ref(sock);
   server_worker.add_connection(sock);
 
   sock->connected = true;
   sock->add_read_event();
-  dec_ref(sock);
 }
 
-tcp_trsp_socket* tcp_trsp_socket::new_connection(tcp_server_socket* server_sock,
+shared_ptr<tcp_trsp_socket> tcp_trsp_socket::new_connection(tcp_server_socket* server_sock,
 						 tcp_server_worker& server_worker,
 						 const sockaddr_storage* sa,
 						 struct event_base* evbase)
 {
-  return new tcp_trsp_socket(server_sock, server_worker, -1, sa, evbase);
+  return shared_ptr<tcp_trsp_socket>(new tcp_trsp_socket(server_sock, server_worker, -1, sa, evbase));
 }
 
 
@@ -260,7 +258,6 @@ int tcp_trsp_socket::send(const sockaddr_storage* sa, const char* msg,
 
 void tcp_trsp_socket::close()
 {
-  inc_ref(this);
   server_worker.remove_connection(this);
 
   closed = true;
@@ -275,7 +272,6 @@ void tcp_trsp_socket::close()
   }
 
   generate_transport_errors();
-  dec_ref(this);
 }
 
 void tcp_trsp_socket::generate_transport_errors()
@@ -401,8 +397,7 @@ int tcp_trsp_socket::parse_input()
     copy_peer_addr(&s_msg->remote_ip);
     copy_addr_to(&s_msg->local_ip);
 
-    s_msg->local_socket = this;
-    inc_ref(this);
+    s_msg->local_socket = shared_from_this();
 
     // pass message to the parser / transaction layer
     trans_layer::instance()->received_msg(s_msg);
@@ -487,7 +482,7 @@ tcp_server_worker::~tcp_server_worker()
   event_base_free(evbase);
 }
 
-void tcp_server_worker::add_connection(tcp_trsp_socket* client_sock)
+void tcp_server_worker::add_connection(const shared_ptr<tcp_trsp_socket>& client_sock)
 {
   string conn_id = client_sock->get_peer_ip()
     + ":" + int2str(client_sock->get_peer_port());
@@ -497,29 +492,26 @@ void tcp_server_worker::add_connection(tcp_trsp_socket* client_sock)
       client_sock->get_peer_port());
 
   connections_mut.lock();
-  map<string,tcp_trsp_socket*>::iterator sock_it = connections.find(conn_id);
+  auto sock_it = connections.find(conn_id);
   if(sock_it != connections.end()) {
-    dec_ref(sock_it->second);
     sock_it->second = client_sock;
   }
   else {
     connections[conn_id] = client_sock;
   }
-  inc_ref(client_sock);
   connections_mut.unlock();
 }
 
-void tcp_server_worker::remove_connection(tcp_trsp_socket* client_sock)
+void tcp_server_worker::remove_connection(const tcp_trsp_socket* client_sock)
 {
-  string conn_id = client_sock->get_peer_ip()
+  const string& conn_id = client_sock->get_peer_ip()
     + ":" + int2str(client_sock->get_peer_port());
 
   DBG("removing TCP connection from %s",conn_id.c_str());
 
   connections_mut.lock();
-  map<string,tcp_trsp_socket*>::iterator sock_it = connections.find(conn_id);
+  auto sock_it = connections.find(conn_id);
   if(sock_it != connections.end()) {
-    dec_ref(sock_it->second);
     connections.erase(sock_it);
     DBG("TCP connection from %s removed",conn_id.c_str());
   }
@@ -533,24 +525,20 @@ int tcp_server_worker::send(const sockaddr_storage* sa, const char* msg,
   string dest = am_inet_ntop(sa,host_buf,NI_MAXHOST);
   dest += ":" + int2str(am_get_port(sa));
 
-  tcp_trsp_socket* sock = NULL;
+  shared_ptr<tcp_trsp_socket> sock;
 
   bool new_conn=false;
   connections_mut.lock();
-  map<string,tcp_trsp_socket*>::iterator sock_it = connections.find(dest);
+  auto sock_it = connections.find(dest);
   if(sock_it != connections.end()) {
     sock = sock_it->second;
-    inc_ref(sock);
   }
   else {
     //TODO: add flags to avoid new connections (ex: UAs behind NAT)
-    tcp_trsp_socket* new_sock = tcp_trsp_socket::new_connection(server_sock, *this,
-								sa,evbase);
+    auto new_sock = tcp_trsp_socket::new_connection(server_sock, *this, sa, evbase);
     connections[dest] = new_sock;
-    inc_ref(new_sock);
 
     sock = new_sock;
-    inc_ref(sock);
     new_conn = true;
   }
   connections_mut.unlock();
@@ -559,9 +547,8 @@ int tcp_server_worker::send(const sockaddr_storage* sa, const char* msg,
   // to avoid dead-lock with the event base
   int ret = sock->send(sa,msg,msg_len,flags);
   if((ret < 0) && new_conn) {
-    remove_connection(sock);
+    remove_connection(sock.get());
   }
-  dec_ref(sock);
 
   return ret;
 }
@@ -777,7 +764,7 @@ struct timeval* tcp_server_socket::get_idle_timeout()
   return NULL;
 }
 
-tcp_trsp::tcp_trsp(tcp_server_socket* sock)
+tcp_trsp::tcp_trsp(const shared_ptr<tcp_server_socket>& sock)
     : transport(sock, true)
 {
   evbase = event_base_new();
@@ -800,7 +787,7 @@ void tcp_trsp::run()
     return;
   }
 
-  tcp_server_socket* tcp_sock = static_cast<tcp_server_socket*>(sock);
+  auto tcp_sock = std::static_pointer_cast<tcp_server_socket>(sock);
   tcp_sock->start_threads(*_sd_notifier);
 
   INFO("Started SIP server TCP transport on %s:%i\n",
@@ -819,7 +806,7 @@ void tcp_trsp::run()
 void tcp_trsp::on_stop()
 {
   event_base_loopbreak(evbase);
-  tcp_server_socket* tcp_sock = static_cast<tcp_server_socket*>(sock);
+  auto tcp_sock = std::static_pointer_cast<tcp_server_socket>(sock);
   tcp_sock->stop_threads();
 }
 

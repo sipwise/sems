@@ -112,7 +112,7 @@ protected:
 
 public:
     /** @see transport */
-    udp_trsp(udp_trsp_socket* sock);
+    udp_trsp(const shared_ptr<udp_trsp_socket>& sock);
     ~udp_trsp();
 };
 

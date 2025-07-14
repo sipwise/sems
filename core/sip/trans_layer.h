@@ -47,6 +47,9 @@ using std::string;
 #include <map>
 using std::map;
 
+#include <memory>
+using std::shared_ptr;
+
 struct sip_msg;
 struct sip_uri;
 class  sip_trans;
@@ -125,7 +128,7 @@ private:
     sip_ua*     ua;
 
     struct less_case_i { bool operator ()(const string& lhs, const string& rhs) const; };
-    typedef map<string,trsp_socket*,less_case_i> prot_collection;
+    typedef map<string, shared_ptr<trsp_socket>, less_case_i> prot_collection;
 
     vector<prot_collection> transports;
 
@@ -153,7 +156,7 @@ public:
      * Register a transport instance.
      * This method MUST be called at least once.
      */
-    int register_transport(trsp_socket* trsp);
+    int register_transport(const shared_ptr<trsp_socket>& trsp);
 
     /**
      * Clears all registered transport instances.

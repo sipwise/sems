@@ -247,7 +247,7 @@ int udp_trsp_socket::send(const sockaddr_storage* sa,
 
 /** @see trsp_socket */
 
-udp_trsp::udp_trsp(udp_trsp_socket* sock)
+udp_trsp::udp_trsp(const shared_ptr<udp_trsp_socket>& sock)
     : transport(sock, true)
 {
   iov[0].iov_base = buf;
@@ -324,7 +324,6 @@ void udp_trsp::run()
 	}
 
 	s_msg->local_socket = sock;
-	inc_ref(sock);
 
 	for (cmsghdr* cmsgptr = CMSG_FIRSTHDR(&msg);
              cmsgptr != NULL;

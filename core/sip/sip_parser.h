@@ -36,6 +36,8 @@
 
 #include <list>
 using std::list;
+#include <memory>
+using std::shared_ptr;
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -133,7 +135,7 @@ struct sip_msg
     cstring            body;
 
     sockaddr_storage   local_ip;
-    trsp_socket*       local_socket;
+    shared_ptr<trsp_socket> local_socket;
 
     sockaddr_storage   remote_ip;
 
