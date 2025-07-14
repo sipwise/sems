@@ -28,7 +28,7 @@ void tcp_trsp_socket::on_sock_write(int fd, short ev, void* arg)
 }
 
 tcp_trsp_socket::tcp_trsp_socket(tcp_server_socket* server_sock,
-				 tcp_server_worker* server_worker,
+				 tcp_server_worker& server_worker,
 				 int sd, const sockaddr_storage* sa,
 				 struct event_base* evbase)
   : trsp_socket(server_sock->get_if(),0,0,sd),
@@ -58,18 +58,18 @@ tcp_trsp_socket::tcp_trsp_socket(tcp_server_socket* server_sock,
 }
 
 void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
-				       tcp_server_worker* server_worker,
+				       tcp_server_worker& server_worker,
 				       int sd, const sockaddr_storage* sa,
 				       struct event_base* evbase)
 {
   if(sd == -1)
     return;
 
-  tcp_trsp_socket* sock = new tcp_trsp_socket(server_sock,server_worker,
+  tcp_trsp_socket* sock = new tcp_trsp_socket(server_sock, server_worker,
 					      sd,sa,evbase);
 
   inc_ref(sock);
-  server_worker->add_connection(sock);
+  server_worker.add_connection(sock);
 
   sock->connected = true;
   sock->add_read_event();
@@ -77,11 +77,11 @@ void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
 }
 
 tcp_trsp_socket* tcp_trsp_socket::new_connection(tcp_server_socket* server_sock,
-						 tcp_server_worker* server_worker,
+						 tcp_server_worker& server_worker,
 						 const sockaddr_storage* sa,
 						 struct event_base* evbase)
 {
-  return new tcp_trsp_socket(server_sock,server_worker,-1,sa,evbase);
+  return new tcp_trsp_socket(server_sock, server_worker, -1, sa, evbase);
 }
 
 
@@ -261,7 +261,7 @@ int tcp_trsp_socket::send(const sockaddr_storage* sa, const char* msg,
 void tcp_trsp_socket::close()
 {
   inc_ref(this);
-  server_worker->remove_connection(this);
+  server_worker.remove_connection(this);
 
   closed = true;
   DBG("********* closing connection ***********");
@@ -544,7 +544,7 @@ int tcp_server_worker::send(const sockaddr_storage* sa, const char* msg,
   }
   else {
     //TODO: add flags to avoid new connections (ex: UAs behind NAT)
-    tcp_trsp_socket* new_sock = tcp_trsp_socket::new_connection(server_sock,this,
+    tcp_trsp_socket* new_sock = tcp_trsp_socket::new_connection(server_sock, *this,
 								sa,evbase);
     connections[dest] = new_sock;
     inc_ref(new_sock);
@@ -736,7 +736,7 @@ void tcp_server_socket::on_accept(int sd, short ev)
 
   // in case of thread pooling, do following in worker thread
   DBG("tcp_trsp_socket::create_connected (idx = %u)",idx);
-  tcp_trsp_socket::create_connected(this,workers[idx],connection_sd,
+  tcp_trsp_socket::create_connected(this, *workers[idx], connection_sd,
 				    &src_addr,evbase);
 }
 

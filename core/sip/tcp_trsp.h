@@ -29,7 +29,7 @@ class tcp_server_socket;
 class tcp_trsp_socket: public trsp_socket
 {
   tcp_server_socket* server_sock;
-  tcp_server_worker* server_worker;
+  tcp_server_worker& server_worker;
 
   bool             closed;
   bool             connected;
@@ -143,18 +143,18 @@ class tcp_trsp_socket: public trsp_socket
   static void on_sock_write(int fd, short ev, void* arg);
 
   tcp_trsp_socket(tcp_server_socket* server_sock,
-		  tcp_server_worker* server_worker,
+		  tcp_server_worker& server_worker,
 		  int sd, const sockaddr_storage* sa,
 		  struct event_base* evbase);
 
 public:
   static void create_connected(tcp_server_socket* server_sock,
-			       tcp_server_worker* server_worker,
+			       tcp_server_worker& server_worker,
 			       int sd, const sockaddr_storage* sa,
 			       struct event_base* evbase);
 
   static tcp_trsp_socket* new_connection(tcp_server_socket* server_sock,
-					 tcp_server_worker* server_worker,
+					 tcp_server_worker& server_worker,
 					 const sockaddr_storage* sa,
 					 struct event_base* evbase);
   ~tcp_trsp_socket();
