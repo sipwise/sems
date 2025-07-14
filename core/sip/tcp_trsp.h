@@ -4,8 +4,8 @@
 #include "transport.h"
 #include "sip_parser_async.h"
 
-#include <vector>
-using std::vector;
+#include <deque>
+using std::deque;
 
 /**
  * Maximum message length for TCP
@@ -213,7 +213,7 @@ class tcp_server_socket: public trsp_socket
   struct event_base* evbase;
   struct event*      ev_accept;
 
-  vector<tcp_server_worker*> workers;
+  deque<tcp_server_worker> workers;
 
   /**
    * Timeout while connecting to a remote peer.

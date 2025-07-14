@@ -694,22 +694,22 @@ void tcp_server_socket::add_event(struct event_base *evbase)
 void tcp_server_socket::add_threads(unsigned int n)
 {
   for(unsigned int i=0; i<n; i++) {
-    workers.push_back(new tcp_server_worker(this));
+    workers.emplace_back(this);
   }
 }
 
 void tcp_server_socket::start_threads(SdNotifier& sd)
 {
   for(unsigned int i=0; i<workers.size(); i++) {
-    workers[i]->start(sd);
+    workers[i].start(sd);
   }
 }
 
 void tcp_server_socket::stop_threads()
 {
   for(unsigned int i=0; i<workers.size(); i++) {
-    workers[i]->stop();
-    workers[i]->join();
+    workers[i].stop();
+    workers[i].join();
   }
 }
 
@@ -736,7 +736,7 @@ void tcp_server_socket::on_accept(int sd, short ev)
 
   // in case of thread pooling, do following in worker thread
   DBG("tcp_trsp_socket::create_connected (idx = %u)",idx);
-  tcp_trsp_socket::create_connected(this, *workers[idx], connection_sd,
+  tcp_trsp_socket::create_connected(this, workers[idx], connection_sd,
 				    &src_addr,evbase);
 }
 
@@ -746,7 +746,7 @@ int tcp_server_socket::send(const sockaddr_storage* sa, const char* msg,
   uint32_t h = hash_addr(sa);
   unsigned int idx = h % workers.size();
   DBG("tcp_server_socket::send: idx = %u",idx);
-  return workers[idx]->send(sa,msg,msg_len,flags);
+  return workers[idx].send(sa, msg, msg_len, flags);
 }
 
 void tcp_server_socket::set_connect_timeout(unsigned int ms)
