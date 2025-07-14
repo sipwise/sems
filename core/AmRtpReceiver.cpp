@@ -46,6 +46,10 @@ _AmRtpReceiver::_AmRtpReceiver()
 
 _AmRtpReceiver::~_AmRtpReceiver()
 {
+  for(unsigned int i=0; i<n_receivers; i++){
+    receivers[i].stop();
+    receivers[i].join();
+  }
   delete [] receivers;
 }
 
@@ -65,14 +69,6 @@ void AmRtpReceiverThread::on_stop()
 {
   INFO("requesting RTP receiver to stop.\n");
   event_base_loopbreak(ev_base);
-}
-
-void _AmRtpReceiver::dispose() 
-{
-  for(unsigned int i=0; i<n_receivers; i++){
-    receivers[i].stop();
-    receivers[i].join();
-  }
 }
 
 void AmRtpReceiverThread::run()

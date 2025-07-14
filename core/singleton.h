@@ -35,7 +35,6 @@ public:
   {
     _inst_m.lock();
     if(_instance != NULL){
-      _instance->T::dispose();
       delete _instance;
       _instance = NULL;
     }

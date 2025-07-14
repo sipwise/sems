@@ -165,8 +165,3 @@ void _RtmpServer::on_stop()
 {
   ERROR("not yet supported!\n");
 }
-
-void _RtmpServer::dispose()
-{
-  ERROR("not yet supported!\n");
-}

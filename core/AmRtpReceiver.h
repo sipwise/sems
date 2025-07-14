@@ -95,8 +95,6 @@ protected:
   _AmRtpReceiver();
   ~_AmRtpReceiver();
 
-  void dispose();
-
 public:
   void start();
 
