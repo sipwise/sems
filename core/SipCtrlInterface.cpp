@@ -61,18 +61,6 @@
 bool _SipCtrlInterface::log_parsed_messages = true;
 int _SipCtrlInterface::udp_rcvbuf = -1;
 
-int _SipCtrlInterface::alloc_udp_structs()
-{
-    udp_sockets = new udp_trsp_socket*[ AmConfig::SIP_Ifs.size() ];
-    udp_servers = new udp_trsp* [ AmConfig::SIPServerThreads
-				  * AmConfig::SIP_Ifs.size() ];
-
-    if(udp_sockets && udp_servers)
-	return 0;
-
-    return -1;
-}
-
 int _SipCtrlInterface::init_udp_servers(int if_num)
 {
     udp_trsp_socket* udp_socket = 
@@ -103,28 +91,14 @@ int _SipCtrlInterface::init_udp_servers(int if_num)
     }
 
     trans_layer::instance()->register_transport(udp_socket);
-    udp_sockets[if_num] = udp_socket;
+    udp_sockets.push_back(udp_socket);
     inc_ref(udp_socket);
-    nr_udp_sockets++;
 
     for(int j=0; j<AmConfig::SIPServerThreads;j++){
-	udp_servers[if_num * AmConfig::SIPServerThreads + j] = 
-	    new udp_trsp(udp_socket);
-	nr_udp_servers++;
+	udp_servers.push_back(new udp_trsp(udp_socket));
     }
 
     return 0;
-}
-
-int _SipCtrlInterface::alloc_tcp_structs()
-{
-    tcp_sockets = new tcp_server_socket*[ AmConfig::SIP_Ifs.size() ];
-    tcp_servers = new tcp_trsp* [ AmConfig::SIP_Ifs.size() ];
-
-    if(tcp_sockets && tcp_servers)
-	return 0;
-
-    return -1;
 }
 
 int _SipCtrlInterface::init_tcp_servers(int if_num)
@@ -153,12 +127,10 @@ int _SipCtrlInterface::init_tcp_servers(int if_num)
     tcp_socket->add_threads(AmConfig::SIPServerThreads);
 
     trans_layer::instance()->register_transport(tcp_socket);
-    tcp_sockets[if_num] = tcp_socket;
+    tcp_sockets.push_back(tcp_socket);
     inc_ref(tcp_socket);
-    nr_tcp_sockets++;
 
-    tcp_servers[if_num] = new tcp_trsp(tcp_socket);
-    nr_tcp_servers++;
+    tcp_servers.push_back(new tcp_trsp(tcp_socket));
 
     return 0;
 }
@@ -222,21 +194,11 @@ int _SipCtrlInterface::load()
 	DBG("assuming SIP default settings.\n");
     }
 
-    if(alloc_udp_structs() < 0) {
-	ERROR("no enough memory to alloc UDP structs");
-	return -1;
-    }
-
     // Init UDP transport instances
     for(unsigned int i=0; i<AmConfig::SIP_Ifs.size();i++) {
 	if(init_udp_servers(i) < 0) {
 	    return -1;
 	}
-    }
-
-    if(alloc_tcp_structs() < 0) {
-	ERROR("no enough memory to alloc TCP structs");
-	return -1;
     }
 
     // Init TCP transport instances
@@ -250,11 +212,7 @@ int _SipCtrlInterface::load()
 }
 
 _SipCtrlInterface::_SipCtrlInterface()
-    : stopped(false),
-      udp_servers(NULL), udp_sockets(NULL),
-      nr_udp_sockets(0), nr_udp_servers(0),
-      tcp_servers(NULL), tcp_sockets(NULL),
-      nr_tcp_sockets(0), nr_tcp_servers(0)
+    : stopped(false)
 {
     trans_layer::instance()->register_ua(this);
 }
@@ -376,19 +334,14 @@ int _SipCtrlInterface::run(SdNotifier& sd)
     DBG("Starting SIP control interface\n");
     wheeltimer::instance()->start();
 
-    if (NULL != udp_servers) {
-	for(int i=0; i<nr_udp_servers;i++){
-	    udp_servers[i]->start(sd);
-	}
-    }
+    for (auto it = udp_servers.begin(); it != udp_servers.end(); it++)
+        (*it)->start(sd);
 
-    if (NULL != tcp_servers) {
-	for(int i=0; i<nr_tcp_servers;i++){
-	    tcp_servers[i]->start(sd);
-	}
-    }
+    for (auto it = tcp_servers.begin(); it != tcp_servers.end(); it++)
+        (*it)->start(sd);
 
     DBG("SIP control interface ending\n");
+
     return 0;
 }
 
@@ -401,52 +354,28 @@ void _SipCtrlInterface::cleanup()
 {
     DBG("Stopping SIP control interface threads\n");
 
-    if (NULL != udp_servers) {
-	for(int i=0; i<nr_udp_servers;i++){
-	    udp_servers[i]->stop();
-	    udp_servers[i]->join();
-	    delete udp_servers[i];
-	}
-
-	delete [] udp_servers;
-	udp_servers = NULL;
-	nr_udp_servers = 0;
+    for (auto it = udp_servers.begin(); it != udp_servers.end(); it++) {
+        (*it)->stop();
+        (*it)->join();
+        delete *it;
     }
 
-    if (NULL != tcp_servers) {
-	for(int i=0; i<nr_tcp_servers;i++){
-	    tcp_servers[i]->stop();
-	    tcp_servers[i]->join();
-	    delete tcp_servers[i];
-	}
-
-	delete [] tcp_servers;
-	tcp_servers = NULL;
-	nr_tcp_servers = 0;
+    for (auto it = tcp_servers.begin(); it != tcp_servers.end(); it++) {
+        (*it)->stop();
+        (*it)->join();
+        delete *it;
     }
 
     trans_layer::instance()->clear_transports();
 
-    if (NULL != udp_sockets) {
-	for(int i=0; i<nr_udp_sockets;i++){
-	    DBG("dec_ref(%p)",udp_sockets[i]);
-	    dec_ref(udp_sockets[i]);
-	}
-
-	delete [] udp_sockets;
-	udp_sockets = NULL;
-	nr_udp_sockets = 0;
+    for (auto it = udp_sockets.begin(); it != udp_sockets.end(); it++) {
+        DBG("dec_ref(%p)", *it);
+        dec_ref(*it);
     }
 
-    if (NULL != tcp_sockets) {
-	for(int i=0; i<nr_tcp_sockets;i++){
-	    DBG("dec_ref(%p)",tcp_sockets[i]);
-	    dec_ref(tcp_sockets[i]);
-	}
-
-	delete [] tcp_sockets;
-	tcp_sockets = NULL;
-	nr_tcp_sockets = 0;
+    for (auto it = tcp_sockets.begin(); it != tcp_sockets.end(); it++) {
+        DBG("dec_ref(%p)", *it);
+        dec_ref(*it);
     }
 
     wheeltimer::instance()->stop();
