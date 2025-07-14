@@ -95,7 +95,7 @@ int SipCtrlInterface::init_udp_servers(int if_num)
     inc_ref(udp_socket);
 
     for(int j=0; j<AmConfig::SIPServerThreads;j++){
-	udp_servers.push_back(new udp_trsp(udp_socket));
+	udp_servers.emplace_back(udp_socket);
     }
 
     return 0;
@@ -130,7 +130,7 @@ int SipCtrlInterface::init_tcp_servers(int if_num)
     tcp_sockets.push_back(tcp_socket);
     inc_ref(tcp_socket);
 
-    tcp_servers.push_back(new tcp_trsp(tcp_socket));
+    tcp_servers.emplace_back(tcp_socket);
 
     return 0;
 }
@@ -335,10 +335,10 @@ int SipCtrlInterface::run(SdNotifier& sd)
     wheeltimer::instance()->start();
 
     for (auto it = udp_servers.begin(); it != udp_servers.end(); it++)
-        (*it)->start(sd);
+        it->start(sd);
 
     for (auto it = tcp_servers.begin(); it != tcp_servers.end(); it++)
-        (*it)->start(sd);
+        it->start(sd);
 
     DBG("SIP control interface ending\n");
 
@@ -355,28 +355,16 @@ void SipCtrlInterface::cleanup()
     DBG("Stopping SIP control interface threads\n");
 
     for (auto it = udp_servers.begin(); it != udp_servers.end(); it++) {
-        (*it)->stop();
-        (*it)->join();
-        delete *it;
+        it->stop();
+        it->join();
     }
 
     for (auto it = tcp_servers.begin(); it != tcp_servers.end(); it++) {
-        (*it)->stop();
-        (*it)->join();
-        delete *it;
+        it->stop();
+        it->join();
     }
 
     trans_layer::instance()->clear_transports();
-
-    for (auto it = udp_sockets.begin(); it != udp_sockets.end(); it++) {
-        DBG("dec_ref(%p)", *it);
-        dec_ref(*it);
-    }
-
-    for (auto it = tcp_sockets.begin(); it != tcp_sockets.end(); it++) {
-        DBG("dec_ref(%p)", *it);
-        dec_ref(*it);
-    }
 
     wheeltimer::instance()->stop();
     wheeltimer::instance()->join();

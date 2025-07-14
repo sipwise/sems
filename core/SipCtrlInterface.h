@@ -70,9 +70,9 @@ class SipCtrlInterface:
     AmCondition stopped;
     
     deque<udp_trsp_socket*>   udp_sockets;
-    deque<udp_trsp*>          udp_servers;
+    deque<udp_trsp>           udp_servers;
     deque<tcp_server_socket*> tcp_sockets;
-    deque<tcp_trsp*>          tcp_servers;
+    deque<tcp_trsp>           tcp_servers;
 
     int init_udp_servers(int if_num);
     int init_tcp_servers(int if_num);
