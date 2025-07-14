@@ -33,8 +33,12 @@ class TestCase(unittest.TestCase):
             "t/run/" + str(os.getpid()) + ".pid",
         ]
 
-        if os.environ.get("WITH_VALGRIND"):
+        vg_opt = os.environ.get("WITH_VALGRIND")
+        if vg_opt:
             cmdline.insert(0, "valgrind")
+            if isinstance(vg_opt, str) and vg_opt == "full":
+                cmdline.insert(1, "--leak-check=full")
+                cmdline.insert(1, "--show-leak-kinds=all")
 
         cls._proc = subprocess.Popen(
             cmdline,
