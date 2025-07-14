@@ -68,15 +68,15 @@ public:
   }
 };
 
-_AmAppTimer::_AmAppTimer()
+AmAppTimer::AmAppTimer()
   : direct_timers_mut()
 {
 }
 
-_AmAppTimer::~_AmAppTimer() {
+AmAppTimer::~AmAppTimer() {
 }
 
-void _AmAppTimer::app_timer_cb(app_timer* at)
+void AmAppTimer::app_timer_cb(app_timer* at)
 {
   user_timers_mut.lock();
   app_timer* at_local = erase_timer(at->get_q_id(), at->get_id());
@@ -104,7 +104,7 @@ void _AmAppTimer::app_timer_cb(app_timer* at)
   user_timers_mut.unlock();
 }
 
-void _AmAppTimer::direct_app_timer_cb(direct_app_timer* t)
+void AmAppTimer::direct_app_timer_cb(direct_app_timer* t)
 {
   DirectAppTimer* dt = t->dt;
 
@@ -130,7 +130,7 @@ void _AmAppTimer::direct_app_timer_cb(direct_app_timer* t)
   direct_timers_mut.unlock();
 }
 
-app_timer* _AmAppTimer::erase_timer(const string& q_id, int id) 
+app_timer* AmAppTimer::erase_timer(const string& q_id, int id)
 {
   app_timer* res = NULL;
 
@@ -148,7 +148,7 @@ app_timer* _AmAppTimer::erase_timer(const string& q_id, int id)
   return res;
 }
 
-app_timer* _AmAppTimer::create_timer(const string& q_id, int id)
+app_timer* AmAppTimer::create_timer(const string& q_id, int id)
 {
   app_timer* timer = new app_timer(q_id, id);
   if (!timer)
@@ -161,7 +161,7 @@ app_timer* _AmAppTimer::create_timer(const string& q_id, int id)
 
 #define MAX_TIMER_SECONDS 365*24*3600 // one year, well below 1<<31
 
-void _AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double timeout) {
+void AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double timeout) {
 
   // microseconds
   uint64_t expires;
@@ -187,7 +187,7 @@ void _AmAppTimer::setTimer(const string& eventqueue_name, int timer_id, double t
   user_timers_mut.unlock();
 }
 
-void _AmAppTimer::removeTimer(const string& eventqueue_name, int timer_id) 
+void AmAppTimer::removeTimer(const string& eventqueue_name, int timer_id) 
 {
   user_timers_mut.lock();
   app_timer* t = erase_timer(eventqueue_name, timer_id);
@@ -197,7 +197,7 @@ void _AmAppTimer::removeTimer(const string& eventqueue_name, int timer_id)
   user_timers_mut.unlock();
 }
 
-void _AmAppTimer::removeTimers(const string& eventqueue_name) 
+void AmAppTimer::removeTimers(const string& eventqueue_name) 
 {
   user_timers_mut.lock();
   TimerQueues::iterator it=user_timers.find(eventqueue_name);
@@ -212,7 +212,7 @@ void _AmAppTimer::removeTimers(const string& eventqueue_name)
   user_timers_mut.unlock();
 }
 
-void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
+void AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
 {
   uint64_t expires = timeout * 1000000.; // microseconds
 
@@ -230,14 +230,14 @@ void _AmAppTimer::setTimer_unsafe(DirectAppTimer* t, double timeout)
   insert_timer(dt, expires);
 }
 
-void _AmAppTimer::setTimer(DirectAppTimer* t, double timeout)
+void AmAppTimer::setTimer(DirectAppTimer* t, double timeout)
 {
   direct_timers_mut.lock();
   setTimer_unsafe(t,timeout);
   direct_timers_mut.unlock();
 }
 
-void _AmAppTimer::removeTimer_unsafe(DirectAppTimer* t)
+void AmAppTimer::removeTimer_unsafe(DirectAppTimer* t)
 {
   DirectTimers::iterator dt_it = direct_timers.find(t);
   if(dt_it != direct_timers.end()){
@@ -246,7 +246,7 @@ void _AmAppTimer::removeTimer_unsafe(DirectAppTimer* t)
   }
 }
 
-void _AmAppTimer::removeTimer(DirectAppTimer* t)
+void AmAppTimer::removeTimer(DirectAppTimer* t)
 {
   direct_timers_mut.lock();
   removeTimer_unsafe(t);

@@ -116,8 +116,10 @@ class trans_stats
  * The transaction layer object.
  * Uses the singleton pattern.
  */
-class _trans_layer
+class trans_layer : public singleton<trans_layer>
 {
+    friend class singleton<trans_layer>;
+
 private:
     trans_stats stats;
     sip_ua*     ua;
@@ -287,8 +289,8 @@ protected:
     int update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_code);
 
     /** Avoid external instantiation. @see singleton. */
-    _trans_layer();
-    ~_trans_layer();
+    trans_layer();
+    ~trans_layer();
 
     /**
      * Processes a parsed SIP message
@@ -296,14 +298,12 @@ protected:
     void process_rcvd_msg(sip_msg* msg);
 };
 
-typedef singleton<_trans_layer> trans_layer;
-
 class trans_ticket
 {
     sip_trans*    _t;
     trans_bucket* _bucket;
     
-    friend class _trans_layer;
+    friend class trans_layer;
 
 public:
     trans_ticket()

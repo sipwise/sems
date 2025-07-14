@@ -84,16 +84,18 @@ public:
   void removeStream(int sd);
 };
 
-class _AmRtpReceiver
+class AmRtpReceiver : public singleton<AmRtpReceiver>
 {
+  friend class singleton<AmRtpReceiver>;
+
   AmRtpReceiverThread* receivers;
   unsigned int         n_receivers;
 
   atomic_int next_index;
 
 protected:    
-  _AmRtpReceiver();
-  ~_AmRtpReceiver();
+  AmRtpReceiver();
+  ~AmRtpReceiver();
 
 public:
   void start();
@@ -101,8 +103,6 @@ public:
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
 };
-
-typedef singleton<_AmRtpReceiver> AmRtpReceiver;
 
 #endif
 

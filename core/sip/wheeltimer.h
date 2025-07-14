@@ -173,7 +173,9 @@ public:
     void remove_timer(timer* t, bool del_timer = true);
 };
 
-typedef singleton<_wheeltimer> wheeltimer;
+class wheeltimer : public _wheeltimer, public singleton<wheeltimer> {
+    friend class singleton<wheeltimer>;
+};
 
 #endif
 

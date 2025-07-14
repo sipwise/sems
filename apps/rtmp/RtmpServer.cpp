@@ -44,12 +44,12 @@
             ((struct sockaddr_in*)addr)
 
 
-_RtmpServer::_RtmpServer()
+RtmpServer::RtmpServer()
   : AmThread(), fds_num(0)
 {
 }
 
-_RtmpServer::~_RtmpServer()
+RtmpServer::~RtmpServer()
 {
   if(fds_num) {
     for(unsigned int i=0; i<fds_num; i++)
@@ -57,7 +57,7 @@ _RtmpServer::~_RtmpServer()
   }
 }
 
-int _RtmpServer::listen(const char* addr, unsigned short port)
+int RtmpServer::listen(const char* addr, unsigned short port)
 {
   int listen_fd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
   if(listen_fd < 0){
@@ -104,7 +104,7 @@ int _RtmpServer::listen(const char* addr, unsigned short port)
   return 0;
 }
 
-void _RtmpServer::run()
+void RtmpServer::run()
 {
   RTMP_LogSetLevel(RTMP_LOGDEBUG);
 
@@ -161,7 +161,7 @@ void _RtmpServer::run()
   INFO("RTMP event loop finished/n");
 }
 
-void _RtmpServer::on_stop()
+void RtmpServer::on_stop()
 {
   ERROR("not yet supported!\n");
 }

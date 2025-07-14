@@ -66,31 +66,31 @@
 
 #include <algorithm>
 
-bool _trans_layer::accept_fr_without_totag = false;
-unsigned int _trans_layer::default_bl_ttl = DEFAULT_BL_TTL;
+bool trans_layer::accept_fr_without_totag = false;
+unsigned int trans_layer::default_bl_ttl = DEFAULT_BL_TTL;
 
-bool _trans_layer::less_case_i::operator () (const string& lhs, const string& rhs) const
+bool trans_layer::less_case_i::operator () (const string& lhs, const string& rhs) const
 {
     return lower_cmp_n(lhs.c_str(),lhs.length(),
 		       rhs.c_str(),rhs.length()) < 0;
 }
 
-_trans_layer::_trans_layer()
+trans_layer::trans_layer()
     : ua(NULL),
       transports()
 {
 }
 
-_trans_layer::~_trans_layer()
+trans_layer::~trans_layer()
 {}
 
 
-void _trans_layer::register_ua(sip_ua* ua)
+void trans_layer::register_ua(sip_ua* ua)
 {
     this->ua = ua;
 }
 
-int _trans_layer::register_transport(trsp_socket* trsp)
+int trans_layer::register_transport(trsp_socket* trsp)
 {
     int if_num = trsp->get_if();
     if(transports.size() <= (size_t)if_num)
@@ -106,12 +106,12 @@ int _trans_layer::register_transport(trsp_socket* trsp)
     return 0;
 }
 
-void _trans_layer::clear_transports()
+void trans_layer::clear_transports()
 {
     transports.clear();
 }
 
-int _trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
+int trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
 				  int out_interface)
 {
     if((out_interface < 0)
@@ -217,7 +217,7 @@ static int patch_contact_transport(sip_header* contact, const cstring& trsp,
     return 0;
 }
 
-int _trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
+int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 			     const cstring& dialog_id, const cstring& to_tag,
 			     msg_logger* logger)
 {
@@ -650,7 +650,7 @@ int _trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     return err;
 }
 
-int _trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
+int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
 				      int reply_code, const cstring& reason,
 				      const cstring& hdrs, const cstring& body)
 {
@@ -672,7 +672,7 @@ int _trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req
     return send_reply(&reply,tt,cstring(),to_tag);
 }
 
-int _trans_layer::send_sl_reply(sip_msg* req, int reply_code, 
+int trans_layer::send_sl_reply(sip_msg* req, int reply_code, 
 			       const cstring& reason, const cstring& hdrs, 
 			       const cstring& body)
 {
@@ -872,7 +872,7 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 //
 // Ref. RFC 3261 "12.2.1.1 Generating the Request"
 //
-int _trans_layer::set_next_hop(sip_msg* msg, 
+int trans_layer::set_next_hop(sip_msg* msg, 
 			       cstring* next_hop,
 			       unsigned short* next_port,
 			       cstring* next_trsp)
@@ -969,7 +969,7 @@ static void set_err_reply_from_req(sip_msg* err, sip_msg* req,
     err->via_p1 = req->via_p1;
 }
 
-void _trans_layer::transport_error(sip_msg* msg)
+void trans_layer::transport_error(sip_msg* msg)
 {
     char* err_msg=0;
     int ret = parse_sip_msg(msg,err_msg);
@@ -1046,7 +1046,7 @@ static void gen_error_reply_from_req(sip_msg& reply, const sip_msg* req,
     translate_hdr(&reply,reply.callid, req,req->callid);
 }
 
-void _trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
+void trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
 {
     t->reset_all_timers();
     t->state = TS_TERMINATED;
@@ -1202,7 +1202,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     return 0;
 }
  
-int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
+int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 			       const cstring& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
@@ -1393,7 +1393,7 @@ int _trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     return err;
 }
 
-int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
+int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 			 unsigned int inv_cseq, const cstring& hdrs)
 {
     assert(tt);
@@ -1578,7 +1578,7 @@ int _trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
           delete msg;\
           return
 
-void _trans_layer::received_msg(sip_msg* msg)
+void trans_layer::received_msg(sip_msg* msg)
 {
     char* err_msg=0;
     int err = parse_sip_msg(msg,err_msg);
@@ -1608,7 +1608,7 @@ void _trans_layer::received_msg(sip_msg* msg)
     process_rcvd_msg(msg);
 }
 
-void _trans_layer::process_rcvd_msg(sip_msg* msg)
+void trans_layer::process_rcvd_msg(sip_msg* msg)
 {    
     assert(msg->callid && get_cseq(msg));
     unsigned int h = hash(msg->callid->value, get_cseq(msg)->num_str);
@@ -1777,7 +1777,7 @@ void _trans_layer::process_rcvd_msg(sip_msg* msg)
 }
 
 
-int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* msg)
+int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* msg)
 {
     assert(msg->type == SIP_REPLY);
 
@@ -2066,7 +2066,7 @@ int _trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* 
     return 0;
 }
 
-int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
+int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 				     sip_msg*& msg)
 {
     if(msg->u.request->method != sip_request::ACK){
@@ -2138,7 +2138,7 @@ int _trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
     return 0;
 }
 
-int _trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_code)
+int trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_code)
 {
     DBG("update_uas_reply(t=%p)\n", t);
 
@@ -2215,7 +2215,7 @@ int _trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply
     return t->state;
 }
 
-int _trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg* msg)
+int trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg* msg)
 {
     DBG("update_uas_request(t=%p)\n", t);
     int method = msg->u.request->method;
@@ -2273,7 +2273,7 @@ int _trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg
     return -1;
 }
 
-void _trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
+void trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
 {
     sip_msg* inv = t->msg;
     
@@ -2336,7 +2336,7 @@ void _trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
 
 }
 
-void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
+void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 				 sip_trans* tr)
 {
     int n = t->type >> 16;
@@ -2557,7 +2557,7 @@ void _trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
  * Tries to find an interface suitable for
  * sending to the destination supplied.
  */
-int _trans_layer::find_outbound_if(sockaddr_storage* remote_ip)
+int trans_layer::find_outbound_if(sockaddr_storage* remote_ip)
 {
     if(transports.size() == 0)
 	return 0;
@@ -2615,7 +2615,7 @@ int _trans_layer::find_outbound_if(sockaddr_storage* remote_ip)
     return 0;
 }
 
-sip_trans* _trans_layer::copy_uac_trans(sip_trans* tr)
+sip_trans* trans_layer::copy_uac_trans(sip_trans* tr)
 {
     assert(tr && (tr->type == TT_UAC));
     sip_trans* n_tr = new sip_trans();
@@ -2637,7 +2637,7 @@ sip_trans* _trans_layer::copy_uac_trans(sip_trans* tr)
     return n_tr;
 }
 
-int _trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
+int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 			      bool use_new_trans)
 {
     tr->clear_timer(STIMER_M);

@@ -44,13 +44,15 @@ struct SBCEventLogHandler
 			const string& type, const AmArg& ev)=0;
 };
 
-class _SBCEventLog
+class SBCEventLog : public singleton<SBCEventLog>
 {
+  friend class singleton<SBCEventLog>;
+
   unique_ptr<SBCEventLogHandler> log_handler;
 
 protected:
-  _SBCEventLog() {}
-  ~_SBCEventLog() {}
+  SBCEventLog() {}
+  ~SBCEventLog() {}
 
 public:
   void useMonitoringLog();
@@ -71,7 +73,5 @@ public:
 		  const string& reason,
 		  struct timeval* tv);
 };
-
-typedef singleton<_SBCEventLog> SBCEventLog;
 
 #endif

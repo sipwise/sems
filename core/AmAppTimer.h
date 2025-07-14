@@ -45,9 +45,12 @@ public:
   virtual void fire()=0;
 };
 
-class _AmAppTimer 
-  : public _wheeltimer 
+class AmAppTimer 
+  : public _wheeltimer,
+    public singleton<AmAppTimer>
 {
+  friend class singleton<AmAppTimer>;
+
   typedef std::map<int, app_timer*>   AppTimers;
   typedef std::map<string, AppTimers> TimerQueues;
   typedef std::map<DirectAppTimer*,direct_app_timer*> DirectTimers;
@@ -72,8 +75,8 @@ class _AmAppTimer
   friend class direct_app_timer;
 
  public:
-  _AmAppTimer();
-  ~_AmAppTimer();
+  AmAppTimer();
+  ~AmAppTimer();
 
   /** set a timer for event queue eventqueue_name with id timer_id and timeout (s) */
   void setTimer(const string& eventqueue_name, int timer_id, double timeout);
@@ -92,7 +95,5 @@ class _AmAppTimer
   /* ONLY use this from inside the timer handler of a direct timer */
   void removeTimer_unsafe(DirectAppTimer* t);
 };
-
-typedef singleton<_AmAppTimer> AmAppTimer;
 
 #endif

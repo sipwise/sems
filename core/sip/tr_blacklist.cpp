@@ -73,16 +73,16 @@ bool blacklist_bucket::remove(const bl_addr& addr)
   return false;
 }
 
-_tr_blacklist::_tr_blacklist()
+tr_blacklist::tr_blacklist()
   : blacklist_ht(BLACKLIST_HT_SIZE)
 {
 }
 
-_tr_blacklist::~_tr_blacklist()
+tr_blacklist::~tr_blacklist()
 { 
 }
 
-bool _tr_blacklist::exist(const sockaddr_storage* addr)
+bool tr_blacklist::exist(const sockaddr_storage* addr)
 {
   bool res;
   blacklist_bucket* bucket = get_bucket(hashlittle(addr, SA_len(addr), 0)
@@ -94,7 +94,7 @@ bool _tr_blacklist::exist(const sockaddr_storage* addr)
   return res;
 }
 
-void _tr_blacklist::insert(const sockaddr_storage* addr, unsigned int duration,
+void tr_blacklist::insert(const sockaddr_storage* addr, unsigned int duration,
 			   const char* reason)
 {
   if(!duration)
@@ -109,7 +109,7 @@ void _tr_blacklist::insert(const sockaddr_storage* addr, unsigned int duration,
   bucket->unlock();
 }
 
-void _tr_blacklist::remove(const sockaddr_storage* addr)
+void tr_blacklist::remove(const sockaddr_storage* addr)
 {
   blacklist_bucket* bucket = get_bucket(hashlittle(addr, SA_len(addr), 0)
 					& BLACKLIST_HT_MASK);

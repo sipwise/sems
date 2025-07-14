@@ -56,8 +56,11 @@ struct RtmpConfig
 
 class RtmpFactory
   : public AmSessionFactory,
-    public AmEventProcessingThread
+    public AmEventProcessingThread,
+    public singleton<RtmpFactory>
 {
+  friend class singleton<RtmpFactory>;
+
   // Global module configuration
   RtmpConfig cfg;
 
@@ -88,8 +91,5 @@ public:
   int addConnection(const string& ident, RtmpConnection*);
   void removeConnection(const string& ident);
 };
-
-// declare the RtmpFactory as a singleton
-typedef singleton<RtmpFactory> RtmpFactory_impl;
 
 #endif

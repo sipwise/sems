@@ -37,26 +37,26 @@
 #define MAX_CONNECTIONS   16
 #define DEFAULT_RTMP_PORT 1935
 
-class _RtmpServer
-  : public AmThread
+class RtmpServer
+  : public AmThread,
+    public singleton<RtmpServer>
 {
+  friend class singleton<RtmpServer>;
+
   sockaddr_storage listen_addr;
   struct pollfd fds[MAX_CONNECTIONS];
   unsigned int fds_num;
 
 public:
-  _RtmpServer();
-  ~_RtmpServer();
+  RtmpServer();
+  ~RtmpServer();
 
   int listen(const char* ip, unsigned short port);
 
 protected:
   void run();
   void on_stop();
-  void dispose();
 };
-
-typedef singleton<_RtmpServer> RtmpServer;
 
 
 #endif

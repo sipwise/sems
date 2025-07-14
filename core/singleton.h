@@ -5,17 +5,13 @@
 
 template<class T>
 class singleton
-  : public T
 {
-  singleton() : T() {}
-  ~singleton() {}
-  
 public:
-  static singleton<T>* instance() 
+  static T* instance()
   {
     _inst_m.lock();
     if(NULL == _instance) {
-      _instance = new singleton<T>();
+      _instance = new T();
     }
     _inst_m.unlock();
 
@@ -42,12 +38,12 @@ public:
   }
 
 private:
-  static singleton<T>* _instance;
-  static AmMutex       _inst_m;
+  static T*       _instance;
+  static AmMutex  _inst_m;
 };
 
 template<class T>
-singleton<T>* singleton<T>::_instance = NULL;
+T* singleton<T>::_instance = NULL;
 
 template<class T>
 AmMutex singleton<T>::_inst_m;

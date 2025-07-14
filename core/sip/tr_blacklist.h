@@ -109,12 +109,15 @@ struct bl_entry
 
 typedef hash_table<blacklist_bucket> blacklist_ht;
 
-class _tr_blacklist
-  : protected blacklist_ht
+class tr_blacklist
+  : protected blacklist_ht,
+    public singleton<tr_blacklist>
 {
+  friend class singleton<tr_blacklist>;
+
 protected:
-  _tr_blacklist();
-  ~_tr_blacklist();
+  tr_blacklist();
+  ~tr_blacklist();
 
 public:
   // public blacklist API:
@@ -123,7 +126,5 @@ public:
 	      const char* reason);
   void remove(const sockaddr_storage* addr);
 };
-
-typedef singleton<_tr_blacklist> tr_blacklist;
 
 #endif

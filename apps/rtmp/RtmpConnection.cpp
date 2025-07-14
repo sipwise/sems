@@ -64,8 +64,8 @@ RtmpConnection::RtmpConnection(int fd)
   rtmp.m_sb.sb_socket = fd;
 
   ident = AmSession::getNewId();
-  di_reg_client = RtmpFactory_impl::instance()->getRegClient();
-  rtmp_cfg = RtmpFactory_impl::instance()->getConfig();
+  di_reg_client = RtmpFactory::instance()->getRegClient();
+  rtmp_cfg = RtmpFactory::instance()->getConfig();
 }
 
 RtmpConnection::~RtmpConnection()
@@ -124,7 +124,7 @@ void RtmpConnection::run()
   }
 
   if(registered){
-    RtmpFactory_impl::instance()->removeConnection(ident);
+    RtmpFactory::instance()->removeConnection(ident);
     removeRegistration();
     registered = false;
   }
@@ -439,7 +439,7 @@ RtmpConnection::invoke(RTMPPacket *packet, unsigned int offset)
   else if(AVMATCH(&method, &av_register))
     {
       if(!registered){
-	if(RtmpFactory_impl::instance()->addConnection(ident,this) < 0) {
+	if(RtmpFactory::instance()->addConnection(ident,this) < 0) {
 	  ERROR("could not register RTMP connection (ident='%s')\n",ident.c_str());
 	  sender->SendErrorResult(txn,"Sono.Registration.Failed");
 	}

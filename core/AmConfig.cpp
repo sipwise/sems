@@ -402,7 +402,7 @@ int AmConfig::readConfiguration()
   }
 
   if(cfg.hasParameter("disable_dns_srv")) {
-    _resolver::disable_srv = (cfg.getParameter("disable_dns_srv") == "yes");
+    resolver::disable_srv = (cfg.getParameter("disable_dns_srv") == "yes");
   }
   
 

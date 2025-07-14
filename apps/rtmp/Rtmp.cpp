@@ -44,7 +44,7 @@ RtmpConfig::RtmpConfig()
 
 extern "C" void* FACTORY_SESSION_EXPORT()
 {
-  return RtmpFactory_impl::instance();
+  return RtmpFactory::instance();
 }
 
 RtmpFactory::RtmpFactory()

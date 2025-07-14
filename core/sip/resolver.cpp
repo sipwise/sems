@@ -839,20 +839,20 @@ dns_entry* dns_entry_map::fetch(const key_type& key)
     return NULL;
 }
 
-bool _resolver::disable_srv = false;
+bool resolver::disable_srv = false;
 
-_resolver::_resolver()
+resolver::resolver()
     : cache(DNS_CACHE_SIZE)
 {
     start();
 }
 
-_resolver::~_resolver()
+resolver::~resolver()
 {
     
 }
 
-int _resolver::query_dns(const char* name, dns_entry_map& entry_map, dns_rr_type t)
+int resolver::query_dns(const char* name, dns_entry_map& entry_map, dns_rr_type t)
 {
     u_char dns_res[NS_PACKETSZ];
 
@@ -890,7 +890,7 @@ int _resolver::query_dns(const char* name, dns_entry_map& entry_map, dns_rr_type
     return 0;
 }
 
-int _resolver::resolve_name(const char* name,
+int resolver::resolve_name(const char* name,
 			    dns_handle* h,
 			    sockaddr_storage* sa,
 			    const address_type types,
@@ -958,7 +958,7 @@ int _resolver::resolve_name(const char* name,
     return -1;
 }
 
-int _resolver::str2ip(const char* name,
+int resolver::str2ip(const char* name,
 		      sockaddr_storage* sa,
 		      const address_type types)
 {
@@ -991,7 +991,7 @@ int _resolver::str2ip(const char* name,
     return 0;
 }
 
-int _resolver::set_destination_ip(const cstring& next_hop,
+int resolver::set_destination_ip(const cstring& next_hop,
 				  unsigned short next_port,
 				  const cstring& next_trsp,
 				  sockaddr_storage* remote_ip,
@@ -1063,7 +1063,7 @@ int _resolver::set_destination_ip(const cstring& next_hop,
     return 0;
 }
 
-int _resolver::resolve_targets(const list<sip_destination>& dest_list,
+int resolver::resolve_targets(const list<sip_destination>& dest_list,
 			       sip_target_set* targets)
 {
     for(list<sip_destination>::const_iterator it = dest_list.begin();
@@ -1098,7 +1098,7 @@ int _resolver::resolve_targets(const list<sip_destination>& dest_list,
     return 0;
 }
 
-void _resolver::run()
+void resolver::run()
 {
     struct timespec tick,rem;
     tick.tv_sec  = (DNS_CACHE_SINGLE_CYCLE/1000000L);

@@ -53,9 +53,12 @@ class udp_trsp;
 class tcp_server_socket;
 class tcp_trsp;
 
-class _SipCtrlInterface:
-    public sip_ua
+class SipCtrlInterface:
+    public sip_ua,
+    public singleton<SipCtrlInterface>
 {
+    friend class singleton<SipCtrlInterface>;
+
     bool sip_msg2am_request(const sip_msg *msg, const trans_ticket& tt, AmSipRequest &request);
     bool sip_msg2am_reply(sip_msg *msg, AmSipReply &reply);
     
@@ -81,8 +84,8 @@ public:
     static bool log_parsed_messages;
     static int udp_rcvbuf;
 
-    _SipCtrlInterface();
-    ~_SipCtrlInterface(){}
+    SipCtrlInterface();
+    //~SipCtrlInterface(){}
 
     int load();
 
@@ -125,8 +128,6 @@ public:
     void handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
         sip_trans *tr, trans_bucket *buk=0);
 };
-
-typedef singleton<_SipCtrlInterface> SipCtrlInterface;
 
 #endif
 

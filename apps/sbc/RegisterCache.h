@@ -277,9 +277,12 @@ public:
   void dump_elmt(const ContactKey& key, const string& alias) const;
 };
 
-class _RegisterCache
-  : public AmThread
+class RegisterCache
+  : public AmThread,
+    public singleton<RegisterCache>
 {
+  friend class singleton<RegisterCache>;
+
   AorHash               reg_cache_ht;
   AliasHash             id_idx;
   ContactHash           contact_idx;
@@ -297,10 +300,8 @@ class _RegisterCache
   bool shutdown_flag;
 
 protected:
-  _RegisterCache();
-  ~_RegisterCache();
-
-  void dispose() { stop(); }
+  RegisterCache();
+  ~RegisterCache();
 
   /* AmThread interface */
   void run();
@@ -431,7 +432,5 @@ public:
    */
   unsigned int getActiveRegs() { return active_regs; }
 };
-
-typedef singleton<_RegisterCache> RegisterCache;
 
 #endif

@@ -143,14 +143,14 @@ struct RegCacheLogHandler
 };
 
 
-_RegisterCache::_RegisterCache()
+RegisterCache::RegisterCache()
   : shutdown_flag(false)
 {
   // debug register cache WRITE operations
   setStorageHandler(new RegCacheLogHandler());
 }
 
-_RegisterCache::~_RegisterCache()
+RegisterCache::~RegisterCache()
 {
   stop();
   join();
@@ -164,7 +164,7 @@ _RegisterCache::~_RegisterCache()
   DBG("##### DUMP END #####");
 }
 
-void _RegisterCache::gbc()
+void RegisterCache::gbc()
 {
   struct timeval now;
   gettimeofday(&now,NULL);
@@ -178,7 +178,7 @@ void _RegisterCache::gbc()
   }
 }
 
-void _RegisterCache::run()
+void RegisterCache::run()
 {
   while (!stop_requested()) {
     gbc();
@@ -195,7 +195,7 @@ void _RegisterCache::run()
  *  "all URI parameters MUST be removed (including the user-param), and
  *   any escaped characters MUST be converted to their unescaped form"
  */
-string _RegisterCache::canonicalize_aor(const string& uri)
+string RegisterCache::canonicalize_aor(const string& uri)
 {
   string canon_uri;
   sip_uri parsed_uri;
@@ -227,7 +227,7 @@ string _RegisterCache::canonicalize_aor(const string& uri)
 }
 
 string 
-_RegisterCache::compute_alias_hash(const string& aor, const string& contact_uri,
+RegisterCache::compute_alias_hash(const string& aor, const string& contact_uri,
 				   const string& public_ip)
 {
   unsigned int h1=0,h2=0;
@@ -244,7 +244,7 @@ void ContactHash::insert(const string& contact_uri, const string& remote_ip,
   insert(make_pair(ContactKey(contact_uri, remote_ip, remote_port), alias));
 }
 
-bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
+bool RegisterCache::getAlias(const string& canon_aor, const string& uri,
 			      const string& public_ip, RegBinding& out_binding)
 {
   if(canon_aor.empty()) {
@@ -268,7 +268,7 @@ bool _RegisterCache::getAlias(const string& canon_aor, const string& uri,
   return alias_found;
 }
 
-void _RegisterCache::setAliasUATimer(AliasEntry* alias_e)
+void RegisterCache::setAliasUATimer(AliasEntry* alias_e)
 {
   if(!alias_e->ua_expire)
     return;
@@ -284,12 +284,12 @@ void _RegisterCache::setAliasUATimer(AliasEntry* alias_e)
   }
 }
 
-void _RegisterCache::removeAliasUATimer(AliasEntry* alias_e)
+void RegisterCache::removeAliasUATimer(AliasEntry* alias_e)
 {
   AmAppTimer::instance()->removeTimer(alias_e);
 }
 
-void _RegisterCache::update(const string& alias, long int reg_expires,
+void RegisterCache::update(const string& alias, long int reg_expires,
 			    const AliasEntry& alias_update)
 {
   string uri = alias_update.contact_uri;
@@ -371,7 +371,7 @@ void _RegisterCache::update(const string& alias, long int reg_expires,
     storage_handler->onUpdate(canon_aor,alias,reg_expires, alias_e_it->second);
 }
 
-void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update)
+void RegisterCache::update(long int reg_expires, const AliasEntry& alias_update)
 {
   string uri = alias_update.contact_uri;
   string canon_aor = alias_update.aor;
@@ -432,7 +432,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
   if (binding_it == aor_e_it->second.end()) {
     // insert one if none exist
     RegBinding binding;
-    binding.alias = _RegisterCache::
+    binding.alias = RegisterCache::
       compute_alias_hash(canon_aor,uri,public_ip);
 
     // inc stats
@@ -479,7 +479,7 @@ void _RegisterCache::update(long int reg_expires, const AliasEntry& alias_update
 			      reg_expires, alias_e_it->second);
 }
 
-bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires)
+bool RegisterCache::updateAliasExpires(const string& alias, long int ua_expires)
 {
   bool res = false;
   lock_guard<AmMutex> _id_l(id_idx);
@@ -501,7 +501,7 @@ bool _RegisterCache::updateAliasExpires(const string& alias, long int ua_expires
   return res;
 }
 
-void _RegisterCache::remove(const string& canon_aor, const string& uri,
+void RegisterCache::remove(const string& canon_aor, const string& uri,
 			    const string& alias)
 {
   if(canon_aor.empty()) {
@@ -539,7 +539,7 @@ void _RegisterCache::remove(const string& canon_aor, const string& uri,
   removeAlias(alias,false);
 }
 
-void _RegisterCache::remove(const string& aor)
+void RegisterCache::remove(const string& aor)
 {
   if(aor.empty()) {
     DBG("Canonical AOR is empty");
@@ -563,7 +563,7 @@ void _RegisterCache::remove(const string& aor)
   }
 }
 
-void _RegisterCache::removeAlias(const string& alias, bool generate_event)
+void RegisterCache::removeAlias(const string& alias, bool generate_event)
 {
   lock_guard<AmMutex> _id_l(id_idx);
 
@@ -607,7 +607,7 @@ void _RegisterCache::removeAlias(const string& alias, bool generate_event)
   }
 }
 
-bool _RegisterCache::getAorAliasMap(const string& canon_aor, 
+bool RegisterCache::getAorAliasMap(const string& canon_aor, 
 				    map<string,string>& alias_map)
 {
   if(canon_aor.empty()) {
@@ -632,7 +632,7 @@ bool _RegisterCache::getAorAliasMap(const string& canon_aor,
   return true;
 }
 
-bool _RegisterCache::findAliasEntry(const string& alias, AliasEntry& alias_entry)
+bool RegisterCache::findAliasEntry(const string& alias, AliasEntry& alias_entry)
 {
   bool res = false;
 
@@ -647,7 +647,7 @@ bool _RegisterCache::findAliasEntry(const string& alias, AliasEntry& alias_entry
   return res;
 }
 
-bool _RegisterCache::findAEByContact(const string& contact_uri,
+bool RegisterCache::findAEByContact(const string& contact_uri,
 				     const string& remote_ip,
 				     unsigned short remote_port,
 				     AliasEntry& ae)
@@ -669,7 +669,7 @@ bool _RegisterCache::findAEByContact(const string& contact_uri,
 }
 
 
-int _RegisterCache::parseAoR(RegisterCacheCtx& ctx,
+int RegisterCache::parseAoR(RegisterCacheCtx& ctx,
 			     const AmSipRequest& req,
                              msg_logger *logger)
 {
@@ -696,7 +696,7 @@ int _RegisterCache::parseAoR(RegisterCacheCtx& ctx,
   return 0;
 }
 
-int _RegisterCache::parseContacts(RegisterCacheCtx& ctx,
+int RegisterCache::parseContacts(RegisterCacheCtx& ctx,
 				  const AmSipRequest& req,
                                   msg_logger *logger)
 {
@@ -713,7 +713,7 @@ int _RegisterCache::parseContacts(RegisterCacheCtx& ctx,
   return 0;
 }
 
-int _RegisterCache::parseExpires(RegisterCacheCtx& ctx,
+int RegisterCache::parseExpires(RegisterCacheCtx& ctx,
 				 const AmSipRequest& req,
                                  msg_logger *logger)
 {
@@ -731,7 +731,7 @@ int _RegisterCache::parseExpires(RegisterCacheCtx& ctx,
   return 0;
 }
 
-bool _RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
+bool RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
 				      const AmSipRequest& req,
                                       msg_logger *logger)
 {
@@ -861,7 +861,7 @@ bool _RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
   return true;
 }
 
-bool _RegisterCache::saveSingleContact(RegisterCacheCtx& ctx,
+bool RegisterCache::saveSingleContact(RegisterCacheCtx& ctx,
 				       const AmSipRequest& req,
                                        msg_logger *logger)
 {

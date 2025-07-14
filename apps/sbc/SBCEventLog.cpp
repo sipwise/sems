@@ -52,7 +52,7 @@ struct MonitoringEventLogHandler
   }
 };
 
-void _SBCEventLog::useMonitoringLog()
+void SBCEventLog::useMonitoringLog()
 {
   if(NULL != MONITORING_GLOBAL_INTERFACE) {
     setEventLogHandler(new MonitoringEventLogHandler());
@@ -64,12 +64,12 @@ void _SBCEventLog::useMonitoringLog()
   }
 }
 
-void _SBCEventLog::setEventLogHandler(SBCEventLogHandler* lh)
+void SBCEventLog::setEventLogHandler(SBCEventLogHandler* lh)
 {
   log_handler.reset(lh);
 }
 
-void _SBCEventLog::logEvent(const string& id, const string& type,
+void SBCEventLog::logEvent(const string& id, const string& type,
 			    const AmArg& event)
 {
   if(log_handler.get()) {
@@ -79,7 +79,7 @@ void _SBCEventLog::logEvent(const string& id, const string& type,
 }
 
 
-void _SBCEventLog::logCallStart(const AmSipRequest& req,
+void SBCEventLog::logCallStart(const AmSipRequest& req,
 				const string& local_tag,
 				const string& from_remote_ua,
 				const string& to_remote_ua,
@@ -120,7 +120,7 @@ void _SBCEventLog::logCallStart(const AmSipRequest& req,
 
   
 
-void _SBCEventLog::logCallEnd(const AmSipRequest& req,
+void SBCEventLog::logCallEnd(const AmSipRequest& req,
 			      const string& local_tag,
 			      const string& reason,
 			      struct timeval* tv)
@@ -157,7 +157,7 @@ void _SBCEventLog::logCallEnd(const AmSipRequest& req,
   logEvent(local_tag,"call-end",end_event);
 }
 
-void _SBCEventLog::logCallEnd(const AmBasicSipDialog* dlg,
+void SBCEventLog::logCallEnd(const AmBasicSipDialog* dlg,
 			      const string& reason,
 			      struct timeval* tv)
 {

@@ -98,7 +98,7 @@ typedef ht_map_bucket<string,dns_entry> dns_bucket_base;
 class dns_bucket
     : protected dns_bucket_base
 {
-    friend class _resolver;
+    friend class resolver;
 public:
     dns_bucket(unsigned long id);
     bool insert(const string& name, dns_entry* e);
@@ -161,7 +161,7 @@ struct dns_handle
     const dns_handle& operator = (const dns_handle& rh);
 
 private:
-    friend class _resolver;
+    friend class resolver;
     friend class dns_entry;
     friend class dns_srv_entry;
     friend class dns_ip_entry;
@@ -256,9 +256,12 @@ private:
     std::pair<iterator, bool> insert(const value_type& x);
 };
 
-class _resolver
-    : AmThread
+class resolver
+    : AmThread,
+      public singleton<resolver>
 {
+    friend class singleton<resolver>;
+
 public:
     // disable SRV lookups
     static bool disable_srv;
@@ -284,8 +287,8 @@ public:
 			sip_target_set* targets);
 
 protected:
-    _resolver();
-    ~_resolver();
+    resolver();
+    ~resolver();
 
     int set_destination_ip(const cstring& next_hop,
 			   unsigned short next_port,
@@ -299,8 +302,6 @@ protected:
 private:
     dns_cache cache;
 };
-
-typedef singleton<_resolver> resolver;
 
 #endif
 

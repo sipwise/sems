@@ -38,13 +38,13 @@
 #include <strings.h>
 #endif
 
-_AmRtpReceiver::_AmRtpReceiver()
+AmRtpReceiver::AmRtpReceiver()
 {
   n_receivers = AmConfig::RTPReceiverThreads;
   receivers = new AmRtpReceiverThread[n_receivers];
 }
 
-_AmRtpReceiver::~_AmRtpReceiver()
+AmRtpReceiver::~AmRtpReceiver()
 {
   for(unsigned int i=0; i<n_receivers; i++){
     receivers[i].stop();
@@ -167,19 +167,19 @@ void AmRtpReceiverThread::removeStream(int sd)
   streams_mut.unlock();
 }
 
-void _AmRtpReceiver::start()
+void AmRtpReceiver::start()
 {
   for(unsigned int i=0; i<n_receivers; i++)
     receivers[i].start();
 }
 
-void _AmRtpReceiver::addStream(int sd, AmRtpStream* stream)
+void AmRtpReceiver::addStream(int sd, AmRtpStream* stream)
 {
   unsigned int i = sd % n_receivers;
   receivers[i].addStream(sd,stream);
 }
 
-void _AmRtpReceiver::removeStream(int sd)
+void AmRtpReceiver::removeStream(int sd)
 {
   unsigned int i = sd % n_receivers;
   receivers[i].removeStream(sd);
