@@ -139,7 +139,7 @@ struct sip_msg
     sockaddr_storage   remote_ip;
 
     sip_msg();
-    sip_msg(const char* msg_buf, int msg_len);
+    sip_msg(const char* msg_buf, size_t msg_len);
     ~sip_msg();
 
     void copy_msg_buf(const char* msg_buf, int msg_len);

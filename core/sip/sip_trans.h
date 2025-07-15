@@ -30,11 +30,12 @@
 #ifndef _sip_trans_h
 #define _sip_trans_h
 
-#include "cstring.h"
 #include "wheeltimer.h"
 
 #include <sys/socket.h>
 
+#include <string>
+using std::string;
 #include <list>
 using std::list;
 #include <memory>
@@ -143,10 +144,7 @@ class sip_trans
      *  - UAC transaction: ACK
      *  - UAS transaction: last reply
      */
-    char* retr_buf;
-
-    /** Length of the retransmission buffer */
-    int   retr_len;
+    shared_ptr<string> retr_buf;
 
     /** Destination for retransmissions */
     sockaddr_storage retr_addr;

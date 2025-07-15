@@ -66,6 +66,9 @@
 
 #include <algorithm>
 
+using std::make_shared;
+using std::string_view;
+
 bool trans_layer::accept_fr_without_totag = false;
 unsigned int trans_layer::default_bl_ttl = DEFAULT_BL_TTL;
 
@@ -280,7 +283,6 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
     }
     
     bool have_to_tag = false;
-    int  reply_len   = status_line_len(msg.u.reply->reason);
 
     // add 'received' should be added
     // check if first Via has rport parameter
@@ -288,20 +290,15 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
     assert(req.via1);
     assert(req.via_p1);
 
-    unsigned int new_via1_len = copy_hdr_len(req.via1);
     string remote_ip_str = get_addr_str(&req.remote_ip);
 
     bool append_received = !(req.via_p1->host == remote_ip_str.c_str());
-    if(append_received) {
-	new_via1_len += 10/*;received=*/ + remote_ip_str.length();
-    }
 
     // needed if rport parameter was present but empty
     string remote_port_str;
     if(req.via_p1->has_rport) {
 	if(!req.via_p1->rport.len){
 	    remote_port_str = int2str(ntohs(((sockaddr_in*)&req.remote_ip)->sin_port));
-	    new_via1_len += remote_port_str.length() + 1/* "=<port number>" */;
 	}
     }
 
@@ -316,23 +313,10 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 	assert((*it));
 	switch((*it)->type){
 
-	case sip_header::H_VIA:
-	    // if first via, take the possibly modified one
-	    if((*it) == req.via1)
-		reply_len += new_via1_len;
-	    else
-		reply_len += copy_hdr_len(*it);
-	    break;
-
 	case sip_header::H_TO:
 	    if (!(*it)->p) break; // ignore if not parsed
 	    if (!to_tag.empty()) {
-		if(! ((sip_from_to*)(*it)->p)->tag.len ) {
-
-		    reply_len += 5/* ';tag=' */
-			+ to_tag.length();
-		}
-		else {
+		if (((sip_from_to*)(*it)->p)->tag.len) {
 		    // To-tag present in request...
 		    have_to_tag = true;
 		    // ... save it:
@@ -345,14 +329,6 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 		// (necessary to match pre-RFC3261 non-200 ACKs)
 		t->to_tag.clear();
 	    }
-	    reply_len += copy_hdr_len(*it);
-	    break;
-
-	case sip_header::H_FROM:
-	case sip_header::H_CALL_ID:
-	case sip_header::H_CSEQ:
-	case sip_header::H_RECORD_ROUTE:
-	    reply_len += copy_hdr_len(*it);
 	    break;
 
 	case sip_header::H_REQUIRE:
@@ -389,26 +365,12 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 	}
     }
 
-    reply_len += copy_hdrs_len(msg.hdrs);
-
     string c_len = int2str((unsigned int) msg.body.length());
-    reply_len += content_length_len((char*)c_len.c_str());
 
-    if(msg.body.length()){
+    auto reply_buf = make_shared<string>();
+    string& reply_str = *reply_buf; // for convenience
 
-	reply_len += msg.body.length();
-    }
-
-    reply_len += 2/*CRLF*/;
-
-    // Allocate buffer for the reply
-    //
-    char* reply_buf = new char[reply_len];
-    char* c = reply_buf;
-
-    DBG("reply_len = %i\n",reply_len);
-
-    status_line_wr(&c,reply_code,msg.u.reply->reason);
+    status_line_wr(reply_str, reply_code, msg.u.reply->reason);
 
     for(list<sip_header*>::iterator it = req.hdrs.begin();
 	it != req.hdrs.end(); ++it) {
@@ -424,86 +386,72 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 
 		unsigned int len;
 
-		memcpy(c,(*it)->name.s,(*it)->name.len);
-		c += (*it)->name.len;
-		
-		*(c++) = ':';
-		*(c++) = SP;
-		
+                reply_str += c2stlstr((*it)->name);
+
+		reply_str += ':';
+		reply_str += SP;
+
 		if(req.via_p1->has_rport && !req.via_p1->rport.len){
 
 		    // copy everything from the beginning up to the "rport" param:
 		    len = (req.via_p1->rport.s + req.via_p1->rport.len) - req.via1->value.s;
-		    memcpy(c,req.via1->value.s,len);
-		    c += len;
+                    reply_str += string_view(req.via1->value.s, len);
 
 		    // add '='
-		    *(c++) = '=';
+		    reply_str += '=';
 
 		    // add the remote port
-		    memcpy(c,remote_port_str.c_str(),remote_port_str.length());
-		    c += remote_port_str.length();
+                    reply_str += remote_port_str;
 
 		    //copy up to the end of the first Via parm
 		    len = req.via_p1->eop - (req.via_p1->rport.s + req.via_p1->rport.len);
-		    memcpy(c,req.via_p1->rport.s + req.via_p1->rport.len, len);
-		    c += len;
+                    reply_str += string_view(req.via_p1->rport.s + req.via_p1->rport.len, len);
 		}
 		else {
 		    //copy up to the end of the first Via parm
 		    len = req.via_p1->eop - req.via1->value.s;
-		    memcpy(c,req.via1->value.s,len);
-		    c += len;
+                    reply_str += string_view(req.via1->value.s, len);
 		}
 
 		if(append_received) {
-
-		    memcpy(c,";received=",10);
-		    c += 10;
-
-		    memcpy(c,remote_ip_str.c_str(),remote_ip_str.length());
-		    c += remote_ip_str.length();
+		    reply_str += ";received=";
+                    reply_str += remote_ip_str;
 		}
 
 
 		//copy the rest of the first Via header
 		len = req.via1->value.s + req.via1->value.len - req.via_p1->eop;
-		memcpy(c,req.via_p1->eop,len);
-		c += len;
+                reply_str += string_view(req.via_p1->eop, len);
 
-		*(c++) = CR;
-		*(c++) = LF;
+		reply_str += CR;
+		reply_str += LF;
 	    }
 	    else {
-		copy_hdr_wr(&c,*it);
+		copy_hdr_wr(reply_str, *it);
 	    }
 	    break;
 
 	case sip_header::H_TO:
 	    if (!(*it)->p) break; // ignore if not parsed
-	    if (to_tag.empty() || have_to_tag){
-		copy_hdr_wr(&c,*it);
+	    if (to_tag.empty() || have_to_tag) {
+		copy_hdr_wr(reply_str, *it);
 	    }
 	    else {
-		memcpy(c,(*it)->name.s,(*it)->name.len);
-		c += (*it)->name.len;
+		reply_str += c2stlstr((*it)->name);
 
-		*(c++) = ':';
-		*(c++) = SP;
+		reply_str += ':';
+		reply_str += SP;
 
-		memcpy(c,(*it)->value.s,(*it)->value.len);
-		c += (*it)->value.len;
+		reply_str += c2stlstr((*it)->value);
 
-		memcpy(c,";tag=",5);
-		c += 5;
+		reply_str += ";tag=";
 
 		t->to_tag = to_tag;
 
-		memcpy(c, to_tag.c_str(), to_tag.length());
-		c += to_tag.length();
+                reply_str += to_tag;
 
-		*(c++) = CR;
-		*(c++) = LF;
+		reply_str += CR;
+		reply_str += LF;
 	    }
 	    break;
 
@@ -511,20 +459,20 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 	case sip_header::H_CALL_ID:
 	case sip_header::H_CSEQ:
 	case sip_header::H_RECORD_ROUTE:
-	    copy_hdr_wr(&c,*it);
+	    copy_hdr_wr(reply_str, *it);
 	    break;
 	}
     }
 
-    copy_hdrs_wr(&c,msg.hdrs);
-    content_length_wr(&c,(char*)c_len.c_str());
+    copy_hdrs_wr(reply_str, msg.hdrs);
+    content_length_wr(reply_str, (char*)c_len.c_str());
 
-    *c++ = CR;
-    *c++ = LF;
+    reply_str += CR;
+    reply_str += LF;
 
-    if(msg.body.length()){
-	memcpy(c, msg.body.c_str(), msg.body.length());
-    }
+    reply_str += msg.body;
+
+    DBG("reply_len = %zu\n", reply_str.length());
 
     int err = -1;
 
@@ -535,7 +483,6 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
     if(!local_socket) {
 
 	ERROR("request to be replied has no transport socket set\n");
-	delete [] reply_buf;
 	goto end;
     }
 
@@ -548,7 +495,6 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 	if (resolver::instance()->str2ip(via_host.c_str(), &remote_ip,
 					 (address_type)(IPv4 | IPv6)) != 1) {
 	    ERROR("Invalid via_host '%s'\n", via_host.c_str());
-	    delete [] reply_buf;
 	    goto end;
 	}
     }
@@ -580,17 +526,15 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
     DBG("Sending to %s:%i <%.*s...>\n",
 	get_addr_str(&remote_ip).c_str(),
 	ntohs(((sockaddr_in*)&remote_ip)->sin_port),
-	50 /* preview - instead of p_msg->len */,reply_buf);
+	(int) std::min<size_t>(50, reply_str.length()) /* preview - instead of p_msg->len */, reply_str.c_str());
 
     //TODO: pass send-flags down to here
-    err = local_socket->send(&remote_ip,reply_buf,reply_len,0);
+    err = local_socket->send(&remote_ip, reply_str.c_str(), reply_str.length(), 0);
     if(err < 0){
 	ERROR("could not send to %s:%i <%.*s...>\n",
 	      get_addr_str(&remote_ip).c_str(),
 	      ntohs(((sockaddr_in*)&remote_ip)->sin_port),
-	      50 /* preview - instead of p_msg->len */,reply_buf);
-
-	delete [] reply_buf;
+              (int) std::min<size_t>(50, reply_str.length()) /* preview - instead of p_msg->len */, reply_str.c_str());
 
 	if(!local_socket->is_reliable()) {
 	    // set timer to capture retransmissions
@@ -606,21 +550,14 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 
     stats.inc_sent_replies();
 
-    if (t->retr_buf) {
-	// delete old retry-buffer 
-	// before overwriting it
-	delete [] t->retr_buf;
-    }
-
     t->retr_buf = reply_buf;
-    t->retr_len = reply_len;
     memcpy(&t->retr_addr,&remote_ip,sizeof(sockaddr_storage));
     t->retr_socket = local_socket;
 
     if(logger) {
 	sockaddr_storage src_ip;
 	local_socket->copy_addr_to(&src_ip);
-	logger->log(reply_buf,reply_len,&src_ip,&remote_ip,
+	logger->log(reply_str.c_str(), reply_str.length(), &src_ip, &remote_ip,
 		    req.u.request->method_str,reply_code);
 
 	if(!t->logger){
@@ -689,7 +626,6 @@ int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
     assert(req);
 
     bool have_to_tag = false;
-    int  reply_len   = status_line_len(reason);
 
     for(list<sip_header*>::iterator it = req->hdrs.begin();
 	it != req->hdrs.end(); ++it) {
@@ -699,44 +635,19 @@ int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
 
 	case sip_header::H_TO:
 
-	    if((!(*it)->p) || (!((sip_from_to*)(*it)->p)->tag.len) ) {
-
-		reply_len += 5/* ';tag=' */
-		    + SL_TOTAG_LEN; 
-	    }
-	    else {
+	    if ((*it)->p && ((sip_from_to*)(*it)->p)->tag.len) {
 		// To-tag present in request
 		have_to_tag = true;
 	    }
-	    // fall-through-trap
-	case sip_header::H_FROM:
-	case sip_header::H_CALL_ID:
-	case sip_header::H_CSEQ:
-	case sip_header::H_VIA:
-	case sip_header::H_RECORD_ROUTE:
-	    reply_len += copy_hdr_len(*it);
 	    break;
 	}
     }
 
-    reply_len += hdrs.len;
-
     string c_len = int2str(body.len);
-    reply_len += content_length_len((char*)c_len.c_str());
 
-    if(body.len){
-	
-	reply_len += body.len;
-    }
+    string reply_str;
 
-    reply_len += 2/*CRLF*/;
-    
-    // Allocate buffer for the reply
-    //
-    char* reply_buf = new char[reply_len];
-    char* c = reply_buf;
-
-    status_line_wr(&c,reply_code,reason);
+    status_line_wr(reply_str, reply_code,reason);
 
     for(list<sip_header*>::iterator it = req->hdrs.begin();
 	it != req->hdrs.end(); ++it) {
@@ -746,28 +657,24 @@ int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
 	case sip_header::H_TO:
 
 	    if(have_to_tag){
-		copy_hdr_wr(&c,*it);
+		copy_hdr_wr(reply_str, *it);
 	    }
 	    else {
-		memcpy(c,(*it)->name.s,(*it)->name.len);
-		c += (*it)->name.len;
-		
-		*(c++) = ':';
-		*(c++) = SP;
-		
-		memcpy(c,(*it)->value.s,(*it)->value.len);
-		c += (*it)->value.len;
-	    
-		memcpy(c,";tag=",5);
-		c += 5;
+		reply_str += c2stlstr((*it)->name);
+
+		reply_str += ':';
+		reply_str += SP;
+
+		reply_str += c2stlstr((*it)->value);
+
+		reply_str += ";tag=";
 
 		char to_tag[SL_TOTAG_LEN];
 		compute_sl_to_tag(to_tag,req);
-		memcpy(c,to_tag,SL_TOTAG_LEN);
-		c += SL_TOTAG_LEN;
+		reply_str += string_view(to_tag, SL_TOTAG_LEN);
 
-		*(c++) = CR;
-		*(c++) = LF;
+		reply_str += CR;
+		reply_str += LF;
 	    }
 	    break;
 
@@ -776,30 +683,28 @@ int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
 	case sip_header::H_CSEQ:
 	case sip_header::H_VIA:
 	case sip_header::H_RECORD_ROUTE:
-	    copy_hdr_wr(&c,*it);
+	    copy_hdr_wr(reply_str, *it);
 	    break;
 	}
     }
 
     if (hdrs.len) {
-	memcpy(c,hdrs.s,hdrs.len);
-	c += hdrs.len;
+	reply_str += c2stlstr(hdrs);
     }
 
-    content_length_wr(&c,(char*)c_len.c_str());
+    content_length_wr(reply_str, (char*)c_len.c_str());
 
-    *c++ = CR;
-    *c++ = LF;
+    reply_str += CR;
+    reply_str += LF;
 
     if(body.len){
-	
-	memcpy(c,body.s,body.len);
+
+	reply_str += c2stlstr(body);
     }
 
     assert(req->local_socket);
 
-    int err = req->local_socket->send(&req->remote_ip,reply_buf,reply_len,0);
-    delete [] reply_buf;
+    int err = req->local_socket->send(&req->remote_ip, reply_str.c_str(), reply_str.length(), 0);
 
     stats.inc_sent_replies();
 
@@ -1103,9 +1008,6 @@ static int patch_ruri_with_remote_ip(string& n_uri, sip_msg* msg)
 
 static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 {
-    int request_len = request_line_len(msg->u.request->method_str,
- 				       msg->u.request->ruri_str);
-
     char branch_buf[BRANCH_BUF_LEN];
     compute_branch(branch_buf,msg->callid->value,msg->cseq->value);
     cstring branch(branch_buf,BRANCH_BUF_LEN);
@@ -1129,58 +1031,35 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 	patch_contact_transport(n_contacts.back(),trsp,*contact_buf_it);
     }
 
-    // add 'rport' parameter defaultwise? yes, for now
-    request_len += via_len(trsp,stl2cstr(via),branch,true);
-
-    request_len += copy_hdrs_len(msg->vias);
-    request_len += copy_hdrs_len_no_via_contact(msg->hdrs);
-    request_len += copy_hdrs_len(n_contacts);
-
     string content_len = int2str(msg->body.length());
-
-    request_len += content_length_len(stl2cstr(content_len));
-    request_len += 2/* CRLF end-of-headers*/;
-
-    if (msg->body.length()) {
- 	request_len += msg->body.length();
-    }
 
     // Allocate new message
     p_msg = new sip_msg();
-    char* buf = new char[request_len+1];
+    string& buf = p_msg->buf; // for convenience
 
     // generate it
-    char* c = buf;
-    request_line_wr(&c,msg->u.request->method_str,
+    request_line_wr(buf, msg->u.request->method_str,
  		    msg->u.request->ruri_str);
 
-    via_wr(&c,trsp,stl2cstr(via),branch,true);
-    copy_hdrs_wr(&c,msg->vias);
-    copy_hdrs_wr_no_via_contact(&c,msg->hdrs);
+    via_wr(buf, trsp, stl2cstr(via), branch, true);
+    copy_hdrs_wr(buf, msg->vias);
+    copy_hdrs_wr_no_via_contact(buf, msg->hdrs);
 
-    copy_hdrs_wr(&c,n_contacts);
+    copy_hdrs_wr(buf, n_contacts);
     free_headers(n_contacts);
 
-    content_length_wr(&c,stl2cstr(content_len));
+    content_length_wr(buf, content_len.c_str());
 
-    *c++ = CR;
-    *c++ = LF;
+    buf += CR;
+    buf += LF;
 
-    if (msg->body.length()) {
- 	memcpy(c, msg->body.c_str(), msg->body.length());
-
- 	c += msg->body.length();
-    }
-    *c++ = '\0';
-
-    p_msg->buf = string(buf, request_len);
-    delete[] buf;
+    buf += msg->body;
 
     // and parse it
     char* err_msg=0;
-    if(parse_sip_msg(p_msg,err_msg)){
+    if(parse_sip_msg(p_msg, err_msg)){
  	ERROR("Parser failed on generated request\n");
-        ERROR("Message was: <%s>\n", p_msg->buf.c_str());
+        ERROR("Message was: <%s>\n", buf.c_str());
  	delete p_msg;
  	p_msg = NULL;
  	return MALFORMED_SIP_MSG;
@@ -1353,8 +1232,8 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
 	    if(tt->_t && (method == sip_request::ACK)) {
 		// in case of ACK, p_msg gets deleted in update_uac_request
-		msg_buffer = tt->_t->retr_buf;
-		msg_len = tt->_t->retr_len;
+		msg_buffer = tt->_t->retr_buf->c_str();
+		msg_len = tt->_t->retr_buf->length();
 	    }
 		/* p_msg could have been freed already by update_uac_request() */
 	    else if (p_msg) {
@@ -1462,56 +1341,34 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
     cstring cancel_str("CANCEL");
     cstring zero("0");
 
-    int request_len = request_line_len(cancel_str,
-				       req->u.request->ruri_str);
-
-    request_len += copy_hdr_len(req->via1);
-
-    request_len += copy_hdr_len(req->to)
-	+ copy_hdr_len(req->from)
-	+ copy_hdr_len(req->callid)
-	+ cseq_len(get_cseq(req)->num_str,cancel_str)
-	+ copy_hdrs_len(req->route)
-	+ copy_hdrs_len(req->contacts);
-
-    request_len += hdrs.len;
-    request_len += content_length_len(zero);
-    request_len += 2/* CRLF end-of-headers*/;
-
     // Allocate new message
     sip_msg* p_msg = new sip_msg();
-    char* buf = new char[request_len+1];
+    string& buf = p_msg->buf; // for convenience
 
     // generate it
-    char* c = buf;
-    request_line_wr(&c,cancel_str,
+    request_line_wr(buf, cancel_str,
 		    req->u.request->ruri_str);
 
-    copy_hdr_wr(&c,req->via1);
-    copy_hdr_wr(&c,req->to);
-    copy_hdr_wr(&c,req->from);
-    copy_hdr_wr(&c,req->callid);
-    cseq_wr(&c,get_cseq(req)->num_str,cancel_str);
-    copy_hdrs_wr(&c,req->route);
-    copy_hdrs_wr(&c,req->contacts);
+    copy_hdr_wr(buf, req->via1);
+    copy_hdr_wr(buf, req->to);
+    copy_hdr_wr(buf, req->from);
+    copy_hdr_wr(buf, req->callid);
+    cseq_wr(buf, get_cseq(req)->num_str,cancel_str);
+    copy_hdrs_wr(buf, req->route);
+    copy_hdrs_wr(buf, req->contacts);
 
-    if (hdrs.len) {
-      memcpy(c,hdrs.s,hdrs.len);
-      c += hdrs.len;
-    }
+    buf += c2stlstr(hdrs);
 
-    content_length_wr(&c,zero);
+    content_length_wr(buf, zero);
 
-    *c++ = CR;
-    *c++ = LF;
-
-    p_msg->buf = string(buf, request_len);
+    buf += CR;
+    buf += LF;
 
     // and parse it
     char* err_msg=0;
     if(parse_sip_msg(p_msg,err_msg)){
 	ERROR("Parser failed on generated request\n");
-	ERROR("Message was: <%s>\n", p_msg->buf.c_str());
+	ERROR("Message was: <%s>\n", buf.c_str());
 	delete p_msg;
 	bucket->unlock();
 	return MALFORMED_SIP_MSG;
@@ -2067,13 +1924,10 @@ int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	    }
 	    DBG("update_uac_request(200 ACK, t=%p)\n", t);
 	    // clear old retransmission buffer
-	    delete [] t->retr_buf;
-
-	    // transfer the message buffer
+	    // and
+	    // transfer the message buffer 
 	    // to the transaction (incl. ownership)
-	    t->retr_buf = new char[msg->buf.length() + 1];
-            memcpy(t->retr_buf, msg->buf.c_str(), msg->buf.length() + 1);
-	    t->retr_len = msg->buf.length();
+	    t->retr_buf.reset(new string(std::move(msg->buf)));
 	    msg->buf.clear();
 
 	    // copy destination address
@@ -2257,51 +2111,36 @@ int trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg*
 void trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
 {
     sip_msg* inv = t->msg;
-    
-    cstring method("ACK",3);
-    int ack_len = request_line_len(method,inv->u.request->ruri_str);
-    
-    ack_len += copy_hdr_len(inv->via1)
-	+ copy_hdr_len(inv->from)
-	+ copy_hdr_len(reply->to)
-	+ copy_hdr_len(inv->callid);
-    
-    ack_len += cseq_len(get_cseq(inv)->num_str,method);
 
-    if(!inv->route.empty())
- 	ack_len += copy_hdrs_len(inv->route);
+    static constexpr string method("ACK");
 
     cstring content_len("0");
-    ack_len += content_length_len(content_len);
 
-    ack_len += 2/* EoH CRLF */;
-    
-    char* ack_buf = new char [ack_len];
-    char* c = ack_buf;
+    string ack_buf;
 
-    request_line_wr(&c,method,inv->u.request->ruri_str);
-    
-    copy_hdr_wr(&c,inv->via1);
+    request_line_wr(ack_buf, stl2cstr(method), inv->u.request->ruri_str);
 
-    copy_hdr_wr(&c,inv->from);
-    copy_hdr_wr(&c,reply->to);
-    copy_hdr_wr(&c,inv->callid);
-    
-    cseq_wr(&c,get_cseq(inv)->num_str,method);
+    copy_hdr_wr(ack_buf, inv->via1);
+
+    copy_hdr_wr(ack_buf, inv->from);
+    copy_hdr_wr(ack_buf, reply->to);
+    copy_hdr_wr(ack_buf, inv->callid);
+
+    cseq_wr(ack_buf, get_cseq(inv)->num_str, stl2cstr(method));
 
     if(!inv->route.empty())
-	 copy_hdrs_wr(&c,inv->route);
+	 copy_hdrs_wr(ack_buf, inv->route);
 
-    content_length_wr(&c,content_len);
-    
-    *c++ = CR;
-    *c++ = LF;
+    content_length_wr(ack_buf, "0");
+
+    ack_buf += CR;
+    ack_buf += LF;
 
     DBG("About to send ACK\n");
 
     assert(inv->local_socket);
-    int send_err = inv->local_socket->send(&inv->remote_ip,ack_buf,
-					   ack_len,t->flags);
+    int send_err = inv->local_socket->send(&inv->remote_ip, ack_buf.c_str(),
+					   ack_buf.length(), t->flags);
     if(send_err < 0){
 	ERROR("Error from transport layer\n");
     }
@@ -2310,11 +2149,8 @@ void trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
     if(t->logger) {
 	sockaddr_storage src_ip;
 	inv->local_socket->copy_addr_to(&src_ip);
-	t->logger->log(ack_buf,ack_len,&src_ip,&inv->remote_ip,method);
+	t->logger->log(ack_buf.c_str(), ack_buf.length(), &src_ip, &inv->remote_ip, stl2cstr(method));
     }
-
-    delete[] ack_buf;
-
 }
 
 void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
@@ -2424,7 +2260,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 
           switch(tr->state) {
           case TS_PROCEEDING_REL: // missing PRACK for rel-1xx
-            assert(tr->retr_len);
+            assert(tr->retr_buf);
             tr->clear_timer(type); // stop retransmissions
             //signal timeout to UA
             ua->handle_reply_timeout(AmSipTimeoutEvent::noPRACK, tr, bucket);

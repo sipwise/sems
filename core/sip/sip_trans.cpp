@@ -76,7 +76,6 @@ sip_trans::sip_trans()
       last_rseq(0),
       targets(NULL),
       retr_buf(NULL),
-      retr_len(0),
       retr_addr{},
       retr_socket(NULL),
       logger(NULL),
@@ -89,7 +88,6 @@ sip_trans::~sip_trans()
     reset_all_timers();
     delete msg;
     delete targets;
-    delete [] retr_buf;
 }
 
 /**
@@ -97,13 +95,13 @@ sip_trans::~sip_trans()
  */
 void sip_trans::retransmit()
 {
-    if(!retr_buf || !retr_len){
+    if (!retr_buf) {
 	// there is nothing to re-transmit yet!!!
 	return;
     }
     assert(retr_socket);
 
-    int send_err = retr_socket->send(&retr_addr,retr_buf,retr_len,flags);
+    int send_err = retr_socket->send(&retr_addr, retr_buf->c_str(), retr_buf->size(), flags);
     if(send_err < 0){
 	ERROR("Error from transport layer\n");
     }
@@ -111,7 +109,7 @@ void sip_trans::retransmit()
     if(logger) {
 	sockaddr_storage src_ip;
 	retr_socket->copy_addr_to(&src_ip);
-	logger->log(retr_buf,retr_len,
+	logger->log(retr_buf->c_str(), retr_buf->length(),
 		    &src_ip,&retr_addr,
 		    msg->u.request->method_str,
 		    reply_status);
@@ -277,7 +275,7 @@ void sip_trans::dump() const
     DBG("type=%s (0x%x); msg=%p; to_tag=%s;"
 	" reply_status=%i; state=%s (%i); retr_buf=%p; timers [%s,%s,%s]\n",
 	type_str(), type, msg, to_tag.c_str(),
-	reply_status,state_str(),state,retr_buf,
+	reply_status, state_str(), state, retr_buf.get(),
 	timers[0]==NULL?"none":timer_name(timers[0]->type),
 	timers[1]==NULL?"none":timer_name(timers[1]->type),
 	timers[2]==NULL?"none":timer_name(timers[2]->type));

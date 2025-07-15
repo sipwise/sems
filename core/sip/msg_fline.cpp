@@ -33,50 +33,45 @@
 #include <assert.h>
 #include <stdlib.h>
 
-inline void status_code_wr(char** c, int code)
+inline void status_code_wr(string& c, int code)
 {
     div_t d = div(code, 100);
-    *((*c)++) = d.quot + '0';
+    c += d.quot + '0';
     d = div(d.rem, 10);
-    *((*c)++) = d.quot + '0';
-    *((*c)++) = d.rem + '0';
+    c += d.quot + '0';
+    c += d.rem + '0';
 }
 
 
-void status_line_wr(char** c, int status_code,
+void status_line_wr(string& c, int status_code,
 		    const cstring& reason)
 {
-    memcpy(*c,"SIP/2.0 ",8);
-    *c += 8;
-    
+    c += "SIP/2.0 ";
+
     status_code_wr(c,status_code);
 
-    *((*c)++) = SP;
+    c += SP;
 
-    memcpy(*c,reason.s,reason.len);
-    *c += reason.len;
+    c += c2stlstr(reason);
 
-    *((*c)++) = CR;
-    *((*c)++) = LF;
+    c += CR;
+    c += LF;
 }
 
-void request_line_wr(char** c,
+void request_line_wr(string& c,
 		     const cstring& method,
 		     const cstring& ruri)
 {
-    memcpy(*c,method.s,method.len);
-    *c += method.len;
+    c += c2stlstr(method);
 
-    *((*c)++) = SP;
-    
-    memcpy(*c,ruri.s,ruri.len);
-    *c += ruri.len;
-    
-    memcpy(*c," SIP/2.0",8);
-    *c += 8;
+    c += SP;
 
-    *((*c)++) = CR;
-    *((*c)++) = LF;
+    c += c2stlstr(ruri);
+
+    c += " SIP/2.0";
+
+    c += CR;
+    c += LF;
 }
 
 

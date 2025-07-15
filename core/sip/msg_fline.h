@@ -34,33 +34,16 @@
 #include "cstring.h"
 #include "parse_common.h"
 
+#include <string>
+using std::string;
+
 struct sip_msg;
 
-//
-// Request-line builder
-//
-inline int request_line_len(const cstring& method,
-			    const cstring& ruri)
-{
-    return method.len + ruri.len + SIPVER_len
-	+ 4; // 2*SP + CRLF
-}
-
-void request_line_wr(char** c,
+void request_line_wr(string& c,
 		     const cstring& method,
 		     const cstring& ruri);
 
-//
-// Status-line builder
-//
-inline int status_line_len(const cstring& reason)
-{
-    return SIPVER_len + 3/*status code*/
-	+ reason.len
-	+ 4; // 2*SP + CRLF
-}
-
-void status_line_wr(char** c, int status_code,
+void status_line_wr(string& c, int status_code,
 		    const cstring& reason);
 
 

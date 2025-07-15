@@ -753,7 +753,7 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
     break;
 
   case AmSipTimeoutEvent::noPRACK: {
-      sip_msg msg(tr->retr_buf, tr->retr_len);
+      sip_msg msg(tr->retr_buf->c_str(), tr->retr_buf->length());
 
       char* err_msg=0;
       int err = parse_sip_msg(&msg, err_msg);

@@ -43,7 +43,7 @@
 #include <memory>
 using std::unique_ptr;
 
-sip_msg::sip_msg(const char* msg_buf, int msg_len)
+sip_msg::sip_msg(const char* msg_buf, size_t msg_len)
     : hdrs(),
       to(NULL),
       from(NULL),
