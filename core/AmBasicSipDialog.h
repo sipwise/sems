@@ -132,7 +132,7 @@ protected:
   /**
    * Message logger
    */
-  msg_logger* logger;
+  shared_ptr<msg_logger> logger;
 
   /**
    * Executed for replies sent by a local UA,
@@ -400,15 +400,15 @@ public:
    * This method should only be used to send responses
    * to requests which are not referenced by any dialog.
    *
-   * WARNING: If the request has already been referenced 
-   * (see uas_trans), this method cannot mark the request 
+   * WARNING: If the request has already been referenced
+   * (see uas_trans), this method cannot mark the request
    * as replied, thus leaving it in the pending state forever.
    */
   static int reply_error(const AmSipRequest& req,
 			 unsigned int  code,
 			 const string& reason,
 			 const string& hdrs = "",
-			 msg_logger* logger = NULL);
+			 const shared_ptr<msg_logger>& logger = NULL);
 
   /* dump transaction information (DBG) */
   void dump();
@@ -416,12 +416,12 @@ public:
   /**
    * Enable or disable message logger
    */
-  void setMsgLogger(msg_logger* logger);
+  void setMsgLogger(const shared_ptr<msg_logger>& logger);
 
   /**
    * Get message logger
    */
-  msg_logger* getMsgLogger() { return logger; }
+  const shared_ptr<msg_logger>& getMsgLogger() { return logger; }
 };
 
 /**

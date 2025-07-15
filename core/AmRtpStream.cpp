@@ -443,7 +443,6 @@ AmRtpStream::~AmRtpStream()
     close(l_sd);
     close(l_rtcp_sd);
   }
-  if (logger) dec_ref(logger);
 }
 
 int AmRtpStream::getLocalPort()
@@ -1320,11 +1319,9 @@ inline void PacketMem::clear()
   n_used = cur_idx = 0;
 }
 
-void AmRtpStream::setLogger(msg_logger* _logger)
+void AmRtpStream::setLogger(const shared_ptr<msg_logger>& _logger)
 {
-  if (logger) dec_ref(logger);
   logger = _logger;
-  if (logger) inc_ref(logger);
 }
 
 void AmRtpStream::debug()

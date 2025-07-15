@@ -156,7 +156,7 @@ class sip_trans
     unsigned int flags;
 
     /** message logging */
-    msg_logger* logger;
+    shared_ptr<msg_logger> logger;
 
     /** request canceled? */
     bool canceled;

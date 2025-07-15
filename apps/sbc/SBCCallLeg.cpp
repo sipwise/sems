@@ -513,7 +513,6 @@ SBCCallLeg::~SBCCallLeg()
 {
   if (auth)
     delete auth;
-  if (logger) dec_ref(logger);
 }
 
 void SBCCallLeg::onBeforeDestroy()
@@ -1209,7 +1208,7 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
 
     if (!logger) {
       // open the logger if not already opened
-      msg_logger *l = call_profile.get_logger(req);
+      auto l = call_profile.get_logger(req);
       if (l) setLogger(l);
     }
 
@@ -1949,11 +1948,10 @@ void SBCCallLeg::setMediaSession(AmB2BMedia *new_session)
 
 bool SBCCallLeg::openLogger(const std::string &path)
 {
-  file_msg_logger *log = new pcap_logger();
+  shared_ptr<file_msg_logger> log(new pcap_logger());
 
   if(log->open(path.c_str()) != 0) {
     // open error
-    delete log;
     return false;
   }
 
@@ -1962,12 +1960,9 @@ bool SBCCallLeg::openLogger(const std::string &path)
   return true;
 }
 
-void SBCCallLeg::setLogger(msg_logger *_logger)
+void SBCCallLeg::setLogger(const shared_ptr<msg_logger>& _logger)
 {
-  if (logger) dec_ref(logger); // release the old one
-
   logger = _logger;
-  if (logger) inc_ref(logger);
   if (call_profile.log_sip) dlg->setMsgLogger(logger);
   else dlg->setMsgLogger(NULL);
 

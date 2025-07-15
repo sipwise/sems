@@ -282,13 +282,13 @@ int AmRtpPacket::recv(int sd)
   return ret;
 }
 
-void AmRtpPacket::logReceived(msg_logger *logger, struct sockaddr_storage *laddr)
+void AmRtpPacket::logReceived(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr)
 {
   static const cstring empty;
   logger->log((const char *)buffer, b_size, &addr, laddr, empty);
 }
 
-void AmRtpPacket::logSent(msg_logger *logger, struct sockaddr_storage *laddr)
+void AmRtpPacket::logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr)
 {
   static const cstring empty;
   logger->log((const char *)buffer, b_size, laddr, &addr, empty);

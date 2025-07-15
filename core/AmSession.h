@@ -160,7 +160,7 @@ protected:
 
   AmCondition sess_stopped;
 
-  /** this is the group the media is processed with 
+  /** this is the group the media is processed with
       - by default local tag */
   string callgroup;
 

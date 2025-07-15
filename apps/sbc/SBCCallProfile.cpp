@@ -26,6 +26,7 @@
 #include "SBCCallProfile.h"
 #include "SBC.h"
 #include <algorithm>
+#include <memory>
 
 #include "log.h"
 #include "AmUtils.h"
@@ -39,6 +40,7 @@
 
 #include "sip/pcap_logger.h"
 
+using std::make_shared;
 typedef vector<SdpPayload>::iterator PayloadIterator;
 static string payload2str(const SdpPayload &p);
 
@@ -1673,22 +1675,21 @@ void SBCCallProfile::create_logger(const AmSipRequest& req)
   string log_path = ctx.replaceParameters(msg_logger_path, "msg_logger_path", req);
   if (log_path.empty()) return;
 
-  file_msg_logger *log = new pcap_logger();
+  auto log = make_shared<pcap_logger>();
 
   if(log->open(log_path.c_str()) != 0) {
     // open error
-    delete log;
     return;
   }
 
   // opened successfully
-  logger.reset(log);
+  logger = log;
 }
 
-msg_logger* SBCCallProfile::get_logger(const AmSipRequest& req)
+const shared_ptr<msg_logger>& SBCCallProfile::get_logger(const AmSipRequest& req)
 {
   if (!logger.get() && !msg_logger_path.empty()) create_logger(req);
-  return logger.get();
+  return logger;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -1697,7 +1698,7 @@ bool PayloadDesc::match(const SdpPayload &p) const
 {
   string enc_name = p.encoding_name;
   transform(enc_name.begin(), enc_name.end(), enc_name.begin(), ::tolower);
-      
+
   if ((name.size() > 0) && (name != enc_name)) return false;
   if (clock_rate && (p.clock_rate > 0) && clock_rate != (unsigned)p.clock_rate) return false;
   return true;

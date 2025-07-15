@@ -217,7 +217,7 @@ static int patch_contact_transport(sip_header* contact, const cstring& trsp,
 
 int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 			     const cstring& dialog_id, const cstring& to_tag,
-			     msg_logger* logger)
+			     const shared_ptr<msg_logger>& logger)
 {
     // Ref.: RFC 3261 8.2.6, 12.1.1
     //
@@ -629,7 +629,6 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
 	if(!t->logger){
 	    t->logger = logger;
-	    inc_ref(logger);
 	}
     }
 
@@ -1202,7 +1201,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 			       const cstring& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
-			       msg_logger* logger)
+			       const shared_ptr<msg_logger>& logger)
 {
     // Request-URI
     // To
@@ -1346,7 +1345,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	    }
 	}
 
-	DBG("logger = %p\n",logger);
+	DBG("logger = %p\n",logger.get());
 
 	if(logger) {
 	    sockaddr_storage src_ip;
@@ -1373,7 +1372,6 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
 	    if(tt->_t && !tt->_t->logger) {
 		tt->_t->logger = logger;
-		inc_ref(logger);
 	    }
 	}
 
@@ -1558,7 +1556,6 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 
                 if(!cancel_t->logger) {
                     cancel_t->logger = t->logger;
-                    inc_ref(t->logger);
                 }
             }
 	}
@@ -2624,7 +2621,6 @@ sip_trans* trans_layer::copy_uac_trans(sip_trans* tr)
 
     if(tr->logger) {
 	n_tr->logger = tr->logger;
-	inc_ref(n_tr->logger);
     }
 
     return n_tr;

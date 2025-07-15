@@ -513,7 +513,6 @@ AmB2BMedia::AmB2BMedia(AmB2BSession *_a, AmB2BSession *_b):
 
 AmB2BMedia::~AmB2BMedia()
 {
-  if (logger) dec_ref(logger);
 }
 
 void AmB2BMedia::addToMediaProcessor() {
@@ -1203,11 +1202,9 @@ void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer,
   }
 }
 
-void AmB2BMedia::setRtpLogger(msg_logger* _logger)
+void AmB2BMedia::setRtpLogger(const shared_ptr<msg_logger>& _logger)
 {
-  if (logger) dec_ref(logger);
   logger = _logger;
-  if (logger) inc_ref(logger);
 
   // walk through all the streams and use logger for them
   for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) i->setLogger(logger);

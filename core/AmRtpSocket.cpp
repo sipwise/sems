@@ -132,7 +132,6 @@ AmRtpSocket::AmRtpSocket(AmRtpSocketPair* listener, int interface,
 
 AmRtpSocket::~AmRtpSocket()
 {
-  if (logger) dec_ref(logger);
   if(l_sd) {
     close(l_sd);
   }
@@ -229,12 +228,10 @@ void AmRtpSocket::setRemoteAddress(const string& addr, unsigned short port)
     am_set_port(&r_saddr, port);
 }
 
-void AmRtpSocket::setLogger(msg_logger *_logger)
+void AmRtpSocket::setLogger(const shared_ptr<msg_logger>& _logger)
 {
   // Set logger
-  if (logger) dec_ref(logger);
   logger = _logger;
-  if (logger) inc_ref(logger);
 }
 
 

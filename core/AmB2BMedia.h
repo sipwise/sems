@@ -211,7 +211,7 @@ class AudioStreamData {
     void setInput(AmAudio *_in) { in = _in; }
     AmAudio *getInput() { return in; }
 
-    void setLogger(msg_logger *logger) { if (stream) stream->setLogger(logger); }
+    void setLogger(const shared_ptr<msg_logger>& logger) { if (stream) stream->setLogger(logger); }
 
     void debug();
 };
@@ -297,14 +297,14 @@ class AmB2BMedia: public AmMediaSession
       AudioStreamData a, b;
       int media_idx;
       AudioStreamPair(AmB2BSession *_a, AmB2BSession *_b, int _media_idx): a(_a), b(_b), media_idx(_media_idx) { }
-      void setLogger(msg_logger *logger) { a.setLogger(logger); b.setLogger(logger); }
+      void setLogger(const shared_ptr<msg_logger>& logger) { a.setLogger(logger); b.setLogger(logger); }
       bool requiresProcessing() { return a.getInput() || b.getInput(); }
     };
 
     struct RelayStreamPair {
       AmRtpStream a, b;
       RelayStreamPair(AmB2BSession *_a, AmB2BSession *_b);
-      void setLogger(msg_logger *logger) { a.setLogger(logger); b.setLogger(logger); }
+      void setLogger(const shared_ptr<msg_logger>& logger) { a.setLogger(logger); b.setLogger(logger); }
     };
 
     typedef std::vector<AudioStreamPair>::iterator AudioStreamIterator;
@@ -356,7 +356,7 @@ class AmB2BMedia: public AmMediaSession
     void setMuteFlag(bool a_leg, bool set);
     void changeSessionUnsafe(bool a_leg, AmB2BSession *new_session);
 
-    msg_logger* logger; // log RTP traffic
+    shared_ptr<msg_logger> logger; // log RTP traffic
 
     virtual ~AmB2BMedia();
 
@@ -472,7 +472,7 @@ class AmB2BMedia: public AmMediaSession
     void setFirstStreamInput(bool a_leg, AmAudio *in);
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
-    void setRtpLogger(msg_logger* _logger);
+    void setRtpLogger(const shared_ptr<msg_logger>& _logger);
 
     /** enable or disable DTMF receiving on relay streams */
     void setRelayDTMFReceiving(bool enabled);

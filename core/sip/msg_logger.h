@@ -14,7 +14,6 @@ using std::string;
 struct sockaddr_storage;
 
 class msg_logger
-  : public atomic_ref_cnt
 {
 public:
   msg_logger() {}

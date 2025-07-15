@@ -671,7 +671,7 @@ bool RegisterCache::findAEByContact(const string& contact_uri,
 
 int RegisterCache::parseAoR(RegisterCacheCtx& ctx,
 			     const AmSipRequest& req,
-                             msg_logger *logger)
+                             const shared_ptr<msg_logger>& logger)
 {
   if(ctx.aor_parsed)
     return 0;
@@ -698,14 +698,14 @@ int RegisterCache::parseAoR(RegisterCacheCtx& ctx,
 
 int RegisterCache::parseContacts(RegisterCacheCtx& ctx,
 				  const AmSipRequest& req,
-                                  msg_logger *logger)
+                                  const shared_ptr<msg_logger>& logger)
 {
   if(ctx.contacts_parsed)
     return 0;
 
   if ((RegisterDialog::parseContacts(req.contact, ctx.contacts) < 0) ||
       (ctx.contacts.size() == 0)) {
-    AmBasicSipDialog::reply_error(req, 400, "Bad Request", 
+    AmBasicSipDialog::reply_error(req, 400, "Bad Request",
 				  "Warning: Malformed contact\r\n", logger);
     return -1;
   }
@@ -715,7 +715,7 @@ int RegisterCache::parseContacts(RegisterCacheCtx& ctx,
 
 int RegisterCache::parseExpires(RegisterCacheCtx& ctx,
 				 const AmSipRequest& req,
-                                 msg_logger *logger)
+                                 const shared_ptr<msg_logger>& logger)
 {
   if(ctx.expires_parsed)
     return 0;
@@ -723,7 +723,7 @@ int RegisterCache::parseExpires(RegisterCacheCtx& ctx,
   // move Expires as separate header to contact parameter
   string expires_str = getHeader(req.hdrs, "Expires");
   if (!expires_str.empty() && str2int(expires_str, ctx.requested_expires)) {
-    AmBasicSipDialog::reply_error(req, 400, "Bad Request", 
+    AmBasicSipDialog::reply_error(req, 400, "Bad Request",
 				  "Warning: Malformed expires\r\n", logger);
     return true; // error reply sent
   }
@@ -733,7 +733,7 @@ int RegisterCache::parseExpires(RegisterCacheCtx& ctx,
 
 bool RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
 				      const AmSipRequest& req,
-                                      msg_logger *logger)
+                                      const shared_ptr<msg_logger>& logger)
 {
   if (req.method != SIP_METH_REGISTER) {
     ERROR("unsupported method '%s'\n", req.method.c_str());
@@ -863,7 +863,7 @@ bool RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
 
 bool RegisterCache::saveSingleContact(RegisterCacheCtx& ctx,
 				       const AmSipRequest& req,
-                                       msg_logger *logger)
+                                       const shared_ptr<msg_logger>& logger)
 {
   if (req.method != SIP_METH_REGISTER) {
     ERROR("unsupported method '%s'\n", req.method.c_str());

@@ -96,9 +96,6 @@ sip_trans::~sip_trans()
     if(dialog_id.s) {
 	delete [] dialog_id.s;
     }
-    if(logger) {
-	dec_ref(logger);
-    }
 }
 
 /**

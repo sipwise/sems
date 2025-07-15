@@ -223,10 +223,8 @@ int SipCtrlInterface::cancel(trans_ticket* tt, const string& dialog_id,
 }
 
 int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
-                            const string& next_hop,
-							int out_interface,
-                            unsigned int flags,
-							msg_logger* logger)
+                            const string& next_hop, int out_interface,
+                            unsigned int flags, const shared_ptr<msg_logger>& logger)
 {
     if (req.method == "CANCEL")
         return cancel(&req.tt, dialog_id, req.cseq, req.hdrs);
@@ -369,7 +367,7 @@ void SipCtrlInterface::cleanup()
 }
 
 int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
-			   msg_logger* logger)
+			   const shared_ptr<msg_logger>& logger)
 {
     sip_msg msg;
 

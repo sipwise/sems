@@ -33,8 +33,10 @@
 #include <event2/event.h>
 #include <netinet/in.h>
 #include <string>
+#include <memory>
 
 using std::string;
+using std::shared_ptr;
 
 class AmRtpSocketPair;
 class AmRtpPacket;
@@ -54,7 +56,7 @@ class AmRtpSocket
   static void read_cb(evutil_socket_t sd, short what, void* arg);
 
 protected:
-  msg_logger *logger;
+  shared_ptr<msg_logger> logger;
 
   AmRtpSocketPair* listener;
 
@@ -113,7 +115,7 @@ public:
   inline int getLocalPort() { return am_get_port(&l_saddr); };
 
   /** set destination for logging all received/sent RTP and RTCP packets */
-  void setLogger(msg_logger *_logger);
+  void setLogger(const shared_ptr<msg_logger>& _logger);
 
   AmRtpSocket(AmRtpSocketPair* listener, int interface, const string& ip,
               unsigned int port);

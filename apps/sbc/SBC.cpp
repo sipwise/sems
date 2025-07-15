@@ -318,7 +318,7 @@ AmSession* SBCFactory::onInvite(const AmSipRequest& req, const string& app_name,
 
   SBCCallLeg* b2b_dlg = callLegCreator->create(call_profile);
 
-  msg_logger* logger = b2b_dlg->getCallProfile().get_logger(req);
+  auto logger = b2b_dlg->getCallProfile().get_logger(req);
   if (logger && call_profile.log_sip) req.log(logger);
 
   if (call_profile.auth_aleg_enabled) {
@@ -379,7 +379,7 @@ void SBCFactory::onOoDRequest(const AmSipRequest& req)
   SBCCallProfile call_profile(*p_call_profile);
   profiles_mut.unlock();
 
-  msg_logger* logger = call_profile.get_logger(req);
+  auto logger = call_profile.get_logger(req);
   if (logger && call_profile.log_sip) req.log(logger);
 
   ctx.call_profile = &call_profile;

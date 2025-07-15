@@ -53,6 +53,8 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 
+using std::make_shared;
+
 #define GET_CALL_ID() (dlg->getCallid().c_str())
 
 unsigned int AmSession::session_num = 0;
@@ -128,7 +130,7 @@ AmSession::~AmSession()
 {
   for(vector<AmSessionEventHandler*>::iterator evh = ev_handlers.begin();
       evh != ev_handlers.end(); evh++) {
-    
+
     if((*evh)->destroy)
       delete *evh;
   }

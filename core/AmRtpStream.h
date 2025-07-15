@@ -274,7 +274,7 @@ protected:
   /** Session owning this stream */
   AmSession*         session;
 
-  msg_logger *logger;
+  shared_ptr<msg_logger> logger;
 
   /** Payload provider */
   AmPayloadProvider* payload_provider;
@@ -514,7 +514,7 @@ public:
   void changeSession(AmSession *_s) { session = _s; }
 
   /** set destination for logging all received/sent RTP and RTCP packets */
-  void setLogger(msg_logger *_logger);
+  void setLogger(const shared_ptr<msg_logger>& _logger);
 
   void debug();
 };

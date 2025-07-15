@@ -86,9 +86,9 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   list<atomic_int*> rtp_pegs;
 
   /** common logger for RTP/RTCP and SIP packets */
-  msg_logger *logger;
+  shared_ptr<msg_logger> logger;
 
-  void setLogger(msg_logger *_logger);
+  void setLogger(const shared_ptr<msg_logger>& _logger);
 
   void fixupCCInterface(const string& val, CCInterface& cc_if);
 
@@ -257,7 +257,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   int applySSTCfg(AmConfigReader& sst_cfg, const AmSipRequest* p_req);
 
   bool openLogger(const std::string &path);
-  msg_logger *getLogger() { return logger; }
+  const shared_ptr<msg_logger>& getLogger() { return logger; }
 
   virtual double get491RetryTime() { return (get_random() % call_profile.max_491_retry_time) / 1000.0; }
 };

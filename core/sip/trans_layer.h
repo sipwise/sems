@@ -170,7 +170,8 @@ public:
      * 'Content-Length' header.
      */
     int send_reply(sip_msg* msg, const trans_ticket* tt, const cstring& dialog_id,
-		   const cstring& to_tag, msg_logger* logger=NULL);
+		   const cstring& to_tag,
+		   const shared_ptr<msg_logger>& logger=NULL);
 
     /**
      * Sends a UAC request.
@@ -181,7 +182,7 @@ public:
      */
     int send_request(sip_msg* msg, trans_ticket* tt, const cstring& dialog_id,
 		     const cstring& _next_hop, int out_interface = -1,
-		     unsigned int flags=0, msg_logger* logger=NULL);
+		     unsigned int flags=0, const shared_ptr<msg_logger>& logger=NULL);
 
     /**
      * Cancels a request. 

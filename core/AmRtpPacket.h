@@ -31,6 +31,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <memory>
+
+using std::shared_ptr;
 
 class AmRtpPacketTracer;
 class msg_logger;
@@ -81,8 +84,8 @@ public:
   unsigned char* getBuffer();
   void setBufferSize(unsigned int b) { b_size = b; }
 
-  void logReceived(msg_logger *logger, struct sockaddr_storage *laddr);
-  void logSent(msg_logger *logger, struct sockaddr_storage *laddr);
+  void logReceived(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
+  void logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
 };
 
 #endif

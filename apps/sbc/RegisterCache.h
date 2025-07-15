@@ -313,9 +313,9 @@ protected:
     sleep_cond.notify_all();
   }
 
-  int parseAoR(RegisterCacheCtx& ctx, const AmSipRequest& req, msg_logger *logger);
-  int parseContacts(RegisterCacheCtx& ctx, const AmSipRequest& req, msg_logger *logger);
-  int parseExpires(RegisterCacheCtx& ctx, const AmSipRequest& req, msg_logger *logger);
+  int parseAoR(RegisterCacheCtx& ctx, const AmSipRequest& req, const shared_ptr<msg_logger>& logger);
+  int parseContacts(RegisterCacheCtx& ctx, const AmSipRequest& req, const shared_ptr<msg_logger>& logger);
+  int parseExpires(RegisterCacheCtx& ctx, const AmSipRequest& req, const shared_ptr<msg_logger>& logger);
 
   void setAliasUATimer(AliasEntry* alias_e);
   void removeAliasUATimer(AliasEntry* alias_e);
@@ -408,7 +408,7 @@ public:
    */
   bool throttleRegister(RegisterCacheCtx& ctx,
 			const AmSipRequest& req,
-                        msg_logger *logger = NULL);
+                        const shared_ptr<msg_logger>& logger = NULL);
 
   /**
    * Save a single REGISTER contact into cache
@@ -417,7 +417,7 @@ public:
    * - if request is not a REGISTER.
    * - more than one contact should be (un)registered.
    *
-   * If true has been returned, the request has already 
+   * If true has been returned, the request has already
    * been replied with either an error or 200 (w/ contact).
    *
    * Note: this function also handles binding query.
@@ -425,7 +425,7 @@ public:
    */
   bool saveSingleContact(RegisterCacheCtx& ctx,
 			const AmSipRequest& req,
-                        msg_logger *logger = NULL);
+                        const shared_ptr<msg_logger>& logger = NULL);
 
   /**
    * Statistics

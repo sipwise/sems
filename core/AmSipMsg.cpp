@@ -254,7 +254,7 @@ string AmSipRequest::print() const
 }
 
 
-void AmSipRequest::log(msg_logger *logger) const
+void AmSipRequest::log(const shared_ptr<msg_logger>& logger) const
 {
   tt.lock_bucket();
   const sip_trans* t = tt.get_trans();

@@ -102,14 +102,14 @@ class AmSipRequest : public _AmSipMsgInDlg
 
   AmSipRequest();
   ~AmSipRequest() { }
-  
+
   string print() const;
-  void log(msg_logger *logger) const;
+  void log(const shared_ptr<msg_logger>& logger) const;
 };
 
 string getHeader(const string& hdrs,const string& hdr_name, bool single = false);
 
-string getHeader(const string& hdrs,const string& hdr_name, 
+string getHeader(const string& hdrs,const string& hdr_name,
 		 const string& compact_hdr_name, bool single = false);
 
 /** find a header, starting from char skip

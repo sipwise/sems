@@ -44,7 +44,6 @@ AmBasicSipDialog::~AmBasicSipDialog()
 {
   termUasTrans();
   termUacTrans();
-  if (logger) dec_ref(logger);
   dump();
 }
 
@@ -666,9 +665,9 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
 
 
 /* static */
-int AmBasicSipDialog::reply_error(const AmSipRequest& req, unsigned int code, 
+int AmBasicSipDialog::reply_error(const AmSipRequest& req, unsigned int code,
 				  const string& reason, const string& hdrs,
-				  msg_logger* logger)
+				  const shared_ptr<msg_logger>& logger)
 {
   AmSipReply reply;
 
@@ -787,21 +786,13 @@ void AmBasicSipDialog::dump()
   if(uas_trans.size()){
     for(TransMap::iterator it = uas_trans.begin();
 	it != uas_trans.end(); it++){
-	    
+ 
       ILOG_DLG(L_DBG, "    cseq = %i; method = %s\n",it->first,it->second.method.c_str());
     }
   }
 }
 
-void AmBasicSipDialog::setMsgLogger(msg_logger* logger)
+void AmBasicSipDialog::setMsgLogger(const shared_ptr<msg_logger>& logger)
 {
-  if(this->logger) {
-    dec_ref(this->logger);
-  }
-
-  if(logger){
-    inc_ref(logger);
-  }
-
   this->logger = logger;
 }
