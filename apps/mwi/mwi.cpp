@@ -104,7 +104,7 @@ void MWI::publish(const string& user, const string& domain)
 
   AmMimeBody sms_body;
   sms_body.addPart("application/simple-message-summary");
-  sms_body.setPayload(body.c_str(),body.length());
+  sms_body.setPayload(body);
 
   AmSipDialog tmp_d(NULL);
   tmp_d.setLocalParty(string("<sip:mwi-publisher@") + presence_server + ">");

@@ -1647,7 +1647,7 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
       // result may be ignored, we need to set the SDP
       string n_body;
       sdp.print(n_body);
-      sdp_body->setPayload(n_body.c_str(), n_body.length());
+      sdp_body->setPayload(n_body);
       return ret;
     }
     changed = true;

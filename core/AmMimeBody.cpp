@@ -346,7 +346,7 @@ int AmContentType::Param::parseType()
   return 0;
 }
 
-int AmMimeBody::findNextBoundary(unsigned char** beg, unsigned char** end)
+int AmMimeBody::findNextBoundary(const char** beg, const char** end)
 {
   enum {
     B_START=0,
@@ -364,10 +364,10 @@ int AmMimeBody::findNextBoundary(unsigned char** beg, unsigned char** end)
   if(!ct.mp_boundary)
     return -1;
 
-  unsigned char* c = *beg;
-  unsigned char* b_ini = (unsigned char*)ct.mp_boundary->value.c_str();
-  unsigned char* b = b_ini;
-  unsigned char* b_end = b + ct.mp_boundary->value.length();
+  const char* c = *beg;
+  const char* b_ini = ct.mp_boundary->value.c_str();
+  const char* b = b_ini;
+  const char* b_end = b + ct.mp_boundary->value.length();
 
   int st=B_START;
 
@@ -478,7 +478,7 @@ int AmMimeBody::findNextBoundary(unsigned char** beg, unsigned char** end)
   return -1;
 }
 
-int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
+int AmMimeBody::parseSinglePart(const char* buf, size_t len)
 {
   list<sip_header*> hdrs;
   const char* c = (char*)buf;
@@ -530,23 +530,23 @@ int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
   return 0;
 }
 
-int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
+int AmMimeBody::parseMultipart(const char* buf, size_t len)
 {
   if(!ct.mp_boundary) {
     DBG("boundary parameter missing in a multipart MIME body\n");
     return -1;
   }
 
-  unsigned char* buf_end;
-  unsigned char* part_end;
-  unsigned char* next_part;
+  const char* buf_end;
+  const char* part_end;
+  const char* next_part;
   string temp_buffer;
 
   // if there are quotes around the boundary, we have to fix that
   if (ct.mp_boundary->value.front() == DQUOTE || ct.mp_boundary->value.back() == DQUOTE) {
 
     // cast original char array into a temporary string
-    temp_buffer = reinterpret_cast<const char*>(buf);                   // create a temporary string to keep given buffer
+    temp_buffer = buf;                                                  // create a temporary string to keep given buffer
     const string from = ct.mp_boundary->value;                          // value we are looking for
     const string to = from.substr(1, from.length() - 2);                // value to which we do a substitution
 
@@ -559,22 +559,22 @@ int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
     int eventual_length = temp_buffer.length();
 
     /* TODO: wtf is this?, rework parsing here to work with std::string */
-    buf_end   = (unsigned char*)temp_buffer.c_str() + eventual_length;
-    part_end  = (unsigned char*)temp_buffer.c_str();
-    next_part = (unsigned char*)buf_end;
+    buf_end   = temp_buffer.c_str() + eventual_length;
+    part_end  = temp_buffer.c_str();
+    next_part = buf_end;
   } else {
-    buf_end  = (unsigned char*)buf + len;
-    part_end  = (unsigned char*)buf;
-    next_part = (unsigned char*)buf_end;
+    buf_end  = buf + len;
+    part_end  = buf;
+    next_part = buf_end;
   }
 
-  int err = findNextBoundary(&part_end,&next_part);
+  int err = findNextBoundary(&part_end, &next_part);
   if(err < 0) {
     DBG("unexpected end-of-buffer\n");
     return -1;
   }
 
-  unsigned char* part_beg  = NULL;
+  const char* part_beg  = NULL;
   do {
     part_beg  = next_part;
     part_end  = part_beg;
@@ -602,8 +602,8 @@ int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
 }
 
 int AmMimeBody::parse(const string& content_type,
-		      const char* buf,
-		      unsigned int len)
+		      const char* buf, 
+		      size_t len)
 {
   if(ct.parse(content_type, len) < 0)
     return -1;
@@ -739,10 +739,9 @@ int AmMimeBody::deletePart(const string& content_type)
   return -1;
 }
 
-void AmMimeBody::setPayload(const char* buf, unsigned int len)
+void AmMimeBody::setPayload(const char* buf, size_t len)
 {
-  string tmp(buf, len);
-  payload_s = std::move(tmp);
+  payload_s = string(buf, len);
 }
 
 bool AmMimeBody::empty() const
