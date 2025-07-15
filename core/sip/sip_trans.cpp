@@ -93,9 +93,6 @@ sip_trans::~sip_trans()
     if((type == TT_UAC) && to_tag.s){
 	delete [] to_tag.s;
     }
-    if(dialog_id.s) {
-	delete [] dialog_id.s;
-    }
 }
 
 /**

@@ -216,7 +216,7 @@ static int patch_contact_transport(sip_header* contact, const cstring& trsp,
 }
 
 int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
-			     const cstring& dialog_id, const cstring& to_tag,
+			     const string& dialog_id, const cstring& to_tag,
 			     const shared_ptr<msg_logger>& logger)
 {
     // Ref.: RFC 3261 8.2.6, 12.1.1
@@ -635,10 +635,8 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     if(update_uas_reply(bucket,t,reply_code) == TS_REMOVED)
 	goto end;
 
-    if(dialog_id.len && !(t->dialog_id.len)) {
-	t->dialog_id.s = new char[dialog_id.len];
-	t->dialog_id.len = dialog_id.len;
-	memcpy((void*)t->dialog_id.s,dialog_id.s,dialog_id.len);
+    if (!dialog_id.empty() && t->dialog_id.empty()) {
+        t->dialog_id = dialog_id;
     }
     
  end:
@@ -665,7 +663,7 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
     }
     reply.body = body;
 
-    return send_reply(&reply,tt,cstring(),to_tag);
+    return send_reply(&reply, tt, "", to_tag);
 }
 
 int trans_layer::send_sl_reply(sip_msg* req, int reply_code, 
@@ -1051,7 +1049,7 @@ void trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
     sip_msg reply;
     gen_error_reply_from_req(reply,t->msg,408,"Timeout");
 
-    string dialog_id(t->dialog_id.s,t->dialog_id.len);
+    string dialog_id = t->dialog_id;
 
     if(t->flags & TR_FLAG_DISABLE_BL) {
 	bucket->remove(t);
@@ -1062,7 +1060,7 @@ void trans_layer::timeout(trans_bucket* bucket, sip_trans* t)
     }
     bucket->unlock();
 
-    ua->handle_sip_reply(dialog_id,&reply);
+    ua->handle_sip_reply(dialog_id, &reply);
 }
 
 static int patch_ruri_with_remote_ip(string& n_uri, sip_msg* msg)
@@ -1198,7 +1196,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 }
  
 int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
-			       const cstring& dialog_id,
+			       const string& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
 			       const shared_ptr<msg_logger>& logger)
@@ -1276,7 +1274,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	sip_msg err;
 	set_err_reply_from_req(&err,msg,500,
 			       "No destination available");
-	ua->handle_sip_reply(c2stlstr(dialog_id),&err);
+	ua->handle_sip_reply(dialog_id, &err);
 	return 0;
     }
 
@@ -1375,10 +1373,8 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	    }
 	}
 
-	if(dialog_id.len && tt->_t && !(tt->_t->dialog_id.len)) {
-	    tt->_t->dialog_id.s = new char[dialog_id.len];
-	    tt->_t->dialog_id.len = dialog_id.len;
-	    memcpy((void*)tt->_t->dialog_id.s,dialog_id.s,dialog_id.len);
+	if (!dialog_id.empty() && tt->_t && tt->_t->dialog_id.empty()) {
+            tt->_t->dialog_id = dialog_id;
 	}
     }
 
@@ -1387,7 +1383,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     return err;
 }
 
-int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
+int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 			 unsigned int inv_cseq, const cstring& hdrs)
 {
     assert(tt);
@@ -1398,8 +1394,8 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 
     bucket->lock();
     if(!bucket->exist(t) || (t->state == TS_ABANDONED)){
-	if(dialog_id.len)
-	    t = bucket->find_uac_trans(dialog_id,inv_cseq);
+	if (!dialog_id.empty())
+	    t = bucket->find_uac_trans(dialog_id, inv_cseq);
 	else
 	    t = NULL;
     }
@@ -1423,8 +1419,8 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
     if(req->u.request->method != sip_request::INVITE){
 	t->dump();
 	bucket->unlock();
-	ERROR("Trying to cancel a non-INVITE request (we SHOULD NOT do that); inv_cseq: %u, i:%.*s\n",
-	      inv_cseq, dialog_id.len,dialog_id.s);
+	ERROR("Trying to cancel a non-INVITE request (we SHOULD NOT do that); inv_cseq: %u, i:%s\n",
+	      inv_cseq, dialog_id.c_str());
 	return -1;
     }
     
@@ -1439,15 +1435,15 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 	// Answer request internally to terminate the dialog...
 	sip_msg reply;
 	gen_error_reply_from_req(reply, t->msg, 487, "Request Terminated");
-	string dlg_id(t->dialog_id.s, t->dialog_id.len);
+	string dlg_id = t->dialog_id;
 	bucket->unlock();
 	ua->handle_sip_reply(dlg_id, &reply);
 	return 0;
     }
 
     case TS_COMPLETED:
-	ERROR("Trying to cancel a request while in TS_COMPLETED state; inv_cseq: %u, i:%.*s\n",
-	      inv_cseq, dialog_id.len,dialog_id.s);
+	ERROR("Trying to cancel a request while in TS_COMPLETED state; inv_cseq: %u, i:%s\n",
+	      inv_cseq, dialog_id.c_str());
 	t->dump();
 	bucket->unlock();
 	return -1;
@@ -1458,8 +1454,8 @@ int trans_layer::cancel(trans_ticket* tt, const cstring& dialog_id,
 	break;
 
     default:
-	ERROR("Trying to cancel a request while in %s state; inv_cseq: %u, i:%.*s\n",
-	      t->state_str(), inv_cseq, dialog_id.len,dialog_id.s);
+	ERROR("Trying to cancel a request while in %s state; inv_cseq: %u, i:%s\n",
+	      t->state_str(), inv_cseq, dialog_id.c_str());
 	t->dump();
 	bucket->unlock();
 	return -1;
@@ -1726,8 +1722,8 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 			       msg->u.reply->code);
 	    }
 
-	    string dialog_id(t->dialog_id.s, t->dialog_id.len);
-	    int res = update_uac_reply(bucket,t,msg);
+	    string dialog_id = t->dialog_id;
+	    int res = update_uac_reply(bucket, t, msg);
 	    if(res < 0){
 		ERROR("update_uac_trans() failed, so what happens now???\n");
 		break;
@@ -1811,7 +1807,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 	    {
 		// send CANCEL
 		trans_ticket tt(t,bucket);
-		cancel(&tt,cstring(),0,cstring());
+		cancel(&tt, "", 0, cstring());
 	    
 		// Now remove the transaction
 		bucket->lock();
@@ -2387,7 +2383,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	{
 	    // send CANCEL
 	    trans_ticket tt(tr,bucket);
-	    cancel(&tt,cstring(),0,cstring());
+	    cancel(&tt, "", 0, cstring());
 	    
 	    // Now remove the transaction
 	    bucket->lock();
@@ -2613,11 +2609,7 @@ sip_trans* trans_layer::copy_uac_trans(sip_trans* tr)
     n_tr->type  = tr->type;
     n_tr->flags = tr->flags;
 
-    if(tr->dialog_id.len) {
-	n_tr->dialog_id.s = new char[tr->dialog_id.len];
-	n_tr->dialog_id.len = tr->dialog_id.len;
-	memcpy((void*)n_tr->dialog_id.s,tr->dialog_id.s,n_tr->dialog_id.len);
-    }
+    n_tr->dialog_id = tr->dialog_id;
 
     if(tr->logger) {
 	n_tr->logger = tr->logger;

@@ -169,7 +169,7 @@ public:
      * include a well-formed 'Content-Type', but no
      * 'Content-Length' header.
      */
-    int send_reply(sip_msg* msg, const trans_ticket* tt, const cstring& dialog_id,
+    int send_reply(sip_msg* msg, const trans_ticket* tt, const string& dialog_id,
 		   const cstring& to_tag,
 		   const shared_ptr<msg_logger>& logger=NULL);
 
@@ -180,7 +180,7 @@ public:
      * @param [in]  msg Pre-built message.
      * @param [out] tt transaction ticket (needed for replies & CANCEL)
      */
-    int send_request(sip_msg* msg, trans_ticket* tt, const cstring& dialog_id,
+    int send_request(sip_msg* msg, trans_ticket* tt, const string& dialog_id,
 		     const cstring& _next_hop, int out_interface = -1,
 		     unsigned int flags=0, const shared_ptr<msg_logger>& logger=NULL);
 
@@ -189,7 +189,7 @@ public:
      * A CANCEL request is sent if necessary.
      * @param tt transaction ticket from the original INVITE.
      */
-    int cancel(trans_ticket* tt, const cstring& dialog_id,
+    int cancel(trans_ticket* tt, const string& dialog_id,
 	       unsigned int inv_cseq, const cstring& hdrs);
     
     /**

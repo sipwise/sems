@@ -218,8 +218,8 @@ SipCtrlInterface::SipCtrlInterface()
 int SipCtrlInterface::cancel(trans_ticket* tt, const string& dialog_id,
 			      unsigned int inv_cseq, const string& hdrs)
 {
-    return trans_layer::instance()->cancel(tt,stl2cstr(dialog_id),
-					   inv_cseq,stl2cstr(hdrs));
+    return trans_layer::instance()->cancel(tt, dialog_id,
+					   inv_cseq, stl2cstr(hdrs));
 }
 
 int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
@@ -315,7 +315,7 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     }
 
     int res = trans_layer::instance()->send_request(msg,&req.tt,
-                                                    stl2cstr(dialog_id),
+                                                    dialog_id,
                                                     stl2cstr(next_hop),
                                                     out_interface,
                                                     flags,
@@ -411,7 +411,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
 
     return
 	trans_layer::instance()->send_reply(&msg,(trans_ticket*)&rep.tt,
-					    stl2cstr(dialog_id),
+					    dialog_id,
 					    stl2cstr(rep.to_tag),logger);
 }
 
@@ -787,13 +787,13 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
     return;
   }
 
-  cstring dlg_id = tr->to_tag;
-  if(tr->dialog_id.len) {
+  string dlg_id = c2stlstr(tr->to_tag);
+  if (!tr->dialog_id.empty()) {
       dlg_id = tr->dialog_id;
   }
 
-  if(!AmEventDispatcher::instance()->post(c2stlstr(dlg_id), tmo_evt)){
-      DBG("Could not post timeout event (sess. id: %.*s)\n",dlg_id.len,dlg_id.s);
+  if(!AmEventDispatcher::instance()->post(dlg_id, tmo_evt)){
+      DBG("Could not post timeout event (sess. id: %s)\n", dlg_id.c_str());
       delete tmo_evt;
   }
 }

@@ -133,7 +133,7 @@ class sip_trans
     unsigned int last_rseq;
 
     /** Dialog-ID used for UAC transactions */
-    cstring dialog_id;
+    string dialog_id;
 
     /** Destination list for requests */
     sip_target_set* targets;

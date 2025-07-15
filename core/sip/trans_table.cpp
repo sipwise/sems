@@ -415,11 +415,11 @@ sip_trans* trans_bucket::match_1xx_prack(sip_msg* msg)
     return NULL;
 }
 
-sip_trans* trans_bucket::find_uac_trans(const cstring& dialog_id,
+sip_trans* trans_bucket::find_uac_trans(const string& dialog_id,
 					unsigned int inv_cseq)
 {
-    DBG("Matching dialog_id = '%.*s'\n",
-	dialog_id.len, dialog_id.s);
+    DBG("Matching dialog_id = '%s'\n",
+	dialog_id.c_str());
 
     if(elmts.empty())
 	return NULL;
