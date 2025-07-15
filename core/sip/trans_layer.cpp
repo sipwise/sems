@@ -864,7 +864,7 @@ static void set_err_reply_from_req(sip_msg* err, sip_msg* req,
 
 void trans_layer::transport_error(sip_msg* msg)
 {
-    char* err_msg=0;
+    const char* err_msg=0;
     int ret = parse_sip_msg(*msg, err_msg);
     if(ret){
 	DBG("parse_sip_msg returned %i\n",ret);
@@ -1055,7 +1055,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     buf += msg->body;
 
     // and parse it
-    char* err_msg=0;
+    const char* err_msg=0;
     if(parse_sip_msg(*p_msg, err_msg)){
  	ERROR("Parser failed on generated request\n");
         ERROR("Message was: <%s>\n", buf.c_str());
@@ -1361,7 +1361,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
     buf += LF;
 
     // and parse it
-    char* err_msg=0;
+    const char* err_msg=0;
     if(parse_sip_msg(*p_msg, err_msg)){
 	ERROR("Parser failed on generated request\n");
 	ERROR("Message was: <%s>\n", buf.c_str());
@@ -1419,7 +1419,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 
 void trans_layer::received_msg(sip_msg* msg)
 {
-    char* err_msg=0;
+    const char* err_msg=0;
     int err = parse_sip_msg(*msg, err_msg);
 
     if(err){

@@ -750,7 +750,7 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
   case AmSipTimeoutEvent::noPRACK: {
       sip_msg msg(tr->retr_buf->c_str(), tr->retr_buf->length());
 
-      char* err_msg=0;
+      const char* err_msg=0;
       int err = parse_sip_msg(msg, err_msg);
       if (err) {
           ERROR("failed to parse (own) reply[%d]: %s.\n", err, 

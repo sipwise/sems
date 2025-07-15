@@ -519,7 +519,7 @@ int parse_headers(sip_msg& msg, const char** c, const char* end)
     return err;
 }
 
-int parse_sip_msg(sip_msg& msg, char*& err_msg)
+int parse_sip_msg(sip_msg& msg, const char*& err_msg)
 {
     const char* c = msg.buf.c_str();
     const char* end = c + msg.buf.length();
@@ -527,7 +527,7 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
     int err = parse_first_line(msg, &c, end);
 
     if(err) {
-	err_msg = (char*)"Could not parse first line";
+	err_msg = "Could not parse first line";
 	return MALFORMED_FLINE;
     }
 
@@ -544,19 +544,19 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
        !msg.callid) {
 
 	if(!msg.via1){
-	    err_msg = (char*)"missing Via header field";
+	    err_msg = "missing Via header field";
 	} 
 	else if(!msg.cseq){
-	    err_msg = (char*)"missing CSeq header field";
+	    err_msg = "missing CSeq header field";
 	}
 	else if(!msg.from){
-	    err_msg = (char*)"missing From header field";
+	    err_msg = "missing From header field";
 	}
 	else if(!msg.to){
-	    err_msg = (char*)"missing To header field";
+	    err_msg = "missing To header field";
 	}
 	else if(!msg.callid){
-	    err_msg = (char*)"missing Call-ID header field";
+	    err_msg = "missing Call-ID header field";
 	}
 
 	return INCOMPLETE_SIP_MSG;
@@ -572,7 +572,7 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
 	msg.via1->p = via.release();
     }
     else {
-	err_msg = (char*)"could not parse Via hf";
+	err_msg = "could not parse Via hf";
 	return MALFORMED_SIP_MSG;
     }
 
@@ -586,17 +586,17 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
 	msg.cseq->p = cseq.release();
     }
     else {
-	err_msg = (char*)"could not parse CSeq hf";
+	err_msg = "could not parse CSeq hf";
 	return MALFORMED_SIP_MSG;
     }
 
     unique_ptr<sip_from_to> from(new sip_from_to());
     if(parse_from_to(from.get(), msg.from->value.s, msg.from->value.len) != 0) {
-	err_msg = (char*)"could not parse From hf";
+	err_msg = "could not parse From hf";
 	return MALFORMED_SIP_MSG;
     }
     if(!from->tag.len) {
-	err_msg = (char*)"missing From-tag";
+	err_msg = "missing From-tag";
 	return MALFORMED_SIP_MSG;
     }
     msg.from->p = from.release();
@@ -609,7 +609,7 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
 	msg.to->p = to.release();
     }
     else {
-	err_msg = (char*)"could not parse To hf";
+	err_msg = "could not parse To hf";
 	return MALFORMED_SIP_MSG;
     }
 
@@ -618,7 +618,7 @@ int parse_sip_msg(sip_msg& msg, char*& err_msg)
         if (parse_rack(rack.get(), msg.rack->value.s, msg.rack->value.len)) {
             msg.rack->p = rack.release();
         } else {
-            err_msg = (char *)"could not parse RAck hf";
+            err_msg = "could not parse RAck hf";
             return MALFORMED_SIP_MSG;
         }
     }
