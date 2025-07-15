@@ -244,10 +244,10 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
      * Contact
      * Max-Forwards */
     
-    char * c = (char*)req.from.c_str();
+    const char* c = req.from.c_str();
     int err = parse_headers(msg, &c, (c + req.from.length()));
 
-    c = (char*)req.to.c_str();
+    c = req.to.c_str();
     err = err || parse_headers(msg, &c, (c + req.to.length()));
 
     if (err) {
@@ -373,7 +373,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
 
     if(!rep.hdrs.empty()) {
 
-	char* c = (char*)rep.hdrs.c_str();
+	const char* c = rep.hdrs.c_str();
 	int err = parse_headers(&msg,&c,c+rep.hdrs.length());
 	if(err){
 	    ERROR("Malformed additional header\n");
@@ -383,7 +383,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
 
     if(!rep.contact.empty()){
 
-	char* c = (char*)rep.contact.c_str();
+	const char* c = rep.contact.c_str();
 	int err = parse_headers(&msg,&c,c+rep.contact.length());
 	if(err){
 	    ERROR("Malformed Contact header\n");

@@ -481,8 +481,8 @@ int AmMimeBody::findNextBoundary(unsigned char** beg, unsigned char** end)
 int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
 {
   list<sip_header*> hdrs;
-  char* c = (char*)buf;
-  char* end = c + len;
+  const char* c = (char*)buf;
+  const char* end = c + len;
 
   // parse headers first
   if(parse_headers(hdrs,&c,c+len) < 0) {

@@ -654,7 +654,7 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
     sip_msg reply;
     reply.u.reply = new sip_reply(reply_code,reason);
 
-    char* c = (char*)hdrs.s;
+    const char* c = hdrs.s;
     int err = parse_headers(&reply,&c,c+hdrs.len);
     if(err){
 	ERROR("Malformed additional header\n");

@@ -268,7 +268,7 @@ void add_parsed_header(list<sip_header*>& hdrs, sip_header* hdr)
     hdrs.push_back(hdr);
 }
 
-int parse_headers(list<sip_header*>& hdrs, char** c, char* end)
+int parse_headers(list<sip_header*>& hdrs, const char** c, const char* end)
 {
     //
     // Header states
@@ -283,7 +283,7 @@ int parse_headers(list<sip_header*>& hdrs, char** c, char* end)
     int st = H_NAME;
     int saved_st = 0;
 
-    char* begin = *c;
+    const char* begin = *c;
     if(!(*c) || (*c == end)) {
 	return 0;
     }

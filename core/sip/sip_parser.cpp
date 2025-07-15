@@ -241,7 +241,7 @@ int parse_method(int* method, const char* beg, int len)
 }
 
 
-static int parse_first_line(sip_msg* msg, char** c, char* end)
+static int parse_first_line(sip_msg* msg, const char** c, const char* end)
 {
     enum {
 	FL_METH=0,
@@ -267,7 +267,7 @@ static int parse_first_line(sip_msg* msg, char** c, char* end)
 	FL_ERR
     };
 
-    char* beg = *c;
+    const char* beg = *c;
     int saved_st=0, st=FL_SIPVER1;
     int err=0;
 
@@ -454,7 +454,7 @@ static int parse_first_line(sip_msg* msg, char** c, char* end)
     return UNEXPECTED_EOT;
 }
 
-int parse_headers(sip_msg* msg, char** c, char* end)
+int parse_headers(sip_msg* msg, const char** c, const char* end)
 {
     list<sip_header*> hdrs;
     int err = parse_headers(hdrs,c,end);
@@ -528,8 +528,8 @@ int parse_headers(sip_msg* msg, char** c, char* end)
 
 int parse_sip_msg(sip_msg* msg, char*& err_msg)
 {
-    char* c = msg->buf;
-    char* end = msg->buf + msg->len;
+    const char* c = msg->buf;
+    const char* end = c + msg->len;
 
     int err = parse_first_line(msg,&c,end);
 
