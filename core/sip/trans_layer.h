@@ -170,7 +170,7 @@ public:
      * 'Content-Length' header.
      */
     int send_reply(sip_msg* msg, const trans_ticket* tt, const string& dialog_id,
-		   const cstring& to_tag,
+		   const string& to_tag,
 		   const shared_ptr<msg_logger>& logger=NULL);
 
     /**

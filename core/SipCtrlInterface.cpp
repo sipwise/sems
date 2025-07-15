@@ -412,7 +412,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
     return
 	trans_layer::instance()->send_reply(&msg,(trans_ticket*)&rep.tt,
 					    dialog_id,
-					    stl2cstr(rep.to_tag),logger);
+					    rep.to_tag, logger);
 }
 
 
@@ -787,10 +787,7 @@ void SipCtrlInterface::handle_reply_timeout(AmSipTimeoutEvent::EvType evt,
     return;
   }
 
-  string dlg_id = c2stlstr(tr->to_tag);
-  if (!tr->dialog_id.empty()) {
-      dlg_id = tr->dialog_id;
-  }
+  const string& dlg_id = tr->dialog_id.empty() ? tr->to_tag : tr->dialog_id;
 
   if(!AmEventDispatcher::instance()->post(dlg_id, tmo_evt)){
       DBG("Could not post timeout event (sess. id: %s)\n", dlg_id.c_str());

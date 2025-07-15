@@ -216,7 +216,7 @@ static int patch_contact_transport(sip_header* contact, const cstring& trsp,
 }
 
 int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
-			     const string& dialog_id, const cstring& to_tag,
+			     const string& dialog_id, const string& to_tag,
 			     const shared_ptr<msg_logger>& logger)
 {
     // Ref.: RFC 3261 8.2.6, 12.1.1
@@ -329,17 +329,17 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
 	case sip_header::H_TO:
 	    if (!(*it)->p) break; // ignore if not parsed
-	    if(to_tag.len) {
+	    if (!to_tag.empty()) {
 		if(! ((sip_from_to*)(*it)->p)->tag.len ) {
 		    
 		    reply_len += 5/* ';tag=' */
-			+ to_tag.len; 
+			+ to_tag.length(); 
 		}
 		else {
 		    // To-tag present in request...
 		    have_to_tag = true;
 		    // ... save it:
-		    t->to_tag = ((sip_from_to*)(*it)->p)->tag;
+		    t->to_tag = c2stlstr(((sip_from_to*)(*it)->p)->tag);
 		}
 	    }
 	    else if(reply_code >= 300) {
@@ -484,7 +484,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
 	case sip_header::H_TO:
 	    if (!(*it)->p) break; // ignore if not parsed
-	    if(!to_tag.len || have_to_tag){
+	    if (to_tag.empty() || have_to_tag){
 		copy_hdr_wr(&c,*it);
 	    }
 	    else {
@@ -500,11 +500,10 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 		memcpy(c,";tag=",5);
 		c += 5;
 
-		t->to_tag.s = c;
-		t->to_tag.len = to_tag.len;
+		t->to_tag = to_tag;
 
-		memcpy(c,to_tag.s,to_tag.len);
-		c += to_tag.len;
+		memcpy(c, to_tag.c_str(), to_tag.length());
+		c += to_tag.length();
 
 		*(c++) = CR;
 		*(c++) = LF;
@@ -649,8 +648,8 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
 				      const cstring& hdrs, const cstring& body)
 {
     char to_tag_buf[SL_TOTAG_LEN];
-    cstring to_tag(to_tag_buf,SL_TOTAG_LEN);
     compute_sl_to_tag(to_tag_buf,req);
+    string to_tag(to_tag_buf, SL_TOTAG_LEN);
 
     sip_msg reply;
     reply.u.reply = new sip_reply(reply_code,reason);
@@ -1769,7 +1768,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 {
     assert(msg->type == SIP_REPLY);
 
-    cstring to_tag;
+    string to_tag;
     int     reply_code = msg->u.reply->code;
 
     DBG("update_uac_reply(reply code = %i, trans=%p)\n",reply_code, t);
@@ -1829,7 +1828,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 	}
     }
     
-    to_tag = ((sip_from_to*)msg->to->p)->tag;
+    to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
     // if((t->msg->u.request->method == sip_request::INVITE) &&
     //    (reply_code < 300) &&
     //    !to_tag.len){
@@ -1940,18 +1939,15 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 
 		t->reset_timer(STIMER_L, L_TIMER, bucket->get_id());
 
-		if (t->to_tag.len==0 && to_tag.len!=0) {
-			t->to_tag.s = new char[to_tag.len];
-			t->to_tag.len = to_tag.len;
-			memcpy((void*)t->to_tag.s,to_tag.s,to_tag.len);
+		if (t->to_tag.empty() && !to_tag.empty()) {
+                        t->to_tag = to_tag;
 		}
 		
 		goto pass_reply;
 		
 	    case TS_TERMINATED_200: // subsequent 2xx reply (no ACK sent)
 		
-		if( (to_tag.len != t->to_tag.len) ||
-		    (memcmp(to_tag.s,t->to_tag.s,to_tag.len) != 0) ){
+		if (to_tag != t->to_tag) {
 
 		    // TODO: 
 		    //   (this should be implemented in the UA)

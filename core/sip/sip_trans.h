@@ -120,7 +120,7 @@ class sip_trans
 
     /** To-tag included in reply.
 	(useful for ACK matching) */
-    cstring to_tag;
+    string to_tag;
 
     /** reply code of last
         sent/received reply */

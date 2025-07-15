@@ -90,9 +90,6 @@ sip_trans::~sip_trans()
     delete msg;
     delete targets;
     delete [] retr_buf;
-    if((type == TT_UAC) && to_tag.s){
-	delete [] to_tag.s;
-    }
 }
 
 /**
@@ -275,9 +272,9 @@ const char* sip_trans::state_str() const
 
 void sip_trans::dump() const
 {
-    DBG("type=%s (0x%x); msg=%p; to_tag=%.*s;"
+    DBG("type=%s (0x%x); msg=%p; to_tag=%s;"
 	" reply_status=%i; state=%s (%i); retr_buf=%p; timers [%s,%s,%s]\n",
-	type_str(),type,msg,to_tag.len,to_tag.s,
+	type_str(), type, msg, to_tag.c_str(),
 	reply_status,state_str(),state,retr_buf,
 	timers[0]==NULL?"none":timer_name(timers[0]->type),
 	timers[1]==NULL?"none":timer_name(timers[1]->type),
