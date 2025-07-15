@@ -317,10 +317,10 @@ void udp_trsp::run()
 	    char host[NI_MAXHOST] = "";
 	    _LOG(trsp_socket::log_level_raw_msgs,
 		 "received msg via UDP from %s:%i:\n"
-		 "%.*s\n",
+		 "%s\n",
 		 am_inet_ntop_sip(&s_msg->remote_ip,host,NI_MAXHOST),
 		 am_get_port(&s_msg->remote_ip),
-		 s_msg->len, s_msg->buf);
+		 s_msg->buf.c_str());
 	}
 
 	s_msg->local_socket = sock;

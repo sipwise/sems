@@ -311,7 +311,7 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
         msg->content_type = new sip_header(0,SIP_HDR_CONTENT_TYPE, stl2cstr(content_type));
         msg->hdrs.push_back(msg->content_type);
         req.body.print(body);
-        msg->body = stl2cstr(body);
+        msg->body = body;
     }
 
     int res = trans_layer::instance()->send_request(msg,&req.tt,
@@ -400,7 +400,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
     	    ERROR("Reply does not contain a Content-Type whereby body is not empty\n");
     	    return -1;
     	}
-	msg.body = stl2cstr(body);
+	msg.body = body;
 	msg.hdrs.push_back(new sip_header(sip_header::H_CONTENT_TYPE,
 					  SIP_HDR_CONTENT_TYPE,
 					  stl2cstr(content_type)));
@@ -437,7 +437,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	if(parse_first_nameaddr(&na,contact.s,contact.len) < 0) {
 	    WARN("Contact parsing failed\n");
 	    WARN("\tcontact = '%.*s'\n",contact.len,contact.s);
-	    WARN("\trequest = '%.*s'\n",msg->len,msg->buf);
+	    WARN("\trequest = '%s'\n", msg->buf.c_str());
 
 	    trans_layer::instance()->send_sf_error_reply(&tt, msg, 400, 
 							 "Bad Contact");
@@ -450,7 +450,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    if(parse_uri(&u,na.addr.s,na.addr.len)){
 		DBG("'Contact' in new request contains a malformed URI\n");
 		DBG("\tcontact uri = '%.*s'\n",na.addr.len,na.addr.s);
-		DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
+		DBG("\trequest = '%s'\n", msg->buf.c_str());
 
 		trans_layer::instance()->
 		    send_sf_error_reply(&tt, msg, 400, "Malformed Contact URI");
@@ -471,7 +471,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     else {
 	if (req.method == SIP_METH_INVITE) {
 	    DBG("Request has no contact header\n");
-	    DBG("\trequest = '%.*s'\n",msg->len,msg->buf);
+	    DBG("\trequest = '%s'\n", msg->buf.c_str());
 	    trans_layer::instance()->
 		send_sf_error_reply(&tt, msg, 400, "Missing Contact-HF");
 	    return false;
@@ -505,8 +505,8 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     if (msg->content_type) {
 
 	if(req.body.parse(c2stlstr(msg->content_type->value),
-			  msg->body.s,
-			  msg->body.len) < 0) {
+			  msg->body.c_str(),
+			  msg->body.length()) < 0) {
 	    DBG("could not parse MIME body\n");
 	}
 	else {
@@ -572,8 +572,8 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     if (msg->content_type) {
 
 	if(reply.body.parse(c2stlstr(msg->content_type->value),
-			    msg->body.s,
-			    msg->body.len) < 0) {
+			    msg->body.c_str(),
+			    msg->body.length()) < 0) {
 	    DBG("could not parse MIME body\n");
 	}
 	else {

@@ -44,8 +44,7 @@
 using std::unique_ptr;
 
 sip_msg::sip_msg(const char* msg_buf, int msg_len)
-    : buf(NULL),
-      hdrs(),
+    : hdrs(),
       to(NULL),
       from(NULL),
       cseq(NULL),
@@ -71,8 +70,7 @@ sip_msg::sip_msg(const char* msg_buf, int msg_len)
 }
 
 sip_msg::sip_msg()
-    : buf(NULL),
-      hdrs(),
+    : hdrs(),
       to(NULL),
       from(NULL),
       cseq(NULL),
@@ -97,8 +95,6 @@ sip_msg::sip_msg()
 
 sip_msg::~sip_msg()
 {
-    delete [] buf;
-
     list<sip_header*>::iterator it;
     for(it = hdrs.begin();
 	it != hdrs.end(); ++it) {
@@ -119,15 +115,12 @@ sip_msg::~sip_msg()
 
 void sip_msg::copy_msg_buf(const char* msg_buf, int msg_len)
 {
-    buf = new char[msg_len+1];
-    memcpy(buf,msg_buf,msg_len);
-    buf[msg_len] = '\0';
-    len = msg_len;
+    buf = string(msg_buf, msg_len);
 }
 
 void sip_msg::release()
 {
-    buf = NULL;
+    buf.clear();
     hdrs.clear();
     u.request = NULL;
     local_socket = NULL;
@@ -136,7 +129,7 @@ void sip_msg::release()
 int sip_msg::send(unsigned int flags)
 {
     assert(local_socket);
-    return local_socket->send(&remote_ip,buf,len,flags);
+    return local_socket->send(&remote_ip, buf.c_str(), buf.length(), flags);
 }
 
 
@@ -528,8 +521,8 @@ int parse_headers(sip_msg* msg, const char** c, const char* end)
 
 int parse_sip_msg(sip_msg* msg, char*& err_msg)
 {
-    const char* c = msg->buf;
-    const char* end = c + msg->len;
+    const char* c = msg->buf.c_str();
+    const char* end = c + msg->buf.length();
 
     int err = parse_first_line(msg,&c,end);
 
@@ -541,7 +534,7 @@ int parse_sip_msg(sip_msg* msg, char*& err_msg)
     err = parse_headers(msg,&c,end);
 
     if(!err){
-	msg->body.set(c,msg->len - (c - msg->buf));
+	msg->body = string(c, msg->buf.length() - (c - msg->buf.c_str()));
     }
 
     if(!msg->via1 ||

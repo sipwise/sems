@@ -394,12 +394,12 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
     reply_len += copy_hdrs_len(msg->hdrs);
 
-    string c_len = int2str(msg->body.len);
+    string c_len = int2str((unsigned int) msg->body.length());
     reply_len += content_length_len((char*)c_len.c_str());
 
-    if(msg->body.len){
+    if(msg->body.length()){
 	
-	reply_len += msg->body.len;
+	reply_len += msg->body.length();
     }
 
     reply_len += 2/*CRLF*/;
@@ -525,8 +525,8 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     *c++ = CR;
     *c++ = LF;
 
-    if(msg->body.len){
-	memcpy(c,msg->body.s,msg->body.len);
+    if(msg->body.length()){
+	memcpy(c, msg->body.c_str(), msg->body.length());
     }
 
     int err = -1;
@@ -660,7 +660,7 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
 	ERROR("Malformed additional header\n");
 	return -1;
     }
-    reply.body = body;
+    reply.body = c2stlstr(body);
 
     return send_reply(&reply, tt, "", to_tag);
 }
@@ -974,7 +974,7 @@ void trans_layer::transport_error(sip_msg* msg)
 	}
 	DBG("parsing error: %s\n",err_msg);
 
-	DBG("Message was: \"%.*s\"\n",msg->len,msg->buf);
+	DBG("Message was: \"%s\"\n", msg->buf.c_str());
 	return;
     }
 
@@ -995,7 +995,8 @@ void trans_layer::transport_error(sip_msg* msg)
 static void translate_string(sip_msg* dst_msg, cstring& dst,
 			     const sip_msg* src_msg, const cstring& src)
 {
-    dst.s = (char*)src.s + (dst_msg->buf - src_msg->buf);
+    // TODO: use string views
+    dst.s = dst_msg->buf.c_str() + (src.s - src_msg->buf.c_str());
     dst.len = src.len;
 }
 
@@ -1013,7 +1014,7 @@ static void translate_hdr(sip_msg* dst_msg, sip_header*& dst,
 static void gen_error_reply_from_req(sip_msg& reply, const sip_msg* req,
 				     int code, const char* reason)
 {
-    reply.copy_msg_buf(req->buf,req->len);
+    reply.copy_msg_buf(req->buf);
 
     reply.type = SIP_REPLY;
     reply.u.reply = new sip_reply();
@@ -1139,22 +1140,21 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     request_len += copy_hdrs_len_no_via_contact(msg->hdrs);
     request_len += copy_hdrs_len(n_contacts);
      
-    string content_len = int2str(msg->body.len);
+    string content_len = int2str((unsigned int) msg->body.length());
      
     request_len += content_length_len(stl2cstr(content_len));
     request_len += 2/* CRLF end-of-headers*/;
      
-    if(msg->body.len){
- 	request_len += msg->body.len;
+    if (msg->body.length()) {
+ 	request_len += msg->body.length();
     }
      
     // Allocate new message
     p_msg = new sip_msg();
-    p_msg->buf = new char[request_len+1];
-    p_msg->len = request_len;
+    char* buf = new char[request_len+1];
  
     // generate it
-    char* c = p_msg->buf;
+    char* c = buf;
     request_line_wr(&c,msg->u.request->method_str,
  		    msg->u.request->ruri_str);
  
@@ -1170,18 +1170,20 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     *c++ = CR;
     *c++ = LF;
  
-    if(msg->body.len){
- 	memcpy(c,msg->body.s,msg->body.len);
+    if (msg->body.length()) {
+ 	memcpy(c, msg->body.c_str(), msg->body.length());
  
- 	c += msg->body.len;
+ 	c += msg->body.length();
     }
     *c++ = '\0';
+
+    p_msg->buf = string(buf, request_len);
 
     // and parse it
     char* err_msg=0;
     if(parse_sip_msg(p_msg,err_msg)){
  	ERROR("Parser failed on generated request\n");
- 	ERROR("Message was: <%.*s>\n",p_msg->len,p_msg->buf);
+        ERROR("Message was: <%s>\n", p_msg->buf.c_str());
  	delete p_msg;
  	p_msg = NULL;
  	return MALFORMED_SIP_MSG;
@@ -1289,10 +1291,10 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     err = generate_and_parse_new_msg(msg,p_msg);
     if(err != 0) { return err; }
 
-    DBG("Sending to %s:%i <%.*s...>\n",
+    DBG("Sending to %s:%i <%s...>\n",
 	get_addr_str(&p_msg->remote_ip).c_str(),
 	ntohs(((sockaddr_in*)&p_msg->remote_ip)->sin_port),
-	p_msg->len,p_msg->buf);
+	p_msg->buf.c_str());
 
     tt->_bucket = get_trans_bucket(p_msg->callid->value,
 				   get_cseq(p_msg)->num_str);
@@ -1349,7 +1351,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	    msg->local_socket->copy_addr_to(&src_ip);
 
 	    cstring method_str = msg->u.request->method_str;
-	    char* msg_buffer=NULL;
+	    const char* msg_buffer=NULL;
 	    unsigned int msg_len=0;
 
 	    if(tt->_t && (method == sip_request::ACK)) {
@@ -1359,8 +1361,8 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	    }
 		/* p_msg could have been freed already by update_uac_request() */
 	    else if (p_msg) {
-		msg_buffer = p_msg->buf;
-		msg_len = p_msg->len;
+		msg_buffer = p_msg->buf.c_str();
+		msg_len = p_msg->buf.length();
 	    }
 
 	    logger->log(msg_buffer,msg_len,
@@ -1481,11 +1483,10 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 
     // Allocate new message
     sip_msg* p_msg = new sip_msg();
-    p_msg->buf = new char[request_len+1];
-    p_msg->len = request_len;
+    char* buf = new char[request_len+1];
 
     // generate it
-    char* c = p_msg->buf;
+    char* c = buf;
     request_line_wr(&c,cancel_str,
 		    req->u.request->ruri_str);
 
@@ -1506,13 +1507,14 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 
     *c++ = CR;
     *c++ = LF;
-    *c   = '\0';
+
+    p_msg->buf = string(buf, request_len);
 
     // and parse it
     char* err_msg=0;
     if(parse_sip_msg(p_msg,err_msg)){
 	ERROR("Parser failed on generated request\n");
-	ERROR("Message was: <%.*s>\n",p_msg->len,p_msg->buf);
+	ERROR("Message was: <%s>\n", p_msg->buf.c_str());
 	delete p_msg;
 	bucket->unlock();
 	return MALFORMED_SIP_MSG;
@@ -1521,10 +1523,10 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
     memcpy(&p_msg->remote_ip,&req->remote_ip,sizeof(sockaddr_storage));
     p_msg->local_socket = req->local_socket;
 
-    DBG("Sending to %s:%i:\n<%.*s>\n",
+    DBG("Sending to %s:%i:\n<%s>\n",
 	get_addr_str(&p_msg->remote_ip).c_str(),
 	ntohs(((sockaddr_in*)&p_msg->remote_ip)->sin_port),
-	p_msg->len,p_msg->buf);
+	p_msg->buf.c_str());
 
     int send_err = p_msg->send(t->flags);
     if(send_err < 0){
@@ -1546,7 +1548,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
             if(t->logger) {
                 sockaddr_storage src_ip;
                 p_msg->local_socket->copy_addr_to(&src_ip);
-                t->logger->log(p_msg->buf,p_msg->len,&src_ip,
+                t->logger->log(p_msg->buf.c_str(), p_msg->buf.length(), &src_ip,
                                &p_msg->remote_ip,cancel_str);
 
                 if(!cancel_t->logger) {
@@ -1579,7 +1581,7 @@ void trans_layer::received_msg(sip_msg* msg)
 
 	DBG("parsing error: %s\n",err_msg);
 
-	DBG("Message was: \"%.*s\"\n",msg->len,msg->buf);
+	DBG("Message was: \"%s\"\n", msg->buf.c_str());
 
 	if((err != MALFORMED_FLINE)
 	   && (msg->type == SIP_REQUEST)
@@ -1613,7 +1615,7 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 	if((t = bucket->match_request(msg,TT_UAS)) != NULL){
 
 	    if(t->logger) {
-		t->logger->log(msg->buf,msg->len,&msg->remote_ip,
+		t->logger->log(msg->buf.c_str(), msg->buf.length(), &msg->remote_ip,
 			       &msg->local_ip,msg->u.request->method_str);
 	    }
 
@@ -1715,8 +1717,8 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 
 	    DBG("Reply matched an existing transaction\n");
 
-	    if(t->logger && msg->local_socket && msg->buf && msg->len) {
-		t->logger->log(msg->buf,msg->len,&msg->remote_ip,
+	    if(t->logger && msg->local_socket && !msg->buf.empty()) {
+		t->logger->log(msg->buf.c_str(), msg->buf.length(), &msg->remote_ip,
 			       &msg->local_ip,get_cseq(msg)->method_str,
 			       msg->u.reply->code);
 	    }
@@ -2072,10 +2074,10 @@ int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	
 	    // transfer the message buffer 
 	    // to the transaction (incl. ownership)
-	    t->retr_buf = msg->buf;
-	    t->retr_len = msg->len;
-	    msg->buf = NULL;
-	    msg->len = 0;
+	    t->retr_buf = new char[msg->buf.length() + 1];
+            memcpy(t->retr_buf, msg->buf.c_str(), msg->buf.length() + 1);
+	    t->retr_len = msg->buf.length();
+	    msg->buf.clear();
 	
 	    // copy destination address
 	    memcpy(&t->retr_addr,&msg->remote_ip,sizeof(sockaddr_storage));
@@ -2335,7 +2337,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	if(tr->logger) {
 	    sockaddr_storage src_ip;
 	    tr->msg->local_socket->copy_addr_to(&src_ip);
-	    tr->logger->log(tr->msg->buf,tr->msg->len,&src_ip,&tr->msg->remote_ip,
+	    tr->logger->log(tr->msg->buf.c_str(), tr->msg->buf.length(), &src_ip,&tr->msg->remote_ip,
 			    tr->msg->u.request->method_str);
 	}
 
@@ -2489,7 +2491,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	    if(tr->logger) {
 		sockaddr_storage src_ip;
 		tr->msg->local_socket->copy_addr_to(&src_ip);
-		tr->logger->log(tr->msg->buf,tr->msg->len,
+		tr->logger->log(tr->msg->buf.c_str(), tr->msg->buf.length(),
 				&src_ip,&tr->msg->remote_ip,
 				tr->msg->u.request->method_str);
 	    }
@@ -2752,7 +2754,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
     if(tr->logger) {
 	sockaddr_storage src_ip;
 	tr->msg->local_socket->copy_addr_to(&src_ip);
-	tr->logger->log(tr->msg->buf,tr->msg->len,
+	tr->logger->log(tr->msg->buf.c_str(), tr->msg->buf.length(),
 			&src_ip,&tr->msg->remote_ip,
 			tr->msg->u.request->method_str);
     }

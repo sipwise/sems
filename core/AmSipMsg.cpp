@@ -260,7 +260,7 @@ void AmSipRequest::log(const shared_ptr<msg_logger>& logger) const
   const sip_trans* t = tt.get_trans();
   if (t) {
     sip_msg* msg = t->msg;
-    logger->log(msg->buf,msg->len,&msg->remote_ip,
+    logger->log(msg->buf.c_str(), msg->buf.length(), &msg->remote_ip,
         &msg->local_ip,msg->u.request->method_str);
   }
   tt.unlock_bucket();

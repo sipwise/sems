@@ -102,8 +102,7 @@ struct sip_reply
 
 struct sip_msg
 {
-    char*   buf;
-    int     len;
+    string buf;
 
     // Request or Reply?
     int     type; 
@@ -132,7 +131,7 @@ struct sip_msg
     list<sip_header*>  record_route;
     sip_header*        content_type;
     sip_header*        content_length;
-    cstring            body;
+    string             body; // TODO: use a string view?
 
     sockaddr_storage   local_ip;
     shared_ptr<trsp_socket> local_socket;
@@ -144,6 +143,7 @@ struct sip_msg
     ~sip_msg();
 
     void copy_msg_buf(const char* msg_buf, int msg_len);
+    void copy_msg_buf(const string& _buf) { buf = _buf; }
 
     int send(unsigned flags);
 
