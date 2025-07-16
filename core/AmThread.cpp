@@ -191,7 +191,9 @@ void AmThreadWatcher::run()
 	}
 	else {
 	  DBG("thread %lu still running.\n", cur_thread->_pid);
+          _l.lock();
 	  it++;
+          _l.unlock();
 	}
 
 	_l.lock();
