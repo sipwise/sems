@@ -165,7 +165,9 @@ void AmThreadWatcher::run()
 	if(cur_thread->is_stopped()){
 	  DBG("thread %lu has been destroyed.\n", cur_thread->_pid);
 	  cur_thread->join();
+          _l.lock();
 	  it = thread_list.erase(it);
+          _l.unlock();
 	  delete cur_thread;
 	}
 	else {
