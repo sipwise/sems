@@ -309,7 +309,9 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
       remote_tag = m_remote_tag;
       break;
 
-    // TODO: add support of OA_PreviewCompleted
+    case OA_PreviewCompleted:
+      setState(OA_Completed);
+      break;
 
     case OA_OfferSent:
       if(is_reliable)
@@ -361,13 +363,24 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq, bool is_reliable,
       cseq = m_cseq;
       break;
 
+    case OA_PreviewCompleted:
+      if(is_reliable && (m_cseq == cseq)) {
+        if (!force_no_sdp_update)
+          setState(OA_Completed);
+      }
+      else
+      {
+        if (!force_no_sdp_update)
+          setState(OA_OfferSent);
+        cseq = m_cseq;
+      }
+      break;
+
     case OA_OfferRecved:
       if (is_reliable) {
         if (!force_no_sdp_update)
           setState(OA_Completed);
       }
-
-      // TODO: add support of OA_PreviewCompleted
       break;
 
     case OA_OfferSent:
@@ -488,11 +501,11 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
       } else if ((reply.code == 183) || ((reply.code >= 200) && (reply.code < 300))) {
 
         /* either offer received or no offer at all: -> force SDP */
-        generate_sdp =  !no_sdp_generation &&
-                        ((state == OA_OfferRecved)
-                        || (state == OA_None)
-                        // TODO; add support of OA_PreviewCompleted
-                        || (state == OA_Completed));
+        generate_sdp = !no_sdp_generation &&
+                       ((state == OA_OfferRecved) ||
+                       (state == OA_None) ||
+                       (state == OA_PreviewCompleted) ||
+                       ((state == OA_Completed) && (reply.cseq != cseq)));
         ILOG_DLG(L_DBG, "Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
 
@@ -625,8 +638,8 @@ int AmOfferAnswer::getSdpBody(string& sdp_body)
         }
         break;
 
-      // TODO: add support of OA_PreviewCompleted
       case OA_OfferRecved:
+      case OA_PreviewCompleted:
         ILOG_DLG(L_DBG, "OA: Getting SDP offer..\n");
         if (dlg->getSdpAnswer(sdp_remote,sdp_local)) {
           sdp_local.print(sdp_body);
