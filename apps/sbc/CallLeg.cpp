@@ -1581,7 +1581,11 @@ void CallLeg::replaceExistingLeg(const string &session_tag, const string &hdrs)
 
   auto rev = std::make_unique<ReconnectLegEvent>(a_leg ? ReconnectLegEvent::B : ReconnectLegEvent::A, getLocalTag(), hdrs, dlg->established_body);
 
-  rev->setMedia(b.media_session, rtp_relay_mode);
+  /* TODO: we don't really want to preserve relay mode, even if it's the case
+   * better just to keep RTP mode direct, because otherwise SEMS can suddenly get involved
+   * into RTP relay after transfer is finished */
+  //rev->setMedia(b.media_session, rtp_relay_mode);
+  ILOG_DLG(L_INFO, "Force rtp_relay_mode = RTP_Direct for the leg being connected instead.\n");
 
   auto ev = std::make_unique<ReplaceLegEvent>(getLocalTag(), rev.release());
 
