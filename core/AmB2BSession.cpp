@@ -276,6 +276,15 @@ void AmB2BSession::createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_bo
   ILOG_DLG(L_DBG, "created pending INVITE reply body: %s\n", body_str.c_str());
 }
 
+static void sdp2body(const AmSdp &sdp, AmMimeBody &body)
+{
+  string body_str;
+  sdp.print(body_str);
+  AmMimeBody *s = body.hasContentType(SIP_APPLICATION_SDP);
+  if (s) s->parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  else body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+}
+
 void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 {
   // reply the INVITE with fake 200 reply
@@ -292,9 +301,44 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
 {
   const AmMimeBody *sdp = invite.body.hasContentType(SIP_APPLICATION_SDP);
-
   AmSipReply n_reply;
-  createFakeReply(sdp, n_reply.body);
+
+  /* local sdp, which was already learned before */
+  AmSdp remote_sdp = dlg->getRemoteSdp();
+
+  unsigned int remote_port = 0;
+
+  if (dlg->getRemoteMediaPort() > 0) {
+    ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", dlg->getRemoteMediaPort());
+    remote_port = dlg->getRemoteMediaPort();
+  }
+  else if (!remote_sdp.media.empty()) {
+    /* take first possible media and re-use its port */
+    SdpMedia remote_sdp_media = remote_sdp.media.front();
+    if (remote_sdp_media.port > 0) {
+      ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", remote_sdp_media.port);
+      remote_port = remote_sdp_media.port;
+    }
+  }
+
+  if (remote_port > 0) {
+    /* create fake AmSdp from AmMimeBody */
+    AmSdp fake_sdp;
+    AmMimeBody fake_mimebody;
+    fake_sdp.parse((const char *)sdp->getPayload());
+
+    ILOG_DLG(L_DBG, "Using local SDP port for faking this reply: '%d'\n", remote_port);
+    for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
+    {
+      it->port = remote_port;
+    }
+
+    sdp2body(fake_sdp, fake_mimebody);
+    createFakeReply(&fake_mimebody, n_reply.body);
+  }
+  else {
+    createFakeReply(sdp, n_reply.body);
+  }
 
   n_reply.code = 200;
   n_reply.reason = "OK";

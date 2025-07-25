@@ -134,6 +134,7 @@ protected:
 
   const AmSdp& getLocalSdp() { return oa.getLocalSdp(); }
   const AmSdp& getRemoteSdp() { return oa.getRemoteSdp(); }
+  const unsigned int& getRemoteMediaPort() { return oa.getRemoteMediaPort(); }
 
   /**
    * Reliable provisional replies

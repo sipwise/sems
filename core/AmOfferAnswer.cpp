@@ -58,7 +58,8 @@ AmOfferAnswer::AmOfferAnswer(AmSipDialog* dlg)
     sdp_remote(),
     sdp_local(),
     dlg(dlg),
-    force_sdp(true)
+    force_sdp(true),
+    remote_port_seen(0)
 {
   
 }
@@ -83,6 +84,11 @@ const AmSdp& AmOfferAnswer::getLocalSdp() const
 const AmSdp& AmOfferAnswer::getRemoteSdp() const
 {
   return sdp_remote;
+}
+
+const unsigned int& AmOfferAnswer::getRemoteMediaPort() const
+{
+  return remote_port_seen;
 }
 
 /** State maintenance */
@@ -225,6 +231,12 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
           dlg->onSdpReceived(true);
         }
 
+        if (!sdp_remote.media.empty())
+        {
+          SdpMedia remote = sdp_remote.media.front();
+          remote_port_seen = remote.port;
+        }
+
       } else {
         bool is_reliable = reply.code >= 200 || key_in_list(getHeader(reply.hdrs, SIP_HDR_REQUIRE), SIP_EXT_100REL);
         saveState();
@@ -272,6 +284,12 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
 
   if(err_code != 0) {
     sdp_remote.clear();
+  }
+
+  if (!sdp_remote.media.empty())
+  {
+    SdpMedia remote = sdp_remote.media.front();
+    remote_port_seen = remote.port;
   }
 
   if(err_code == 0) {

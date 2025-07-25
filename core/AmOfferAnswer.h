@@ -53,6 +53,9 @@ private:
   AmSdp        sdp_remote;
   AmSdp        sdp_local;
 
+  /* saved remote port */
+  unsigned int remote_port_seen;
+
   AmSipDialog* dlg;
 
   /** Should SDP generation be forced when not required by standards? */
@@ -79,6 +82,7 @@ public:
   void setState(OAState n_st);
   const AmSdp& getLocalSdp() const;
   const AmSdp& getRemoteSdp() const;
+  const unsigned int& getRemoteMediaPort() const;
 
   void clear();
   void clearTransitionalState();
