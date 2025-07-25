@@ -227,4 +227,14 @@ void Am100rel::onTimeout(const AmSipRequest& req, const AmSipReply& rpl)
   }
 }
 
+bool Am100rel::willBeReliable(const AmSipReply& reply)
+{
+  if ((reply.cseq_method == SIP_METH_INVITE)
+      && (100 < reply.code && reply.code < 200)
+      && (key_in_list(getHeader(reply.hdrs, SIP_HDR_REQUIRE), SIP_EXT_100REL)
+          || (reliable_1xx == REL100_REQUIRE))) {
+    return true;
+  }
 
+  return false;
+}

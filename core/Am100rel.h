@@ -42,6 +42,8 @@ public:
   void onReplyOut(AmSipReply& reply);
 
   void onTimeout(const AmSipRequest& req, const AmSipReply& rpl);
+
+  bool willBeReliable(const AmSipReply& reply);
 };
 
 #endif

@@ -529,7 +529,9 @@ bool CallLeg::setOther(const string &id, bool forward)
       setOtherId(id);
       clearRtpReceiverRelay(); // release old media session if set
       setMediaSession(i->media_session);
-      if (forward && dlg->getOAState() == AmOfferAnswer::OA_Completed) {
+      if (forward
+          && ((dlg->getOAState() == AmOfferAnswer::OA_Completed)
+              || ((dlg->getOAState() == AmOfferAnswer::OA_PreviewCompleted)))) {
         // reset OA state to offer_recived if already completed to accept new
         // B leg's SDP
         dlg->setOAState(AmOfferAnswer::OA_OfferRecved);
@@ -1652,6 +1654,7 @@ void CallLeg::changeRtpMode(RTPRelayMode new_mode)
 
   switch (dlg->getOAState()) {
     case AmOfferAnswer::OA_Completed:
+    case AmOfferAnswer::OA_PreviewCompleted:
     case AmOfferAnswer::OA_None:
       // must be followed by OA exchange because we can't updateLocalSdp
       // (reINVITE would be needed)
@@ -1708,6 +1711,7 @@ void CallLeg::changeRtpMode(RTPRelayMode new_mode, AmB2BMedia *new_media)
 
   switch (dlg->getOAState()) {
     case AmOfferAnswer::OA_Completed:
+    case AmOfferAnswer::OA_PreviewCompleted:
     case AmOfferAnswer::OA_None:
       // must be followed by OA exchange because we can't updateLocalSdp
       // (reINVITE would be needed)

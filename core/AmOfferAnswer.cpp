@@ -63,7 +63,7 @@ AmOfferAnswer::AmOfferAnswer(AmSipDialog* dlg)
   
 }
 
-AmOfferAnswer::OAState AmOfferAnswer::getState()
+AmOfferAnswer::OAState AmOfferAnswer::getState() const
 {
   return state;
 }
@@ -75,12 +75,12 @@ void AmOfferAnswer::setState(AmOfferAnswer::OAState n_st)
   state = n_st;
 }
 
-const AmSdp& AmOfferAnswer::getLocalSdp()
+const AmSdp& AmOfferAnswer::getLocalSdp() const
 {
   return sdp_local;
 }
 
-const AmSdp& AmOfferAnswer::getRemoteSdp()
+const AmSdp& AmOfferAnswer::getRemoteSdp() const
 {
   return sdp_remote;
 }
@@ -95,8 +95,15 @@ int AmOfferAnswer::checkStateChange()
 {
   int ret = 0;
 
-  if((saved_state != state) &&
-     (state == OA_Completed)) {
+  // onSdpComplete is called when:
+  // - state transitions to Complete or PreviewCompleted
+  // - but not from PreviewCompleted to Complete, which should be ignored
+  //
+  if((saved_state != state)
+     && ((state == OA_Completed) ||
+         (state == OA_PreviewCompleted))
+     && !((saved_state == OA_PreviewCompleted)
+          && (state == OA_Completed))) {
 
     ret = dlg->onSdpCompleted();
   }
@@ -108,6 +115,7 @@ void AmOfferAnswer::clear()
 {
   setState(OA_None);
   cseq  = 0;
+  remote_tag.clear();
   sdp_remote.clear();
   sdp_local.clear();
 }
@@ -136,8 +144,9 @@ int AmOfferAnswer::onRequestIn(const AmSipRequest& req)
     const AmMimeBody * csta_body = req.body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
     /* if application/sdp present */
-    if(sdp_body) {
-      err_code = onRxSdp(req.cseq,*sdp_body,&err_txt);
+    if (sdp_body) {
+      err_code = onRxSdp(req.cseq,req.from_tag,true,*sdp_body,&err_txt);
+
     /* if both application/sdp and application/csta+xml are not present */
     } else if (!csta_body) {
       err_code = 400;
@@ -187,30 +196,42 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
 
     if (sdp_body || csta_body) {
 
-      if (((state == OA_Completed) ||
-          (state == OA_OfferRecved)) &&
-          (reply.cseq == cseq))
+      if ((reply.cseq_method == SIP_METH_INVITE) &&
+          ((state == OA_Completed)
+            || (state == OA_PreviewCompleted)
+            || (state == OA_OfferRecved)) &&
+          (reply.cseq == cseq) &&
+          (reply.to_tag != remote_tag))
       {
-        ILOG_DLG(L_DBG, "ignoring subsequent SDP reply within the same transaction\n");
-        ILOG_DLG(L_DBG, "this usually happens when 183 and 200 have SDP\n");
+        /* hack to handle 2xx with different tag than was in 183: accept the
+         * new SDP though we should accept the first one we received (without
+         * fork) */
+        ILOG_DLG(L_DBG, "overwriting SDP remembered within the same transaction\n");
 
-        /* Make sure that session is started when 200 OK is received */
-        if (reply.code == 200) dlg->onSdpCompleted();
+        if (sdp_remote.parse((const char*)sdp_body->getPayload())){
+          err_code = 400;
+          err_txt = "session description parsing failed";
+        } else if(sdp_remote.media.empty()){
+          err_code = 400;
+          err_txt = "no media line found in SDP message";
+        }
+
+        if (err_code != 0) {
+          sdp_remote.clear();
+        } else if(state != OA_OfferRecved) {
+          dlg->onSdpReceived(false);
+          dlg->onSdpCompleted();
+        } else {
+          dlg->onSdpReceived(true);
+        }
 
       } else {
+        bool is_reliable = reply.code >= 200 || key_in_list(getHeader(reply.hdrs, SIP_HDR_REQUIRE), SIP_EXT_100REL);
         saveState();
-        err_code = onRxSdp(reply.cseq,reply.body,&err_txt);
+        err_code = onRxSdp(reply.cseq,reply.to_tag,is_reliable, *sdp_body,&err_txt);
         checkStateChange();
       }
     }
-  }
-
-  if ((reply.code >= 300) &&
-      (reply.cseq == cseq))
-  {
-    /* final error reply -> cleanup OA state */
-    ILOG_DLG(L_DBG, "after %u reply to %s: resetting OA state\n", reply.code, reply.cseq_method.c_str());
-    clearTransitionalState();
   }
 
   if (err_code) {
@@ -222,7 +243,9 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
   return 0;
 }
 
-int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const char** err_txt)
+int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
+                           bool is_reliable, const AmMimeBody& body,
+                           const char** err_txt)
 {
   ILOG_DLG(L_DBG, "entering onRxSdp(), oa_state=%s\n", getOAStateStr(state));
   OAState old_oa_state = state;
@@ -234,16 +257,15 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
   const AmMimeBody *sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
   const AmMimeBody *csta_body = body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
-  if (sdp_body == NULL) {
+  if (sdp_body == NULL && csta_body == NULL) {
     err_code = 400;
     *err_txt = "sdp body part not found";
-  }
- 
-  if (sdp_remote.parse((const char*)body.getPayload())) {
+
+  } else if (sdp_remote.parse((const char*)body.getPayload())){
     err_code = 400;
     *err_txt = "session description parsing failed";
-  }
-  else if(sdp_remote.media.empty()){
+
+  } else if (sdp_remote.media.empty()){
     err_code = 400;
     *err_txt = "no media line found in SDP message";
   }
@@ -255,17 +277,35 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
   if(err_code == 0) {
 
     switch(state) {
-    case OA_None:
     case OA_Completed:
+      if(m_cseq == cseq && remote_tag == m_remote_tag){
+        // same INVITE transaction: ignore new SDP coming
+        break;
+      }
+      // else continue with normal processing below...
+
+    case OA_None:
       setState(OA_OfferRecved);
+      dlg->onSdpReceived(true);
       cseq = m_cseq;
+      remote_tag = m_remote_tag;
       break;
-      
+
+    // TODO: add support of OA_PreviewCompleted
+
     case OA_OfferSent:
-      setState(OA_Completed);
+      if(is_reliable)
+        setState(OA_Completed);
+
+      dlg->onSdpReceived(false);
+      remote_tag = m_remote_tag;
       break;
 
     case OA_OfferRecved:
+      if(m_cseq == cseq && remote_tag == m_remote_tag){
+        /* same INVITE transaction: ignore new SDP coming */
+        break;
+      }
       err_code = 400;// TODO: check correct error code
       *err_txt = "pending SDP offer";
       break;
@@ -281,12 +321,14 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const ch
   return err_code;
 }
 
-int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body, bool force_no_sdp_update)
+int AmOfferAnswer::onTxSdp(unsigned int m_cseq, bool is_reliable,
+                           const AmMimeBody& body, bool force_no_sdp_update)
 {
   ILOG_DLG(L_DBG, "AmOfferAnswer::onTxSdp()\n");
 
   /* assume that the payload is ok if it is not empty.
    * (do not parse again self-generated SDP) */
+
   if (body.empty()) {
     ILOG_DLG(L_DBG, "Body is empty, cannot do anything here.\n");
     return -1;
@@ -302,8 +344,12 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq, const AmMimeBody& body, bool for
       break;
 
     case OA_OfferRecved:
-      if (!force_no_sdp_update)
-        setState(OA_Completed);
+      if (is_reliable) {
+        if (!force_no_sdp_update)
+          setState(OA_Completed);
+      }
+
+      // TODO: add support of OA_PreviewCompleted
       break;
 
     case OA_OfferSent:
@@ -347,6 +393,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
     else if(force_sdp) {
       return -1;
     }
+
   } else if (sdp_body && has_sdp) {
     // update local SDP copy
     if (sdp_local.parse((const char*)sdp_body->getPayload())) {
@@ -355,7 +402,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   }
 
   if ((has_sdp || (has_csta && req.method != SIP_METH_INFO)) &&
-      (onTxSdp(req.cseq,req.body) != 0))
+      (onTxSdp(req.cseq, true, req.body) != 0))
   {
     ILOG_DLG(L_WARN, "onTxSdp() failed\n");
     return -1;
@@ -402,7 +449,6 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
          already had the local SDP and saved that.
          Re-use it, and do not beget the 183 without SDP body */
       if (reply.code == 183 && !sdp_local.media.empty()) {
-
         ILOG_DLG(L_DBG, "The 183 with no SDP, but system already has local SDP for this session, re-using it..\n");
 
         string existing_sdp;
@@ -427,6 +473,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
         generate_sdp =  !no_sdp_generation &&
                         ((state == OA_OfferRecved)
                         || (state == OA_None)
+                        // TODO; add support of OA_PreviewCompleted
                         || (state == OA_Completed));
         ILOG_DLG(L_DBG, "Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
@@ -459,13 +506,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     ILOG_DLG(L_DBG, "Generating of the new SDP body is required.\n");
 
     if (getSdpBody(sdp_buf)) {
-      if (reply.code == 183 && reply.cseq_method == SIP_METH_INVITE) {
-        /* just ignore if no SDP is generated (required for B2B) */
-      } else if (reply.code == 200 && reply.cseq_method == SIP_METH_INVITE && state == OA_Completed) {
-        /* just ignore if no SDP is generated (required for B2B) */
-      } else if(force_sdp)
-        return -1;
-
+      if (force_sdp) return -1;
     } else {
       if (!sdp_body) {
         if ((sdp_body = reply.body.addPart(SIP_APPLICATION_SDP)) == NULL ) {
@@ -496,11 +537,13 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     }
   }
 
-  if ((has_sdp || (has_csta && reply.cseq_method != SIP_METH_INFO)) &&
-      (onTxSdp(reply.cseq, reply.body, force_no_sdp_update) != 0))
-  {
-    ILOG_DLG(L_WARN, "onTxSdp() failed\n");
-    return -1;
+  if (has_sdp || (has_csta && reply.cseq_method != SIP_METH_INFO)) {
+    bool is_reliable = dlg->willBeReliable(reply);
+
+    if ((onTxSdp(reply.cseq, is_reliable, reply.body, force_no_sdp_update) != 0)) {
+      ILOG_DLG(L_WARN, "onTxSdp() failed\n");
+      return -1;
+    }
   }
 
   if ((reply.code >= 300) && (reply.cseq == cseq)) {
@@ -549,33 +592,38 @@ int AmOfferAnswer::onReplySent(const AmSipReply& reply)
 
 int AmOfferAnswer::getSdpBody(string& sdp_body)
 {
-    switch(state){
-    case OA_None:
-    case OA_Completed:
-      if(dlg->getSdpOffer(sdp_local)){
-	sdp_local.print(sdp_body);
-      }
-      else {
-	ILOG_DLG(L_DBG, "No SDP Offer.\n");
-	return -1;
-      }
-      break;
-    case OA_OfferRecved:
-      if(dlg->getSdpAnswer(sdp_remote,sdp_local)){
-	sdp_local.print(sdp_body);
-      }
-      else {
-	ILOG_DLG(L_DBG, "No SDP Answer.\n");
-	return -1;
-      }
-      break;
-      
-    case OA_OfferSent:
-      ILOG_DLG(L_DBG, "Still waiting for a reply\n");
-      return -1;
+    ILOG_DLG(L_DBG, "AmOfferAnswer::getSdpBody(), current OA state is <%d>\n", state);
 
-    default: 
-      break;
+    switch (state) {
+
+      case OA_None:
+      case OA_Completed:
+        ILOG_DLG(L_DBG, "OA: Getting SDP offer..\n");
+        if (dlg->getSdpOffer(sdp_local)) {
+          sdp_local.print(sdp_body);
+        } else {
+          ILOG_DLG(L_DBG, "No SDP Offer.\n");
+          return -1;
+        }
+        break;
+
+      // TODO: add support of OA_PreviewCompleted
+      case OA_OfferRecved:
+        ILOG_DLG(L_DBG, "OA: Getting SDP offer..\n");
+        if (dlg->getSdpAnswer(sdp_remote,sdp_local)) {
+          sdp_local.print(sdp_body);
+        } else {
+          ILOG_DLG(L_DBG, "No SDP Answer.\n");
+          return -1;
+        }
+        break;
+
+      case OA_OfferSent:
+        ILOG_DLG(L_DBG, "Still waiting for a reply!\n");
+        return -1;
+
+      default:
+        break;
     }
 
     return 0;

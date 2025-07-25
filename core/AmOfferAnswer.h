@@ -40,6 +40,7 @@ public:
     OA_None=0,
     OA_OfferRecved,
     OA_OfferSent,
+    OA_PreviewCompleted, // see RFC6337, section 3.1.1
     OA_Completed,
     __max_OA
   };
@@ -48,6 +49,7 @@ private:
   OAState      state;
   OAState      saved_state;
   unsigned int cseq;
+  string       remote_tag;
   AmSdp        sdp_remote;
   AmSdp        sdp_local;
 
@@ -61,8 +63,10 @@ private:
   int  checkStateChange();
 
   /** SDP handling */
-  int  onRxSdp(unsigned int m_cseq, const AmMimeBody& body, const char** err_txt);
-  int  onTxSdp(unsigned int m_cseq, const AmMimeBody& body, bool force_no_sdp_update = false);
+  int  onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
+               bool is_reliable, const AmMimeBody& body,
+               const char** err_txt);
+  int  onTxSdp(unsigned int m_cseq, bool is_reliable, const AmMimeBody& body, bool force_no_sdp_update = false);
   int  getSdpBody(string& sdp_body);
 
 public:
@@ -70,10 +74,11 @@ public:
   AmOfferAnswer(AmSipDialog* dlg);
 
   /** Accessors */
-  OAState getState();
+  OAState getState() const;
+  OAState getSavedState() { return saved_state; }
   void setState(OAState n_st);
-  const AmSdp& getLocalSdp();
-  const AmSdp& getRemoteSdp();
+  const AmSdp& getLocalSdp() const;
+  const AmSdp& getRemoteSdp() const;
 
   void clear();
   void clearTransitionalState();

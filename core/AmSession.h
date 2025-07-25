@@ -591,6 +591,9 @@ public:
   /** Hook called when an SDP OA transaction has been completed */
   virtual int onSdpCompleted(const AmSdp& offer, const AmSdp& answer);
 
+  /** Hook called when an SDP Offer or Answer is received */
+  virtual void onSdpReceived(const AmSdp& sdp, bool is_offer) {};
+
   /** Hook called when an early session starts (SDP OA completed + dialog in early state) */
   virtual void onEarlySessionStart();
 

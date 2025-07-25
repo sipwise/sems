@@ -1040,6 +1040,41 @@ void SBCCallLeg::onCallConnected(const AmSipReply& reply) {
   }
 }
 
+int SBCCallLeg::onSdpCompleted(const AmSdp& local, const AmSdp& remote) {
+
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin();
+       i != cc_ext.end(); ++i) {
+
+    try {
+      if ((*i)->onSdpCompleted(this, local, remote) == StopProcessing) return -1;
+    } catch (const std::exception &e) {
+      ILOG_DLG(L_ERR, "exception \"%s\" executing extended call conltrol 'onSdpCompleted' ",
+            e.what());
+      stopCall(StatusChangeCause::InternalError);
+      return -1;
+    }
+  }
+
+  return CallLeg::onSdpCompleted(local, remote);
+}
+
+void SBCCallLeg::onSdpReceived(const AmSdp& sdp, bool is_offer) {
+
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin();
+       i != cc_ext.end(); ++i) {
+
+    try {
+      if ((*i)->onSdpReceived(this, sdp, is_offer) == StopProcessing)
+        return;
+    } catch (const std::exception &e) {
+      ILOG_DLG(L_ERR, "exception \"%s\" executing extend call conltrol 'onSdpReceived' ",
+            e.what());
+      stopCall(StatusChangeCause::InternalError);
+      return;
+    }
+  }
+}
+
 void SBCCallLeg::onStop() {
   if (call_profile.cc_interfaces.size()) {
     gettimeofday(&call_end_ts, NULL);
@@ -1488,6 +1523,15 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
     // would be possible
     if (call_profile.codec_prefs.shouldOrderPayloads(a_leg)) {
       call_profile.codec_prefs.orderSDP(sdp, a_leg);
+      changed = true;
+    }
+  }
+
+  // SDP answer
+  if((dlg->getOAState() == AmOfferAnswer::OA_Completed)
+     || (dlg->getOAState() == AmOfferAnswer::OA_PreviewCompleted)) {
+    if (call_profile.transcoder.isActive()) {
+      appendTranscoderCodecs(sdp);
       changed = true;
     }
   }

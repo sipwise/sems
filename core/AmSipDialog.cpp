@@ -205,6 +205,13 @@ int AmSipDialog::onSdpCompleted()
   return ret;
 }
 
+void AmSipDialog::onSdpReceived(bool is_offer)
+{
+  if (!hdl) return;
+
+  ((AmSipDialogEventHandler*)hdl)->onSdpReceived(oa.getRemoteSdp(), is_offer);
+}
+
 bool AmSipDialog::getSdpOffer(AmSdp& offer)
 {
   if(!hdl) return false;
@@ -234,6 +241,11 @@ bool AmSipDialog::oaExpectingOffer() {
 void AmSipDialog::setRel100State(Am100rel::State rel100_state) {
   ILOG_DLG(L_DBG, "setting 100rel state for '%s' to %i\n", local_tag.c_str(), rel100_state);
   rel100.setState(rel100_state);
+}
+
+bool AmSipDialog::willBeReliable(const AmSipReply& reply)
+{
+  return rel100.willBeReliable(reply);
 }
 
 void AmSipDialog::setOAEnabled(bool oa_enabled) {

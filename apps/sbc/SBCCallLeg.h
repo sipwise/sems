@@ -217,6 +217,10 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   void setOtherId(const AmSipReply& reply);
   void setOtherId(const string& n_other_id) { CallLeg::setOtherId(n_other_id); }
 
+  /** OA callback **/
+  virtual int onSdpCompleted(const AmSdp& local, const AmSdp& remote);
+  virtual void onSdpReceived(const AmSdp& sdp, bool is_offer);
+
   void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSipDialog::Status old_dlg_status);
   void onSendRequest(AmSipRequest& req, int &flags);
 

@@ -102,6 +102,11 @@ protected:
   /** @return a pending UAS INVITE transaction or NULL */
   AmSipRequest* getUASPendingInv();
 
+  /**
+   * Calls onSdpReceived on the session event handler
+   */
+  void onSdpReceived(bool is_offer);
+
   /** 
    * Calls onSdpCompleted on the session event handler
    * and executes onSessionStart/onEarlySessionStart when required.
@@ -130,7 +135,11 @@ protected:
   const AmSdp& getLocalSdp() { return oa.getLocalSdp(); }
   const AmSdp& getRemoteSdp() { return oa.getRemoteSdp(); }
 
+  /**
+   * Reliable provisional replies
+   */
   void setRel100State(Am100rel::State rel100_state);
+  bool willBeReliable(const AmSipReply& reply);
 
   void uasTimeout(AmSipTimeoutEvent* to_ev);
 
@@ -208,6 +217,9 @@ public:
 
   /** Hook called when an SDP OA transaction has been completed */
   virtual int onSdpCompleted(const AmSdp& local, const AmSdp& remote)=0;
+
+  /** Hook called when an SDP Offer or Answer is received */
+  virtual void onSdpReceived(const AmSdp& sdp, bool is_offer)=0;
 
   /** Hook called when an early session starts 
    *  (SDP OA completed + dialog in early state) */

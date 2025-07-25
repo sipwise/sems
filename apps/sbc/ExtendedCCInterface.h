@@ -61,6 +61,10 @@ class ExtendedCCInterface
 
     virtual CCChainProcessing onInDialogReply(SBCCallLeg *call, const AmSipReply &reply) { return ContinueProcessing; }
 
+    /** called for O/A negotiaions */
+    virtual CCChainProcessing onSdpCompleted(SBCCallLeg *call, const AmSdp &local, const AmSdp &remote) { return ContinueProcessing; }
+    virtual CCChainProcessing onSdpReceived(SBCCallLeg *call, const AmSdp &sdp, bool is_offer) { return ContinueProcessing; }
+
     /** called before any other processing for the event is done */
     virtual CCChainProcessing onEvent(SBCCallLeg *call, AmEvent *e) { return ContinueProcessing; }
 
