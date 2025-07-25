@@ -213,6 +213,9 @@ private:
   /** create fake AmSipReply. SDP body based on SDP offer, but with a desired port */
   void addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &new_body, unsigned int& desired_port);
 
+  /** get the first available media port */
+  unsigned int getMediaPort(const AmSdp& sdp);
+
   /** generate 200 SIP reply on a pending INVITE (uses fake body) */
   virtual void acceptPendingInvite(AmSipRequest *invite);
 

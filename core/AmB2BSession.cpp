@@ -302,6 +302,21 @@ void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &
   createFakeReply(&fake_mimebody, new_body);
 }
 
+unsigned int AmB2BSession::getMediaPort(const AmSdp& sdp)
+{
+  unsigned int result = 0;
+
+  for (auto it = sdp.media.begin(); it != sdp.media.end(); ++it)
+  {
+    /* must be a legal port which must also not be ICE dummy port */
+    if (it->port > 0 && it->port != 9) {
+      result = it->port;
+      break;
+    }
+  }
+  return result;
+}
+
 void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 {
   // reply the INVITE with fake 200 reply
