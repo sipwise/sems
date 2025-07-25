@@ -152,6 +152,9 @@ _RegisterCache::_RegisterCache()
 
 _RegisterCache::~_RegisterCache()
 {
+  stop();
+  join();
+
   DBG("##### REG CACHE DUMP #####");
   reg_cache_ht.dump();
   DBG("##### ID IDX DUMP #####");
