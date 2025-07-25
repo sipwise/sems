@@ -327,13 +327,19 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
           }
 
           if (req_ev->req.method == SIP_METH_INVITE && dlg->getUACInvTransPending()) {
-            /* don't relay INVITE if INV trans pending */
-            ILOG_DLG(L_DBG, "Not sip-relaying INVITE with pending INV transaction, b2b-relaying 491 pending\n");
-            relayError(req_ev->req.method, req_ev->req.cseq, true, 491, SIP_REPLY_PENDING);
+            ILOG_DLG(L_DBG, "There are still pending UAC INVITE transactions, this leg: '%s' (UAC) -> other leg: '%s'\n",
+                            dlg->getLocalTag().c_str(),
+                            getOtherId().c_str());
+            ILOG_DLG(L_DBG, "Sending a fake 200OK to this transaction in the meanwhile (CSeq: %d)\n", req_ev->req.cseq);
+            /* UAC side (other side) already has a pending update, this one just overrides it?
+            * let the UAC respond, what will trigger a back update again and negotiations should be finished by that
+            */
+            acceptPendingInviteB2B(req_ev->req);
             return;
           }
 
-          if (req_ev->req.method == SIP_METH_BYE && dlg->getStatus() != AmBasicSipDialog::Connected) {
+          if (req_ev->req.method == SIP_METH_BYE &&
+              dlg->getStatus() != AmBasicSipDialog::Connected) {
             ILOG_DLG(L_DBG, "not sip-relaying BYE in not connected dlg, b2b-relaying 200 OK\n");
             relayError(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
             return;
