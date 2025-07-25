@@ -317,17 +317,40 @@ unsigned int AmB2BSession::getMediaPort(const AmSdp& sdp)
   return result;
 }
 
-void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
+/**
+ * Reply to the INVITE with fake 200 reply.
+ * Used by replacement functionality.
+ */
+void AmB2BSession::acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *sdp)
 {
-  // reply the INVITE with fake 200 reply
+  AmMimeBody fake_body;
+  const AmMimeBody *source_sdp = NULL;
+  unsigned int desired_port = 0;
 
-  const AmMimeBody *sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
-  AmMimeBody body;
+  source_sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
 
-  createFakeReply(sdp, body);
+  if (!source_sdp) {
+    ILOG_DLG(L_WARN, "No application/sdp content found to create fake 200OK.\n");
+    return;
+  }
 
-  ILOG_DLG(L_DBG, "Replying to pending invite with 200 OK\n");
-  dlg->reply(*invite, 200, "OK", &body);
+  /* port must reflect actual port in SDP offer coming in */
+  if (sdp) {
+    AmSdp fake_sdp;
+    fake_sdp.parse((const char *)sdp->getPayload());
+    desired_port = getMediaPort(fake_sdp);
+  }
+
+  if (desired_port) {
+    ILOG_DLG(L_DBG, "Desired port for fake 200OK is '%d'\n", desired_port);
+    addFakeSDPbasedOnPort(source_sdp, fake_body, desired_port);
+  }
+  else {
+    createFakeReply(sdp, fake_body);
+  }
+
+  ILOG_DLG(L_DBG, "Replying to pending invite with fictitious 200OK\n");
+  dlg->reply(*invite, 200, "OK", &fake_body);
 }
 
 void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)

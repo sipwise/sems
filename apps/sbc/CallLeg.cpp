@@ -848,7 +848,9 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
         saveLocalSdpOrigin(parsed_sdp);
       }
     }
-    acceptPendingInvite(invite);
+
+    /* but use actual SDP capabilities of the replacing leg */
+    acceptPendingInvite(invite, sdp);
   }
 
   setOtherId(ev->session_tag);
@@ -1759,48 +1761,9 @@ void CallLeg::changeOtherLegsRtpMode(RTPRelayMode new_mode)
   }
 }
 
-void CallLeg::acceptPendingInvite(AmSipRequest *invite)
+void CallLeg::acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *sdp)
 {
-  // reply the INVITE with fake 200 reply
-
-  AmMimeBody *sdp = invite->body.hasContentType(SIP_APPLICATION_SDP);
-  AmSdp s;
-  if (!sdp || s.parse((const char*)sdp->getPayload())) {
-    // no offer in the INVITE (or can't be parsed), we have to append fake offer
-    // into the reply
-    s.version = 0;
-    s.origin.user = "sems";
-    s.sessionName = "sems";
-    s.conn.network = NT_IN;
-    s.conn.addrType = AT_V4;
-    s.conn.address = "0.0.0.0";
-
-    s.media.push_back(SdpMedia());
-    SdpMedia &m = s.media.back();
-    m.type = MT_AUDIO;
-    m.transport = TP_RTPAVP;
-    m.send = false;
-    m.recv = false;
-    m.payloads.push_back(SdpPayload(0));
-  }
-
-  if (!s.conn.address.empty()) s.conn.address = "0.0.0.0";
-  for (vector<SdpMedia>::iterator i = s.media.begin(); i != s.media.end(); ++i) {
-    //i->port = 0;
-    if (!i->conn.address.empty()) i->conn.address = "0.0.0.0";
-  }
-
-  AmMimeBody body;
-  string body_str;
-  s.print(body_str);
-  body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
-  try {
-    updateLocalBody(body);
-  } catch (...) { /* throw ? */  }
-
-  ILOG_DLG(L_DBG, "replying pending INVITE with body: %s\n", body_str.c_str());
-  dlg->reply(*invite, 200, "OK", &body);
-
+  AmB2BSession::acceptPendingInvite(invite, sdp);
   if (getCallStatus() != Connected) updateCallStatus(Connected);
 }
 

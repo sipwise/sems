@@ -185,7 +185,7 @@ class CallLeg: public AmB2BSession
     int resumeHeldImpl();
 
     // generate 200 reply on a pending INVITE (uses fake body)
-    void acceptPendingInvite(AmSipRequest *invite);
+    void acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *sdp = NULL);
 
     // methods just for make this stuff more readable, not intended to be
     // overriden, override onB2BEvent instead!

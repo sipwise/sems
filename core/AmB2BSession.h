@@ -217,7 +217,7 @@ private:
   unsigned int getMediaPort(const AmSdp& sdp);
 
   /** generate 200 SIP reply on a pending INVITE (uses fake body) */
-  virtual void acceptPendingInvite(AmSipRequest *invite);
+  virtual void acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *sdp = NULL);
 
   /** generate 200 B2B reply on a pending INVITE (uses fake body) */
   void acceptPendingInviteB2B(const AmSipRequest& invite);
