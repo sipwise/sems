@@ -309,25 +309,24 @@ void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
   unsigned int remote_port = 0;
 
   if (dlg->getRemoteMediaPort() > 0) {
-    ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", dlg->getRemoteMediaPort());
     remote_port = dlg->getRemoteMediaPort();
   }
   else if (!remote_sdp.media.empty()) {
     /* take first possible media and re-use its port */
     SdpMedia remote_sdp_media = remote_sdp.media.front();
     if (remote_sdp_media.port > 0) {
-      ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", remote_sdp_media.port);
       remote_port = remote_sdp_media.port;
     }
   }
 
   if (remote_port > 0) {
+    ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", remote_port);
+
     /* create fake AmSdp from AmMimeBody */
     AmSdp fake_sdp;
     AmMimeBody fake_mimebody;
     fake_sdp.parse((const char *)sdp->getPayload());
 
-    ILOG_DLG(L_DBG, "Using local SDP port for faking this reply: '%d'\n", remote_port);
     for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
     {
       it->port = remote_port;
