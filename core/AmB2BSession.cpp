@@ -285,6 +285,23 @@ static void sdp2body(const AmSdp &sdp, AmMimeBody &body)
   else body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
 }
 
+void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &new_body,
+                                         unsigned int& desired_port)
+{
+  /* create fake AmSdp from AmMimeBody */
+  AmSdp fake_sdp;
+  AmMimeBody fake_mimebody;
+  fake_sdp.parse((const char *)src_sdp->getPayload());
+
+  for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
+  {
+    it->port = desired_port;
+  }
+
+  sdp2body(fake_sdp, fake_mimebody);
+  createFakeReply(&fake_mimebody, new_body);
+}
+
 void AmB2BSession::acceptPendingInvite(AmSipRequest *invite)
 {
   // reply the INVITE with fake 200 reply
@@ -321,19 +338,7 @@ void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
 
   if (remote_port > 0) {
     ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", remote_port);
-
-    /* create fake AmSdp from AmMimeBody */
-    AmSdp fake_sdp;
-    AmMimeBody fake_mimebody;
-    fake_sdp.parse((const char *)sdp->getPayload());
-
-    for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
-    {
-      it->port = remote_port;
-    }
-
-    sdp2body(fake_sdp, fake_mimebody);
-    createFakeReply(&fake_mimebody, n_reply.body);
+    addFakeSDPbasedOnPort(sdp, n_reply.body, remote_port);
   }
   else {
     createFakeReply(sdp, n_reply.body);

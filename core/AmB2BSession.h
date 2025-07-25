@@ -210,6 +210,9 @@ private:
   /** generate fake body (c=0.0.0.0) reply */
   void createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_body);
 
+  /** create fake AmSipReply. SDP body based on SDP offer, but with a desired port */
+  void addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &new_body, unsigned int& desired_port);
+
   /** generate 200 SIP reply on a pending INVITE (uses fake body) */
   virtual void acceptPendingInvite(AmSipRequest *invite);
 
