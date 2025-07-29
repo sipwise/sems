@@ -198,9 +198,7 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
      !reply.body.empty() )
   {
     const AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
-    const AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
-
-    if (sdp_body || csta_body) {
+    if (sdp_body) {
 
       if ((reply.cseq_method == SIP_METH_INVITE) &&
           ((state == OA_Completed)
