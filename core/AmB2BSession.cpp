@@ -365,6 +365,11 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *s
 void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
 {
   const AmMimeBody *sdp = invite.body.hasContentType(SIP_APPLICATION_SDP);
+  if (!sdp) {
+    ILOG_DLG(L_WARN, "No application/sdp content found to create fake 200OK.\n");
+    return;
+  }
+
   AmSipReply n_reply;
 
   /* local sdp, which was already learned before */
