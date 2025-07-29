@@ -316,6 +316,8 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
     case OA_OfferSent:
       if(is_reliable)
         setState(OA_Completed);
+      else
+        setState(OA_PreviewCompleted);
 
       dlg->onSdpReceived(false);
       remote_tag = m_remote_tag;
@@ -380,6 +382,9 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq, bool is_reliable,
       if (is_reliable) {
         if (!force_no_sdp_update)
           setState(OA_Completed);
+      } else {
+        if (!force_no_sdp_update)
+          setState(OA_PreviewCompleted);
       }
       break;
 
@@ -577,7 +582,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     }
   }
 
-  if ((reply.code >= 300) && (reply.cseq == cseq)) {
+  if (reply.code >= 300 && reply.cseq == cseq) {
     /* final error reply -> cleanup OA state */
     ILOG_DLG(L_DBG, "after %u reply to %s: resetting OA state\n", reply.code, reply.cseq_method.c_str());
     clearTransitionalState();
