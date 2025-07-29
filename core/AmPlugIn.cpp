@@ -356,7 +356,7 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
 
  end:
-  dlls.push_back(h_dl);
+  dlls.push_back(std::move(h_dl));
   return 0;
 
  error:
