@@ -1869,7 +1869,13 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
   // version number in every SDP passing through?)
 
   AmMimeBody *s = dlg->established_body.hasContentType(SIP_APPLICATION_SDP);
-  if (s) sdp.parse((const char*)s->getPayload());
+  if (s) {
+    if (sdp.parse((const char*)s->getPayload()))
+    {
+      ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
+      return;
+    }
+  }
 
   if (sdp.media.empty()) {
     // established SDP is not valid! generate complete fake

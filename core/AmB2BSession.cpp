@@ -291,7 +291,11 @@ void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &
   /* create fake AmSdp from AmMimeBody */
   AmSdp fake_sdp;
   AmMimeBody fake_mimebody;
-  fake_sdp.parse((const char *)src_sdp->getPayload());
+  if (fake_sdp.parse((const char *)src_sdp->getPayload()))
+  {
+    ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
+    return;
+  }
 
   for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
   {
@@ -337,8 +341,13 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *s
   /* port must reflect actual port in SDP offer coming in */
   if (sdp) {
     AmSdp fake_sdp;
-    fake_sdp.parse((const char *)sdp->getPayload());
-    desired_port = getMediaPort(fake_sdp);
+    if (fake_sdp.parse((const char *)sdp->getPayload()))
+    {
+      ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
+    }
+    else {
+      desired_port = getMediaPort(fake_sdp);
+    }
   }
 
   if (desired_port) {
