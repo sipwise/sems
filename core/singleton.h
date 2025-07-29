@@ -9,11 +9,11 @@ class singleton
 public:
   static T* instance()
   {
-    _inst_m.lock();
+    inst_m.lock();
     if(NULL == _instance) {
       _instance = new T();
     }
-    _inst_m.unlock();
+    inst_m.unlock();
 
     return _instance;
   }
@@ -21,31 +21,31 @@ public:
   static bool haveInstance()
   {
     bool res = false;
-    _inst_m.lock();
+    inst_m.lock();
     res = _instance != NULL;
-    _inst_m.unlock();
+    inst_m.unlock();
     return res;
   }
   
   static void dispose() 
   {
-    _inst_m.lock();
+    inst_m.lock();
     if(_instance != NULL){
       delete _instance;
       _instance = NULL;
     }
-    _inst_m.unlock();
+    inst_m.unlock();
   }
 
 private:
   static T*       _instance;
-  static AmMutex  _inst_m;
+  static AmMutex  inst_m;
 };
 
 template<class T>
 T* singleton<T>::_instance = NULL;
 
 template<class T>
-AmMutex singleton<T>::_inst_m;
+AmMutex singleton<T>::inst_m;
 
 #endif
