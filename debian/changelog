@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0-1+0~mr10.5.9.1) unstable; urgency=medium
+
+  [ Guillem Jover ]
+  * [df88a93] MT#63051 debian: Fix make variable usage
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 29 Jul 2025 11:33:20 +0200
+
 ngcp-sems (1:1.6.0-1+0~mr10.5.9.0) unstable; urgency=medium
 
   * New release.
