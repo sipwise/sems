@@ -32,7 +32,7 @@ class tcp_trsp_socket
   : public trsp_socket,
     public std::enable_shared_from_this<tcp_trsp_socket>
 {
-  tcp_server_socket* server_sock;
+  shared_ptr<tcp_server_socket> server_sock;
   tcp_server_worker& server_worker;
 
   bool             closed;
@@ -146,18 +146,18 @@ class tcp_trsp_socket
   static void on_sock_read(int fd, short ev, void* arg);
   static void on_sock_write(int fd, short ev, void* arg);
 
-  tcp_trsp_socket(tcp_server_socket* server_sock,
+  tcp_trsp_socket(const shared_ptr<tcp_server_socket>& server_sock,
 		  tcp_server_worker& server_worker,
 		  int sd, const sockaddr_storage* sa,
 		  struct event_base* evbase);
 
 public:
-  static void create_connected(tcp_server_socket* server_sock,
+  static void create_connected(const shared_ptr<tcp_server_socket>& server_sock,
 			       tcp_server_worker& server_worker,
 			       int sd, const sockaddr_storage* sa,
 			       struct event_base* evbase);
 
-  static shared_ptr<tcp_trsp_socket> new_connection(tcp_server_socket* server_sock,
+  static shared_ptr<tcp_trsp_socket> new_connection(const shared_ptr<tcp_server_socket>& server_sock,
 					 tcp_server_worker& server_worker,
 					 const sockaddr_storage* sa,
 					 struct event_base* evbase);
@@ -192,7 +192,7 @@ class tcp_server_worker
   : public AmThread
 {
   struct event_base* evbase;
-  tcp_server_socket* server_sock;
+  shared_ptr<tcp_server_socket> server_sock;
 
   AmMutex                      connections_mut;
   map<string, shared_ptr<tcp_trsp_socket>> connections;
@@ -202,7 +202,7 @@ protected:
   void on_stop();
 
 public:
-  tcp_server_worker(tcp_server_socket* server_sock);
+  tcp_server_worker(const shared_ptr<tcp_server_socket>& server_sock);
   ~tcp_server_worker();
 
   int send(const sockaddr_storage* sa, const char* msg,
@@ -212,7 +212,9 @@ public:
   void remove_connection(const tcp_trsp_socket* client_sock);
 };
 
-class tcp_server_socket: public trsp_socket
+class tcp_server_socket
+  : public trsp_socket,
+    public std::enable_shared_from_this<tcp_server_socket>
 {
   struct event_base* evbase;
   struct event*      ev_accept;

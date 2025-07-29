@@ -27,7 +27,7 @@ void tcp_trsp_socket::on_sock_write(int fd, short ev, void* arg)
   }
 }
 
-tcp_trsp_socket::tcp_trsp_socket(tcp_server_socket* server_sock,
+tcp_trsp_socket::tcp_trsp_socket(const shared_ptr<tcp_server_socket>& server_sock,
 				 tcp_server_worker& server_worker,
 				 int sd, const sockaddr_storage* sa,
 				 struct event_base* evbase)
@@ -57,7 +57,7 @@ tcp_trsp_socket::tcp_trsp_socket(tcp_server_socket* server_sock,
   }
 }
 
-void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
+void tcp_trsp_socket::create_connected(const shared_ptr<tcp_server_socket>& server_sock,
 				       tcp_server_worker& server_worker,
 				       int sd, const sockaddr_storage* sa,
 				       struct event_base* evbase)
@@ -74,7 +74,7 @@ void tcp_trsp_socket::create_connected(tcp_server_socket* server_sock,
   sock->add_read_event();
 }
 
-shared_ptr<tcp_trsp_socket> tcp_trsp_socket::new_connection(tcp_server_socket* server_sock,
+shared_ptr<tcp_trsp_socket> tcp_trsp_socket::new_connection(const shared_ptr<tcp_server_socket>& server_sock,
 						 tcp_server_worker& server_worker,
 						 const sockaddr_storage* sa,
 						 struct event_base* evbase)
@@ -471,7 +471,7 @@ void tcp_trsp_socket::on_write(short ev)
   }
 }
 
-tcp_server_worker::tcp_server_worker(tcp_server_socket* server_sock)
+tcp_server_worker::tcp_server_worker(const shared_ptr<tcp_server_socket>& server_sock)
   : server_sock(server_sock)
 {
   evbase = event_base_new();
@@ -681,7 +681,7 @@ void tcp_server_socket::add_event(struct event_base *evbase)
 void tcp_server_socket::add_threads(unsigned int n)
 {
   for(unsigned int i=0; i<n; i++) {
-    workers.emplace_back(this);
+    workers.emplace_back(shared_from_this());
   }
 }
 
@@ -723,7 +723,7 @@ void tcp_server_socket::on_accept(int sd, short ev)
 
   // in case of thread pooling, do following in worker thread
   DBG("tcp_trsp_socket::create_connected (idx = %u)",idx);
-  tcp_trsp_socket::create_connected(this, workers[idx], connection_sd,
+  tcp_trsp_socket::create_connected(shared_from_this(), workers[idx], connection_sd,
 				    &src_addr,evbase);
 }
 
