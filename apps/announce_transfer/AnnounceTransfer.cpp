@@ -152,8 +152,7 @@ void AnnounceTransferDialog::onSipRequest(const AmSipRequest& req)
       if (!req.body.isContentType("message/sipfrag"))
 	throw AmSession::Exception(415, "Unsupported Media Type");
 
-      string body((const char*)req.body.getPayload(),
-		  req.body.getLen());
+      string body(req.body.getPayload());
 
       if (body.length()<8)
 	throw AmSession::Exception(400, "Short Body");

@@ -37,19 +37,19 @@ using std::map;
 #define LF   '\n'
 #define CRLF "\r\n"
 
-static void parse_session_attr(AmSdp* sdp_msg, char* s, char** next);
-static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s);
-static char* parse_sdp_connection(AmSdp* sdp_msg, char* s, char t);
-static void parse_sdp_media(AmSdp* sdp_msg, char* s);
-static char* parse_sdp_attr(AmSdp* sdp_msg, char* s);
-static void parse_sdp_origin(AmSdp* sdp_masg, char* s);
+static void parse_session_attr(AmSdp* sdp_msg, const char* s, const char** next);
+static bool parse_sdp_line_ex(AmSdp* sdp_msg, const char* s);
+static const char* parse_sdp_connection(AmSdp* sdp_msg, const char* s, char t);
+static void parse_sdp_media(AmSdp* sdp_msg, const char* s);
+static const char* parse_sdp_attr(AmSdp* sdp_msg, const char* s);
+static void parse_sdp_origin(AmSdp* sdp_masg, const char* s);
 
-inline char* get_next_line(char* s);
-inline char* skip_till_next_line(char* s, size_t& line_len);
-static char* is_eql_next(char* s);
-static char* parse_until(char* s, char end);
-static char* parse_until(char* s, char* end, char c);
-static bool contains(char* s, char* next_line, char c);
+inline const char* get_next_line(const char* s);
+inline const char* skip_till_next_line(const char* s, size_t& line_len);
+static const char* is_eql_next(const char* s);
+static const char* parse_until(const char* s, char end);
+static const char* parse_until(const char* s, const char* end, char c);
+static bool contains(const char* s, const char* next_line, char c);
 static bool is_wsp(char s);
 
 static MediaType media_type(const std::string& media);
@@ -290,11 +290,16 @@ AmSdp::AmSdp(const AmSdp& p_sdp_msg)
 {
 }
 
-bool AmSdp::parse(char* sdp_msg)
+bool AmSdp::parse(const string& sdp_copy)
 {
-  if (NULL == sdp_msg)
-  {
+  if (sdp_copy.empty()) {
     WARN("Nothing to parse.\n");
+    return false;
+  }
+
+  const char * sdp_msg = sdp_copy.c_str();
+  if (!sdp_msg) {
+    WARN("Cannot duplicate SDP for parsing.\n");
     return false;
   }
 
@@ -577,14 +582,16 @@ void SdpMedia::calcAnswer(const AmPayloadProvider* payload_prov,
 
 /**
  * SDP body parser
+ *
+ * TODO: rework to deal with std::string and refactor user(s) accordingly.
  */
-static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
+static bool parse_sdp_line_ex(AmSdp* sdp_msg, const char * s)
 {
   /* SDP can't be empty */
   if (!s)
     return false;
 
-  char* next=0;
+  const char* next=0;
   size_t line_len = 0;
   parse_st state;
 
@@ -757,11 +764,11 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
   return true;
 }
 
-static char* parse_sdp_connection(AmSdp* sdp_msg, char* s, char t)
+static const char* parse_sdp_connection(AmSdp* sdp_msg, const char* s, char t)
 {
-  char* connection_line=s;
-  char* next=0;
-  char* next_line=0;
+  const char* connection_line=s;
+  const char* next=0;
+  const char* next_line=0;
   size_t line_len = 0;
   int parsing=1;
 
@@ -850,16 +857,16 @@ static char* parse_sdp_connection(AmSdp* sdp_msg, char* s, char t)
   return next_line;
 }
 
-static void parse_sdp_media(AmSdp* sdp_msg, char* s)
+static void parse_sdp_media(AmSdp* sdp_msg, const char* s)
 {
   SdpMedia m;
   
   sdp_media_st state;
   state = MEDIA;
   int parsing = 1;
-  char* media_line=s;
-  char* next=0;
-  char* line_end=0;
+  const char* media_line=s;
+  const char* next=0;
+  const char* line_end=0;
   line_end = get_next_line(media_line);
   SdpPayload payload;
   unsigned int payload_type;
@@ -1010,7 +1017,7 @@ static void parse_sdp_media(AmSdp* sdp_msg, char* s)
 }
 
 /* session level attribute */
-static void parse_session_attr(AmSdp* sdp_msg, char* s, char** next) {
+static void parse_session_attr(AmSdp* sdp_msg, const char* s, const char** next) {
   size_t line_len = 0;
   *next = skip_till_next_line(s, line_len);
 
@@ -1020,7 +1027,7 @@ static void parse_session_attr(AmSdp* sdp_msg, char* s, char** next) {
     return;
   }
 
-  char* attr_end = *next-1;
+  const char* attr_end = *next-1;
   while (attr_end >= s && ((*attr_end == LF) || (*attr_end == CR)))
     attr_end--;
 
@@ -1029,7 +1036,7 @@ static void parse_session_attr(AmSdp* sdp_msg, char* s, char** next) {
     return;
   }
 
-  char* col = parse_until(s, attr_end, ':');
+  const char* col = parse_until(s, attr_end, ':');
 
   if (col == attr_end) {
     /* property attribute */
@@ -1043,7 +1050,7 @@ static void parse_session_attr(AmSdp* sdp_msg, char* s, char** next) {
 }
 
 /* media level attribute */
-static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
+static const char* parse_sdp_attr(AmSdp* sdp_msg, const char* s)
 {
   if (sdp_msg->media.empty()) {
     ERROR("While parsing media options: no actual media !\n");
@@ -1058,9 +1065,9 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
   sdp_attr_fmtp_st fmtp_st;
   rtpmap_st = TYPE;
   fmtp_st = FORMAT;
-  char* attr_line=s;
-  char* next=0;
-  char* line_end=0;
+  const char* attr_line=s;
+  const char* next=0;
+  const char* line_end=0;
   size_t line_len = 0;
   int parsing = 1;
   line_end = skip_till_next_line(attr_line, line_len);
@@ -1183,7 +1190,7 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
 
         case FORMAT_PARAM:
         {
-          char* param_end = line_end - 1;
+          const char* param_end = line_end - 1;
           while (is_wsp(*param_end))
             param_end--;
 
@@ -1261,11 +1268,11 @@ static char* parse_sdp_attr(AmSdp* sdp_msg, char* s)
   return line_end;
 }
 
-static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
+static void parse_sdp_origin(AmSdp* sdp_msg, const char* s)
 {
-  char* origin_line = s;
-  char* next=0;
-  char* line_end=0;
+  const char* origin_line = s;
+  const char* next=0;
+  const char* line_end=0;
   size_t line_len=0;
   line_end = skip_till_next_line(s, line_len);
 
@@ -1396,9 +1403,9 @@ static void parse_sdp_origin(AmSdp* sdp_msg, char* s)
  *HELPER FUNCTIONS
  */
 
-static bool contains(char* s, char* next_line, char c)
+static bool contains(const char* s, const char* next_line, char c)
 {
-  char* line=s;
+  const char* line=s;
   while((line != next_line-1) && (*line)){
     if(*line == c)
       return true;
@@ -1411,9 +1418,9 @@ static bool is_wsp(char s) {
   return s==' ' || s == '\r' || s == '\n' || s == '\t';
 }
 
-static char* parse_until(char* s, char end)
+static const char* parse_until(const char* s, char end)
 {
-  char* line=s;
+  const char* line=s;
   while(*line && *line != end ){
     line++;
   }
@@ -1421,9 +1428,9 @@ static char* parse_until(char* s, char end)
   return line;
 }
 
-static char* parse_until(char* s, char* end, char c)
+static const char* parse_until(const char* s, const char* end, char c)
 {
-  char* line=s;
+  const char* line=s;
   while(line<end && *line && *line != c ){
     line++;
   }
@@ -1454,19 +1461,18 @@ static size_t len_till_char_or_eol(char* s, char* end, char c)
   return res;
 }
 
-static char* is_eql_next(char* s)
+static const char* is_eql_next(const char* s)
 {
-  char* current_line=s;
-  if(*(++current_line) != '='){
-    DBG("parse_sdp_line: expected '=' but found <%c> \n", *current_line);
+  const char* next = s + 1;
+  if (*next != '=') {
+      DBG("parse_sdp_line: expected '=' but found <%c> \n", *next);
   }
-  current_line +=1;
-  return current_line;
+  return next + 1;
 }
 
-inline char* get_next_line(char* s)
+inline const char* get_next_line(const char* s)
 {
-  char* next_line=s;
+  const char* next_line=s;
   //search for next line
  while( *next_line != '\0') {
     if(*next_line == CR){
@@ -1491,9 +1497,9 @@ inline char* get_next_line(char* s)
    @return line_len length of current line
    @return start of next line 
 */
-inline char* skip_till_next_line(char* s, size_t& line_len)
+inline const char* skip_till_next_line(const char* s, size_t& line_len)
 {
-  char* next_line=s;
+  const char* next_line=s;
   line_len = 0;
 
   //search for next line

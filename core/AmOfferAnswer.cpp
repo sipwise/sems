@@ -431,7 +431,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   } else if (sdp_body && has_sdp) {
     // update local SDP copy
     if (!sdp_local.parse(sdp_body->getPayload())) {
-      ILOG_DLG(L_ERR, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload());
+      ILOG_DLG(L_ERR, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload().c_str());
     }
   }
 
@@ -567,7 +567,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
 
     /* update local SDP copy */
     if (!sdp_local.parse(sdp_body->getPayload())) {
-      ILOG_DLG(L_WARN, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload());
+      ILOG_DLG(L_WARN, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload().c_str());
     }
   }
 

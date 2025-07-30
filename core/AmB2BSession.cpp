@@ -1041,12 +1041,12 @@ bool AmB2BSession::saveSessionDescription(const AmMimeBody& body) {
   if(!sdp_body)
     return false;
 
-  ILOG_DLG(L_DBG, "saving session description (%s, %.*s...)\n",
-      sdp_body->getCTStr().c_str(), 50, sdp_body->getPayload());
+  ILOG_DLG(L_DBG, "saving session description (%s, %s)\n",
+      sdp_body->getCTStr().c_str(), sdp_body->getPayload().c_str());
 
   dlg->established_body = *sdp_body;
 
-  const char* cmp_body_begin = sdp_body->getPayload();
+  const char* cmp_body_begin = sdp_body->getPayload().c_str();
   size_t cmp_body_length = sdp_body->getLen();
 
 #define skip_line						\
@@ -1076,7 +1076,7 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
   if(!sdp_body)
     return false;
 
-  const char* cmp_body_begin = sdp_body->getPayload();
+  const char* cmp_body_begin = sdp_body->getPayload().c_str();
   size_t cmp_body_length = sdp_body->getLen();
   if (cmp_body_length) {
     // for SDP, skip v and o line
@@ -1090,8 +1090,8 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
   uint32_t new_body_hash = hashlittle(cmp_body_begin, cmp_body_length, 0);
 
   if (body_hash != new_body_hash) {
-    ILOG_DLG(L_DBG, "session description changed - saving (%s, %.*s...)\n",
-	sdp_body->getCTStr().c_str(), 50, sdp_body->getPayload());
+    ILOG_DLG(L_DBG, "session description changed - saving (%s, %s...)\n",
+	sdp_body->getCTStr().c_str(), sdp_body->getPayload().c_str());
     body_hash = new_body_hash;
     dlg->established_body = body;
     return true;

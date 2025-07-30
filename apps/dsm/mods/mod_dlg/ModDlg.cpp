@@ -410,7 +410,7 @@ EXEC_ACTION_START(DLGGetRequestBodyAction) {
     DBG("body with content_type %s not found\n", content_type.c_str());
     sc_sess->var.erase(dstvar);
   } else {
-    sc_sess->var[dstvar] = string((const char*)msg_body->getPayload());
+    sc_sess->var[dstvar] = msg_body->getPayload();
     DBG("set $%s='%s'\n", dstvar.c_str(), sc_sess->var[dstvar].c_str());
   }
 } EXEC_ACTION_END;
@@ -434,7 +434,7 @@ EXEC_ACTION_START(DLGGetReplyBodyAction) {
     DBG("body with content_type %s not found\n", content_type.c_str());
     sc_sess->var.erase(dstvar);
   } else {
-    sc_sess->var[dstvar] = string((const char*)msg_body->getPayload());
+    sc_sess->var[dstvar] = msg_body->getPayload();
     DBG("set $%s='%s'\n", dstvar.c_str(), sc_sess->var[dstvar].c_str());
   }
 } EXEC_ACTION_END;

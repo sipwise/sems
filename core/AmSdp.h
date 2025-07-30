@@ -266,7 +266,7 @@ public:
    * Parse the SDP message passed as an argument.
    * Returns true on well parsed SDP, otherwise false.
    */
-  bool parse(char* sdp_msg);
+  bool parse(const string& sdp_copy);
 
   /**
    * Prints the current SDP structure

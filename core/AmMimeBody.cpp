@@ -16,22 +16,14 @@ using std::unique_ptr;
 #define BOUNDARY_str "boundary"
 #define BOUNDARY_len (sizeof(BOUNDARY_str)-/*0-term*/1)
 
-AmMimeBody::AmMimeBody()
-  : content_len(0),
-    payload(NULL)
-{
-}
-
 AmMimeBody::AmMimeBody(const AmMimeBody& body)
   : ct(body.ct),
-    hdrs(body.hdrs),
-    content_len(0),
-    payload(NULL)
+    hdrs(body.hdrs)
 {
-  if(body.payload && body.content_len) {
-    setPayload(body.payload,body.content_len);
+  if(!body.payload_s.empty()) {
+    setPayload(body.payload_s);
   }
-  
+
   for(Parts::const_iterator it = body.parts.begin();
       it != body.parts.end(); ++it) {
     parts.push_back(new AmMimeBody(**it));
@@ -49,8 +41,8 @@ const AmMimeBody& AmMimeBody::operator = (const AmMimeBody& r_body)
   ct = r_body.ct;
   hdrs = r_body.hdrs;
 
-  if(r_body.payload && r_body.content_len) {
-    setPayload(r_body.payload,r_body.content_len);
+  if(!r_body.payload_s.empty()) {
+    setPayload(r_body.payload_s);
   }
   else {
     clearPayload();
@@ -145,8 +137,7 @@ void AmMimeBody::clearPart(Parts::iterator position)
 
 void AmMimeBody::clearPayload()
 {
-  delete [] payload;
-  payload = NULL;  
+  payload_s = "";
 }
 
 int AmContentType::parse(const string& ct)
@@ -563,8 +554,7 @@ int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
     }
     else {
       AmMimeBody* part = parts.back();
-      DBG("Added new part:\n%.*s\n",
-	  part->content_len,part->payload);
+      DBG("Added new part:\n%s\n", payload_s.c_str());
     }
     
   } while(!err);
@@ -606,18 +596,25 @@ void AmMimeBody::convertToMultipart()
   parts.push_back(n_part);
   ct = n_ct;
 
-  content_len = 0;
+  /* TODO: should we clear the original (root) payload when now having multi-part(s) stored? */
 }
 
 void AmMimeBody::convertToSinglepart()
 {
   if (parts.size() == 1) {
     this->ct = parts.front()->ct;
-    setPayload(parts.front()->payload, parts.front()->content_len);
-    clearParts();
-  } else {
-    DBG("body does not have exactly one part\n");
+
+    if (!parts.front()->payload_s.empty()) {
+      setPayload(parts.front()->payload_s);
+      clearParts();
+      return;
+    }
+    else {
+      WARN("Payload is empty.\n");
+    }
   }
+
+  WARN("body does not have exactly one part\n");
 }
 
 void AmContentType::setType(const string& t)
@@ -701,21 +698,13 @@ int AmMimeBody::deletePart(const string& content_type)
 
 void AmMimeBody::setPayload(const char* buf, unsigned int len)
 {
-  if(payload)
-    clearPayload();
-
-  payload = new char [len+1];
-  memcpy(payload,buf,len);
-  content_len = len;
-
-  // zero-term for the SDP parser
-  payload[len] = '\0';
+  string tmp(buf, len);
+  payload_s = std::move(tmp);
 }
 
 bool AmMimeBody::empty() const
 {
-  return (!payload || !content_len)
-    && parts.empty();
+  return (payload_s.empty() && parts.empty());
 }
 
 bool AmContentType::hasContentType(const string& content_type) const
@@ -801,8 +790,8 @@ void AmMimeBody::print(string& buf) const
   if(empty())
     return;
 
-  if(content_len) {
-    buf += string(payload, content_len);
+  if(!payload_s.empty()) {
+    buf += payload_s;
   }
   else {
 

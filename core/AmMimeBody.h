@@ -77,8 +77,11 @@ public:
 private:
   AmContentType  ct;
   string         hdrs;
-  unsigned int   content_len;
-  char* payload;
+
+  /* Protected from external interfere.
+   * Is modifiable once while setting a new payload,
+   * but later for users only return a copy. */
+  string payload_s;
   
   Parts parts;
 
@@ -95,7 +98,7 @@ private:
 
 public:
   /** Empty constructor */
-  AmMimeBody();
+  AmMimeBody() { /* does nothing, do we need it? */ };
 
   /** Deep-copy constructor */
   AmMimeBody(const AmMimeBody& body);
@@ -113,6 +116,7 @@ public:
 
   /** Set the payload of this body */
   void setPayload(const char* buf, unsigned int len);
+  void setPayload(const string& copy) { payload_s = copy; }
 
   /** Set part headers (intended for sub-parts)*/
   void setHeaders(const string& hdrs);
@@ -142,16 +146,16 @@ public:
   const string& getHeaders() const { return hdrs; }
 
   /**
-   * @return a pointer to the payload of this part.
-   *         in case of multi-part, NULL is returned.
+   * @return return a payload of this part.
+   *         in case of multi-part, empty string is returned.
    */
-  char* getPayload() const { return payload; }
+  const string& getPayload() const { return payload_s; } /* return a copy, not by reference */
 
   /**
    * @return the payload length of this part.
    *         in case of multi-part, 0 is returned.
    */
-  unsigned int   getLen() const { return content_len; }
+  size_t getLen() const { return payload_s.length(); }
 
   /** @return true if no payload assigned and no sub-parts available */
   bool empty() const;
