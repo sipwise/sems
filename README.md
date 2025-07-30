@@ -1,5 +1,7 @@
 # What is SEMS?
 
+Sipwise SEMS is a drop-in replacement for B2B (SIP/media) components.
+
 [Sipwise](http://www.sipwise.com/) SEMS stands for SIP Express Media Server,
 but that's not all it is.
 
