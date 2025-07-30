@@ -147,6 +147,11 @@ protected:
 	: resolution(_resolution)
 	  {}
 
+    ~_wheeltimer() {
+      stop();
+      join();
+    }
+
 public:
     //clock reference
     struct _uc {
