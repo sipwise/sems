@@ -290,26 +290,44 @@ AmSdp::AmSdp(const AmSdp& p_sdp_msg)
 {
 }
 
-int AmSdp::parse(const char* _sdp_msg)
+bool AmSdp::parse(char* sdp_msg)
 {
-  char* s = (char*)_sdp_msg;
+  if (NULL == sdp_msg)
+  {
+    WARN("Nothing to parse.\n");
+    return false;
+  }
+
+  /* remove all values already parsed before */
   clear();
 
-  bool ret = parse_sdp_line_ex(this,s);
-  
-  if(!ret && conn.address.empty()){
-    for(vector<SdpMedia>::iterator it = media.begin();
-	!ret && (it != media.end()); ++it)
-      ret = it->conn.address.empty();
-    
-    if(ret){
-      ERROR("A connection field must be field must be present in every\n");
-      ERROR("media description or at the session level.\n");
+  /* returns true if parsed normally,
+   * parses such things as session/media connection as well*/
+  bool parsed = parse_sdp_line_ex(this, sdp_msg);
+
+  /* check session connection */
+  if (parsed && conn.address.empty()) {
+
+    /* session level conneciton is absent, last hope: now check media level(s) */
+    bool media_conn_absent = false;
+
+    for (vector<SdpMedia>::iterator it = media.begin();
+         !media_conn_absent && (it != media.end());
+         ++it)
+    {
+      /* if session connection was empty, check all medias now
+       * if at least one media has no connection information, then
+       * then consider it as falsy and stop iteration */
+      media_conn_absent = it->conn.address.empty();
+    }
+
+    if (media_conn_absent) {
+      WARN("SDP: Conn info absent on the session lvl and at least is also absent in one of the medias!\n");
+      return false;
     }
   }
-  
-    
-  return ret;
+
+  return parsed;
 }
 
 void AmSdp::print(string& body) const
@@ -562,9 +580,9 @@ void SdpMedia::calcAnswer(const AmPayloadProvider* payload_prov,
  */
 static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
 {
-  /* SDP can't be empty, return error (true really used for failure?) */
+  /* SDP can't be empty */
   if (!s)
-    return true;
+    return false;
 
   char* next=0;
   size_t line_len = 0;
@@ -735,7 +753,8 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, char*& s)
         break;
     }
   }
-  return false;
+
+  return true;
 }
 
 static char* parse_sdp_connection(AmSdp* sdp_msg, char* s, char t)

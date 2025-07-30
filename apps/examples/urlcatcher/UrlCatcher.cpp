@@ -70,7 +70,7 @@ AmSession* UrlCatcherFactory::onInvite(const AmSipRequest& req, const string& ap
   }
 
   AmSdp sdp;
-  if (sdp.parse((const char *)body->getPayload())) {
+  if (!sdp.parse(body->getPayload())) {
     ERROR("SDP parsing error\n");
     throw AmSession::Exception(404, "Not Found Here (SDP parse error)");
   }

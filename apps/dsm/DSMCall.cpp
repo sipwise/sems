@@ -217,7 +217,7 @@ int DSMCall::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
   if(sdp_body) {
     string sdp_buf;
     answer.print(sdp_buf);
-    sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+    sdp_body->setPayload(sdp_buf.c_str(),
 			 sdp_buf.length());
   }
 

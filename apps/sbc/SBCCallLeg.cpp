@@ -1457,20 +1457,29 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
 {
   ILOG_DLG(L_DBG, "filtering body\n");
 
+  int ret = 0; /* 0 is ok; < 0 is bad */
+
   AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
-  if (!sdp_body) return 0;
+  if (!sdp_body) {
+    ILOG_DLG(L_DBG, "No SDP body found with content type application/sdp.\n");
+    return ret; /* considered as all ok */
+  }
 
   // filter body for given methods only
   if (!(method == SIP_METH_INVITE ||
        method == SIP_METH_UPDATE ||
        method == SIP_METH_PRACK ||
-       method == SIP_METH_ACK)) return 0;
+       method == SIP_METH_ACK))
+  {
+    ILOG_DLG(L_DBG, "Non-INVITE/UPDATE method, no need to filter.\n");
+    return ret; /* considered as all ok */
+  }
 
   AmSdp sdp;
-  int res = sdp.parse((const char *)sdp_body->getPayload());
-  if (0 != res) {
+  if (!sdp.parse(sdp_body->getPayload()))
+  {
     ILOG_DLG(L_DBG, "SDP parsing failed during body filtering!\n");
-    return res;
+    return -1; /* just interpret false as -1, to show there is any kind of error */
   }
 
   bool changed = false;
@@ -1488,13 +1497,13 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
   }
 
   if (!call_profile.mediafilter.empty()) {
-    res = filterMedia(sdp, call_profile.mediafilter);
-    if (res < 0) {
+    ret = filterMedia(sdp, call_profile.mediafilter);
+    if (ret < 0) {
       // result may be ignored, we need to set the SDP
       string n_body;
       sdp.print(n_body);
-      sdp_body->setPayload((const unsigned char*)n_body.c_str(), n_body.length());
-      return res;
+      sdp_body->setPayload(n_body.c_str(), n_body.length());
+      return ret;
     }
     changed = true;
   }
@@ -1548,7 +1557,7 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
     sdpfilter = call_profile.aleg_sdpfilter;
 
   if (sdpfilter.size()) {
-    res = filterSDP(sdp, sdpfilter);
+    ret = filterSDP(sdp, sdpfilter);
     changed = true;
   }
 
@@ -1561,10 +1570,10 @@ int SBCCallLeg::filterSdp(AmMimeBody &body, const string &method)
   if (changed) {
     string n_body;
     sdp.print(n_body);
-    sdp_body->setPayload((const unsigned char*)n_body.c_str(), n_body.length());
+    sdp_body->setPayload(n_body.c_str(), n_body.length());
   }
 
-  return res;
+  return ret;
 }
 
 void SBCCallLeg::appendTranscoderCodecs(AmSdp &sdp)
@@ -1671,7 +1680,7 @@ bool SBCCallLeg::reinvite(const AmSdp &sdp, unsigned &request_cseq)
 
   string body_str;
   sdp.print(body_str);
-  sdp_body->parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  sdp_body->parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
 
   if (dlg->reinvite("", &body, SIP_FLAGS_VERBATIM) != 0) return false;
   request_cseq = dlg->cseq - 1;
@@ -1870,7 +1879,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 
   AmMimeBody *s = dlg->established_body.hasContentType(SIP_APPLICATION_SDP);
   if (s) {
-    if (sdp.parse((const char*)s->getPayload()))
+    if (!sdp.parse(s->getPayload()))
     {
       ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
       return;

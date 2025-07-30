@@ -721,12 +721,11 @@ static bool isTranscoderNeeded(const AmSipRequest& req, vector<PayloadDesc> &cap
   if (!body) return default_value;
 
   AmSdp sdp;
-  int res = sdp.parse((const char *)body->getPayload());
-  if (res != 0) {
-    DBG("SDP parsing failed!\n");
+  if (!sdp.parse(body->getPayload())) {
+    WARN("SDP parsing failed!\n");
     return default_value;
   }
-  
+
   // not nice, but we need to compare codec names and thus normalized SDP is
   // required
   normalizeSDP(sdp, false, "");

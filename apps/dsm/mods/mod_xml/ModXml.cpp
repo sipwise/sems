@@ -112,7 +112,7 @@ EXEC_ACTION_START(MODXMLParseSIPMsgBodyAction) {
     sc_sess->SET_STRERROR("no AmMimeBody in avar " + msgbody_var);
     EXEC_ACTION_STOP;
   }
-  const unsigned char* b =  msgbody->getPayload();
+  const char* b =  msgbody->getPayload();
   if (b==NULL) {
     DBG("empty AmMimeBody in avar '%s'\n", msgbody_var.c_str());
     sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);

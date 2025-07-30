@@ -655,7 +655,7 @@ EXEC_ACTION_START(MODSBCtestSDPConnectionAddress) {
   }
 
   AmSdp parser_sdp;
-  if (parser_sdp.parse((const char*)sdp_body->getPayload())) {
+  if (!parser_sdp.parse(sdp_body->getPayload())) {
     ERROR("error parsing SDP '%s'\n", sdp_body->getPayload());
     EXEC_ACTION_STOP;
   }

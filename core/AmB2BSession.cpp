@@ -220,7 +220,7 @@ void AmB2BSession::createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_bo
 
   AmSdp s;
 
-  if (!sdp || s.parse((const char*)sdp->getPayload())) {
+  if (!sdp || !s.parse(sdp->getPayload())) {
     /* no offer in the INVITE (or can't be parsed), we have to append fake offer
        into the reply */
     s.version = 0;
@@ -268,7 +268,7 @@ void AmB2BSession::createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_bo
 
   string body_str;
   s.print(body_str);
-  reply_body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  reply_body.parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
   try {
     updateLocalBody(reply_body);
   } catch (...) { /* throw ? */  }
@@ -281,8 +281,8 @@ static void sdp2body(const AmSdp &sdp, AmMimeBody &body)
   string body_str;
   sdp.print(body_str);
   AmMimeBody *s = body.hasContentType(SIP_APPLICATION_SDP);
-  if (s) s->parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
-  else body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  if (s) s->parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
+  else body.parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
 }
 
 void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &new_body,
@@ -291,7 +291,7 @@ void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &
   /* create fake AmSdp from AmMimeBody */
   AmSdp fake_sdp;
   AmMimeBody fake_mimebody;
-  if (fake_sdp.parse((const char *)src_sdp->getPayload()))
+  if (!fake_sdp.parse(src_sdp->getPayload()))
   {
     ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
     return;
@@ -341,7 +341,7 @@ void AmB2BSession::acceptPendingInvite(AmSipRequest *invite, const AmMimeBody *s
   /* port must reflect actual port in SDP offer coming in */
   if (sdp) {
     AmSdp fake_sdp;
-    if (fake_sdp.parse((const char *)sdp->getPayload()))
+    if (!fake_sdp.parse(sdp->getPayload()))
     {
       ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
     }
@@ -781,7 +781,7 @@ void AmB2BSession::updateLocalBody(AmMimeBody& body)
   if (!sdp) return;
 
   AmSdp parser_sdp;
-  if (parser_sdp.parse((const char*)sdp->getPayload())) {
+  if (!parser_sdp.parse(sdp->getPayload())) {
     ILOG_DLG(L_DBG, "SDP parsing failed!\n");
     return; // FIXME: throw an exception here?
   }
@@ -792,7 +792,7 @@ void AmB2BSession::updateLocalBody(AmMimeBody& body)
   // regenerate SDP
   string n_body;
   parser_sdp.print(n_body);
-  sdp->parse(sdp->getCTStr(), (const unsigned char*)n_body.c_str(), n_body.length());
+  sdp->parse(sdp->getCTStr(), n_body.c_str(), n_body.length());
 }
 
 void AmB2BSession::updateUACTransCSeq(unsigned int old_cseq, unsigned int new_cseq) {
@@ -1046,7 +1046,7 @@ bool AmB2BSession::saveSessionDescription(const AmMimeBody& body) {
 
   dlg->established_body = *sdp_body;
 
-  const char* cmp_body_begin = (const char*)sdp_body->getPayload();
+  const char* cmp_body_begin = sdp_body->getPayload();
   size_t cmp_body_length = sdp_body->getLen();
 
 #define skip_line						\
@@ -1076,7 +1076,7 @@ bool AmB2BSession::updateSessionDescription(const AmMimeBody& body) {
   if(!sdp_body)
     return false;
 
-  const char* cmp_body_begin = (const char*)sdp_body->getPayload();
+  const char* cmp_body_begin = sdp_body->getPayload();
   size_t cmp_body_length = sdp_body->getLen();
   if (cmp_body_length) {
     // for SDP, skip v and o line

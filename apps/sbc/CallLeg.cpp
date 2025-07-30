@@ -844,7 +844,7 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
     AmMimeBody *sdp = ev->body.hasContentType(SIP_APPLICATION_SDP);
     if (sdp) {
       AmSdp parsed_sdp;
-      if (parsed_sdp.parse((const char*)sdp->getPayload()) == 0) {
+      if (parsed_sdp.parse(sdp->getPayload())) {
         saveLocalSdpOrigin(parsed_sdp);
       }
     }
@@ -980,8 +980,8 @@ static void sdp2body(const AmSdp &sdp, AmMimeBody &body)
   sdp.print(body_str);
 
   AmMimeBody *s = body.hasContentType(SIP_APPLICATION_SDP);
-  if (s) s->parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
-  else body.parse(SIP_APPLICATION_SDP, (const unsigned char*)body_str.c_str(), body_str.length());
+  if (s) s->parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
+  else body.parse(SIP_APPLICATION_SDP, body_str.c_str(), body_str.length());
 }
 
 int CallLeg::putOnHoldImpl()
@@ -1479,7 +1479,7 @@ bool CallLeg::retrieveAmSdp(const AmMimeBody &mSdp, AmSdp &sdp)
     ILOG_DLG(L_DBG, "Failed to parse SDP body while retrieving into AmSdp!\n");
     return false;
   }
-  if (sdp.parse((const char *)sdp_body->getPayload())) {
+  if (!sdp.parse(sdp_body->getPayload())) {
     ILOG_DLG(L_DBG, "Failed to parse SDP body while retrieving into AmSdp!\n");
     return false;
   }

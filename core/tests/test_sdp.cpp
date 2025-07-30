@@ -24,7 +24,7 @@ FCTMF_SUITE_BGN(test_sdp) {
 	"a=rtpmap:101 telephone-event/8000" CRLF
 	"a=fmtp:101 0-15" CRLF ;
 
-      fct_chk(!s.parse(sdp.c_str()));
+      fct_chk(s.parse((char *)sdp.c_str()));
       fct_chk(s.version==0);
       fct_chk(s.origin.user == "-");
       fct_chk(s.origin.sessId == 3615077380);
@@ -63,7 +63,7 @@ FCTMF_SUITE_BGN(test_sdp) {
 	"a=rtpmap:101 telephone-event/8000" LF
 	"a=fmtp:101 0-15" LF ;
 
-      fct_chk(!s.parse(sdp.c_str()));
+      fct_chk(s.parse((char *)sdp.c_str()));
       fct_chk(s.version==0);
       fct_chk(s.origin.user == "-");
       fct_chk(s.origin.sessId == 3615077380);

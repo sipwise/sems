@@ -592,7 +592,7 @@ inline bool _SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     if (msg->content_type) {
 
 	if(req.body.parse(c2stlstr(msg->content_type->value),
-			  (unsigned char*)msg->body.s,
+			  msg->body.s,
 			  msg->body.len) < 0) {
 	    DBG("could not parse MIME body\n");
 	}
@@ -659,7 +659,7 @@ inline bool _SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     if (msg->content_type) {
 
 	if(reply.body.parse(c2stlstr(msg->content_type->value),
-			    (unsigned char*)msg->body.s,
+			    msg->body.s,
 			    msg->body.len) < 0) {
 	    DBG("could not parse MIME body\n");
 	}

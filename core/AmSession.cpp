@@ -797,7 +797,7 @@ void AmSession::onSipRequest(const AmSipRequest& req)
       req.body.hasContentType("application/dtmf-relay");
 
     if (dtmf_body) {
-      string dtmf_body_str((const char*)dtmf_body->getPayload(),
+      string dtmf_body_str(dtmf_body->getPayload(),
 			   dtmf_body->getLen());
       postDtmfEvent(new AmSipDtmfEvent(dtmf_body_str));
       dlg->reply(req, 200, "OK");

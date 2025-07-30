@@ -212,7 +212,7 @@ int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
          * fork) */
         ILOG_DLG(L_DBG, "overwriting SDP remembered within the same transaction\n");
 
-        if (sdp_remote.parse((const char*)sdp_body->getPayload())){
+        if (!sdp_remote.parse(sdp_body->getPayload())){
           err_code = 400;
           err_txt = "session description parsing failed";
         } else if(sdp_remote.media.empty()){
@@ -271,7 +271,7 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
     err_code = 400;
     *err_txt = "sdp body part not found";
 
-  } else if (sdp_remote.parse((const char*)body.getPayload())){
+  } else if (!sdp_remote.parse(body.getPayload())){
     err_code = 400;
     *err_txt = "session description parsing failed";
 
@@ -420,7 +420,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   if (generate_sdp) {
     string sdp_buf;
     if (!getSdpBody(sdp_buf)){
-      sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(),
+      sdp_body->setPayload(sdp_buf.c_str(),
 			   sdp_buf.length());
       has_sdp = true;
     }
@@ -430,8 +430,8 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
 
   } else if (sdp_body && has_sdp) {
     // update local SDP copy
-    if (sdp_local.parse((const char*)sdp_body->getPayload())) {
-      ILOG_DLG(L_ERR, "parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+    if (!sdp_local.parse(sdp_body->getPayload())) {
+      ILOG_DLG(L_ERR, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload());
     }
   }
 
@@ -464,7 +464,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
       reply.cseq_method == SIP_METH_INVITE && reply.code == 183)
   {
     AmSdp parser_sdp;
-    if (parser_sdp.parse((const char*)sdp_body->getPayload())) {
+    if (!parser_sdp.parse(sdp_body->getPayload())) {
       ILOG_DLG(L_WARN, "SDP parsing for the coming reply failed (cannot create AmSdp object).\n");
     } else {
       force_no_sdp_update = (sdp_local.origin.sessV == parser_sdp.origin.sessV);
@@ -495,7 +495,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
           }
         }
 
-        sdp_body->setPayload((const unsigned char*)existing_sdp.c_str(), existing_sdp.length());
+        sdp_body->setPayload(existing_sdp.c_str(), existing_sdp.length());
         has_sdp = true;
         ILOG_DLG(L_DBG, "Now has_sdp has been reset to true.\n");
 
@@ -549,7 +549,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
         }
       }
 
-      sdp_body->setPayload((const unsigned char*)sdp_buf.c_str(), sdp_buf.length());
+      sdp_body->setPayload(sdp_buf.c_str(), sdp_buf.length());
       has_sdp = true;
       ILOG_DLG(L_DBG, "Now has_sdp has been reset to true.\n");
 
@@ -566,8 +566,8 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
     ILOG_DLG(L_DBG, "Generating of the new SDP body was Not required. Just updating local SDP..\n");
 
     /* update local SDP copy */
-    if (sdp_local.parse((const char*)sdp_body->getPayload())) {
-      ILOG_DLG(L_WARN, "parser failed on Tx SDP: '%s'\n", (const char*)sdp_body->getPayload());
+    if (!sdp_local.parse(sdp_body->getPayload())) {
+      ILOG_DLG(L_WARN, "parser failed on Tx SDP: '%s'\n", sdp_body->getPayload());
     }
   }
 

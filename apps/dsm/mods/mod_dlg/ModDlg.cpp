@@ -534,7 +534,7 @@ EXEC_ACTION_START(DLGInfoAction) {
     }
     DBG("-> body_crlf is '%s'\n", body_crlf.c_str());
     if (body->parse(content_type,
-		    reinterpret_cast<const unsigned char*>(body_crlf.c_str()),
+		    body_crlf.c_str(),
 		    body_crlf.length())) {
       throw DSMException("sbc", "type", "param", "cause",
 			 "parsing of INFO body failed");
@@ -598,7 +598,7 @@ EXEC_ACTION_START(DLGAddReplyBodyPartAction) {
   AmMimeBody* new_part;
 
   new_part = sip_reply->mutable_reply->body.addPart(content_type);
-  new_part->setPayload((const unsigned char*)body_part.c_str(),
+  new_part->setPayload(body_part.c_str(),
 		       body_part.length());
   DBG("added to reply body part %s='%s'\n",
       content_type.c_str(), body_part.c_str());

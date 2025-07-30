@@ -510,7 +510,7 @@ int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
   }
 
   if(!sub_part_ct.empty() &&
-     (sub_part->parse(sub_part_ct,(unsigned char*)c,end-c) == 0)) {
+     (sub_part->parse(sub_part_ct,c,end-c) == 0)) {
     // TODO: check errors
     DBG("Successfully parsed subpart.\n");
   }
@@ -518,7 +518,7 @@ int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
     DBG("Either no Content-Type, or subpart parsing failed.\n");
     sub_part->ct.setType("");
     sub_part->ct.setSubType("");
-    sub_part->setPayload((unsigned char*)c,end-c);
+    sub_part->setPayload(c,end-c);
   }
 
   sub_part->setHeaders(sub_part_hdrs);
@@ -528,14 +528,15 @@ int AmMimeBody::parseSinglePart(unsigned char* buf, unsigned int len)
   return 0;
 }
 
-int AmMimeBody::parseMultipart(const unsigned char* buf, unsigned int len)
+int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
 {
   if(!ct.mp_boundary) {
     DBG("boundary parameter missing in a multipart MIME body\n");
     return -1;
   }
 
-  unsigned char* buf_end   = (unsigned char*)buf + len;
+  /* TODO: wtf is this?, rework parsing here to work with std::string */
+  unsigned char* buf_end   = (unsigned char*)(buf + len);
   unsigned char* part_end  = (unsigned char*)buf;
   unsigned char* next_part = (unsigned char*)buf_end;
 
@@ -574,7 +575,7 @@ int AmMimeBody::parseMultipart(const unsigned char* buf, unsigned int len)
 }
 
 int AmMimeBody::parse(const string& content_type,
-		      const unsigned char* buf, 
+		      const char* buf,
 		      unsigned int len)
 {
   if(ct.parse(content_type) < 0)
@@ -698,12 +699,12 @@ int AmMimeBody::deletePart(const string& content_type)
   return -1;
 }
 
-void AmMimeBody::setPayload(const unsigned char* buf, unsigned int len)
+void AmMimeBody::setPayload(const char* buf, unsigned int len)
 {
   if(payload)
     clearPayload();
 
-  payload = new unsigned char [len+1];
+  payload = new char [len+1];
   memcpy(payload,buf,len);
   content_len = len;
 
@@ -801,7 +802,7 @@ void AmMimeBody::print(string& buf) const
     return;
 
   if(content_len) {
-    buf += string((const char*)payload,content_len);
+    buf += string(payload, content_len);
   }
   else {
 

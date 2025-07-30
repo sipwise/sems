@@ -78,7 +78,7 @@ private:
   AmContentType  ct;
   string         hdrs;
   unsigned int   content_len;
-  unsigned char* payload;
+  char* payload;
   
   Parts parts;
 
@@ -86,7 +86,7 @@ private:
   void clearPart(Parts::iterator position);
   void clearPayload();
 
-  int parseMultipart(const unsigned char* buf, unsigned int len);
+  int parseMultipart(const char* buf, unsigned int len);
   int findNextBoundary(unsigned char** beg, unsigned char** end);
   int parseSinglePart(unsigned char* buf, unsigned int len);
 
@@ -108,11 +108,11 @@ public:
 
   /** Parse a body (single & multi-part) */
   int  parse(const string& content_type, 
-	     const unsigned char* buf, 
+	     const char* buf,
 	     unsigned int len);
 
   /** Set the payload of this body */
-  void setPayload(const unsigned char* buf, unsigned int len);
+  void setPayload(const char* buf, unsigned int len);
 
   /** Set part headers (intended for sub-parts)*/
   void setHeaders(const string& hdrs);
@@ -145,7 +145,7 @@ public:
    * @return a pointer to the payload of this part.
    *         in case of multi-part, NULL is returned.
    */
-  const unsigned char* getPayload() const { return payload; }
+  char* getPayload() const { return payload; }
 
   /**
    * @return the payload length of this part.
