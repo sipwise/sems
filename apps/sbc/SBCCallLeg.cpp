@@ -437,10 +437,21 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
           ILOG_DLG(L_DBG, "filtering body for request '%s' (c/t '%s')\n",
               req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
           // todo: handle filtering errors
-          int res = filterSdp(req_ev->req.body, req_ev->req.method);
-          if (res < 0) {
-            delete ev; // failed relayEvent should destroy the event
-            return res;
+
+          /* ct length 0 means: it was parsed, but indeed it turned out body was empty */
+          if (req_ev->req.body.getCTLength() == 0) {
+            ILOG_DLG(L_DBG, "Skip filtering SDP body, because Content-Length is zero.\n");
+          }
+          else {
+            ILOG_DLG(L_DBG, "filtering body for request '%s' (c/t '%s')\n",
+                req_ev->req.method.c_str(),
+                req_ev->req.body.getCTStr().c_str());
+
+            int res = filterSdp(req_ev->req.body, req_ev->req.method);
+            if (res < 0) {
+              delete ev; // failed relayEvent should destroy the event
+              return res;
+            }
           }
 
 	  if((a_leg && call_profile.keep_vias)
@@ -479,10 +490,17 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             }
           }
 
-          ILOG_DLG(L_DBG, "filtering body for reply '%s' (c/t '%s')\n",
-              reply_ev->trans_method.c_str(), reply_ev->reply.body.getCTStr().c_str());
+          /* ct length 0 means: it was parsed, but indeed it turned out body was empty */
+          if (reply_ev->reply.body.getCTLength() == 0) {
+            ILOG_DLG(L_DBG, "Skip filtering SDP body, because Content-Length is zero.\n");
+          }
+          else {
+            ILOG_DLG(L_DBG, "filtering body for reply '%s' (c/t '%s')\n",
+                reply_ev->trans_method.c_str(),
+                reply_ev->reply.body.getCTStr().c_str());
 
-          filterSdp(reply_ev->reply.body, reply_ev->reply.cseq_method);
+            filterSdp(reply_ev->reply.body, reply_ev->reply.cseq_method);
+          }
         }
 
         break;
@@ -955,12 +973,18 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     assertEndCRLF(append_headers);
     invite_req.hdrs+=append_headers;
   }
-  
-  int res = filterSdp(invite_req.body, invite_req.method);
-  if (res < 0) {
-    // FIXME: quick hack, throw the exception from the filtering function for
-    // requests
-    throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+
+  /* ct length 0 means: it was parsed, but indeed it turned out body was empty */
+  if (req.body.getCTLength() == 0) {
+    ILOG_DLG(L_DBG, "Skip filtering SDP body, because Content-Length is zero.\n");
+  }
+  else {
+    int res = filterSdp(invite_req.body, invite_req.method);
+    if (res < 0) {
+      // FIXME: quick hack, throw the exception from the filtering function for
+      // requests
+      throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+    }
   }
 
 #undef REPLACE_VALS
