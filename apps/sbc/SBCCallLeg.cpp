@@ -437,7 +437,6 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
           ILOG_DLG(L_DBG, "filtering body for request '%s' (c/t '%s')\n",
               req_ev->req.method.c_str(), req_ev->req.body.getCTStr().c_str());
           // todo: handle filtering errors
-
           int res = filterSdp(req_ev->req.body, req_ev->req.method);
           if (res < 0) {
             delete ev; // failed relayEvent should destroy the event

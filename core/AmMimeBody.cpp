@@ -58,14 +58,15 @@ const AmMimeBody& AmMimeBody::operator = (const AmMimeBody& r_body)
 }
 
 AmContentType::AmContentType()
-  : mp_boundary(NULL)
+  : mp_boundary(NULL), length(-1)
 {
 }
 
 AmContentType::AmContentType(const AmContentType& ct)
   : type(ct.type),
     subtype(ct.subtype),
-    mp_boundary(NULL)
+    mp_boundary(NULL),
+    length(ct.length)
 {
   for(Params::const_iterator it = ct.params.begin();
       it != ct.params.end(); ++it) {
@@ -275,6 +276,16 @@ int AmContentType::parse(const string& ct)
   }
   
   return 0;
+}
+
+int AmContentType::parse(const string& ct, unsigned int _length)
+{
+  if (!length) {
+    DBG("Cannot parse Content-Type of zero-length body\n");
+    return -1;
+  }
+  length = _length;
+  return parse(ct);
 }
 
 int  AmContentType::parseParams(const char* c, const char* end)
@@ -568,7 +579,7 @@ int AmMimeBody::parse(const string& content_type,
 		      const char* buf,
 		      unsigned int len)
 {
-  if(ct.parse(content_type) < 0)
+  if(ct.parse(content_type, len) < 0)
     return -1;
   
   if(ct.isType(MULTIPART)) {
@@ -587,6 +598,7 @@ int AmMimeBody::parse(const string& content_type,
 void AmMimeBody::convertToMultipart()
 {
   AmContentType n_ct;
+  /* TODO: should we somehow predict the length of multipart body? */
   n_ct.parse(MULTIPART_MIXED); // never fails
   n_ct.resetBoundary();
 
@@ -652,7 +664,11 @@ AmMimeBody* AmMimeBody::addPart(const string& content_type)
   AmMimeBody* body = NULL;
   if(ct.type.empty() && ct.subtype.empty()) {
     // fill *this* body
-    if(ct.parse(content_type)) {
+    string sdp_body;
+    body->print(sdp_body);
+    unsigned int len = sdp_body.length(); /* the number of bytes represented by SDP body as a string */
+
+    if(ct.parse(content_type, len)) {
       DBG("could not parse content-type\n");
       return NULL;
     }
@@ -663,6 +679,7 @@ AmMimeBody* AmMimeBody::addPart(const string& content_type)
     // convert to multipart
     convertToMultipart();
     body = new AmMimeBody();
+    /* TODO: should we somehow predict multipart body's length? */
     if(body->ct.parse(content_type)) {
       DBG("parsing new content-type failed\n");
       delete body;

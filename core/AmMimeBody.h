@@ -39,13 +39,18 @@ struct AmContentType
   Params params;
   Param* mp_boundary;
 
+  int length; /* -1 is unparsed; >= 0 is valid value; */
+
   AmContentType();
   AmContentType(const AmContentType& ct);
   ~AmContentType();
 
   const AmContentType& operator = (const AmContentType& r_ct);
 
+  /* parse content-type */
   int  parse(const string& ct);
+  /* parse content-type with length */
+  int  parse(const string& ct, unsigned int _length);
   int  parseParams(const char* c, const char* end);
 
   void setType(const string& t);
@@ -138,6 +143,8 @@ public:
 
   /** Get content-type with parameters */
   string getCTHdr() const { return ct.getHdr(); }
+
+  int getCTLength() const { return ct.length; }
   
   /** @return the list of sub-parts */
   const Parts& getParts() const { return parts; }
