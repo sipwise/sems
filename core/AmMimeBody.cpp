@@ -665,7 +665,7 @@ AmMimeBody* AmMimeBody::addPart(const string& content_type)
   if(ct.type.empty() && ct.subtype.empty()) {
     // fill *this* body
     string sdp_body;
-    body->print(sdp_body);
+    print(sdp_body);
     unsigned int len = sdp_body.length(); /* the number of bytes represented by SDP body as a string */
 
     if(ct.parse(content_type, len)) {
