@@ -1,3 +1,14 @@
+ngcp-sems (1:1.6.0+0~mr13.4.1.2) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [bc0fb35] MT#63171 StatsUDPServer: use correct FD flag
+  * [3d4031f] MT#62181 StatsUDPServer: fix possible overrun
+  * [bc82e41] MT#63171 StatsUDPServer: facilitate shutdown
+  * [cbce3e6] MT#63171 Statistics: add dtor
+  * [45dfb6d] MT#63171 stop AmAppTimer on shutdown
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 06 Aug 2025 17:24:29 +0200
+
 ngcp-sems (1:1.6.0+0~mr13.4.1.1) unstable; urgency=medium
 
   * New release.
