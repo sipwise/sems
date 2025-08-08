@@ -193,10 +193,12 @@ void _wheeltimer::add_timer_to_bucket(timer* t, uint64_t bucket)
 // requires buckets_mut mutex to be held
 void _wheeltimer::delete_timer(timer* t, bool del_timer)
 {
-    if (t->disarm())
-	DBG("successfully removed timer [%p]\n", t);
-    else
-	DBG("timer [%p] not found for removing\n", t);
+    if (!t->disarm()) {
+        DBG("timer [%p] not found for removing\n", t);
+        return;
+    }
+
+    DBG("successfully removed timer [%p]\n", t);
 
     if (del_timer) {
         DBG("timer object has been deallocated\n");
