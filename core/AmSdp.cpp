@@ -335,6 +335,22 @@ bool AmSdp::parse(const string& sdp_copy)
   return parsed;
 }
 
+string SdpIceCandidate::print() const
+{
+
+  string buf = "a=candidate:";
+  buf += candidate->foundation + " ";
+  buf += int2str(candidate->component_id) + " ";
+  buf += candidate->transport + " ";
+  buf += int2str(candidate->priority) + " ";
+  buf += candidate->address + " ";
+  buf += int2str(candidate->port) + " ";
+  buf += "typ " + candidate->type;
+  buf += CRLF;
+
+  return buf;
+}
+
 void AmSdp::print(string& body) const
 {
   string out_buf = "v="+int2str(version)+"\r\n"
@@ -450,6 +466,20 @@ void AmSdp::print(string& body) const
       case SdpMedia::DirPassive: out_buf += "a=direction:passive\r\n"; break;
       case SdpMedia::DirBoth:  out_buf += "a=direction:both\r\n"; break;
       case SdpMedia::DirUndefined: break;
+      }
+
+      // add ICE credentials
+      if (!media_it->ice_username.empty() && !media_it->ice_password.empty()) {
+        out_buf += "a=ice-ufrag:" + media_it->ice_username + "\r\n";
+        out_buf += "a=ice-pwd:" + media_it->ice_password + "\r\n";
+      }
+
+      // add ICE candidates
+      for (std::vector<SdpIceCandidate>::const_iterator ice_it = media_it->iceCandidates.begin();
+           ice_it != media_it->iceCandidates.end();
+           ice_it++)
+      {
+        out_buf += ice_it->print();
       }
   }
 

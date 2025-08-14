@@ -38,6 +38,7 @@
 #include <memory>
 using std::string;
 
+#include "AmIceCandidate.h"
 
 #define COMFORT_NOISE_PAYLOAD_TYPE 13 // RFC 3389
 #define DYNAMIC_PAYLOAD_TYPE_START 96 // range: 96->127, see RFC 1890
@@ -165,6 +166,18 @@ struct SdpAttribute
   bool operator == (const SdpAttribute& other) const;
 };
 
+struct SdpIceCandidate {
+
+  SdpIceCandidate(AmIceCandidate* candidate)
+  {
+    this->candidate = candidate;
+  }
+
+  AmIceCandidate* candidate;
+
+  string print() const;
+};
+
 /** \brief m=... line in SDP */
 struct SdpMedia
 {
@@ -183,6 +196,9 @@ struct SdpMedia
   Direction     dir;  // a=direction
   string        fmt;  // format in case proto != RTP/AVP or RTP/SAVP
 
+  string        ice_username;
+  string        ice_password;
+
   // sendrecv|sendonly|recvonly|inactive
   bool          send;
   bool          recv;
@@ -190,6 +206,8 @@ struct SdpMedia
   std::vector<SdpPayload> payloads;
 
   std::vector<SdpAttribute> attributes; // unknown attributes
+
+  std::vector<SdpIceCandidate> iceCandidates;
 
   bool operator == (const SdpMedia& other) const;
 
