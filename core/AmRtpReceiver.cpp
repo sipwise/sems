@@ -179,6 +179,16 @@ void AmRtpReceiver::addStream(int sd, AmRtpStream* stream)
   receivers[i].addStream(sd,stream);
 }
 
+struct event_base* AmRtpReceiverThread::getBase() {
+  return ev_base;
+}
+
+struct event_base* AmRtpReceiver::getBase(int sd)
+{
+  unsigned int i = sd % n_receivers;
+  return receivers[i].getBase();
+}
+
 void AmRtpReceiver::removeStream(int sd)
 {
   unsigned int i = sd % n_receivers;

@@ -80,6 +80,8 @@ public:
   void run();
   void on_stop();
 
+  struct event_base* getBase();
+
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
 };
@@ -102,6 +104,8 @@ public:
 
   void addStream(int sd, AmRtpStream* stream);
   void removeStream(int sd);
+
+  struct event_base* getBase(int sd);
 };
 
 #endif
