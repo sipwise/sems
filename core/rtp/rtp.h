@@ -31,10 +31,7 @@
  */
 #include <sys/types.h>
 
-/*
- * The type definitions below are valid for 32-bit architectures and
- * may have to be adjusted for 16- or 64-bit architectures.
- */
+typedef u_int8_t  u_int8;
 typedef unsigned short u_int16;
 typedef unsigned int   u_int32;
 
@@ -73,5 +70,29 @@ typedef struct {
     u_int16 profile;     /* xhdr type */
     u_int16 len;         /* xhdr length */
 } rtp_xhdr_t;
+
+/**
+ * \brief RTCP data header type
+ */
+typedef struct
+{
+#if (defined(__BYTE_ORDER) && (__BYTE_ORDER == __BIG_ENDIAN))
+  u_int8 version:2;     /* protocol version */
+  u_int8 p:1;           /* padding flag */
+  u_int8 c:5;           /* counter */
+#else
+  u_int8 c:5;           /* counter */
+  u_int8 p:1;           /* padding flag */
+  u_int8 version:2;     /* protocol version */
+#endif
+
+  u_int8 pt;            /* packet type */
+  u_int16 length;       /* length */
+} rtcp_hdr_t;
+
+typedef struct
+{
+  u_int32 value;
+} rtp_ssrc_t;
 
 #endif
