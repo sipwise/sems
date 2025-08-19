@@ -156,6 +156,9 @@ protected:
   // list of locally supported payloads
   PayloadCollection payloads;
 
+  // list of payloads present in the stream description
+  std::map<int,int> offered_payloads;
+
   // current payload (index into @payloads)
   int payload;
 

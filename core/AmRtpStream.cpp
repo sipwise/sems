@@ -597,6 +597,7 @@ int AmRtpStream::init(const AmSdp& local,
   const SdpMedia& remote_media = remote.media[sdp_media_index];
 
   payloads.clear();
+  offered_payloads.clear();
   pl_map.clear();
   payloads.resize(local_media.payloads.size());
 
@@ -668,6 +669,8 @@ int AmRtpStream::init(const AmSdp& local,
      *       Some codecs define multiple payloads
      *       with different encoding parameters */
     PayloadMappingTable::iterator pmt_it = pl_map.end();
+
+    offered_payloads[sdp_it->payload_type] = sdp_it->payload_type;
 
     if (sdp_it->encoding_name.empty() || (local_media.transport == TP_RTPAVP && sdp_it->payload_type < 20)) {
       /* must be a static payload */
