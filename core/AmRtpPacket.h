@@ -84,6 +84,9 @@ public:
   unsigned char* getBuffer();
   void setBufferSize(unsigned int b) { b_size = b; }
 
+  static bool isPacketRtp(unsigned char *buffer, size_t len);
+  static bool isPacketRtcp(unsigned char *buffer, size_t len);
+
   void logReceived(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
   void logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
 };

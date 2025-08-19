@@ -294,3 +294,17 @@ void AmRtpPacket::logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_
   logger->log((const char *)buffer, b_size, laddr, &addr, empty);
 }
 
+/*
+ * RFC5761 Section 4
+ * Get the RTCP packet type
+ * Assume RTP if type is 0-63 or 96-127.
+ */
+bool AmRtpPacket::isPacketRtcp(unsigned char *buffer, size_t len)
+{
+  int type = (len >= 2) ? (buffer[1] & 0x7F) : 0;
+  return (type >= 64 && type < 96);
+}
+
+bool AmRtpPacket::isPacketRtp(unsigned char* buffer, size_t len) {
+  return len >= sizeof(rtp_hdr_t) && ((rtp_hdr_t*)buffer)->version == 2;
+}
