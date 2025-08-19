@@ -1238,7 +1238,11 @@ void AmRtpStream::disableRawRelay()
   DBG("disabled RAW relay for RTP stream instance [%p]\n", this);
   relay_raw = false;
 }
- 
+
+bool AmRtpStream::isRawRelayed() {
+  return relay_raw;
+}
+
 void AmRtpStream::setRtpRelayTransparentSeqno(bool transparent) {
   DBG("%sabled RTP relay transparent seqno for RTP stream instance [%p]\n",
       transparent ? "en":"dis", this);

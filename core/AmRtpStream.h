@@ -499,6 +499,9 @@ public:
   /** disable raw UDP relaying through relay stream */
   void disableRawRelay();
 
+  /** Check raw UDP relaying through relay stream */
+  bool isRawRelayed();
+
   /** enable or disable transparent RTP seqno for relay */
   void setRtpRelayTransparentSeqno(bool transparent);
 
