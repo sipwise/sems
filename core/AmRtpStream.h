@@ -417,6 +417,9 @@ public:
 
   unsigned int get_ssrc() { return l_ssrc; }
 
+  void setRemoteSSRC(unsigned int ssrc);
+  unsigned int getRemoteSSRC();
+
   int getLocalTelephoneEventPT();
   int getLocalTelephoneEventRate();
 

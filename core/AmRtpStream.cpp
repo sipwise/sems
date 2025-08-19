@@ -1170,6 +1170,16 @@ void AmRtpStream::relay(AmRtpPacket* p)
   }
 }
 
+void AmRtpStream::setRemoteSSRC(unsigned int ssrc)
+{
+  r_ssrc = ssrc;
+}
+
+unsigned int AmRtpStream::getRemoteSSRC()
+{
+  return r_ssrc;
+}
+
 int AmRtpStream::getLocalTelephoneEventRate()
 {
   if (local_telephone_event_pt.get())
