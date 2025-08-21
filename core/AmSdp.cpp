@@ -202,6 +202,10 @@ bool SdpMedia::operator == (const SdpMedia& other) const
     && send == other.send && recv == other.recv;
 }
 
+bool SdpMedia::isRejected() const {
+  return port == 0;
+}
+
 //
 // class RtcpAddress: Methods
 //
@@ -608,6 +612,49 @@ void SdpMedia::calcAnswer(const AmPayloadProvider* payload_prov,
         answer.payloads.push_back(*it);
     }
   }
+}
+
+void SdpMedia::addAttribute(SdpAttribute attr)
+{
+  attributes.push_back(attr);
+}
+
+bool SdpMedia::removeAttribute(const string& name)
+{
+  int match=0;
+
+  for (vector<SdpAttribute>::iterator it = attributes.begin();
+        it != attributes.end(); ++it)
+  {
+    if (it->attribute == name) {
+      match++;
+      attributes.erase(it++);
+      if (it == attributes.end())
+        return match > 0;
+    }
+  }
+
+  return match > 0;
+}
+
+bool SdpMedia::hasAttribute(const string& name) const
+{
+  for (vector<SdpAttribute>::const_iterator it = attributes.begin();
+        it!=attributes.end(); ++it)
+    if (it->attribute == name)
+      return true;
+
+  return false; /* Not found */
+}
+
+string SdpMedia::getAttribute(const string& name)
+{
+  for (vector<SdpAttribute>::const_iterator it = attributes.begin();
+        it!=attributes.end(); ++it)
+    if (it->attribute == name)
+      return it->value;
+
+  return string(); /* Not found */
 }
 
 /**

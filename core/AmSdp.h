@@ -229,6 +229,17 @@ struct SdpMedia
   /**
    * Attribute management
    */
+  void addAttribute(SdpAttribute att);
+  bool hasAttribute(const string& name) const;
+  string getAttribute(const string& name);
+
+  /**
+   * Remove attribute
+   */
+  bool removeAttribute(const string& name);
+
+  bool isRejected() const;
+
   bool isAudio() const { return type == MT_AUDIO; }
 };
 
