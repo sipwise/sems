@@ -9,6 +9,8 @@
 #include "ampi/UACAuthAPI.h"
 #include <string>
 using std::string;
+#include <vector>
+using std::vector;
 
 #include <memory>
 #include <regex.h>
@@ -28,6 +30,10 @@ typedef struct
     string failAnnouncement;
     string unknownAnnouncement;
     string voicemailNumber;
+
+    regex_t vscOffPattern;
+    string vscOffAnnouncement;
+    vector<string> vscOffPrefList;
 
     regex_t cfOffPattern;
     string cfOffAnnouncement;
@@ -70,16 +76,33 @@ typedef struct
 
     regex_t blockinclirOffPattern;
     string blockinclirOffAnnouncement;
+
+    regex_t clirOnPattern;
+    string clirOnAnnouncement;
+
+    regex_t clirOffPattern;
+    string clirOffAnnouncement;
+
+    regex_t colrOnPattern;
+    string colrOnAnnouncement;
+
+    regex_t colrOffPattern;
+    string colrOffAnnouncement;
+
+    regex_t dndOnPattern;
+    string dndOnAnnouncement;
+
+    regex_t dndOffPattern;
+    string dndOffAnnouncement;
 } sw_vsc_patterns_t;
 
-class SW_VscFactory: public AmSessionFactory
+class SW_VscFactory : public AmSessionFactory
 {
     inline string getAnnounceFile(const AmSipRequest &req);
 
     sw_vsc_patterns_t m_patterns;
 
 public:
-
     SW_VscFactory(const string &_app_name);
     virtual ~SW_VscFactory();
 
@@ -91,7 +114,7 @@ public:
 };
 
 class SW_VscDialog : public AmSession,
-    public CredentialHolder
+                     public CredentialHolder
 {
     AmAudioFile m_wav_file;
 
@@ -122,9 +145,7 @@ class SW_VscDialog : public AmSession,
                           const char *mapName, const char *type);
     u_int64_t deleteCF(MYSQL *my_handler, u_int64_t subscriberId,
                        const char *mapName, const char *type,
-                       int *foundPref, string *value, const char *uuid);
-
-
+                       int *foundPref, string *valuem, const char *uuid);
 
 public:
     SW_VscDialog(sw_vsc_patterns_t *patterns,

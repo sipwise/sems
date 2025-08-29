@@ -17,95 +17,95 @@ using namespace re2;
 #define SW_VSC_DATABASE "provisioning"
 
 #define SW_VSC_GET_ATTRIBUTE_ID "select id from voip_preferences where attribute='%s'"
-#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id, s.profile_id, s.username "\
-    "from voip_subscribers s, voip_domains d "\
-    "where s.uuid='%s' and s.domain_id = d.id"
+#define SW_VSC_GET_SUBSCRIBER_ID "select s.id, d.domain, d.id, s.profile_id, s.username " \
+                                 "from voip_subscribers s, voip_domains d "               \
+                                 "where s.uuid='%s' and s.domain_id = d.id"
 #define SW_VSC_GET_PREFERENCE_ID "select id,value from voip_usr_preferences where subscriber_id=%llu " \
-    "and attribute_id=%llu"
+                                 "and attribute_id=%llu"
 #define SW_VSC_DELETE_PREFERENCE_ID "delete from voip_usr_preferences where id=%llu"
-#define SW_VSC_INSERT_PREFERENCE "insert into voip_usr_preferences (subscriber_id, attribute_id, value) "\
-    "values(%llu, %llu, '%s')"
+#define SW_VSC_INSERT_PREFERENCE "insert into voip_usr_preferences (subscriber_id, attribute_id, value) " \
+                                 "values(%llu, %llu, '%s')"
 #define SW_VSC_UPDATE_PREFERENCE_ID "update voip_usr_preferences set value='%s' where id=%llu"
-#define SW_VSC_INSERT_SPEEDDIAL "replace into voip_speed_dial (subscriber_id, slot, destination) "\
-    "values(%llu, '%s', '%s')"
-#define SW_VSC_INSERT_REMINDER "replace into voip_reminder (subscriber_id, time, recur) "\
-    "values(%llu, '%s', '%s')"
+#define SW_VSC_INSERT_SPEEDDIAL "replace into voip_speed_dial (subscriber_id, slot, destination) " \
+                                "values(%llu, '%s', '%s')"
+#define SW_VSC_INSERT_REMINDER "replace into voip_reminder (subscriber_id, time, recur) " \
+                               "values(%llu, '%s', '%s')"
 #define SW_VSC_DELETE_REMINDER "delete from voip_reminder where subscriber_id=%llu"
-#define SW_VSC_GET_USER_CALLEE_REWRITE_DPID "select value from " \
-    "voip_usr_preferences vup, voip_preferences vp where " \
-    "vup.subscriber_id=%llu and vp.attribute='rewrite_callee_in_dpid' " \
-    "and vup.attribute_id = vp.id"
-#define SW_VSC_GET_USER_CALLEE_REWRITES \
-    "select vrr.match_pattern, vrr.replace_pattern from " \
-    "voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs " \
+#define SW_VSC_GET_USER_CALLEE_REWRITE_DPID "select value from "                                                \
+                                            "voip_usr_preferences vup, voip_preferences vp where "              \
+                                            "vup.subscriber_id=%llu and vp.attribute='rewrite_callee_in_dpid' " \
+                                            "and vup.attribute_id = vp.id"
+#define SW_VSC_GET_USER_CALLEE_REWRITES                        \
+    "select vrr.match_pattern, vrr.replace_pattern from "      \
+    "voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs "     \
     "where vrrs.callee_in_dpid=%llu and vrr.set_id = vrrs.id " \
-    "and vrr.direction='in' and vrr.field='callee' " \
+    "and vrr.direction='in' and vrr.field='callee' "           \
     "and vrr.enabled = 1 order by vrr.priority asc"
-#define SW_VSC_GET_DOMAIN_CALLEE_REWRITES \
-    "select vrr.match_pattern, vrr.replace_pattern " \
-    "from voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs, " \
-    "voip_preferences vp, voip_dom_preferences vdp " \
+#define SW_VSC_GET_DOMAIN_CALLEE_REWRITES                                 \
+    "select vrr.match_pattern, vrr.replace_pattern "                      \
+    "from voip_rewrite_rules vrr, voip_rewrite_rule_sets vrrs, "          \
+    "voip_preferences vp, voip_dom_preferences vdp "                      \
     "where vdp.domain_id=%llu and vp.attribute='rewrite_callee_in_dpid' " \
-    "and vdp.attribute_id = vp.id and  vdp.value = vrrs.callee_in_dpid " \
-    "and vrr.set_id = vrrs.id and vrr.direction='in' and " \
+    "and vdp.attribute_id = vp.id and  vdp.value = vrrs.callee_in_dpid "  \
+    "and vrr.set_id = vrrs.id and vrr.direction='in' and "                \
     "vrr.field='callee' and vrr.enabled = 1 order by vrr.priority asc"
 
-#define SW_VSC_GET_PRIMARY_NUMBER "select alias_username " \
-    "from kamailio.dbaliases where username='%s' " \
-    "and domain = '%s' and is_primary"
+#define SW_VSC_GET_PRIMARY_NUMBER "select alias_username "                       \
+                                  "from kamailio.dbaliases where username='%s' " \
+                                  "and domain = '%s' and is_primary"
 
-#define SW_VSC_DELETE_VSC_DESTSET "delete from voip_cf_destination_sets where "\
-    "subscriber_id=%llu and name='%s'"
-#define SW_VSC_CREATE_VSC_DESTSET "insert into voip_cf_destination_sets (subscriber_id, name) "\
-    "values(%llu, '%s')"
-#define SW_VSC_CREATE_VSC_DEST "insert into voip_cf_destinations (destination_set_id, destination, priority) "\
-    "values(%llu, '%s', %d)"
+#define SW_VSC_DELETE_VSC_DESTSET "delete from voip_cf_destination_sets where " \
+                                  "subscriber_id=%llu and name='%s'"
+#define SW_VSC_CREATE_VSC_DESTSET "insert into voip_cf_destination_sets (subscriber_id, name) " \
+                                  "values(%llu, '%s')"
+#define SW_VSC_CREATE_VSC_DEST "insert into voip_cf_destinations (destination_set_id, destination, priority) " \
+                               "values(%llu, '%s', %d)"
 #define SW_VSC_DELETE_VSC_CFMAP "delete from voip_cf_mappings where subscriber_id=%llu and type='%s'"
-#define SW_VSC_CREATE_VSC_CFMAP "insert into voip_cf_mappings "\
-    "(subscriber_id, type, destination_set_id, time_set_id) "\
-    "values(%llu, '%s', %llu, NULL)"
+#define SW_VSC_CREATE_VSC_CFMAP "insert into voip_cf_mappings "                           \
+                                "(subscriber_id, type, destination_set_id, time_set_id) " \
+                                "values(%llu, '%s', %llu, NULL)"
 
-#define SW_VSC_GET_SUBPROFILE_ATTRIBUTE "select id from voip_subscriber_profile_attributes "\
-    "where profile_id=%llu and attribute_id=%llu"
+#define SW_VSC_GET_SUBPROFILE_ATTRIBUTE "select id from voip_subscriber_profile_attributes " \
+                                        "where profile_id=%llu and attribute_id=%llu"
 
-#define SW_VSC_DESTSET_CFU  "cfu_by_vsc"
-#define SW_VSC_DESTSET_CFB  "cfb_by_vsc"
-#define SW_VSC_DESTSET_CFT  "cft_by_vsc"
+#define SW_VSC_DESTSET_CFU "cfu_by_vsc"
+#define SW_VSC_DESTSET_CFB "cfb_by_vsc"
+#define SW_VSC_DESTSET_CFT "cft_by_vsc"
 #define SW_VSC_DESTSET_CFNA "cfna_by_vsc"
-#define SW_VSC_DESTSET_CFS  "cfs_by_vsc"
-#define SW_VSC_DESTSET_CFR  "cfr_by_vsc"
-#define SW_VSC_DESTSET_CFO  "cfc_by_vsc"
+#define SW_VSC_DESTSET_CFS "cfs_by_vsc"
+#define SW_VSC_DESTSET_CFR "cfr_by_vsc"
+#define SW_VSC_DESTSET_CFO "cfo_by_vsc"
 
-#define CHECK_ANNOUNCEMENT_CONFIG(member, config_var) \
+#define CHECK_ANNOUNCEMENT_CONFIG(member, config_var)     \
     m_patterns.member = cfg.getParameter(config_var, ""); \
-    if (m_patterns.member.empty()) \
-    { \
-        ERROR(config_var " file not set\n"); \
+    if (m_patterns.member.empty())                        \
+    {                                                     \
+        ERROR(config_var " file not set\n");              \
     }
 
-#define COMPILE_MATCH_PATTERN(member, config_var) \
-    member = cfg.getParameter(config_var, ""); \
-    if (member.empty()) \
-    { \
-        ERROR(config_var " is empty\n"); \
-        member = "invalid_default_value"; \
-    } \
+#define COMPILE_MATCH_PATTERN(member, config_var)                              \
+    member = cfg.getParameter(config_var, "");                                 \
+    if (member.empty())                                                        \
+    {                                                                          \
+        ERROR(config_var " is empty\n");                                       \
+        member = "invalid_default_value";                                      \
+    }                                                                          \
     if (regcomp(&m_patterns.member, member.c_str(), REG_EXTENDED | REG_NOSUB)) \
-    { \
-        ERROR(config_var " failed to compile ('%s'): %s\n", \
-              member.c_str(), \
-              strerror(errno)); \
-        return -1; \
+    {                                                                          \
+        ERROR(config_var " failed to compile ('%s'): %s\n",                    \
+              member.c_str(),                                                  \
+              strerror(errno));                                                \
+        return -1;                                                             \
     }
 
-#define CHECK_ANNOUNCEMENT_PATH(member, config_var) \
+#define CHECK_ANNOUNCEMENT_PATH(member, config_var)             \
     member = m_patterns->audioPath + lang + m_patterns->member; \
-    if (m_patterns->member.empty() || !file_exists(member)) \
-    { \
-        ERROR(config_var " file does not exist ('%s').\n", \
-              member.c_str()); \
-        filename = std::move(failAnnouncement); \
-        goto out; \
+    if (m_patterns->member.empty() || !file_exists(member))     \
+    {                                                           \
+        ERROR(config_var " file does not exist ('%s').\n",      \
+              member.c_str());                                  \
+        filename = std::move(failAnnouncement);                 \
+        goto out;                                               \
     }
 
 EXPORT_SESSION_FACTORY(SW_VscFactory, MOD_NAME);
@@ -126,15 +126,23 @@ SW_VscFactory::~SW_VscFactory()
     regfree(&m_patterns.cftOffPattern);
     regfree(&m_patterns.cfnaOnPattern);
     regfree(&m_patterns.cfnaOffPattern);
+    regfree(&m_patterns.vscOffPattern);
     regfree(&m_patterns.speedDialPattern);
     regfree(&m_patterns.reminderOnPattern);
     regfree(&m_patterns.reminderOffPattern);
     regfree(&m_patterns.blockinclirOnPattern);
     regfree(&m_patterns.blockinclirOffPattern);
+    regfree(&m_patterns.clirOnPattern);
+    regfree(&m_patterns.clirOffPattern);
+    regfree(&m_patterns.colrOnPattern);
+    regfree(&m_patterns.colrOffPattern);
+    regfree(&m_patterns.dndOnPattern);
+    regfree(&m_patterns.dndOffPattern);
 }
 
 int SW_VscFactory::onLoad()
 {
+    string vscOffPattern;
     string cfOffPattern;
     string cfuOnPattern;
     string cfuOffPattern;
@@ -149,13 +157,18 @@ int SW_VscFactory::onLoad()
     string reminderOffPattern;
     string blockinclirOnPattern;
     string blockinclirOffPattern;
+    string clirOnPattern;
+    string clirOffPattern;
+    string colrOnPattern;
+    string colrOffPattern;
+    string dndOnPattern;
+    string dndOffPattern;
 
     AmConfigReader cfg;
     if (cfg.loadFile(AmConfig::ModConfigPath + string(MOD_NAME ".conf")))
         return -1;
 
     configureModule(cfg);
-
 
     m_patterns.mysqlHost = cfg.getParameter("mysql_host", "");
     if (m_patterns.mysqlHost.empty())
@@ -188,26 +201,32 @@ int SW_VscFactory::onLoad()
         ERROR("AnnouncePath option announce_path is empty.\n");
         return -1;
     }
-    if (m_patterns.audioPath[m_patterns.audioPath.length() - 1] != '/' )
+    if (m_patterns.audioPath[m_patterns.audioPath.length() - 1] != '/')
         m_patterns.audioPath += "/";
 
-    CHECK_ANNOUNCEMENT_CONFIG(failAnnouncement,           "error_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(unknownAnnouncement,        "unknown_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfOffAnnouncement,          "cf_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfuOnAnnouncement,          "cfu_on_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfuOffAnnouncement,         "cfu_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfbOnAnnouncement,          "cfb_on_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfbOffAnnouncement,         "cfb_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cftOnAnnouncement,          "cft_on_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cftOffAnnouncement,         "cft_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfnaOnAnnouncement,         "cfna_on_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(cfnaOffAnnouncement,        "cfna_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(speedDialAnnouncement,      "speed_dial_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(reminderOnAnnouncement,     "reminder_on_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(reminderOffAnnouncement,    "reminder_off_announcement");
-    CHECK_ANNOUNCEMENT_CONFIG(blockinclirOnAnnouncement,  "blockinclir_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(failAnnouncement, "error_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(unknownAnnouncement, "unknown_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(vscOffAnnouncement, "vsc_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfOffAnnouncement, "cf_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfuOnAnnouncement, "cfu_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfuOffAnnouncement, "cfu_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfbOnAnnouncement, "cfb_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfbOffAnnouncement, "cfb_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cftOnAnnouncement, "cft_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cftOffAnnouncement, "cft_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfnaOnAnnouncement, "cfna_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(cfnaOffAnnouncement, "cfna_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(speedDialAnnouncement, "speed_dial_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(reminderOnAnnouncement, "reminder_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(reminderOffAnnouncement, "reminder_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(blockinclirOnAnnouncement, "blockinclir_on_announcement");
     CHECK_ANNOUNCEMENT_CONFIG(blockinclirOffAnnouncement, "blockinclir_off_announcement");
-
+    CHECK_ANNOUNCEMENT_CONFIG(clirOnAnnouncement, "clir_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(clirOffAnnouncement, "clir_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(colrOnAnnouncement, "colr_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(colrOffAnnouncement, "colr_off_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(dndOnAnnouncement, "dnd_on_announcement");
+    CHECK_ANNOUNCEMENT_CONFIG(dndOffAnnouncement, "dnd_off_announcement");
 
     // We could set a default in cfg.getParameter, but we really want to log the error
     // if the pattern in question is not set:
@@ -219,20 +238,30 @@ int SW_VscFactory::onLoad()
         m_patterns.voicemailNumber = "invalid_default_value";
     }
 
-    COMPILE_MATCH_PATTERN(cfOffPattern,          "cf_off_pattern");
-    COMPILE_MATCH_PATTERN(cfuOnPattern,          "cfu_on_pattern");
-    COMPILE_MATCH_PATTERN(cfuOffPattern,         "cfu_off_pattern");
-    COMPILE_MATCH_PATTERN(cfbOnPattern,          "cfb_on_pattern");
-    COMPILE_MATCH_PATTERN(cfbOffPattern,         "cfb_off_pattern");
-    COMPILE_MATCH_PATTERN(cftOnPattern,          "cft_on_pattern");
-    COMPILE_MATCH_PATTERN(cftOffPattern,         "cft_off_pattern");
-    COMPILE_MATCH_PATTERN(cfnaOnPattern,         "cfna_on_pattern");
-    COMPILE_MATCH_PATTERN(cfnaOffPattern,        "cfna_off_pattern");
-    COMPILE_MATCH_PATTERN(speedDialPattern,      "speed_dial_pattern");
-    COMPILE_MATCH_PATTERN(reminderOnPattern,     "reminder_on_pattern");
-    COMPILE_MATCH_PATTERN(reminderOffPattern,    "reminder_off_pattern");
-    COMPILE_MATCH_PATTERN(blockinclirOnPattern,  "blockinclir_on_pattern");
+    COMPILE_MATCH_PATTERN(vscOffPattern, "vsc_off_pattern");
+    COMPILE_MATCH_PATTERN(cfOffPattern, "cf_off_pattern");
+    COMPILE_MATCH_PATTERN(cfuOnPattern, "cfu_on_pattern");
+    COMPILE_MATCH_PATTERN(cfuOffPattern, "cfu_off_pattern");
+    COMPILE_MATCH_PATTERN(cfbOnPattern, "cfb_on_pattern");
+    COMPILE_MATCH_PATTERN(cfbOffPattern, "cfb_off_pattern");
+    COMPILE_MATCH_PATTERN(cftOnPattern, "cft_on_pattern");
+    COMPILE_MATCH_PATTERN(cftOffPattern, "cft_off_pattern");
+    COMPILE_MATCH_PATTERN(cfnaOnPattern, "cfna_on_pattern");
+    COMPILE_MATCH_PATTERN(cfnaOffPattern, "cfna_off_pattern");
+    COMPILE_MATCH_PATTERN(speedDialPattern, "speed_dial_pattern");
+    COMPILE_MATCH_PATTERN(reminderOnPattern, "reminder_on_pattern");
+    COMPILE_MATCH_PATTERN(reminderOffPattern, "reminder_off_pattern");
+    COMPILE_MATCH_PATTERN(blockinclirOnPattern, "blockinclir_on_pattern");
     COMPILE_MATCH_PATTERN(blockinclirOffPattern, "blockinclir_off_pattern");
+    COMPILE_MATCH_PATTERN(clirOnPattern, "clir_on_pattern");
+    COMPILE_MATCH_PATTERN(clirOffPattern, "clir_off_pattern");
+    COMPILE_MATCH_PATTERN(colrOnPattern, "colr_on_pattern");
+    COMPILE_MATCH_PATTERN(colrOffPattern, "colr_off_pattern");
+    COMPILE_MATCH_PATTERN(dndOnPattern, "dnd_on_pattern");
+    COMPILE_MATCH_PATTERN(dndOffPattern, "dnd_off_pattern");
+
+    /* List of preferences to disable/remove with vsc_off_pattern VSC code */
+    m_patterns.vscOffPrefList = explode(cfg.getParameter("vsc_off_pref_list"), ",");
 
     return 0;
 }
@@ -279,7 +308,8 @@ void SW_VscDialog::onSessionStart()
     AmSession::onSessionStart();
 }
 
-void SW_VscDialog::onStart() {
+void SW_VscDialog::onStart()
+{
 }
 
 u_int64_t SW_VscDialog::getAttributeId(MYSQL *my_handler, const char *attribute)
@@ -327,19 +357,19 @@ int SW_VscDialog::checkSubscriberProfile(MYSQL *my_handler, u_int64_t profileId,
     int ret = 0;
 
     // if no profile is set, allow by default
-    if(profileId == 0)
+    if (profileId == 0)
     {
         INFO("Allow preference due to unset subscriber profile");
         return 1;
     }
 
     snprintf(query, sizeof(query), SW_VSC_GET_SUBPROFILE_ATTRIBUTE,
-             (unsigned long long int) profileId, (unsigned long long int) attributeId);
+             (unsigned long long int)profileId, (unsigned long long int)attributeId);
 
     if (mysql_real_query(my_handler, query, strlen(query)) != 0)
     {
         ERROR("Error checking profile attributes for profile '%llu' and attribute %llu: %s",
-              (unsigned long long int) profileId, (unsigned long long int) attributeId,
+              (unsigned long long int)profileId, (unsigned long long int)attributeId,
               mysql_error(my_handler));
         return 0;
     }
@@ -348,13 +378,13 @@ int SW_VscDialog::checkSubscriberProfile(MYSQL *my_handler, u_int64_t profileId,
     if (mysql_num_rows(res) >= 1)
     {
         INFO("Allow preference attribute %llu as it is in profile %llu",
-             (unsigned long long int) attributeId, (unsigned long long int) profileId);
+             (unsigned long long int)attributeId, (unsigned long long int)profileId);
         ret = 1;
     }
     else
     {
         INFO("Reject preference attribute %llu as it is not in profile %llu",
-             (unsigned long long int) attributeId, (unsigned long long int) profileId);
+             (unsigned long long int)attributeId, (unsigned long long int)profileId);
         ret = 0;
     }
     return ret;
@@ -382,15 +412,16 @@ u_int64_t SW_VscDialog::getSubscriberId(MYSQL *my_handler, const char *uuid,
     if (mysql_num_rows(res) != 1)
     {
         ERROR("Found invalid number of id entries for uuid '%s': %llu",
-              uuid , mysql_num_rows(res));
+              uuid, mysql_num_rows(res));
         return 0;
     }
 
-    row = mysql_fetch_row(res); if (row == NULL || row[0] == NULL || row[1] ==
-                                    NULL || row[2] == NULL)
+    row = mysql_fetch_row(res);
+    if (row == NULL || row[0] == NULL || row[1] == NULL || row[2] == NULL)
     {
         ERROR("Failed to fetch row for uuid id: %s\n",
-              mysql_error(my_handler)); return 0;
+              mysql_error(my_handler));
+        return 0;
     }
 
     id = atoll(row[0]);
@@ -561,7 +592,6 @@ int SW_VscDialog::insertSpeedDialSlot(MYSQL *my_handler,
     return 1;
 }
 
-
 int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
                              string &uuid, u_int64_t subId,
                              string &domain, u_int64_t domId,
@@ -587,7 +617,7 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
             if (mysql_real_query(my_handler, query, strlen(query)) != 0)
             {
                 ERROR("Error fetching primary number for username '%s'"
-                    " at domain '%s': %s",
+                      " at domain '%s': %s",
                       username.c_str(), domain.c_str(),
                       mysql_error(my_handler));
                 return 0;
@@ -597,16 +627,17 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
             if (row == NULL || row[0] == NULL)
             {
                 INFO("no primary number for username '%s'"
-                    " at domain '%s' found. Use uuid: %s",
-                      username.c_str(), domain.c_str(),
-                      uuid.c_str());
+                     " at domain '%s' found. Use uuid: %s",
+                     username.c_str(), domain.c_str(),
+                     uuid.c_str());
                 uri = string("sip:vmu") + uuid + "@voicebox.local";
             }
-            else {
+            else
+            {
                 uri = string("sip:vmu") + row[0] + "@voicebox.local";
             }
             INFO("Normalized '%s' to voicemail uri '%s' for uuid '%s'",
-                num.c_str(), uri.c_str(), uuid.c_str());
+                 num.c_str(), uri.c_str(), uuid.c_str());
             mysql_free_result(res);
             return 1;
         }
@@ -713,8 +744,7 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
 
         mysql_free_result(res);
 
-        // we need to replace $avp(s:caller_ac) and $avp(s:caller_cc)
-        // with the actual values here
+        // we need to replace $avp(s:caller_ac) and $avp(s:caller_cc) with the actual values here
 
         acAttId = getAttributeId(my_handler, "ac");
         if (!acAttId)
@@ -743,7 +773,7 @@ int SW_VscDialog::number2uri(const AmSipRequest &req, MYSQL *my_handler,
         INFO("Final normalized number is '%s' for subscriber id %llu and domain id %llu",
              num.c_str(), (unsigned long long int)subId,
              (unsigned long long int)domId);
-        uri = string("sip:+") + num + "@" + domain;
+        uri = string("sip:") + num + "@" + domain;
     }
     return 1;
 }
@@ -828,7 +858,6 @@ u_int64_t SW_VscDialog::createCFMap(MYSQL *my_handler, u_int64_t subscriberId,
     }
 
     return mapId;
-
 }
 
 u_int64_t SW_VscDialog::deleteCFMap(MYSQL *my_handler, u_int64_t subscriberId,
@@ -875,7 +904,7 @@ u_int64_t SW_VscDialog::deleteCF(MYSQL *my_handler, u_int64_t subscriberId,
     {
         return 0;
     }
-    
+
     u_int64_t prefId = getPreference(my_handler, subscriberId, attId, foundPref, value);
     if (!prefId)
     {
@@ -901,7 +930,6 @@ u_int64_t SW_VscDialog::deleteCF(MYSQL *my_handler, u_int64_t subscriberId,
 
 void SW_VscDialog::onInvite(const AmSipRequest &req)
 {
-    /// fooooo
     if(dlg->getStatus() == AmSipDialog::Connected){
       AmSession::onInvite(req);
       return;
@@ -920,6 +948,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
     string failAnnouncement;
     string unknownAnnouncement;
+    string vscOffAnnouncement;
     string cfOffAnnouncement;
     string cfuOnAnnouncement;
     string cfuOffAnnouncement;
@@ -934,6 +963,12 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     string reminderOffAnnouncement;
     string blockinclirOnAnnouncement;
     string blockinclirOffAnnouncement;
+    string clirOnAnnouncement;
+    string clirOffAnnouncement;
+    string colrOnAnnouncement;
+    string colrOffAnnouncement;
+    string dndOnAnnouncement;
+    string dndOffAnnouncement;
 
     string uuid = getHeader(req.hdrs, "P-Caller-UUID");
     if (!uuid.length())
@@ -947,7 +982,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         lang = "en";
     }
     lang += "/";
-
 
     failAnnouncement = m_patterns->audioPath + lang + m_patterns->failAnnouncement;
     if (m_patterns->failAnnouncement.empty() || !file_exists(failAnnouncement))
@@ -964,7 +998,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         filename = std::move(failAnnouncement);
         goto out;
     }
-
 
     my_handler = mysql_init(NULL);
     if (!mysql_real_connect(my_handler,
@@ -987,7 +1020,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     }
 
     subId = getSubscriberId(my_handler, uuid.c_str(),
-        &domain, domId, profId, &username);
+                            &domain, domId, profId, &username);
     if (!subId)
     {
         filename = std::move(failAnnouncement);
@@ -999,6 +1032,146 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
     setReceiving(false);
 
+    if ((ret = regexec(&m_patterns->vscOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        u_int64_t attId, prefId;
+
+        CHECK_ANNOUNCEMENT_PATH(vscOffAnnouncement, "vsc_off_announcement");
+
+        for (vector<string>::iterator it =
+            m_patterns->vscOffPrefList.begin(); it != m_patterns->vscOffPrefList.end(); it++)
+        {
+            string service_name = *it;
+            INFO("Trying to disable '%s' service for uuid '%s'", service_name.c_str(), uuid.c_str());
+
+            if (service_name == "cfu")
+            {
+                /// Remove CFU
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+           else if (service_name == "cfb")
+            {
+                /// Remove CFB
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+           else if (service_name == "cft")
+            {
+                /// Remove CFT
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+
+                attId = getAttributeId(my_handler, "ringtimeout");
+                if (!attId)
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+
+                prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
+                if (!prefId)
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+                else if (foundPref && !deletePreferenceId(my_handler, prefId))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+                else
+                {
+                    INFO("Successfully removed VSC CFT ringtimeout for uuid '%s'", uuid.c_str());
+                }
+            }
+           else if (service_name == "cfna")
+            {
+                /// Remove CFNA
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+           else if (service_name == "cfs")
+            {
+                /// Remove CFS
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFS, "cfs", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+           else if (service_name == "cfr")
+            {
+                /// Remove CFR
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFR, "cfr", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+           else if (service_name == "cfo")
+            {
+                /// Remove CFO
+                if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFO, "cfo", &foundPref, &prefStr, uuid.c_str()))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+            }
+            else
+            {
+                /// Remove a general boolean preference
+                attId = getAttributeId(my_handler, service_name.c_str());
+                if (!attId)
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+                prefId = getPreference(my_handler, subId, attId, &foundPref, &prefStr);
+                if (!prefId)
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+                else if (!foundPref)
+                {
+                    INFO("Unnecessary '%s' removal for uuid '%s'", service_name.c_str(), uuid.c_str());
+                }
+                else if (!deletePreferenceId(my_handler, prefId))
+                {
+                    filename = std::move(failAnnouncement);
+                    goto out;
+                }
+                else
+                {
+                    INFO("Successfully removed '%s' for uuid '%s'", service_name.c_str(), uuid.c_str());
+                }
+            }
+        }
+
+        /// END
+        filename = std::move(vscOffAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
     if ((ret = regexec(&m_patterns->cfOffPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
@@ -1007,21 +1180,21 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         CHECK_ANNOUNCEMENT_PATH(cfOffAnnouncement, "cf_off_announcement");
 
         /// Remove CFU
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFB
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFT
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1052,28 +1225,28 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         }
 
         /// Remove CFNA
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFS
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFS, "cfs", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFS, "cfs", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFR
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFR, "cfr", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFR, "cfr", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         /// Remove CFO
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFO, "cfo", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFO, "cfo", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1092,7 +1265,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfuOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-		CHECK_ANNOUNCEMENT_PATH(cfuOnAnnouncement, "cfu_on_announcement");
+        CHECK_ANNOUNCEMENT_PATH(cfuOnAnnouncement, "cfu_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cfu");
         if (!attId)
@@ -1101,14 +1274,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
             goto out;
         }
 
-        if(!checkSubscriberProfile(my_handler, profId, attId))
+        if (!checkSubscriberProfile(my_handler, profId, attId))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
-                uri, username))
+                        uri, username))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1167,7 +1340,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cfuOffAnnouncement, "cfu_off_announcement");
 
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFU, "cfu", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1185,7 +1358,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     if ((ret = regexec(&m_patterns->cfbOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
     {
-		CHECK_ANNOUNCEMENT_PATH(cfbOnAnnouncement, "cfb_on_announcement");
+        CHECK_ANNOUNCEMENT_PATH(cfbOnAnnouncement, "cfb_on_announcement");
 
         u_int64_t attId = getAttributeId(my_handler, "cfb");
         if (!attId)
@@ -1194,14 +1367,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
             goto out;
         }
 
-        if(!checkSubscriberProfile(my_handler, profId, attId))
+        if (!checkSubscriberProfile(my_handler, profId, attId))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
-                uri, username))
+                        uri, username))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1260,7 +1433,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cfbOffAnnouncement, "cfb_off_announcement");
 
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFB, "cfb", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1287,7 +1460,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
             goto out;
         }
 
-        if(!checkSubscriberProfile(my_handler, profId, attId))
+        if (!checkSubscriberProfile(my_handler, profId, attId))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1330,7 +1503,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                 filename = std::move(failAnnouncement);
                 goto out;
             }
-            INFO("Successfully set VSC CFT to '%s' for uuid '%s'",
+            INFO("Successfully set VSC cft to '%s' for uuid '%s'",
                  uri.c_str(), uuid.c_str());
         }
         else
@@ -1340,7 +1513,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                 filename = std::move(failAnnouncement);
                 goto out;
             }
-            INFO("Successfully updated VSC CFT to '%s' for uuid '%s'",
+            INFO("Successfully updated VSC cft to '%s' for uuid '%s'",
                  uri.c_str(), uuid.c_str());
         }
 
@@ -1391,7 +1564,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cftOffAnnouncement, "cft_off_announcement");
 
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFT, "cft", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1420,7 +1593,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
                  uuid.c_str());
         }
 
-
         filename = std::move(cftOffAnnouncement);
         goto out;
     }
@@ -1442,14 +1614,14 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
             goto out;
         }
 
-        if(!checkSubscriberProfile(my_handler, profId, attId))
+        if (!checkSubscriberProfile(my_handler, profId, attId))
         {
             filename = std::move(failAnnouncement);
             goto out;
         }
 
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 4,
-                uri, username))
+                        uri, username))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1508,7 +1680,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
     {
         CHECK_ANNOUNCEMENT_PATH(cfnaOffAnnouncement, "cfna_off_announcement");
 
-        if(!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
+        if (!deleteCF(my_handler, subId, SW_VSC_DESTSET_CFNA, "cfna", &foundPref, &prefStr, uuid.c_str()))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1530,7 +1702,7 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
 
         string slot = string("*") + req.user.substr(4, 1);
         if (!number2uri(req, my_handler, uuid, subId, domain, domId, 5,
-                uri, username))
+                        uri, username))
         {
             filename = std::move(failAnnouncement);
             goto out;
@@ -1561,7 +1733,8 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         CHECK_ANNOUNCEMENT_PATH(reminderOnAnnouncement, "reminder_on_announcement");
 
         int hour, min;
-        string tim; char c_tim[6] = "";
+        string tim;
+        char c_tim[6] = "";
         hour = atoi(req.user.substr(4, 2).c_str());
         min = atoi(req.user.substr(6, 2).c_str());
 
@@ -1627,7 +1800,6 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         filename = std::move(failAnnouncement);
         goto out;
     }
-
 
     if ((ret = regexec(&m_patterns->blockinclirOnPattern,
                        req.user.c_str(), 0, 0, 0)) == 0)
@@ -1721,8 +1893,283 @@ void SW_VscDialog::onInvite(const AmSipRequest &req)
         goto out;
     }
 
+    if ((ret = regexec(&m_patterns->clirOnPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(clirOnAnnouncement, "clir_on_announcement");
 
-    INFO("Unkown VSC code '%s' found", req.user.c_str());
+        std::string val = "1";
+        u_int64_t attId = getAttributeId(my_handler, "clir");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            if (!insertPreference(my_handler, subId, attId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully set VSC clir for uuid '%s'",
+                 uuid.c_str());
+        }
+        else
+        {
+            if (!updatePreferenceId(my_handler, prefId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully updated VSC clir for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(clirOnAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->clirOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(clirOffAnnouncement, "clir_off_announcement");
+
+        u_int64_t attId = getAttributeId(my_handler, "clir");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            INFO("Unnecessary VSC clir removal for uuid '%s'",
+                 uuid.c_str());
+        }
+        else if (!deletePreferenceId(my_handler, prefId))
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else
+        {
+            INFO("Successfully removed clir for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(clirOffAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->colrOnPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(colrOnAnnouncement, "colr_on_announcement");
+
+        std::string val = "1";
+        u_int64_t attId = getAttributeId(my_handler, "colr");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            if (!insertPreference(my_handler, subId, attId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully set VSC colr for uuid '%s'",
+                 uuid.c_str());
+        }
+        else
+        {
+            if (!updatePreferenceId(my_handler, prefId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully updated VSC colr for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(colrOnAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->colrOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(colrOffAnnouncement, "colr_off_announcement");
+
+        u_int64_t attId = getAttributeId(my_handler, "colr");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            INFO("Unnecessary VSC colr removal for uuid '%s'",
+                 uuid.c_str());
+        }
+        else if (!deletePreferenceId(my_handler, prefId))
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else
+        {
+            INFO("Successfully removed colr for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(colrOffAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->dndOnPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(dndOnAnnouncement, "dnd_on_announcement");
+
+        std::string val = "1";
+        u_int64_t attId = getAttributeId(my_handler, "dnd");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            if (!insertPreference(my_handler, subId, attId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully set VSC DND for uuid '%s'",
+                 uuid.c_str());
+        }
+        else
+        {
+            if (!updatePreferenceId(my_handler, prefId, val))
+            {
+                filename = std::move(failAnnouncement);
+                goto out;
+            }
+            INFO("Successfully updated VSC DND for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(dndOnAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    if ((ret = regexec(&m_patterns->dndOffPattern,
+                       req.user.c_str(), 0, 0, 0)) == 0)
+    {
+        CHECK_ANNOUNCEMENT_PATH(dndOffAnnouncement, "dnd_off_announcement");
+
+        u_int64_t attId = getAttributeId(my_handler, "dnd");
+        if (!attId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        u_int64_t prefId = getPreference(my_handler, subId, attId,
+                                         &foundPref, &prefStr);
+        if (!prefId)
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else if (!foundPref)
+        {
+            INFO("Unnecessary VSC dnd removal for uuid '%s'",
+                 uuid.c_str());
+        }
+        else if (!deletePreferenceId(my_handler, prefId))
+        {
+            filename = std::move(failAnnouncement);
+            goto out;
+        }
+        else
+        {
+            INFO("Successfully removed dnd for uuid '%s'",
+                 uuid.c_str());
+        }
+
+        filename = std::move(dndOffAnnouncement);
+        goto out;
+    }
+    else if (ret != REG_NOMATCH)
+    {
+        filename = std::move(failAnnouncement);
+        goto out;
+    }
+
+    INFO("Unknown VSC code '%s' found", req.user.c_str());
     filename = std::move(unknownAnnouncement);
 
 out:
@@ -1734,7 +2181,6 @@ out:
     if (m_wav_file.open(filename, AmAudioFile::Read))
         throw string("SW_VscDialog::onSessionStart: Cannot open file\n");
 
-
     setOutput(&m_wav_file);
 
     AmSession::onInvite(req);
@@ -1745,7 +2191,6 @@ void SW_VscDialog::onBye(const AmSipRequest &req)
     DBG("onBye: stopSession\n");
     AmSession::onBye(req);
 }
-
 
 void SW_VscDialog::process(AmEvent *event)
 {
