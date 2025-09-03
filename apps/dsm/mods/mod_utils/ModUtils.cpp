@@ -50,6 +50,7 @@ MOD_ACTIONEXPORT_BEGIN(MOD_CLS_NAME) {
   DEF_CMD("utils.getCountLeft",   SCUGetCountLeftAction);
   DEF_CMD("utils.getCountRightNoSuffix",  SCUGetCountRightNoSuffixAction);
   DEF_CMD("utils.getCountLeftNoSuffix",   SCUGetCountLeftNoSuffixAction);
+  DEF_CMD("utils.getStringToChar",   SCUGetStringToCharAction);
 
   DEF_CMD("utils.getNewId", SCGetNewIdAction);
   DEF_CMD("utils.spell", SCUSpellAction);
@@ -542,6 +543,34 @@ EXEC_ACTION_START(SCUGetCountLeftNoSuffixAction) {
   }
 
   sc_sess->CLR_ERRNO;
+} EXEC_ACTION_END;
+
+
+CONST_ACTION_3P(SCUGetStringToCharAction, ',', true);
+EXEC_ACTION_START(SCUGetStringToCharAction) {
+  unsigned int cnt = 0;
+  bool lower = false;
+
+  string str = resolveVars(par1, sess, sc_sess, event_params);
+
+  if (!par2.length()) {
+    ERROR("name of the destination array nor specified\n");
+    sc_sess->SET_ERRNO(DSM_ERRNO_UNKNOWN_ARG);
+    sc_sess->SET_STRERROR("name of the destination array nor specified\n");
+    return false;
+  }
+  string dst_array = (par2[0] == '$') ? par2.substr(1) : par2;
+
+  if (par3.length() && par3 == "true")
+    lower = true;
+
+  DBG("splitting to chars the string '%s'\n", str.c_str());
+
+  for (size_t i=0;i<str.length();i++) {
+    sc_sess->var[dst_array+"["+int2str(cnt)+"]"] = (lower) ? tolower(str[i]) : str[i];
+    cnt++;
+  }
+
 } EXEC_ACTION_END;
 
 

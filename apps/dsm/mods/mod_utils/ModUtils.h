@@ -48,6 +48,7 @@ DEF_ACTION_2P(SCUGetCountRightAction);
 DEF_ACTION_2P(SCUGetCountLeftAction);
 DEF_ACTION_2P(SCUGetCountRightNoSuffixAction);
 DEF_ACTION_2P(SCUGetCountLeftNoSuffixAction);
+DEF_ACTION_3P(SCUGetStringToCharAction);
 
 DEF_ACTION_1P(SCGetNewIdAction);
 DEF_ACTION_2P(SCUSpellAction);
