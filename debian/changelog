@@ -1,3 +1,120 @@
+ngcp-sems (1:1.6.0+0~mr13.5.1.0) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [cab8463] MT#62181 pass strings by reference instead of copy
+  * [80172e0] MT#62181 don't use string for bool value
+  * [b7abe78] MT#62181 std::move updates
+  * [e684718] MT#63171 StatsUDPServer: use correct FD flag
+  * [4a4b8fe] MT#62181 StatsUDPServer: fix possible overrun
+  * [a07dd24] MT#55283 flush stdout after config print
+  * [1b33d02] MT#62181 removal from list with lock held
+  * [1f709bb] MT#63171 AmThread: introduce lock & cond
+  * [7c54980] MT#63171 proper shutdown of AmThreadWatcher
+  * [f9faa2e] MT#62181 iterate list with lock held
+  * [03c6196] MT#63171 join stopped thread
+  * [392cd9d] MT#63171 StatsUDPServer: facilitate shutdown
+  * [4bd36ff] MT#63171 Statistics: add dtor
+  * [01345c6] MT#63171 AmSessionProcessor: use lock guard
+  * [f9b93e3] MT#63171 add AmSessionProcessor::stopThreads
+  * [cbb5a3a] MT#63171 AmSessionProcessorThread: replace runcond
+  * [55a86bb] MT#63171 stop AmAppTimer on shutdown
+  * [fe7e899] MT#63171 AmEventQueue: virtual inherit refcnt
+  * [5234af1] MT#63171 generalise AmEventQueue
+  * [ef2b5e4] MT#63171 introduce AmEventQueueThread
+  * [1f5564a] MT#63171 AmCallWatcher: use AmEventQueueThread
+  * [bd5462d] MT#63171 SIPRegistrarClient: facilitate shutdown
+  * [9270717] MT#63171 SystemDSM: use AmEventQueueThread
+  * [2245d59] MT#63171 AmThreadWatcher: stop thread
+  * [adf2332] MT#62181 support testing under valgrind
+  * [c85a2a5] MT#62181 support valgrind leak check
+  * [c247242] MT#63171 XMLRPC2DI: proper shutdown
+  * [35e1538] MT#63171 XMLRPC2DI: fix dtor ordering
+  * [e30510b] MT#63171 AmPlugIn: fix reference counting
+  * [de72ac3] MT#63171 stop main wheeltimer at shutdown
+  * [06387f3] MT#63171 tcp: join threads after stop
+  * [bb4c810] MT#63171 refcount registerApplication
+  * [b1f5764] MT#62181 decrease app refcounts on shutdown
+  * [9c2b865] MT#62181 add dlhandle wrapper class
+  * [35793aa] MT#62181 AmApi: use macro for export func
+  * [f6c49b8] MT#62181 update FactoryCreate prototype
+  * [4f9066c] MT#62181 remove unused macros
+  * [6245e8d] MT#62181 fix basic test
+  * [af4814a] MT#62181 actually report test failures
+  * [3f20758] MT#62181 add RegisterCache stop/join
+  * [5275314] MT#62181 add wheeltimer dtor
+  * [bece83b] MT#62181 remove singleton dispose method
+  * [f1bc12e] MT#62181 use reference for tcp_server_worker
+  * [69a9abd] MT#62181 tcp_trsp: use deque container
+  * [daf2f95] MT#62181 use deque to contain sockets and servers
+  * [ce39e41] MT#62181 rework singleton
+  * [e0804ab] MT#62181 remove underscore from private member
+  * [21f38c5] MT#62181 use containers for server objects
+  * [2205da5] MT#62181 use shared_ptr for refcounting sockets
+  * [1bf5c7e] MT#62181 tcp/tls: use shared_ptr internally
+  * [8083dcd] MT#62181 use shared_ptr for msg_logger
+  * [5c455d3] MT#62181 wheeltimer: prevent double free
+
+  [ Guillem Jover ]
+  * [b7494cf] MT#63051 debian: Fix make variable usage
+  * [22e824a] MT#63051 debian: Improve makefile coding style
+  * [164b57f] MT#33054 Add .gitignore files
+  * [66111e7] MT#33054 Use system libgsm instead of embedded code copy
+  * [268e3b3] MT#33054 Use system librtmp instead of embedded code copy
+  * [ca2ff68] MT#62181 build: Add missing - for -std= option
+
+  [ Donat Zenichev ]
+  * [7d7780a] MT#63071 AmEventDispatcher: imcomplete OR
+  * [f94da13] MT#63071 AmEventDispatcher: queues_mut use lock guard
+  * [b38c51f] MT#63071 AmEventDispatcher: id_lookup_mut use lock guard
+  * [572ed18] MT#63071 AmEventDispatcher: refactor spaces
+  * [e3783f1] MT#63071 AmSessionContainer: use static_cast for up-cast
+  * [19a6502] MT#63071 AmSessionContainer: refactor spaces
+  * [d20c14f] MT#63071 AmSession: add a snapshot mechanism
+  * [3b61150] MT#63071 AmEventDispatcher: provide exposed queue lock
+  * [5e4235a] MT#62859 AmB2BSession: acceptPendingInviteB2B() take const
+  * [2616037] MT#62859 AmB2BSession: treat SDP as const
+  * [b5ce83d] MT#62859 CallLeg: set sip replay to false (reconnect)
+  * [e4f6f14] MT#62859 CallLeg: store pending updates for non-sip-relayable
+  * [cb8e0ec] MT#62859 AmB2BSession: set_sip_relay_only() add logs
+  * [2cdd0a6] MT#62859 AmB2BSession::onB2BEvent send fake SDP answer
+  * [3b94b6d] MT#59962 Aling the AmOfferAnswer model
+  * [5bb0427] MT#62859 AmB2BSession::acceptPendingInviteB2B use local conn/port
+  * [ef86e68] MT#62859 AmB2BSession::acceptPendingInviteB2B improve logs
+  * [458f4b7] MT#62876 Call transfer: force reconnected to rtp direct
+  * [d4200b6] MT#63298 AmB2BSession: introduce `addFakeSDPbasedOnPort()`
+  * [e4e1742] MT#63298 AmB2BSession: introduce `getMediaPort()`
+  * [fc6c3da] MT#63298 Properly set SDP answer port on call pick-up
+  * [f2c1db5] MT#63298 AmOfferAnswer: add support of PreviewCompleted
+  * [e005af4] MT#63298 AmOfferAnswer: follow-up for f2c1db55a6a92ae
+  * [50b7bc2] MT#59962 AmSdp::parse(): always check return value
+  * [34e6b76] MT#59962 AmOfferAnswer: no need to parse CSTA body
+  * [d53e757] MT#59962 AmB2BSession: acceptPendingInviteB2B() check body
+  * [fccc51a] MT#59962 AmPlugIn: Move shared ptr instead of copying
+  * [7f803a2] MT#59962 Edit README preamble
+  * [a7a66c7] MT#59962 Rework AmSdp parsing and func users accordingly
+  * [0bb3283] MT#59962 Rework AmMimeBody payload to be string
+  * [f9ea22f] MT#59962 AmMimeBody: add Content-Length parsing
+  * [c19ae58] MT#59962 SBCCallLeg: skip filtering SDP body if Ct.L. empty
+  * [31c3090] MT#59962 Fix typo introduced by f9ea22fcc7a763d
+  * [c2524be] MT#59962 Add support of AmRtpSocket
+  * [257fcd3] MT#59962 Add support of AmIceCandidate
+  * [83c8a58] MT#59962 Add support of AmStunServer
+  * [7035a6e] MT#59962 AmRtpPacket: add packet type checkers
+  * [687616f] MT#59962 AmRtpStream: add SSRC getter and setter
+  * [980ee16] MT#59962 AmRtpStream: save offered payloads
+  * [1aefa1c] MT#59962 AmRtpStream: add getter for raw relay state
+  * [3765741] MT#59962 rtp.h: add rtcp data header types
+  * [54f55d4] MT#59962 AmSdp: extend attribute management
+
+  [ Fabricio Santolin da Silva ]
+  * [4707a2e] TT#169904 Activate g729 Codec
+
+  [ Marco Capetta ]
+  * [49894e3] MT#63379 Align SEMS CE VSC codes with the available ones on SEMS PRO
+  * [eff9dba] MT#63029 Add a new DSM function to GetStringToChar
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 08 Sep 2025 11:46:57 +0200
+
 ngcp-sems (1:1.6.0+0~mr13.5.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
