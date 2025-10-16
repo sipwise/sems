@@ -19,6 +19,7 @@
 ### END INIT INFO
 
 # Source function library.
+# shellcheck disable=SC1091
 . /etc/rc.d/init.d/functions
 
 prog=sems
@@ -32,9 +33,12 @@ OPTIONS=""
 
 # User-defined options and/or overrides of the variables, listed above,
 # should go there:
+# shellcheck source=./sems.sysconfig
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
+# shellcheck source=./sems.default
 # try to source Debian-like default settings
+# shellcheck source=./sems.sysconfig
 [ -e /etc/default/$prog ] && . /etc/default/$prog
 
 RETVAL=0
@@ -61,6 +65,7 @@ start() {
 		return 0
 	fi
 
+        # shellcheck disable=SC2086
         daemon $sems -P $pidfile -u sems -g sems -f $conffile $OPTIONS
         RETVAL=$?
         echo
