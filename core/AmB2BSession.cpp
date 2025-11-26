@@ -537,16 +537,16 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
         {
           if (updateSessionDescription(reply_ev->reply.body)) {
 
-            if (reply_ev->reply.cseq != est_invite_cseq) {
-              if (dlg->getUACInvTransPending()) {
-                ILOG_DLG(L_DBG, "changed session, but UAC INVITE trans pending\n");
-                /* todo(?): save until trans is finished? */
-                return;
-              }
-              ILOG_DLG(L_DBG, "session description changed - refreshing\n");
-              sendEstablishedReInvite();
-            } else {
-              ILOG_DLG(L_DBG, "reply to establishing INVITE request - not refreshing\n");
+            if (dlg->getUACInvTransPending()) {
+              ILOG_DLG(L_DBG, "changed session, but UAC INVITE trans pending\n");
+              /* TODO: save until trans is finished? */
+              return;
+            }
+            ILOG_DLG(L_DBG, "session description changed - refreshing\n");
+            if (sendEstablishedReInvite() < 0) {
+                ILOG_DLG(L_ERR, "could not re-Invite after locally initiated request"
+                      "in B2B leg changed session (this='%s', other='%s')\n",
+                      getLocalTag().c_str(), other_id.c_str());
             }
           }
 
