@@ -34,6 +34,8 @@
 #include "AmMediaProcessor.h"
 #include "ampi/MonitoringAPI.h"
 
+#include "DBUtils.h"
+
 #include "sems.h"
 #include "log.h"
 
@@ -199,7 +201,13 @@ int ConferenceFactory::onLoad()
 #ifdef VERSION2
     Connection.set_option(Connection.opt_reconnect, true);
 #else
-    Connection.set_option(new mysqlpp::ReconnectOption(true));
+    apply_mysql_options(
+      Connection,
+      dbReconnectOption,
+      dbConnectTimeoutOption(5),
+      dbReadTimeoutOption(5),
+      dbWriteTimeoutOption(5)
+    );
 #endif
     if (!mysql_ca_cert.empty())
       Connection.set_option(

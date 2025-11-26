@@ -32,6 +32,8 @@
 #include "AmPlugIn.h"
 #include "AmPlaylist.h"
 
+#include "DBUtils.h"
+
 #include "../msg_storage/MsgStorageAPI.h"
 #include "sems.h"
 #include "log.h"
@@ -413,13 +415,19 @@ int AnswerMachineFactory::onLoad()
 
   try {
 
+    apply_mysql_options(
+      Connection,
+      dbReconnectOption,
+      dbConnectTimeoutOption(5),
+      dbReadTimeoutOption(5),
+      dbWriteTimeoutOption(5)
+    );
     Connection.connect(mysql_db.c_str(), mysql_server.c_str(),
                       mysql_user.c_str(), mysql_passwd.c_str());
     if (!Connection) {
       ERROR("Database connection failed: %s\n", Connection.error());
       return -1;
     }
-    Connection.set_option(mysqlpp::Connection::opt_reconnect, true);
   }
 
   catch (const mysqlpp::Exception& er) {

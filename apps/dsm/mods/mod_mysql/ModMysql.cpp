@@ -28,7 +28,6 @@
 #include "ModMysql.h"
 #include "log.h"
 #include "AmUtils.h"
-#include "DBUtils.h"
 
 #include "DSMSession.h"
 #include "AmSession.h"
@@ -111,7 +110,7 @@ mysqlpp::Connection* getMyDSMSessionConnection(DSMSession* sc_sess) {
     sc_sess->SET_STRERROR("No connection to database (not mysqlpp::Connection)");
     return NULL;
   }
-  apply_mysql_options(*res, dbConnectTimeoutOption(5), dbReadTimeoutOption(5), dbWriteTimeoutOption(5));
+
   return res;
 }
 
