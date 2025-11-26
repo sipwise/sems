@@ -18,11 +18,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "DBUtils.h"
 #include "DBRegAgent.h"
 #include "AmSession.h"
 #include "AmEventDispatcher.h"
@@ -194,9 +195,14 @@ int DBRegAgent::onLoad()
 
   try {
 
-    MainDBConnection.set_option(new mysqlpp::ReconnectOption(true));
-    // matched instead of changed rows in result, so we know when to create DB entry
-    MainDBConnection.set_option(new mysqlpp::FoundRowsOption(true));
+    std::initializer_list<DBArgOption> args = {
+      dbReconnectOption,          // if present = dbReconnectOption(true)
+      dbConnectTimeoutOption(5),  // seconds
+      dbReadTimeoutOption(5),     // seconds
+      dbWriteTimeoutOption(5),    // seconds
+      dbFoundRowsOption           // if present = dbFoundRowsOption(true)
+    };
+    apply_mysql_options(MainDBConnection, args);
     MainDBConnection.connect(mysql_db.c_str(), mysql_server.c_str(),
                       mysql_user.c_str(), mysql_passwd.c_str());
     if (!MainDBConnection) {
@@ -204,9 +210,7 @@ int DBRegAgent::onLoad()
       return -1;
     }
 
-    ProcessorDBConnection.set_option(new mysqlpp::ReconnectOption(true));
-    // matched instead of changed rows in result, so we know when to create DB entry
-    ProcessorDBConnection.set_option(new mysqlpp::FoundRowsOption(true));
+    apply_mysql_options(ProcessorDBConnection, args);
     ProcessorDBConnection.connect(mysql_db.c_str(), mysql_server.c_str(),
                       mysql_user.c_str(), mysql_passwd.c_str());
     if (!ProcessorDBConnection) {
@@ -615,14 +619,14 @@ void DBRegAgent::createRegistration(long object_id,
 
     if (NULL != uac_auth_i) {
       DBG("REGISTER: Enabling UAC Auth for new registration of type: <%s>\n", TYPE_TO_STRING(type));
-      
+
       // get a sessionEventHandler from uac_auth
       AmArg di_args, ret;
       AmArg a;
       a.setBorrowedPointer(reg);
       di_args.push(a);
       di_args.push(a);
-      
+
       uac_auth_i->invoke("getHandler", di_args, ret);
       if (!ret.size()) {
         ERROR("Can not add auth handler to new registration!\n");
@@ -814,7 +818,7 @@ void DBRegAgent::process(AmEvent* ev) {
 
   if (ev->event_id == E_SYSTEM) {
     AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(ev);
-    if(sys_ev){	
+    if(sys_ev){
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	stop();
@@ -951,7 +955,7 @@ void DBRegAgent::createDBRegistration(long object_id, const regType type, mysqlp
       WARN("creating registration in DB with query '%s' failed: '%s', type: %s\n",
           insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
     }
-  }  catch (const mysqlpp::Exception& er) {
+  } catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
     ERROR("MySQL++ error: %s\n", er.what());
     return;
@@ -979,7 +983,7 @@ void DBRegAgent::deleteDBRegistration(long object_id, const regType type, mysqlp
       WARN("removing registration in DB with query '%s' failed: '%s', type: %s\n",
           insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
     }
-  }  catch (const mysqlpp::Exception& er) {
+  } catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
     ERROR("MySQL++ error: %s\n", er.what());
     return;
@@ -1005,8 +1009,7 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
     }
 
     if (update_ts) {
-      query << ", last_registration=NOW(), "
-	"expiry=TIMESTAMPADD(SECOND,"+int2str(expiry)+", NOW())";
+      query << ", last_registration=NOW(), expiry=TIMESTAMPADD(SECOND," + int2str(expiry) + ", NOW())";
     }
 
     if (update_contacts) {
@@ -1024,21 +1027,19 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
 
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
-      WARN("updating registration in DB with query '%s' failed: '%s'\n",
-	   query_str.c_str(), res.info());
+      WARN("updating registration in DB with query '%s' failed: '%s'\n", query_str.c_str(), res.info());
     } else {
       if (!res.rows()) {
-	// should not happen - DB entry is created on load or on createRegistration
-  DBG("creating registration DB entry for subscriber %ld, type: %s\n", object_id, TYPE_TO_STRING(type));
-  createDBRegistration(object_id, type, db_connection);
-	query.reset();
-	query << query_str;
+        // should not happen - DB entry is created on load or on createRegistration
+        DBG("creating registration DB entry for subscriber %ld, type: %s\n", object_id, TYPE_TO_STRING(type));
+        createDBRegistration(object_id, type, db_connection);
+        query.reset();
+        query << query_str;
 
-	mysqlpp::SimpleResult res = query.execute();
-	if (!res || !res.rows()) {
-	  WARN("updating registration in DB with query '%s' failed: '%s'\n",
-	       query_str.c_str(), res.info());
-	}
+        mysqlpp::SimpleResult res = query.execute();
+        if (!res || !res.rows()) {
+          WARN("updating registration in DB with query '%s' failed: '%s'\n", query_str.c_str(), res.info());
+        }
       }
     }
 
@@ -1054,7 +1055,7 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
 void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
   if (!ev) return;
 
-  DBG("received SIP reply event for '%s'\n", 
+  DBG("received SIP reply event for '%s'\n",
 #ifdef HAS_OFFER_ANSWER
       ev->reply.from_tag.c_str()
 #else
@@ -1220,7 +1221,7 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
 void DBRegAgent::run() {
   DBG("DBRegAgent thread: waiting 2 sec for server startup ...\n");
   sleep(2);
-  
+
   mysqlpp::Connection::thread_start();
 
   if (enable_ratelimiting) {
@@ -1380,7 +1381,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
 	  "minimum_reregister_interval=%f)\n",
 	  t_expiry_min, t_expiry_max, reg_start_ts, expiry,
 	  reregister_interval, minimum_reregister_interval);
-  
+
       registration_scheduler.insert_timer_abs(timer, t_expiry_min * 1000000, t_expiry_max * 1000000);
     }
   } else {
@@ -1735,7 +1736,7 @@ void DBRegAgentProcessorThread::rateLimitWait() {
   memcpy(&last_check, &current, sizeof(struct timeval));
   double seconds_passed = (double)time_passed.tv_sec +
     (double)time_passed.tv_usec / 1000000.0;
-  allowance += seconds_passed * 
+  allowance += seconds_passed *
     (double) DBRegAgent::ratelimit_rate / (double)DBRegAgent::ratelimit_per;
 
   if (allowance > (double)DBRegAgent::ratelimit_rate)
@@ -1756,7 +1757,7 @@ void DBRegAgentProcessorThread::rateLimitWait() {
 
 void DBRegAgentProcessorThread::run() {
   DBG("DBRegAgentProcessorThread thread started\n");
-  
+
   // register us as SIP event receiver for MOD_NAME_processor
   AmEventDispatcher::instance()->addEventQueue(MOD_NAME "_processor",this);
 
@@ -1780,14 +1781,14 @@ void DBRegAgentProcessorThread::run() {
 
   mysqlpp::Connection::thread_end();
 
- DBG("DBRegAgentProcessorThread thread stopped\n"); 
+ DBG("DBRegAgentProcessorThread thread stopped\n");
 }
 
 void DBRegAgentProcessorThread::process(AmEvent* ev) {
 
   if (ev->event_id == E_SYSTEM) {
     AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(ev);
-    if(sys_ev){	
+    if(sys_ev){
       DBG("Session received system Event\n");
       if (sys_ev->sys_event == AmSystemEvent::ServerShutdown) {
 	DBG("stopping processor thread\n");
@@ -1822,32 +1823,32 @@ void DBRegAgent::run_tests() {
   gettimeofday(&now, 0);
 
   RegTimer rt;
-  rt.expires = now.tv_sec + 10; 
+  rt.expires = now.tv_sec + 10;
   rt.cb=test_cb;
   registration_scheduler.insert_timer(&rt);
 
   RegTimer rt2;
-  rt2.expires = now.tv_sec + 5; 
+  rt2.expires = now.tv_sec + 5;
   rt2.cb=test_cb;
   registration_scheduler.insert_timer(&rt2);
 
   RegTimer rt3;
-  rt3.expires = now.tv_sec + 15; 
+  rt3.expires = now.tv_sec + 15;
   rt3.cb=test_cb;
   registration_scheduler.insert_timer(&rt3);
 
   RegTimer rt4;
-  rt4.expires = now.tv_sec - 1; 
+  rt4.expires = now.tv_sec - 1;
   rt4.cb=test_cb;
   registration_scheduler.insert_timer(&rt4);
 
   RegTimer rt5;
-  rt5.expires = now.tv_sec + 100000; 
+  rt5.expires = now.tv_sec + 100000;
   rt5.cb=test_cb;
   registration_scheduler.insert_timer(&rt5);
 
   RegTimer rt6;
-  rt6.expires = now.tv_sec + 100; 
+  rt6.expires = now.tv_sec + 100;
   rt6.cb=test_cb;
   registration_scheduler.insert_timer_leastloaded(&rt6, now.tv_sec+5, now.tv_sec+50);
 
@@ -1856,7 +1857,7 @@ void DBRegAgent::run_tests() {
   gettimeofday(&now, 0);
 
   RegTimer rt7;
-  rt6.expires = now.tv_sec + 980; 
+  rt6.expires = now.tv_sec + 980;
   rt6.cb=test_cb;
   registration_scheduler.insert_timer_leastloaded(&rt6, now.tv_sec+9980, now.tv_sec+9990);
 

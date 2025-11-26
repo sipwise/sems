@@ -28,6 +28,7 @@
 #include "ModMysql.h"
 #include "log.h"
 #include "AmUtils.h"
+#include "DBUtils.h"
 
 #include "DSMSession.h"
 #include "AmSession.h"
@@ -110,6 +111,7 @@ mysqlpp::Connection* getMyDSMSessionConnection(DSMSession* sc_sess) {
     sc_sess->SET_STRERROR("No connection to database (not mysqlpp::Connection)");
     return NULL;
   }
+  apply_mysql_options(*res, dbConnectTimeoutOption(5), dbReadTimeoutOption(5), dbWriteTimeoutOption(5));
   return res;
 }
 
@@ -222,8 +224,9 @@ EXEC_ACTION_START(SCMyConnectAction) {
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMyDisconnectAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
+
   if (NULL == conn) 
     return false;
 
@@ -241,13 +244,14 @@ EXEC_ACTION_START(SCMyDisconnectAction) {
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMyResolveQueryParams) {
-  sc_sess->var["db.qstr"] = 
+  sc_sess->var["db.qstr"] =
     replaceQueryParams(arg, sc_sess, event_params);
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMyExecuteAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
+
   if (NULL == conn) 
     return false;
   string qstr = replaceQueryParams(arg, sc_sess, event_params);
@@ -267,24 +271,25 @@ EXEC_ACTION_START(SCMyExecuteAction) {
     }
 
   } catch (const mysqlpp::Exception& e) {
-    ERROR("DB query '%s' failed: '%s'\n", 
+    ERROR("DB query '%s' failed: '%s'\n",
 	  qstr.c_str(), e.what());
-    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);    
+    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
 } EXEC_ACTION_END;
 
 EXEC_ACTION_START(SCMyQueryAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn) 
+
+  if (NULL == conn)
     return false;
   string qstr = replaceQueryParams(arg, sc_sess, event_params);
 
   try {
     mysqlpp::Query query = conn->query(qstr.c_str());
-    mysqlpp::StoreQueryResult res = query.store();    
+    mysqlpp::StoreQueryResult res = query.store();
     if (res) {
       // MySQL++ does not allow working with pointers here, so copy construct it
       DSMMyStoreQueryResult* m_res = new DSMMyStoreQueryResult(res);
@@ -314,15 +319,16 @@ EXEC_ACTION_START(SCMyQueryAction) {
 
 CONST_ACTION_2P(SCMyQueryGetResultAction, ',', true);
 EXEC_ACTION_START(SCMyQueryGetResultAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn) 
+
+  if (NULL == conn)
     return false;
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
 
   try {
     mysqlpp::Query query = conn->query(qstr.c_str());
-    mysqlpp::StoreQueryResult res = query.store();    
+    mysqlpp::StoreQueryResult res = query.store();
     if (res) {
       unsigned int rowindex_i = 0;
       string rowindex = resolveVars(par2, sess, sc_sess, event_params);
@@ -456,8 +462,9 @@ EXEC_ACTION_START(SCMyUseResultAction) {
 bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType event,
 		 map<string,string>* event_params, const string& par1, const string& par2,
 		 bool looped, bool front) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
+
   if (NULL == conn)
     EXEC_ACTION_STOP;
 
@@ -465,20 +472,20 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
 
   try {
     mysqlpp::Query query = conn->query(qstr.c_str());
-    mysqlpp::UseQueryResult res = query.use();    
+    mysqlpp::UseQueryResult res = query.use();
     if (res) {
 
       mysqlpp::Row row = res.fetch_row();
       if (!row) {
-	sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
-	sc_sess->SET_STRERROR("result does not have row");
-	EXEC_ACTION_STOP;
+        sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
+        sc_sess->SET_STRERROR("result does not have row");
+        EXEC_ACTION_STOP;
       }
       FILE *t_file = tmpfile();
       if (NULL == t_file) {
-	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
-	sc_sess->SET_STRERROR("tmpfile() failed: "+string(strerror(errno)));
-	EXEC_ACTION_STOP;
+        sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+        sc_sess->SET_STRERROR("tmpfile() failed: "+string(strerror(errno)));
+        EXEC_ACTION_STOP;
       }
 
       fwrite(row.at(0).data(), 1, row.at(0).size(), t_file);
@@ -486,9 +493,9 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
       
       DSMDisposableAudioFile* a_file = new DSMDisposableAudioFile();
       if (a_file->fpopen(par2, AmAudioFile::Read, t_file)) {
-	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
-	sc_sess->SET_STRERROR("fpopen failed!");
-	EXEC_ACTION_STOP;
+        sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+        sc_sess->SET_STRERROR("fpopen failed!");
+        EXEC_ACTION_STOP;
       }
 
       a_file->loop = looped;
@@ -496,15 +503,15 @@ bool playDBAudio(AmSession* sess, DSMSession* sc_sess, DSMCondition::EventType e
       sc_sess->addToPlaylist(new AmPlaylistItem(a_file, NULL), front);
       sc_sess->transferOwnership(a_file);
 
-      sc_sess->CLR_ERRNO;    
+      sc_sess->CLR_ERRNO;
     } else {
       sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
-      sc_sess->SET_STRERROR("query does not have result"); 
+      sc_sess->SET_STRERROR("query does not have result");
     }
   } catch (const mysqlpp::Exception& e) {
-    ERROR("DB query '%s' failed: '%s'\n", 
+    ERROR("DB query '%s' failed: '%s'\n",
 	  qstr.c_str(), e.what());
-    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);    
+    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
@@ -531,40 +538,41 @@ EXEC_ACTION_START(SCMyPlayDBAudioLoopedAction) {
 
 CONST_ACTION_2P(SCMyGetFileFromDBAction, ',', true);
 EXEC_ACTION_START(SCMyGetFileFromDBAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn) 
+
+  if (NULL == conn)
     return false;
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
   string fname = resolveVars(par2, sess, sc_sess, event_params);
 
   try {
     mysqlpp::Query query = conn->query(qstr.c_str());
-    mysqlpp::UseQueryResult res = query.use();    
+    mysqlpp::UseQueryResult res = query.use();
     if (res) {
       mysqlpp::Row row = res.fetch_row();
       if (!row) {
-	sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
-	sc_sess->SET_STRERROR("result does not have row"); 
-	return false;
+        sc_sess->SET_ERRNO(DSM_ERRNO_MY_NOROW);
+        sc_sess->SET_STRERROR("result does not have row"); 
+        return false;
       }
       FILE *t_file = fopen(fname.c_str(), "wb");
       if (NULL == t_file) {
-	sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
-	sc_sess->SET_STRERROR("fopen() failed for file '"+fname+"': "+string(strerror(errno)));
-	return false;
+        sc_sess->SET_ERRNO(DSM_ERRNO_FILE);
+        sc_sess->SET_STRERROR("fopen() failed for file '"+fname+"': "+string(strerror(errno)));
+        return false;
       }
 
       fwrite(row.at(0).data(), 1, row.at(0).size(), t_file);
       fclose(t_file);
 
-      sc_sess->CLR_ERRNO;    
+      sc_sess->CLR_ERRNO;
     } else {
       sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
-      sc_sess->SET_STRERROR("query does not have result"); 
+      sc_sess->SET_STRERROR("query does not have result");
     }
   } catch (const mysqlpp::Exception& e) {
-    ERROR("DB query '%s' failed: '%s'\n", 
+    ERROR("DB query '%s' failed: '%s'\n",
 	  qstr.c_str(), e.what());
     sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
     sc_sess->SET_STRERROR(e.what());
@@ -574,9 +582,10 @@ EXEC_ACTION_START(SCMyGetFileFromDBAction) {
 
 CONST_ACTION_2P(SCMyPutFileToDBAction, ',', true);
 EXEC_ACTION_START(SCMyPutFileToDBAction) {
-  mysqlpp::Connection* conn = 
+  mysqlpp::Connection* conn =
     getMyDSMSessionConnection(sc_sess);
-  if (NULL == conn) 
+
+  if (NULL == conn)
     return false;
   string qstr = replaceQueryParams(par1, sc_sess, event_params);
 
@@ -628,9 +637,9 @@ EXEC_ACTION_START(SCMyPutFileToDBAction) {
     }
 
   } catch (const mysqlpp::Exception& e) {
-    ERROR("DB query '%s' failed: '%s'\n", 
+    ERROR("DB query '%s' failed: '%s'\n",
 	  par1.c_str(), e.what());
-    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);    
+    sc_sess->SET_ERRNO(DSM_ERRNO_MY_QUERY);
     sc_sess->SET_STRERROR(e.what());
     sc_sess->var["db.ereason"] = e.what();
   }
