@@ -1,7 +1,7 @@
 COREPATH ?= ../core
 .DEFAULT_GOAL := all
 
-local_exclude_app_modules=confpin early_dbprompt mobile_push py_sems gateway twit
+local_exclude_app_modules=conference confpin early_announce early_dbprompt mobile_push py_sems gateway twit voicemail
 
 include $(COREPATH)/../Makefile.defs
 
