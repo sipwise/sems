@@ -1135,7 +1135,8 @@ EXEC_ACTION_START(SCSetTimerAction) {
     EXEC_ACTION_STOP;
   }
 
-  unsigned int timeout;
+  double timeout;
+
   if (str2int(resolveVars(par2, sess, sc_sess, event_params), timeout)) {
     ERROR("timeout value '%s' not decipherable\n", 
 	  resolveVars(par2, sess, sc_sess, event_params).c_str());
