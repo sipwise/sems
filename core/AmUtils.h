@@ -148,6 +148,8 @@ bool str2int(char*& str, unsigned int& result, char sep = ' ');
  */
 bool str2int(const string& str, int& result);
 
+bool str2int(const string& str, double& result);
+
 /** 
  * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs

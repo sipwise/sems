@@ -284,6 +284,12 @@ bool str2int(const string& str, int& result)
   return str2int(s,result);
 }
 
+bool str2int(const string& str, double& result)
+{
+  char* s = (char*)str.c_str();
+  return atof(s);
+}
+
 bool str2int(char*& str, int& result, char sep)
 {
   int ret=0;
