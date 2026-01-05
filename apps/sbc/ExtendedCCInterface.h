@@ -70,6 +70,8 @@ class ExtendedCCInterface
 
     virtual CCChainProcessing onDtmf(SBCCallLeg *call, int event, int duration) { return ContinueProcessing;  };
 
+    virtual void onAudioStreamCreated(SBCCallLeg *call, AudioStreamData *data) { }
+
     // hold related functionality (seems to work best being explicitly supported
     // with API than hacking based on another callbacks)
 

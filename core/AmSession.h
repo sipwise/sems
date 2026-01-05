@@ -40,8 +40,7 @@
 #include "AmApi.h"
 #include "AmSessionEventHandler.h"
 #include "AmMediaProcessor.h"
-
-#include "AmZRTP.h"
+#include "AmRtpTransport.h"
 
 #include <string>
 #include <vector>
@@ -99,6 +98,11 @@ class AmSession :
    * when AmSession used multi-thread by snapshot */
   AmMutex snapshot_lock;
 
+  /* SIP and RTP log */
+  shared_ptr<msg_logger> logger;
+  bool log_rtp;
+  bool log_sip;
+
 protected:
   vector<SdpPayload *>  m_payloads;
   //bool         negotiate_onreply;
@@ -125,6 +129,9 @@ private:
   void run();
   void on_stop();
 #else
+
+  typedef vector<AmRtpTransport*>::iterator RtpTransportIterator;
+
 public:
   void start();
   bool is_stopped();
@@ -148,17 +155,21 @@ private:
   friend class AmSessionFactory;
   friend class AmSessionProcessorThread;
 
-  unique_ptr<AmRtpAudio> _rtp_str;
-
   /** Application parameters passed through P-App-Param HF */
   map<string,string> app_params;
 
   /** Sets the application parameters from the original request */
   void setAppParams(const AmSipRequest& req);
+  void setLogger(const shared_ptr<msg_logger>& _logger);
 
 protected:
 
   AmCondition sess_stopped;
+
+  /** Logger **/
+  void setLogger(const shared_ptr<msg_logger>& _logger, bool _log_sip, bool _log_rtp);
+  bool openLogger(const std::string &path);
+  const shared_ptr<msg_logger>& getLogger() { return logger; }
 
   /** this is the group the media is processed with
       - by default local tag */
@@ -203,16 +214,32 @@ public:
   /** update selected session refresh method from remote capabilities */
   void updateRefreshMethod(const string& headers);
 
+  /** Rtp/Rtcp transports */
+  vector<AmRtpTransport*> rtp_transports;
+
+  vector<AmRtpAudio*> rtp_streams;
+  vector<AmRtpAudio*>::iterator active_rtp_stream;
+  bool active_rtp_stream_i;
+  int active_media_index;
+
+  AmRtpTransport* createRtpTransport(AmRtpStream* stream, const string& ip,
+                                     bool rtcp_mux, bool ice, bool srtp);
+
+  AmRtpTransport* getRtpTransport(AmRtpStream* stream);
+
+  bool hasStream(AmRtpStream* stream);
+
+  void createRTPStreams();
+  void setActiveRtpStream(int transport);
   AmRtpAudio* RTPStream();
-  bool hasRtpStream() { return _rtp_str.get() != NULL; }
 
-#ifdef WITH_ZRTP
-  AmZRTPSessionState zrtp_session_state;
+  bool hasRtpStream() { return rtp_streams.size(); }
 
-  /** must be set before session is started! i.e. in constructor */
-  bool enable_zrtp;
+  // RTP Keepalive frequency
+  unsigned int rtp_keepalive_freq;
 
-#endif
+  // RTP Tiemout
+  unsigned int rtp_timeout;
 
   AmSipDialog* dlg;
   AmSessionSnapshot session_snapshot;
@@ -359,7 +386,7 @@ public:
   const vector<SdpPayload*>& getPayloads();
 
   /** Gets the port number of the remote part of the session */
-  int getRPort();
+  int getRemoteRtpPort();
 
   /* ----         Call control                         ---- */
 
@@ -560,14 +587,6 @@ public:
    * entry point for system events
    */
   virtual void onSystemEvent(AmSystemEvent* ev);
-  
-#ifdef WITH_ZRTP
-  /**
-   * ZRTP events @see ZRTP
-   */
-  virtual void onZRTPProtocolEvent(zrtp_protocol_event_t event, zrtp_stream_t *stream_ctx);
-  virtual void onZRTPSecurityEvent(zrtp_security_event_t event, zrtp_stream_t *stream_ctx);
-#endif
 
   /** This callback is called if RTP timeout encountered */
   virtual void onRtpTimeout();
@@ -639,18 +658,7 @@ public:
   virtual void onAfterRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr) {}
 
   int getRtpInterface();
-  void setRtpInterface(int _rtp_interface);
 };
-
-inline AmRtpAudio* AmSession::RTPStream() {
-  if (NULL == _rtp_str.get()) {
-    DBG("creating RTP stream instance for session [%p]\n", 
-	this);
-    _rtp_str.reset(new AmRtpAudio(this,rtp_interface));
-  }
-  return _rtp_str.get();
-}
-
 
 #endif
 

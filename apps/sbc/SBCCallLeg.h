@@ -81,14 +81,17 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   // Rate limiting
   unique_ptr<RateLimit> rtp_relay_rate_limit;
+  AmArg rtp_bw_limit_event; // event to be logged for reached bandwidth limit
+  bool log_rtp_bw_limit_event; // flag saying whether to log the event
   
   // Measurements
   list<atomic_int*> rtp_pegs;
 
-  /** common logger for RTP/RTCP and SIP packets */
-  shared_ptr<msg_logger> logger;
-
-  void setLogger(const shared_ptr<msg_logger>& _logger);
+  // RTP bandwidth limit (based on negotiated codecs)
+  unsigned int bandwidth_limit_a;
+  unsigned int bandwidth_limit_b;
+  unsigned int bandwidth_usage;
+  bool last_sdp_offer;
 
   void fixupCCInterface(const string& val, CCInterface& cc_if);
 
@@ -107,12 +110,15 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 		     const string &from, const AmSipRequest &original_invite, 
 		     const AmSipRequest &invite_req);
 
+  /** process (filter, ...) body (SDP) before relaying it to other leg */
+  int onBeforeB2BRelayBody(AmMimeBody &body, const string &method);
+
   int filterSdp(AmMimeBody &body, const string &method);
   void appendTranscoderCodecs(AmSdp &sdp);
   void savePayloadIDs(AmSdp &sdp);
 
   /** apply A leg configuration from call profile */
-  void applyAProfile();
+  void applyAProfile(const AmSipRequest &req);
 
   /** apply B leg configuration from call profile */
   void applyBProfile();
@@ -183,9 +189,34 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   SBCCallProfile &getCallProfile() { return call_profile; }
   CallStatus getCallStatus() { return CallLeg::getCallStatus(); }
 
-  void setRTPMeasurements(const list<atomic_int*>& rtp_meas) { rtp_pegs = rtp_meas; }
+  /** 
+   * Copy settings which need to be identical on both legs 
+   */
+  void copyGlobalSettings(const SBCCallProfile& callee_profile);
+
+  void setRTPMeasurements(const list<atomic_int*>& rtp_meas) {
+    rtp_pegs = rtp_meas;
+  }
   const RateLimit* getRTPRateLimit() { return rtp_relay_rate_limit.get(); }
   void setRTPRateLimit(RateLimit* rl) { rtp_relay_rate_limit.reset(rl); }
+
+  const unsigned int getBandwidthUsage() { return bandwidth_usage; }
+  void getBandwidthLimits(unsigned int* limits) {
+    limits[0] = bandwidth_limit_a;
+    limits[1] = bandwidth_limit_b;
+  }
+
+  void setBandwidthLimits(unsigned int limit_a, unsigned int limit_b) {
+    bandwidth_limit_a = limit_a;
+    bandwidth_limit_b = limit_b;
+  }
+
+  bool wasLastSdpOffer() { return last_sdp_offer; }
+  void setLastSdpOffer(bool is_offer) { last_sdp_offer = is_offer; }
+
+  virtual void updateBandwidthUsage(unsigned int bw) {
+    bandwidth_usage = bw;
+  };
 
   // media interface must be accessible from CC modules
   AmB2BMedia *getMediaSession() { return AmB2BSession::getMediaSession(); }
@@ -203,6 +234,10 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   virtual void setMediaSession(AmB2BMedia *new_session);
   virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);
+
+  virtual void onAudioStreamCreated(AudioStreamData *stream);
+
+  void onInitialRelayBody(AmMimeBody& body, const string& method);
 
  protected:
   /** set to true once CCStart passed to call CCEnd implicitly (from onStop)
@@ -227,6 +262,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   virtual void onInitialReply(B2BSipReplyEvent *e);
 
   void onRemoteDisappeared(const AmSipReply& reply);
+  void onRtpTimeout();
   void onBye(const AmSipRequest& req);
   void onOtherBye(const AmSipRequest& req);
 
@@ -255,9 +291,6 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   virtual void resumeRejected();
 
   int applySSTCfg(AmConfigReader& sst_cfg, const AmSipRequest* p_req);
-
-  bool openLogger(const std::string &path);
-  const shared_ptr<msg_logger>& getLogger() { return logger; }
 
   virtual double get491RetryTime() { return (get_random() % call_profile.max_491_retry_time) / 1000.0; }
 };

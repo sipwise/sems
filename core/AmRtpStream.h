@@ -35,6 +35,7 @@
 #include "AmRtpPacket.h"
 #include "AmEvent.h"
 #include "AmDtmfSender.h"
+#include "AmAppTimer.h"
 
 #include <netinet/in.h>
 
@@ -45,6 +46,8 @@
 using std::string;
 using std::unique_ptr;
 using std::pair;
+
+class AmRtpTransport;
 
 // return values of AmRtpStream::receive
 #define RTP_EMPTY        0 // no rtp packet available
@@ -137,7 +140,7 @@ struct Payload {
   unsigned int  clock_rate;
   unsigned int  advertised_clock_rate; // differs for G722
   int           codec_id;
-  string        format_parameters;
+  string        sdp_format_parameters;
 };
 
 /**
@@ -148,7 +151,71 @@ struct Payload {
 class AmRtpStream
   : public AmObject
 {
+
+private:
+
+  class KeepAliveTimer
+    : public DirectAppTimer
+  {
+    AmRtpStream* stream;
+
+  public:
+    KeepAliveTimer(AmRtpStream* stream)
+      : stream(stream)
+    {}
+
+    void fire(){
+      stream->onKeepAliveTimeout();
+    }
+  };
+
+  class RtpTimer
+    : public DirectAppTimer
+  {
+    AmRtpStream* stream;
+
+  public:
+    RtpTimer(AmRtpStream* stream)
+      : stream(stream)
+    {}
+
+    void fire(){
+      stream->onRtpTimeout();
+    }
+  };
+
+friend class AmSession;
+friend class AmRtpTransport;
+friend class KeepAliveTimer;
+friend class RtpTimer;
+
+public:
+
+  // hooks into RTP stream functionality
+  class Hook
+  {
+    public:
+      virtual void receivedPacket(AmRtpPacket *p) = 0;
+      virtual void relayedPacket(AmRtpPacket *p) = 0;
+      virtual void initStream(const AmSdp& local, const AmSdp& remote, int media_idx) = 0;
+      virtual ~Hook() { }
+  };
+
 protected:
+
+  /* Keep Alive Timer */
+  KeepAliveTimer rtp_keepalive_timer;
+
+  unsigned int rtp_keepalive_freq;
+
+  void onKeepAliveTimeout();
+
+  /* RTP Timer */
+  RtpTimer rtp_timer;
+
+  unsigned int rtp_timeout;
+
+  void onRtpTimeout();
 
   // payload collection
   typedef std::vector<Payload> PayloadCollection;
@@ -190,42 +257,15 @@ protected:
   */
   int         last_payload;
 
-  /** Remote host information */
-  string             r_host;
-  unsigned short     r_port;
-  unsigned short     r_rtcp_port;
-
-  /** 
-   * Local interface used for this stream
-   * (index into @AmConfig::Ifs)
-   */
-  int l_if;
-
-  /**
-   * Local and remote host addresses
-   */
-  struct sockaddr_storage r_saddr;
-  struct sockaddr_storage l_saddr;
-  struct sockaddr_storage l_rtcp_saddr;
-
-  /** Local port */
-  unsigned short     l_port;
-
-  /** Local socket */
-  int                l_sd;
-
-  /** Local RTCP port */
-  unsigned int l_rtcp_port;
-
-  /** Local RTCP socket */
-  int          l_rtcp_sd;
+  /** RTP transport */
+  AmRtpTransport* rtp_transport;
 
   /** Timestamp of the last received RTP packet */
-  struct timeval last_recv_time;
+  uint64_t last_recv_time;
 
   /** Local and remote SSRC information */
-  unsigned int   l_ssrc;
-  unsigned int   r_ssrc;
+  uint32_t  l_ssrc;
+  uint32_t  r_ssrc;
   bool           r_ssrc_i;
 
   /** symmetric RTP & RTCP */
@@ -277,16 +317,16 @@ protected:
   /** Session owning this stream */
   AmSession*         session;
 
-  shared_ptr<msg_logger> logger;
-
   /** Payload provider */
   AmPayloadProvider* payload_provider;
+
+  Hook* hook;
 
   /** insert packet in DTMF queue if correct payload */
   void recvDtmfPacket(AmRtpPacket* p);
 
   /** Insert an RTP packet to the buffer queue */
-  void bufferPacket(AmRtpPacket* p);
+  void bufferPacket(AmRtpPacket* p, sockaddr_storage& recv_addr);
   /* Get next packet from the buffer queue */
   int nextPacket(AmRtpPacket*& p);
   
@@ -316,7 +356,13 @@ protected:
    */
   int getDefaultPT();
 
+  // generate DTMF into the RTP stream
+  void generateDtmf(unsigned int ts);
+
 public:
+
+  // set hook and return the old one
+  Hook *setHook(Hook *h);
 
   /**
    * Set whether RTP stream will receive RTP packets internally (received packets will be dropped or not).
@@ -360,38 +406,20 @@ public:
 
   void recvPacket(int fd);
 
+  void recvRtpPacket(unsigned char* buffer, int size, sockaddr_storage& recv_addr);
+  void recvRtcpPacket(unsigned char*, int, sockaddr_storage&);
+
   void recvRtcpPacket();
 
   /** ping the remote side, to open NATs and enable symmetric RTP */
-  int ping();
-
-  /** returns the socket descriptor for local socket (initialized or not) */
-  int hasLocalSocket();
-
-  /** initializes and gets the socket descriptor for local socket */
-  int getLocalSocket();
-
-  /**
-   * This function must be called before setLocalPort, because
-   * setLocalPort will bind the socket and it will be not
-   * possible to change the IP later
-   */
-  void setLocalIP(const string& ip);
-	    
-  /** 
-   * Initializes with a new random local port if 'p' is 0,
-   * else binds the given port, and sets own attributes properly. 
-   */
-  void setLocalPort(unsigned short p = 0);
+  void ping();
 
   /** 
-   * Gets RTP port number. If no RTP port in assigned, assigns a new one.
-   * @return local RTP port. 
+   * @return local RTCP port. 
    */
-  int getLocalPort();
+  int getLocalRtpPort();
 
   /** 
-   * Gets RTCP port number. If no RTP/RTCP port in assigned, assigns a new one.
    * @return local RTCP port. 
    */
   int getLocalRtcpPort();
@@ -400,19 +428,13 @@ public:
    * Gets remote RTP port.
    * @return remote RTP port.
    */
-  int getRPort();
+  int getRemoteRtpPort();
     
   /**
    * Gets remote host IP.
    * @return remote host IP.
    */
-  string getRHost();
-
-  /**
-   * Set remote IP & port.
-   */
-  void setRAddr(const string& addr, unsigned short port,
-		unsigned short rtcp_port = 0);
+  string getRemoteAddress();
 
   /** Symmetric RTP & RTCP: passive mode ? */
   void setPassiveMode(bool p);
@@ -520,17 +542,14 @@ public:
   /** Quick hack to assign existing stream to another session. The stream should
    * not be reinitialised implicitly (it might be used for media traffic
    * already). */
-  void changeSession(AmSession *_s) { session = _s; }
+  void changeSession(AmSession *_s);
 
-  /** set destination for logging all received/sent RTP and RTCP packets */
-  void setLogger(const shared_ptr<msg_logger>& _logger);
+  void debug(std::ostream &out, const char *line_prefix = "");
 
-  void debug();
+  /** set RTP and RTCP transports **/
+  void setRtpTransport(AmRtpTransport* rtp_transport);
+
+  AmRtpTransport* getRtpTransport();
 };
 
 #endif
-
-// Local Variables:
-// mode:C++
-// End:
-

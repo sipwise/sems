@@ -78,6 +78,23 @@ void SBCEventLog::logEvent(const string& id, const string& type,
   }
 }
 
+string SBCEventLog::uri2event(const string &uri)
+{
+  size_t end;
+  AmUriParser p;
+
+  if (p.parse_contact(uri,0,end)) {
+    //return p.uri_str();
+    string res("sip:");
+    if (!p.uri_user.empty()) {
+      res += p.uri_user + "@";
+    }
+    res += p.uri_host;
+    return res;
+  }
+  else
+    return uri;
+}
 
 void SBCEventLog::logCallStart(const AmSipRequest& req,
 				const string& local_tag,

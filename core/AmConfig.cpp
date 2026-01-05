@@ -97,6 +97,7 @@ string       AmConfig::Signature               = "";
 unsigned int AmConfig::MaxForwards             = MAX_FORWARDS;
 bool	     AmConfig::SingleCodecInOK	       = false;
 unsigned int AmConfig::DeadRtpTime             = DEAD_RTP_TIME;
+unsigned int AmConfig::RtpKeepaliveFreq        = 0;
 bool         AmConfig::IgnoreRTPXHdrs          = false;
 string       AmConfig::Application             = "";
 AmConfig::ApplicationSelector AmConfig::AppSelect        = AmConfig::App_SPECIFIED;
@@ -305,6 +306,14 @@ int AmConfig::setSIPServerThreads(const string& th){
 int AmConfig::setDeadRtpTime(const string& drt)
 {
   if(sscanf(drt.c_str(),"%u",&DeadRtpTime) != 1) {
+    return 0;
+  }
+  return 1;
+}
+
+int AmConfig::setRtpKeepaliveFreq(const string& rkf)
+{
+  if(sscanf(rkf.c_str(),"%u",&RtpKeepaliveFreq) != 1) {
     return 0;
   }
   return 1;
@@ -597,10 +606,18 @@ int AmConfig::readConfiguration()
   // codec_order
   CodecOrder = explode(cfg.getParameter("codec_order"), ",");
 
-  // dead_rtp_time
-  if(cfg.hasParameter("dead_rtp_time")){
-    if(!setDeadRtpTime(cfg.getParameter("dead_rtp_time"))){
-      ERROR("invalid dead_rtp_time value specified");
+  // rtp_timeout
+  if(cfg.hasParameter("rtp_timeout")){
+    if(!setDeadRtpTime(cfg.getParameter("rtp_timeout"))){
+      ERROR("invalid rtp_timeout value specified");
+      ret = -1;
+    }
+  }
+
+  // rtp_keepalive_freq
+  if(cfg.hasParameter("rtp_keepalive_freq")){
+    if(!setRtpKeepaliveFreq(cfg.getParameter("rtp_keepalive_freq"))){
+      ERROR("invalid rtp_keepalive_freq value specified");
       ret = -1;
     }
   }

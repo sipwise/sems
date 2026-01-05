@@ -72,6 +72,9 @@ public:
   void logCallEnd(const AmBasicSipDialog* dlg,
 		  const string& reason,
 		  struct timeval* tv);
+
+  // convert to/from URIs to format suitable for events
+  static string uri2event(const string &uri);
 };
 
 #endif

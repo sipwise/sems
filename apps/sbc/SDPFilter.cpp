@@ -99,7 +99,7 @@ int filterMedia(AmSdp& sdp, const vector<FilterEntry>& filter_list)
     for (std::vector<SdpMedia>::iterator m = sdp.media.begin(); m != sdp.media.end(); ++m) {
       if (m->port == 0) continue; // already inactive
 
-      string type(SdpMedia::type2str(m->type));
+      string type(SdpMedia::type2str(*m));
       DBG("checking whether to filter out '%s'\n", type.c_str());
 
       bool is_filtered = (filter == Whitelist) ^ (media_list.find(type) != media_list.end());

@@ -792,6 +792,53 @@ int AmSipDialog::bye(const string& hdrs, int flags)
     }
 }
 
+int AmSipDialog::terminateEarly(const unsigned int sip_code,
+                                const std::string sip_reason,
+                                const string& hdrs, int flags,
+                                bool force_bye)
+{
+  if (getDlgEarlyStage()) {
+    ILOG_DLG(L_DBG, "Terminate the leg in the Early state with a SIP code: <%d> and reason <%s> \n",
+        sip_code, sip_reason.c_str());
+
+    /* pending INVITE/200OK transaction */
+    if (getUACInvTransPending()) {
+      if (force_bye) {
+        /* in case we want to terminate legs in early state using BYE (in use by ForkHandler) */
+        setStatus(Disconnected);
+        return sendRequest(SIP_METH_BYE, NULL, hdrs, flags);
+      } else {
+        return cancel(hdrs); /* default way to terminate legs in early state */
+      }
+
+    /* established legs */
+    } else {
+      for (TransMap::iterator it=uas_trans.begin();
+            it != uas_trans.end(); it++)
+      {
+        if (it->second.method == SIP_METH_INVITE) {
+          /* let this call be finished by sending a final reply */
+          if (sip_code != 0 && !sip_reason.empty())
+            return reply(it->second, sip_code, sip_reason);
+          else
+            return reply(it->second, 487, "Request terminated");
+        }
+      }
+
+      /* missing AmSipRequest to be able to send the reply from behalf of the app. */
+      ILOG_DLG(L_ERR, "Ignoring terminateEarly() in %s state: "
+            "no UAC transaction to cancel or UAS transaction to reply.\n",
+            getStatusStr());
+            setStatus(Disconnected);
+    }
+    return 0;
+
+  } else {
+    ILOG_DLG(L_DBG, "The leg is not in the Early dialog state (status=%s). Do nothing!\n", getStatusStr());
+    return 0;
+  }
+}
+
 int AmSipDialog::reinvite(const string& hdrs,  
 			  const AmMimeBody* body,
 			  int flags)
@@ -943,7 +990,7 @@ int AmSipDialog::prack(const AmSipReply &reply1xx,
   return sendRequest(SIP_METH_PRACK, body, h);
 }
 
-int AmSipDialog::cancel()
+int AmSipDialog::cancel(const string &hdrs)
 {
     for(TransMap::reverse_iterator t = uac_trans.rbegin();
 	t != uac_trans.rend(); t++) {

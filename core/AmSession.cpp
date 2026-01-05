@@ -37,10 +37,8 @@
 #include "AmDtmfDetector.h"
 #include "AmPlayoutBuffer.h"
 #include "AmAppTimer.h"
-
-#ifdef WITH_ZRTP
-#include "AmZRTP.h"
-#endif
+#include "sip/msg_logger.h"
+#include "sip/pcap_logger.h"
 
 #include "log.h"
 
@@ -81,11 +79,12 @@ AmSession::AmSession(AmSipDialog* p_dlg)
     accept_early_session(false),
     rtp_interface(-1),
     refresh_method(REFRESH_UPDATE_FB_REINV),
-    processing_status(SESSION_PROCESSING_EVENTS)
-#ifdef WITH_ZRTP
-  , enable_zrtp(AmConfig::enable_zrtp)
-#endif
-
+    processing_status(SESSION_PROCESSING_EVENTS),
+    active_rtp_stream_i(false),
+    rtp_keepalive_freq(AmConfig::RtpKeepaliveFreq),
+    rtp_timeout(AmConfig::DeadRtpTime),
+    logger(NULL),
+    log_sip(false), log_rtp(false)
 #ifdef SESSION_THREADPOOL
   , _pid(this)
 #endif
@@ -138,12 +137,55 @@ AmSession::~AmSession()
   ILOG_DLG(L_DBG, "AmSession destructor finished\n");
 
   delete dlg;
+
+  for (vector<AmRtpAudio*>::iterator it=rtp_streams.begin(); it != rtp_streams.end(); it++) {
+    delete *it;
+  }
+
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+    if (NULL != *it) {
+      delete *it;
+    }
+  }
 }
 
 AmSipDialog* AmSession::createSipDialog()
 {
   return new AmSipDialog(this);
 }
+
+void AmSession::createRTPStreams() {
+  ILOG_DLG(L_DBG, "creating RTP stream instance(s) for session [%p]\n", this);
+  rtp_streams.push_back(new AmRtpAudio(this, rtp_interface));
+}
+
+void AmSession::setActiveRtpStream(int transport) {
+  for (vector<AmRtpAudio*>::iterator it =
+	 rtp_streams.begin(); it != rtp_streams.end(); it++) {
+    if (transport == TP_RTPAVP || transport == TP_RTPSAVP || transport == TP_RTPSAVPF) {
+      active_rtp_stream = it;
+      active_rtp_stream_i = true;
+      ILOG_DLG(L_DBG, "set active RTP stream for transport '%d' to index %zd\n", transport, it - rtp_streams.begin());
+      return;
+    }
+  }
+  ILOG_DLG(L_ERR, "could not find RTP stream for transport '%d', using first stream\n", transport);
+  active_rtp_stream = rtp_streams.begin();
+  active_rtp_stream_i = true;
+}
+
+AmRtpAudio* AmSession::RTPStream() {
+  if (!active_rtp_stream_i) {
+    if (!rtp_streams.size()) {
+      createRTPStreams();
+    }
+    active_rtp_stream = rtp_streams.begin();
+    active_rtp_stream_i = true;
+    ILOG_DLG(L_DBG, "set active rtp stream to begin of %zd streams\n", rtp_streams.size());
+  }
+  return *active_rtp_stream;
+}
+
 
 void AmSession::setCallgroup(const string& cg) {
   callgroup = cg;
@@ -287,9 +329,9 @@ const vector<SdpPayload*>& AmSession::getPayloads()
   return m_payloads;
 }
 
-int AmSession::getRPort()
+int AmSession::getRemoteRtpPort()
 {
-  return RTPStream()->getRPort();
+  return RTPStream()->getRemoteRtpPort();
 }
 
 #ifdef SESSION_THREADPOOL
@@ -331,19 +373,7 @@ bool AmSession::startup() {
 
   try {
     try {
-
       onStart();
-
-#ifdef WITH_ZRTP
-      if (enable_zrtp) {
-	if (zrtp_session_state.initSession(this)) {
-	  ILOG_DLG(L_ERR, "initializing ZRTP session\n");
-	  throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
-	}
-	ILOG_DLG(L_DBG, "initialized ZRTP session context OK\n");
-      }
-#endif
-
     } 
     catch(const AmSession::Exception& e){ throw e; }
     catch(const string& str){
@@ -481,12 +511,6 @@ void AmSession::finalize()
 {
   ILOG_DLG(L_DBG, "running finalize sequence...\n");
   dlg->finalize();
-  
-#ifdef WITH_ZRTP
-  if (enable_zrtp) {
-    zrtp_session_state.freeSession();
-  }
-#endif
 
   onBeforeDestroy();
   destroy();
@@ -743,20 +767,6 @@ void AmSession::process(AmEvent* ev)
     onRtpTimeout();
     return;
   }
-
-#ifdef WITH_ZRTP
-  AmZRTPProtocolEvent* zrtp_p_ev = dynamic_cast<AmZRTPProtocolEvent*>(ev);
-  if(zrtp_p_ev){
-    onZRTPProtocolEvent((zrtp_protocol_event_t)zrtp_p_ev->event_id, zrtp_p_ev->stream_ctx);
-    return;
-  }
-
-  AmZRTPSecurityEvent* zrtp_s_ev = dynamic_cast<AmZRTPSecurityEvent*>(ev);
-  if(zrtp_s_ev){
-    onZRTPSecurityEvent((zrtp_security_event_t)zrtp_s_ev->event_id, zrtp_s_ev->stream_ctx);
-    return;
-  }
-#endif
 }
 
 void AmSession::onSipRequest(const AmSipRequest& req)
@@ -922,23 +932,46 @@ bool AmSession::getSdpOffer(AmSdp& offer)
   offer.conn.addrType = AT_V4;
   offer.conn.address = advertisedIP();
 
-  // TODO: support mutiple media types (needs multiples RTP streams)
-  // TODO: support update instead of clearing everything
-
-  if(RTPStream()->getSdpMediaIndex() < 0)
-    offer.media.clear();
-
-  unsigned int media_idx = 0;
-  if(!offer.media.size()) {
-    offer.media.push_back(SdpMedia());
-    offer.media.back().type=MT_AUDIO;
+  bool streams_initialized = RTPStream()->getSdpMediaIndex() >= 0;
+  if (streams_initialized) {
+    ILOG_DLG(L_DBG, "updating offer from %zd already initialized RTP streams\n", rtp_streams.size());
+    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++) {
+      int media_idx = (*it)->getSdpMediaIndex();
+      if (media_idx < 0) { // shouldn't happen - all streams should be initialized
+	ILOG_DLG(L_ERR, "stream %zd in rtp_streams does not have media index\n", it-rtp_streams.begin());
+	continue;
+      }
+      if ((unsigned)abs(media_idx) >= offer.media.size())
+      	offer.media.resize(media_idx+1);
+      (*it)->getSdpOffer(media_idx, offer.media[media_idx]);
+    }
+  } else {
+    // streams were just newly created
+    ILOG_DLG(L_DBG, "creating offer from %zd new RTP streams\n", rtp_streams.size());
+    offer.media.clear(); // for safety
+    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++) {
+      offer.media.push_back(SdpMedia());
+      offer.media.back().type=MT_AUDIO;
+      (*it)->getSdpOffer(it - rtp_streams.begin(), offer.media.back());
+    }
   }
-  else {
-    media_idx = RTPStream()->getSdpMediaIndex();
-  }
 
-  RTPStream()->setLocalIP(localMediaIP());
-  RTPStream()->getSdpOffer(media_idx,offer.media.back());
+  // // TODO: support mutiple media types (needs multiples RTP streams)
+  // // TODO: support update instead of clearing everything
+  // if (RTPStream()->getSdpMediaIndex() < 0) {
+  //   offer.media.clear();
+  // }
+
+  // unsigned int media_idx = 0;
+  // if(!offer.media.size()) {
+  //   offer.media.push_back(SdpMedia());
+  //   offer.media.back().type=MT_AUDIO;
+  // } else {
+  //   media_idx = RTPStream()->getSdpMediaIndex();
+  // }
+
+  // RTPStream()->setLocalIP(localMediaIP());
+  // RTPStream()->getSdpOffer(media_idx,offer.media.back());
   
   return true;
 }
@@ -961,6 +994,24 @@ public:
   }
 };
 
+/** reject media in @param answer, taking parameters from @offer */
+void rejectMedia(const SdpMedia& offer, SdpMedia& answer) {
+  // reject media
+  answer.type = offer.type;
+  answer.port = 0;
+  answer.nports = 0;
+  answer.transport = offer.transport;
+  answer.send = answer.recv = false;
+  answer.payloads.clear();
+  if (!offer.payloads.empty()) {
+    SdpPayload dummy_pl = offer.payloads.front();
+    dummy_pl.encoding_name.clear();
+    dummy_pl.sdp_format_parameters.clear();
+    answer.payloads.push_back(dummy_pl);
+  }
+  answer.attributes.clear();  
+}
+
 /** Hook called when an SDP answer is required */
 bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
 {
@@ -972,57 +1023,89 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
   //answer.origin.sessV = 1;
   answer.sessionName = "sems";
   answer.conn.network = NT_IN;
-  if (offer.conn.address.empty()) answer.conn.addrType = AT_V4; // or use first stream connection?
-  else answer.conn.addrType = offer.conn.addrType;
+  if (offer.conn.address.empty()) {
+    answer.conn.addrType = AT_V4; // or use first stream connection?
+  } else {
+    answer.conn.addrType = offer.conn.addrType;
+  }
   answer.conn.address = advertisedIP(answer.conn.addrType);
+  answer.attributes.clear();
   answer.media.clear();
-  
-  bool audio_1st_stream = true;
-  unsigned int media_index = 0;
-  for(vector<SdpMedia>::const_iterator m_it = offer.media.begin();
-      m_it != offer.media.end(); ++m_it) {
+
+  if (offer.hasIce())
+    answer.addAttribute(SdpAttribute(string("ice-lite")));
+
+  // todo: optimize: if only one RTP stream required, create only one
+  if (!hasRtpStream()) {
+    createRTPStreams();
+  }
+
+  // find stream with matching type (MT_AUDIO), transport and codecs
+  bool audio_1st_stream = true; // still looking for first audio stream?
+  // did we encounter an audio stream already that didn't match, payload-wise?
+  bool have_audio_stream = false;
+  for(vector<SdpMedia>::const_iterator m_it = offer.media.begin(); m_it != offer.media.end(); m_it++) {
+    unsigned int media_index = m_it - offer.media.begin();
+    bool rtcp;
 
     answer.media.push_back(SdpMedia());
     SdpMedia& answer_media = answer.media.back();
 
-    if( m_it->type == MT_AUDIO
+    if (audio_1st_stream // still looking for compatible stream?
+	&& m_it->type == MT_AUDIO
 	&& m_it->transport == TP_RTPAVP
-        && audio_1st_stream 
-        && (m_it->port != 0) ) {
+        && !m_it->isRejected()) {
+      // accept media
 
-      RTPStream()->setLocalIP(localMediaIP(answer.conn.addrType));
-      RTPStream()->getSdpAnswer(media_index,*m_it,answer_media);
-      if(answer_media.payloads.empty() ||
-	 ((answer_media.payloads.size() == 1) &&
-	  (answer_media.payloads[0].encoding_name == "telephone-event"))
-	 ){
-	// no compatible media found
-	throw Exception(488,"no compatible payload");
+      setActiveRtpStream(m_it->transport);
+
+      string ip = localMediaIP(answer.conn.addrType);
+
+      AmRtpTransport* rtp_transport = createRtpTransport(RTPStream(), ip,
+                                                         m_it->rtcp_mux,
+                                                         offer.hasIce(),
+                                                         false
+							 );
+
+      if (offer.hasIce()) {
+        rtp_transport->setRemoteStunCredentials(m_it->ice_username,
+                                                m_it->ice_password);
       }
+
+      // Set the remote SSRC if present in the offer
+      if (m_it->ssrc)
+        RTPStream()->setRemoteSSRC(m_it->ssrc);
+
+      // Save the transport into the stream
+      RTPStream()->setRtpTransport(rtp_transport);
+
+      RTPStream()->getSdpAnswer(media_index, *m_it, answer_media);
+
+      if(!answer_media.haveNonTelevPayload()) {
+	// no compatible codec found with this stream
+	have_audio_stream = true;
+	rejectMedia(*m_it, answer_media);
+	continue;
+      }
+
+      // sort payload type in the answer according to the priority given in the codec_order configuration key
+      std::stable_sort(answer_media.payloads.begin(),answer_media.payloads.end(),codec_priority_cmp());
+      // we have one accepted audio stream, reject the others 
       audio_1st_stream = false;
+    } else {
+      // reject media
+      rejectMedia(*m_it, answer_media);
     }
-    else {
-      
-      answer_media.type = m_it->type;
-      answer_media.port = 0;
-      answer_media.nports = 0;
-      answer_media.transport = m_it->transport;
-      answer_media.send = false;
-      answer_media.recv = false;
-      answer_media.payloads.clear();
-      if(!m_it->payloads.empty()) {
-	SdpPayload dummy_pl = m_it->payloads.front();
-	dummy_pl.encoding_name.clear();
-	dummy_pl.sdp_format_parameters.clear();
-	answer_media.payloads.push_back(dummy_pl);
-      }
-      answer_media.attributes.clear();
-    }
+  }
 
-    // sort payload type in the answer according to the priority given in the codec_order configuration key
-    std::stable_sort(answer_media.payloads.begin(),answer_media.payloads.end(),codec_priority_cmp());
+  if (audio_1st_stream && have_audio_stream) {
+    // no compatible codec found
+    throw Exception(488,"no compatible payload");
+  }
 
-    media_index++;
+  if (audio_1st_stream) {
+    // no compatible media/transport found
+    throw Exception(488,"No compatible media type and transport");
   }
 
   return true;
@@ -1033,31 +1116,35 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
   ILOG_DLG(L_DBG, "AmSession::onSdpCompleted(...) ...\n");
 
   if(local_sdp.media.empty() || remote_sdp.media.empty()) {
-
-    ILOG_DLG(L_ERR, "Invalid SDP");
-
-    string debug_str;
-    local_sdp.print(debug_str);
-    ILOG_DLG(L_ERR, "Local SDP:\n%s",
-	  debug_str.empty() ? "<empty>"
-	  : debug_str.c_str());
-    
-    remote_sdp.print(debug_str);
-    ILOG_DLG(L_ERR, "Remote SDP:\n%s",
-	  debug_str.empty() ? "<empty>"
-	  : debug_str.c_str());
-
+    string sdp_str_local; string sdp_str_remote;
+    local_sdp.print(sdp_str_local); remote_sdp.print(sdp_str_remote);
+    ILOG_DLG(L_ERR, "Invalid SDP - Local SDP:<%s> Remote SDP: <%s>\n",
+	  sdp_str_local.empty() ? "<empty>" : sdp_str_local.c_str(),
+	  sdp_str_remote.empty() ? "<empty>" : sdp_str_remote.c_str());
     return -1;
   }
 
-  bool set_on_hold = false;
-  if (!remote_sdp.media.empty()) {
-    vector<SdpAttribute>::const_iterator pos =
-      std::find(remote_sdp.media[0].attributes.begin(), remote_sdp.media[0].attributes.end(), SdpAttribute("sendonly"));
-    set_on_hold = pos != remote_sdp.media[0].attributes.end();
-  }
+  // bool set_on_hold = false;
+  // if (!remote_sdp.media.empty()) {
+  //   vector<SdpAttribute>::const_iterator pos =
+  //     std::find(remote_sdp.media[0].attributes.begin(), remote_sdp.media[0].attributes.end(), SdpAttribute("sendonly"));
+  //   set_on_hold = pos != remote_sdp.media[0].attributes.end();
+  // }
 
   lockAudio();
+
+  // set active RTP stream to the one with proper transport
+  for(vector<SdpMedia>::const_iterator m_it = remote_sdp.media.begin();
+      m_it != remote_sdp.media.end(); m_it++) {
+    if (m_it->type == MT_AUDIO
+	&& !m_it->isRejected()
+	&& m_it->transport == TP_RTPAVP
+	) {
+      // accept media
+      setActiveRtpStream(m_it->transport);
+      break;
+    }
+  }
 
   // TODO: 
   //   - get the right media ID
@@ -1068,8 +1155,8 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
 
   try {
     ret = RTPStream()->init(local_sdp, remote_sdp, AmConfig::ForceSymmetricRtp);
-  } catch (const string& s) {
-    ILOG_DLG(L_ERR, "Error while initializing RTP stream: '%s'\n", s.c_str());
+  } catch (const std::exception& e) {
+    ILOG_DLG(L_ERR, "Error while initializing RTP stream: '%s'\n", e.what());
     ret = -1;
   } catch (...) {
     ILOG_DLG(L_ERR, "Error while initializing RTP stream (unknown exception in AmRTPStream::init)\n");
@@ -1160,8 +1247,8 @@ string AmSession::sid4dbg()
   string dbg;
   dbg = dlg->getCallid() + "/" + dlg->getLocalTag() + "/" 
     + dlg->getRemoteTag() + "/" 
-    + int2str(RTPStream()->getLocalPort()) + "/" 
-    + RTPStream()->getRHost() + ":" + int2str(RTPStream()->getRPort());
+    + int2str(RTPStream()->getLocalRtpPort()) + "/" 
+    + RTPStream()->getRemoteAddress() + ":" + int2str(RTPStream()->getRemoteRtpPort());
   return dbg;
 }
 
@@ -1232,17 +1319,11 @@ int AmSession::getRtpInterface()
     // TODO: get default media interface for signaling IF instead
     rtp_interface = AmConfig::SIP_Ifs[dlg->getOutboundIf()].RtpInterface;
     if(rtp_interface < 0) {
-      ILOG_DLG(L_DBG, "No media interface for signaling interface:\n");
-      ILOG_DLG(L_DBG, "Using default media interface instead.\n");
+      ILOG_DLG(L_DBG, "No media interface for signaling interface: Using default media interface (0) instead.\n");
       rtp_interface = 0;
     }
   }
   return rtp_interface;
-}
-
-void AmSession::setRtpInterface(int _rtp_interface) {
-  ILOG_DLG(L_DBG, "setting media interface to %d\n", _rtp_interface);
-  rtp_interface = _rtp_interface;
 }
 
 string AmSession::localMediaIP(int addrType)
@@ -1255,7 +1336,9 @@ string AmSession::localMediaIP(int addrType)
 
   string set_ip = "";
   for (size_t i = rtp_interface; i < AmConfig::RTP_Ifs.size(); i++) {
+    // TODO: AmConfig::RTP_Ifs[i].lock_shared();
     set_ip = AmConfig::RTP_Ifs[i].LocalIP; // "media_ip" parameter.
+    // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
 	((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
 	((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
@@ -1276,7 +1359,9 @@ string AmSession::advertisedIP(int addrType)
 
   string set_ip = "";
   for (size_t i = rtp_interface; i < AmConfig::RTP_Ifs.size(); i++) {
+    // TODO: AmConfig::RTP_Ifs[i].lock_shared();
     set_ip = AmConfig::RTP_Ifs[i].getIP(); // "media_ip" parameter.
+    // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
 	((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
 	((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
@@ -1320,41 +1405,6 @@ bool AmSession::removeTimers() {
   return true;
 }
 
- 
-#ifdef WITH_ZRTP
-
-void AmSession::onZRTPProtocolEvent(zrtp_protocol_event_t event, zrtp_stream_t *stream_ctx) {
-  ILOG_DLG(L_DBG, "AmSession::onZRTPProtocolEvent: %s\n", zrtp_protocol_event_desc(event));
-
-  if (event==ZRTP_EVENT_IS_SECURE) {
-      ILOG_DLG(L_INFO, "ZRTP_EVENT_IS_SECURE \n");
-      //         info->is_verified  = ctx->_session_ctx->secrets.verifieds & ZRTP_BIT_RS0;
- 
-      // zrtp_session_t *session = stream_ctx->_session_ctx;
- 
-      // if (ZRTP_SAS_BASE32 == session->sas_values.rendering) {
-      // 	ILOG_DLG(L_DBG, "Got SAS value <<<%.4s>>>\n", session->sas_values.str1.buffer);
-      // } else {
-      // 	ILOG_DLG(L_DBG, "Got SAS values SAS1 '%s' and SAS2 '%s'\n", 
-      // 	    session->sas_values.str1.buffer,
-      // 	    session->sas_values.str2.buffer);
-      // }
-  }
- 
-    // case ZRTP_EVENT_IS_PENDINGCLEAR:
-    //   ILOG_DLG(L_INFO, "ZRTP_EVENT_IS_PENDINGCLEAR\n");
-    //   ILOG_DLG(L_INFO, "other side requested goClear. Going clear.\n\n");
-    //   //      zrtp_clear_stream(zrtp_audio);
-    //   break;
-  
-}
-
-void AmSession::onZRTPSecurityEvent(zrtp_security_event_t event, zrtp_stream_t *stream_ctx) {
-  ILOG_DLG(L_DBG, "AmSession::onZRTPSecurityEvent: %s\n", zrtp_security_event_desc(event));
-}
- 
-#endif
-
 int AmSession::readStreams(unsigned long long ts, unsigned char *buffer) 
 { 
   int res = 0;
@@ -1394,6 +1444,101 @@ int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
   unlockAudio();
   return res;
 
+}
+
+/* \brief Check whether the given stream is already present */
+bool AmSession::hasStream(AmRtpStream* stream)
+{
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+    if ((NULL != *it) && (*it)->hasStream(stream))
+      return true;
+  }
+
+  return false;
+}
+
+/* \brief Get the transport holding the given rtp stream */
+AmRtpTransport* AmSession::getRtpTransport(AmRtpStream* stream) {
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+    if ((NULL != *it) && (*it) == stream->rtp_transport)
+      return *it;
+  }
+
+  return NULL;
+
+}
+
+/* \brief Process the given SDP Media Stream description
+ * Check if the corresponding rtp stream is new or is already present
+ * If present, reset it and check whether the RTP transport needs renegotiation
+ * If not present, get the corresponding transport, or create a new one if needed, and
+ * attach the new stream to it.
+ */
+AmRtpTransport* AmSession::createRtpTransport(AmRtpStream* stream, const string& ip,
+                                              bool rtcp_mux, bool ice, bool srtp)
+{
+  /* If no transport exist for the stream
+   * Create one and attach the stream to it
+   */
+  if (!hasStream(stream)) {
+
+    rtp_transports.push_back(new AmRtpTransport(rtp_interface, ip, !rtcp_mux,
+                                                ice, srtp));
+
+    stream->setRtpTransport(rtp_transports.back());
+
+    if (logger && log_rtp)
+      rtp_transports.back()->setLogger(logger);
+
+    return rtp_transports.back();
+  } else {
+    return getRtpTransport(stream);
+  }
+}
+
+bool AmSession::openLogger(const std::string &path)
+{
+  auto log = make_shared<pcap_logger>();
+
+  if(log->open(path.c_str()) != 0) {
+    // open error
+    return false;
+  }
+
+  // opened successfully
+  setLogger(log);
+  return true;
+}
+
+void AmSession::setLogger(const shared_ptr<msg_logger>& _logger)
+{
+  // Set logger
+  logger = _logger;
+
+  if (!logger) {
+    return;
+  }
+
+  if (log_sip)
+    dlg->setMsgLogger(logger);
+  else
+    dlg->setMsgLogger(NULL);
+
+  shared_ptr<msg_logger> rtp_logger;
+  if (log_rtp) rtp_logger = logger;
+
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+    if (NULL != *it) {
+      (*it)->setLogger(rtp_logger);
+    }
+  }
+}
+
+void AmSession::setLogger(const shared_ptr<msg_logger>& _logger, bool _log_sip, bool _log_rtp)
+{
+  log_sip = _log_sip;
+  log_rtp = _log_rtp;
+  setLogger(_logger);
 }
 
 /** EMACS **

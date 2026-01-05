@@ -57,16 +57,6 @@ AmRtpPacket::~AmRtpPacket()
 {
 }
 
-void AmRtpPacket::setAddr(struct sockaddr_storage* a)
-{
-  memcpy(&addr,a,sizeof(sockaddr_storage));
-}
-
-void AmRtpPacket::getAddr(struct sockaddr_storage* a)
-{
-  memcpy(a,&addr,sizeof(sockaddr_storage));
-}
-
 int AmRtpPacket::parse()
 {
   assert(buffer);
@@ -181,117 +171,6 @@ int AmRtpPacket::compile_raw(unsigned char* data_buf, unsigned int size)
   b_size = size;
 
   return size;
-}
-
-int AmRtpPacket::sendto(int sd)
-{
-  int err = ::sendto(sd,buffer,b_size,0,
-		     (const struct sockaddr *)&addr,
-		     SA_len(&addr));
-
-  if(err == -1){
-    ERROR("while sending RTP packet: %s\n",strerror(errno));
-    return -1;
-  }
-
-  return 0;
-}
-
-int AmRtpPacket::sendmsg(int sd, unsigned int sys_if_idx)
-{
-  struct msghdr hdr;
-  struct cmsghdr* cmsg;
-    
-  union {
-    char cmsg4_buf[CMSG_SPACE(sizeof(struct in_pktinfo))];
-    char cmsg6_buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-  } cmsg_buf;
-
-  struct iovec msg_iov[1];
-  msg_iov[0].iov_base = (void*)buffer;
-  msg_iov[0].iov_len  = b_size;
-
-  bzero(&hdr,sizeof(hdr));
-  hdr.msg_name = (void*)&addr;
-  hdr.msg_namelen = SA_len(&addr);
-  hdr.msg_iov = msg_iov;
-  hdr.msg_iovlen = 1;
-
-  bzero(&cmsg_buf,sizeof(cmsg_buf));
-  hdr.msg_control = &cmsg_buf;
-  hdr.msg_controllen = sizeof(cmsg_buf);
-
-  cmsg = CMSG_FIRSTHDR(&hdr);
-  if(addr.ss_family == AF_INET) {
-    cmsg->cmsg_level = IPPROTO_IP;
-    cmsg->cmsg_type = IP_PKTINFO;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-
-    struct in_pktinfo* pktinfo = (struct in_pktinfo*) CMSG_DATA(cmsg);
-    pktinfo->ipi_ifindex = sys_if_idx;
-  }
-  else if(addr.ss_family == AF_INET6) {
-    cmsg->cmsg_level = IPPROTO_IPV6;
-    cmsg->cmsg_type = IPV6_PKTINFO;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
-    
-    struct in6_pktinfo* pktinfo = (struct in6_pktinfo*) CMSG_DATA(cmsg);
-    pktinfo->ipi6_ifindex = sys_if_idx;
-  }
-
-  hdr.msg_controllen = cmsg->cmsg_len;
-  
-  // bytes_sent = ;
-  if(::sendmsg(sd, &hdr, 0) < 0) {
-      ERROR("sendto: %s\n",strerror(errno));
-      return -1;
-  }
-
-  return 0;
-}
-
-int AmRtpPacket::send(int sd, unsigned int sys_if_idx,
-		      sockaddr_storage* l_saddr)
-{
-  if(sys_if_idx && AmConfig::UseRawSockets) {
-    return raw_sender::send((char*)buffer,b_size,sys_if_idx,l_saddr,&addr);
-  }
-
-  if(sys_if_idx && AmConfig::ForceOutboundIf) {
-    return sendmsg(sd,sys_if_idx);
-  }
-  
-  return sendto(sd);
-}
-
-int AmRtpPacket::recv(int sd)
-{
-  socklen_t recv_addr_len = sizeof(struct sockaddr_storage);
-  int ret = recvfrom(sd,buffer,sizeof(buffer),0,
-		     (struct sockaddr*)&addr,
-		     &recv_addr_len);
-
-  if(ret > 0){
-
-    if(ret > 4096)
-      return -1;
-
-    b_size = ret;
-  }
-    
-  return ret;
-}
-
-void AmRtpPacket::logReceived(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr)
-{
-  static const cstring empty;
-  logger->log((const char *)buffer, b_size, &addr, laddr, empty);
-}
-
-void AmRtpPacket::logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr)
-{
-  static const cstring empty;
-  logger->log((const char *)buffer, b_size, laddr, &addr, empty);
 }
 
 /*

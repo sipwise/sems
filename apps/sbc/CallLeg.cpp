@@ -1926,17 +1926,28 @@ void CallLeg::createResumeRequest(AmSdp &sdp)
   /* do not touch the sdp otherwise (use directly B2B SDP) */
 }
 
-void CallLeg::debug()
+void CallLeg::debug(std::ostream &out)
 {
-  ILOG_DLG(L_DBG, "call leg: %s", getLocalTag().c_str());
-  ILOG_DLG(L_DBG, "\tother: %s\n", getOtherId().c_str());
-  ILOG_DLG(L_DBG, "\tstatus: %s\n", callStatus2str(getCallStatus()));
-  ILOG_DLG(L_DBG, "\tRTP relay mode: %d\n", rtp_relay_mode);
-  ILOG_DLG(L_DBG, "\ton hold: %s\n", on_hold ? "yes" : "no");
-  ILOG_DLG(L_DBG, "\toffer/answer status: %d, hold: %d\n", dlg->getOAState(), hold);
+  out << "Call leg " << getLocalTag() << std::endl << std::endl
+    << "other: " << getOtherId() << std::endl
+    << "status: " << callStatus2str(getCallStatus()) << std::endl
+    << "RTP relay mode: " << rtp_relay_mode << std::endl
+    << "remote is on hold: " << (on_hold ? "yes" : "no") << std::endl
+    << "offer/answer status: " << dlg->getOAState() << std::endl
+    << "hold offered: " << hold << std::endl;
+
+  // dialog related stuff
+  out << "Call-ID: " << dlg->getCallid() << std::endl
+    << "remote party: " << dlg->getRemoteParty() << std::endl
+    << "remote URI: " << dlg->getRemoteUri() << std::endl
+    << "local party: " << dlg->getLocalParty() << std::endl
+    << "local URI: " << dlg->getLocalUri() << std::endl;
 
   AmB2BMedia *ms = getMediaSession();
-  if (ms) ms->debug();
+  if (ms) {
+    out << std::endl;
+    ms->debug(out);
+  }
 }
 
 int CallLeg::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)

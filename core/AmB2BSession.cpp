@@ -31,6 +31,7 @@
 #include "AmSipHeaders.h"
 #include "AmUtils.h"
 #include "AmRtpReceiver.h"
+#include "AmRtpTransport.h"
 
 #include "global_defs.h"
 
@@ -90,7 +91,7 @@ static bool isDSMToTagReset(const std::string &hdrs)
 //
 
 AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
-			   AmSipSubscription* p_subs)
+			   AmSipSubscription* p_subs, bool _ring_timeout_leg)
   : AmSession(p_dlg),
     other_id(other_local_tag),
     sip_relay_only(true),
@@ -104,8 +105,13 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
     rtp_relay_transparent_seqno(true), rtp_relay_transparent_ssrc(true),
     est_invite_cseq(0),est_invite_other_cseq(0),
     media_session(NULL),
+    terminate_rtp(false),
+    use_dtls(false),
+    offer_ice(false),
+    offer_rtcp_fb(false),
     previous_origin_sessId(0),
-    previous_origin_sessV(0)
+    previous_origin_sessV(0),
+    ring_timeout_leg(_ring_timeout_leg)
 {
   if(!subs) subs = new AmSipSubscription(dlg,this);
 }
@@ -716,6 +722,34 @@ void AmB2BSession::updateLocalSdp(AmSdp &sdp)
   }
 
   media_session->replaceConnectionAddress(sdp, a_leg, localMediaIP(), advertisedIP());
+
+  /* Set the transport */
+  ILOG_DLG(L_DBG, "offer_rtcp_fb = %i", offer_rtcp_fb);
+
+  for (std::vector<SdpMedia>::iterator it=
+	 sdp.media.begin(); it != sdp.media.end(); it++) {
+
+    if (it->transport == TP_RTPAVP || it->transport == TP_RTPAVPF) {
+    //if (it->transport == TP_RTPAVP || it->transport == TP_RTPAVPF ||
+    //    it->transport == TP_RTPSAVP || it->transport == TP_RTPSAVPF) {
+
+      //if (sdp.hasDtls()) {
+      //  if (offer_rtcp_fb) {
+      //    it->transport = TP_RTPSAVPF;
+      //  }
+      //  else {
+      //    if(it->transport == TP_RTPAVPF)
+      //      it->removeAttribute("rtcp-fb");
+      //    it->transport = TP_RTPSAVP;
+      //  }
+      //} else {
+        if (offer_rtcp_fb)
+          it->transport = TP_RTPAVPF;
+        else
+          it->transport = TP_RTPAVP;
+      //}
+    }
+  }
 }
 
 void AmB2BSession::saveLocalSdpOrigin(const AmSdp& sdp)
@@ -793,6 +827,33 @@ void AmB2BSession::updateLocalBody(AmMimeBody& body)
   string n_body;
   parser_sdp.print(n_body);
   sdp->parse(sdp->getCTStr(), n_body.c_str(), n_body.length());
+}
+
+/* received a body (SDP) which is to be relayed b2b */
+void AmB2BSession::onRxRelayBody(AmMimeBody& body, const string& method,
+				 bool is_offer)
+{
+  AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
+  if (!sdp_body)
+    return;
+
+  // filter body for given methods only
+  if (!isOAMethod(method))
+    return;
+
+  AmSdp sdp;
+  bool res = sdp.parse(sdp_body->getPayload());
+  if (!res) {
+    ILOG_DLG(L_ERR, "SDP parsing failed");
+    throw AmSession::Exception(488,"Invalid SDP");
+  }
+
+  checkSdp(sdp);
+}
+
+void AmB2BSession::checkSdp(const AmSdp& sdp)
+{
+  ILOG_DLG(L_DBG, "Nothing to check.");
 }
 
 void AmB2BSession::updateUACTransCSeq(unsigned int old_cseq, unsigned int new_cseq) {
@@ -935,12 +996,22 @@ void AmB2BSession::onInvite2xx(const AmSipReply& reply)
 
 int AmB2BSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
 {
+  /*
+   *  Terminate the session if the answer contains more
+   *  media descriptions than the offer
+   */
+  if (remote_sdp.media.size() > local_sdp.media.size()) {
+    ILOG_DLG(L_ERR, "answer contains more media descriptions than the offer");
+    throw AmSession::Exception(488,"Invalid SDP");
+  }
+
   if (rtp_relay_mode != RTP_Direct) {
     if (!media_session) {
       // report missing media session (here we get for rtp_relay_mode == RTP_Relay)
-      ILOG_DLG(L_ERR, "BUG: media session is missing, can't update SDP\n");
-    }
-    else {
+      ILOG_DLG(L_ERR, "BUG: media session is missing, can't update SDP, ltag: %s, %s leg, other: %s\n",
+          getLocalTag().c_str(), a_leg ? "A": "B", getOtherId().c_str());
+    } else {
+      checkSdp(remote_sdp);
       media_session->updateStreams(a_leg, local_sdp, remote_sdp, this);
     }
   }
@@ -1000,6 +1071,16 @@ void AmB2BSession::terminateLeg()
   clearRtpReceiverRelay();
 
   dlg->bye("", SIP_FLAGS_VERBATIM);
+}
+
+void AmB2BSession::terminateEarlyLeg(const unsigned int sip_code,
+                                const std::string sip_reason,
+                                const std::string &hdrs,
+                                B2BTerminateLegMode terminate_mode)
+{
+  setStopped();
+  clearRtpReceiverRelay();
+  dlg->terminateEarly(sip_code, sip_reason, hdrs, SIP_FLAGS_VERBATIM, (terminate_mode == ModeBye));
 }
 
 void AmB2BSession::terminateOtherLeg()
@@ -1137,6 +1218,19 @@ bool AmB2BSession::refresh(int flags) {
     return false;
   }
   return sendEstablishedReInvite() == 0;
+}
+
+bool AmB2BSession::isSubNotMethod(const string& method) const {
+  return method == SIP_METH_SUBSCRIBE ||
+    method == SIP_METH_NOTIFY ||
+    method == SIP_METH_REFER;
+}
+
+bool AmB2BSession::isOAMethod(const string& method) const {
+  return method == SIP_METH_INVITE ||
+    method == SIP_METH_UPDATE ||
+    method == SIP_METH_ACK ||
+    method == SIP_METH_PRACK;
 }
 
 int AmB2BSession::relaySip(const AmSipRequest& req)
@@ -1287,6 +1381,22 @@ void AmB2BSession::setRtpRelayMode(RTPRelayMode mode)
       getLocalTag().c_str());
 
   rtp_relay_mode = mode;
+}
+
+void AmB2BSession::setRtpTimeout(unsigned int timeout)
+{
+  ILOG_DLG(L_DBG, "setting RTP timeout to '%u'\n",
+      timeout);
+
+  rtp_timeout = timeout;
+}
+
+void AmB2BSession::setRtpKeepalive(unsigned int keepalive)
+{
+  ILOG_DLG(L_DBG, "setting RTP keepalive frequency to '%u'\n",
+      keepalive);
+
+  rtp_keepalive_freq = keepalive;
 }
 
 void AmB2BSession::setRtpInterface(int relay_interface) {
@@ -1674,6 +1784,78 @@ void AmB2BSession::setMediaSession(AmB2BMedia *new_session)
   media_session = new_session; 
   if (media_session)
     media_session->addReference(); // new reference for me
+}
+
+/** Create an RTP transport for the given RtpStream, if needed.
+ * If there is no corresponding remote media (same idx), return NULL.
+ */
+AmRtpTransport* AmB2BSession::createRtpTransport(AmSdp &parser_sdp,
+                                                 unsigned int idx,
+                                                 AmRtpStream* stream,
+                                                 const string& relay_address)
+{
+
+  AmRtpTransport* rtp_transport;
+
+  SdpMedia& l_media = parser_sdp.media[idx];
+
+  // Remote AmSdp object
+  const AmSdp remote_sdp = dlg->getRemoteSdp();
+  const SdpMedia * r_media = NULL;
+
+  bool rtcp_mux = false;
+
+  // Check if we are an offer
+  bool is_offer =
+    dlg->getOAState() == AmOfferAnswer::OA_None ||
+    dlg->getOAState() == AmOfferAnswer::OA_Completed;
+
+  // Special considerations to take if we are answering
+  if (!is_offer) {
+    // Get the media description of the remote offer
+    unsigned int medias_amount = remote_sdp.media.size();
+
+    /* vector indexing starts with 0, so must always be
+     * less than amount of medias */
+    if (idx < medias_amount) {
+      r_media = &remote_sdp.media[idx];
+      rtcp_mux = r_media->rtcp_mux; /* Check whether rtcp-mux was offered */
+
+    /* no corresponding media with this idx, return NULL */
+    } else {
+      return NULL;
+    }
+  }
+
+  // Check if ICE LITE is to be used
+  bool use_ice_lite = getOfferICE();
+
+  // If using ICE LITE, set the attribute at session level
+  if (use_ice_lite && !parser_sdp.hasAttribute("ice-lite"))
+    parser_sdp.addAttribute(SdpAttribute(string("ice-lite")));
+
+	rtp_transport = AmSession::createRtpTransport(stream, relay_address, rtcp_mux,
+                                                use_ice_lite, false);
+
+	// Get ICE description
+	if (use_ice_lite)
+	  rtp_transport->getLocalIceDescription(l_media);
+
+  return rtp_transport;
+}
+
+void AmB2BSession::updateRtpTransport(AmRtpTransport* rtp_transport,
+                                      const AmSdp& remote_sdp,
+                                      const SdpMedia& r_m,
+                                      const SdpMedia& l_m)
+{
+  // Set remote STUN credentials
+  if (remote_sdp.hasIce())
+    rtp_transport->setRemoteStunCredentials(r_m.ice_username, r_m.ice_password);
+
+  // Set RTCP-MUX if the other peer offered
+  if (r_m.rtcp_mux)
+    rtp_transport->setRtcpMux();
 }
 
 void AmB2BCallerSession::initializeRTPRelay(AmB2BCalleeSession* callee_session) {

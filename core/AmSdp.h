@@ -178,6 +178,34 @@ struct SdpIceCandidate {
   string print() const;
 };
 
+
+/**
+ * \brief handling SDP attribute "rtcp"
+ */
+class RtcpAddress
+{
+  private:
+    string nettype, addrtype, address;
+    bool parse(const string &src);
+    unsigned int port = 0;
+    bool explicitPort = false,
+	 explicitAddress = false;
+
+  public:
+    RtcpAddress() : port(0) { }
+    RtcpAddress(const SdpConnection &);
+    RtcpAddress(const string &attr_value);
+    bool isExplicit() const { return explicitPort; }
+    bool hasAddress() const { return !address.empty(); }
+    void setAddress(const string &addr) { address = addr; }
+    void setAddress(const SdpConnection &);
+    const string& getAddress() const { return address; }
+    void setPort(unsigned int _port) { port = _port; }
+    unsigned int getPort() const { return port; }
+    string print() const;
+    string printExplicit() const;
+};
+
 /** \brief m=... line in SDP */
 struct SdpMedia
 {
@@ -189,15 +217,27 @@ struct SdpMedia
   };
 
   int           type;
+  string        type_str;
   unsigned int  port;
+  RtcpAddress	rtcp_address_orig; // as received in SDP
+  RtcpAddress	rtcp_address; // effective, determined by rtcp-mux
   unsigned int  nports;
   int           transport;
+  string        transport_str;
   SdpConnection conn; // c=
   Direction     dir;  // a=direction
   string        fmt;  // format in case proto != RTP/AVP or RTP/SAVP
 
   string        ice_username;
   string        ice_password;
+
+  string        dtls_hash;
+  string        dtls_fingerprint;
+  string        dtls_role;
+
+  bool          rtcp_mux;
+
+  unsigned int  ssrc;
 
   // sendrecv|sendonly|recvonly|inactive
   bool          send;
@@ -211,12 +251,24 @@ struct SdpMedia
 
   bool operator == (const SdpMedia& other) const;
 
-  SdpMedia() : port(0), nports(0), conn(), dir(DirUndefined), type(MT_NONE), transport(TP_NONE), send(true), recv(true) {}
+  SdpMedia()
+    : conn(),
+      port(0),
+      nports(0),
+      dir(DirUndefined),
+      type(MT_NONE),
+      transport(TP_NONE),
+      send(true),
+      recv(true),
+      rtcp_mux(false),
+      ssrc()
+  {
+  }
 
   /** pretty print */
   string debugPrint() const;
 
-  static string type2str(int type);
+  static string type2str(const SdpMedia& m);
 
   /**
    * Checks which payloads are compatible with the payload provider,
@@ -233,6 +285,7 @@ struct SdpMedia
   bool hasAttribute(const string& name) const;
   string getAttribute(const string& name);
 
+  bool hasRtcpMux() const { return rtcp_mux; }
   /**
    * Remove attribute
    */
@@ -241,26 +294,8 @@ struct SdpMedia
   bool isRejected() const;
 
   bool isAudio() const { return type == MT_AUDIO; }
-};
 
-/**
- * \brief handling SDP attribute "rtcp"
- */
-class RtcpAddress
-{
-  private:
-    string nettype, addrtype, address;
-    bool parse(const string &src);
-    int port;
-
-  public:
-    RtcpAddress(const string &attr_value);
-    bool hasAddress() { return !address.empty(); }
-    void setAddress(const string &addr) { address = addr; }
-    const string& getAddress() { return address; }
-    void setPort(int _port) { port = _port; }
-    int getPort() { return port; }
-    string print();
+  bool haveNonTelevPayload();
 };
 
 /**
@@ -298,6 +333,26 @@ public:
   bool parse(const string& sdp_copy);
 
   /**
+   * Add attribute
+   */
+  void addAttribute(SdpAttribute att);
+
+  /**
+   * Check attribute
+   */
+  bool hasAttribute(const string& name) const;
+
+  /**
+   * Get attribute
+   */
+  string getAttribute(const string& name);
+
+  /**
+   * Remove attribute
+   */
+  bool removeAttribute(const string& name);
+
+  /**
    * Prints the current SDP structure
    * into a proper SDP message.
    */
@@ -312,6 +367,17 @@ public:
   //bool hasTelephoneEvent();
 
   bool operator == (const AmSdp& other) const;
+
+  const bool hasIce() const;
+  const bool hasDtls() const;
+
+  /**
+   * Parse specific attributes.
+   */
+  bool sdp_parse_rtcp();
+  void sdp_parse_ice();
+  void sdp_parse_fingerprint();
+  void sdp_parse_ssrc();
 
   /**
    * Clear all parsed values.

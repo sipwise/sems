@@ -36,6 +36,8 @@
 using std::shared_ptr;
 
 class AmRtpPacketTracer;
+class AmRtpTransport;
+
 class msg_logger;
 
 /** \brief RTP packet implementation */
@@ -47,9 +49,6 @@ class AmRtpPacket {
   unsigned int   data_offset;
   unsigned int   d_size;
 
-  int sendto(int sd);
-  int sendmsg(int sd, unsigned int sys_if_idx);
-
 public:
   unsigned char  payload;
   bool           marker;
@@ -59,21 +58,14 @@ public:
   unsigned char  version;
 
   struct timeval recv_time;
-  struct sockaddr_storage addr;
 
   AmRtpPacket();
   ~AmRtpPacket();
-
-  void setAddr(struct sockaddr_storage* a);
-  void getAddr(struct sockaddr_storage* a);
 
   // returns -1 if error, else 0
   int compile(unsigned char* data_buf, unsigned int size);
   // returns -1 if error, else 0
   int compile_raw(unsigned char* data_buf, unsigned int size);
-
-  int send(int sd, unsigned int sys_if_idx, sockaddr_storage* l_saddr);
-  int recv(int sd);
 
   int parse();
 
@@ -86,9 +78,6 @@ public:
 
   static bool isPacketRtp(unsigned char *buffer, size_t len);
   static bool isPacketRtcp(unsigned char *buffer, size_t len);
-
-  void logReceived(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
-  void logSent(const shared_ptr<msg_logger>& logger, struct sockaddr_storage *laddr);
 };
 
 #endif

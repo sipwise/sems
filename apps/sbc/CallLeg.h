@@ -31,6 +31,7 @@
 #include "CallLegEvents.h"
 #include "SessionUpdate.h"
 
+#include <iostream>
 #include <queue>
 
 /** composed AmB2BCalleeSession & AmB2BCallerSession
@@ -400,7 +401,7 @@ class CallLeg: public AmB2BSession
     void replaceExistingLeg(const string &session_tag, const string &hdrs);
 
     /** generate debug information into log with overall call leg status */
-    void debug();
+    void debug(std::ostream &out);
 
     const char* getCallStatusStr();
 

@@ -47,7 +47,7 @@ int AmAudioRtpFormat::setCurrentPayload(Payload pl)
   if (this->codec_id != pl.codec_id) {
     DBG("setCurrentPayload({%u, '%s', %u, %u, %u, '%s'})\n",
 	pl.pt, pl.name.c_str(), pl.clock_rate, pl.advertised_clock_rate,
-	pl.codec_id, pl.format_parameters.c_str());
+	pl.codec_id, pl.sdp_format_parameters.c_str());
     this->codec_id = pl.codec_id;
     DBG("fmt.codec_id = %d", this->codec_id);
     this->channels = 1;
@@ -56,7 +56,7 @@ int AmAudioRtpFormat::setCurrentPayload(Payload pl)
     this->advertized_rate = pl.advertised_clock_rate;
     DBG("fmt.advertized_rate = %d", this->advertized_rate);
     this->frame_size = 20*this->rate/1000;
-    this->sdp_format_parameters = pl.format_parameters;
+    this->sdp_format_parameters = pl.sdp_format_parameters;
     DBG("fmt.sdp_format_parameters = %s", this->sdp_format_parameters.c_str());
     if (this->codec != NULL) {
       destroyCodec();

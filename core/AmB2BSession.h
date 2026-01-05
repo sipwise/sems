@@ -42,6 +42,11 @@ enum { B2BTerminateLeg,
        B2BSipReply,
        B2BMsgBody };
 
+/* is used by the ForkHandler.
+ * Must be located in general scope, to let the ForkHandler see this enum type for own usage.
+ */
+enum B2BTerminateLegMode { ModeCancel, ModeBye };
+
 /** \brief base class for event in B2B session */
 struct B2BEvent: public AmEvent
 {
@@ -129,6 +134,15 @@ struct B2BConnectEvent: public B2BEvent
  * It has two legs as independent sessions:
  * Callee- and caller-leg.
  */
+
+class AmRtpTransport;
+
+/**
+ * \brief Base class for Sessions in B2BUA mode.
+ * 
+ * It has two legs as independent sessions:
+ * Callee- and caller-leg.
+ */
 class AmB2BSession: public AmSession, protected RelayController
 {
  public:
@@ -164,6 +178,10 @@ private:
   __uint128_t previous_origin_sessId;
   __uint128_t previous_origin_sessV;
 
+
+  /* mark legs termination due to ring timeout (ForkModule)*/
+  bool ring_timeout_leg;
+
  protected:
   /** Tell if the session should
    *  process SIP request itself
@@ -172,6 +190,11 @@ private:
   bool sip_relay_only;
 
   bool a_leg;
+
+  bool terminate_rtp;
+  bool use_dtls;
+  bool offer_ice;
+  bool offer_rtcp_fb;
 
   /** 
    * Requests which have been relayed 
@@ -222,6 +245,9 @@ private:
   /** generate 200 B2B reply on a pending INVITE (uses fake body) */
   void acceptPendingInviteB2B(const AmSipRequest& invite);
 
+  bool isOAMethod(const string& method) const;
+  bool isSubNotMethod(const string& method) const;
+
  public:
 
   void sl_reply(const string &method, unsigned cseq, bool forward, int sip_code, const char *reason);
@@ -235,6 +261,21 @@ private:
   /** Terminate the other leg and forget it.*/
   virtual void terminateOtherLeg();
 
+  /** Terminate our leg and forget the other,
+   *  but specify a code/reason, because we are terminating a leg
+   *  in the Ringing state.
+   *
+   *  Now is in use by TPCC:
+   *  Monitor::onEvent() -> CallLeg::stopCall() -> CallLeg::terminateOtherEarlyLeg()
+   *  -> AmB2BSession::terminateOtherEarlyLeg() -> AmB2BSession::relayEvent() -> AmB2BSession::onB2BEvent()
+   *  -> AmB2BSession::terminateEarlyLeg()
+   *
+   *  and ForkHandler, which needs a termination mode using BYE sometimes.
+   */
+  virtual void terminateEarlyLeg(const unsigned int sip_code,
+                                  const std::string sip_reason,
+                                  const std::string &hdrs = "",
+                                  B2BTerminateLegMode terminate_mode = ModeCancel);
 
   /** @see AmSession */
   virtual void updateUACTransCSeq(unsigned int old_cseq, unsigned int new_cseq);
@@ -255,6 +296,10 @@ private:
   void onRtpTimeout();
   void onSessionTimeout();
   void onNoAck(unsigned int cseq);
+
+  void onRxRelayBody(AmMimeBody& body, const string& method, bool is_offer);
+
+  void checkSdp(const AmSdp& sdp);
 
  public:
   /** send re-INVITE with established session description 
@@ -293,7 +338,7 @@ private:
   virtual bool onOtherReply(const AmSipReply& reply);
 
   AmB2BSession(const string& other_local_tag = "", AmSipDialog* p_dlg=NULL,
-	       AmSipSubscription* p_subs=NULL);
+	       AmSipSubscription* p_subs=NULL, bool _ring_timeout = false);
 
   virtual ~AmB2BSession();
 
@@ -357,8 +402,14 @@ private:
   /** set RTP relay mode (possibly initiaze by given INVITE) */
   virtual void setRtpRelayMode(RTPRelayMode mode);
 
+  /** set RTP Timeout and Keepalive Frequency values **/
+  virtual void setRtpTimeout(unsigned int timeout);
+  virtual void setRtpKeepalive(unsigned int keepalive);
+
   /** link RTP streams of other_session to our streams */
   RTPRelayMode getRtpRelayMode() const { return rtp_relay_mode; }
+  int  getRtpTimeout() const { return rtp_timeout; }
+  int  getRtpKeepalive() const { return rtp_keepalive_freq; }
   bool getRtpRelayForceSymmetricRtp() const { return rtp_relay_force_symmetric_rtp; }
   bool getEnableDtmfTranscoding() const { return enable_dtmf_transcoding; }
   bool getEnableDtmfRtpFiltering() const { return enable_dtmf_rtp_filtering; }
@@ -378,6 +429,24 @@ private:
   bool getRtpRelayTransparentSeqno() { return rtp_relay_transparent_seqno; }
   bool getRtpRelayTransparentSSRC() { return rtp_relay_transparent_ssrc; }
 
+  bool getOfferICE() { return offer_ice; }
+  bool getOfferRTP() { return terminate_rtp; }
+  bool getOfferDTLS() { return use_dtls; }
+
+  AmRtpTransport* createRtpTransport(AmSdp& parser_sdp,
+                                    unsigned int idx,
+                                    AmRtpStream* stream,
+                                    const string& ip);
+
+  void updateRtpTransport(AmRtpTransport* rtp_transport,
+                                     const AmSdp& remote_sdp,
+                                     const SdpMedia& r_m,
+                                     const SdpMedia& l_m);
+
+  /** ring timeout (ForkModule)*/
+  bool getRingTimeoutState() { return ring_timeout_leg; }
+  void setRingTimeoutState(bool _ring_timeout_leg) { ring_timeout_leg = _ring_timeout_leg; }
+
   /* -------------- media processing -------------- */
 
   private:
@@ -386,6 +455,10 @@ private:
   public:
     virtual void setMediaSession(AmB2BMedia *new_session);
     AmB2BMedia *getMediaSession() { return media_session; }
+
+    // media stream related callbacks
+
+    virtual void onAudioStreamCreated(AudioStreamData *stream) { } //< called when a new audio stream is created
 
     // see RelayController
     virtual void computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask);

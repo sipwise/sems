@@ -74,6 +74,9 @@ class AmAppTimer
   void direct_app_timer_cb(direct_app_timer* t);
   friend class direct_app_timer;
 
+  void setTimer_unsafe(DirectAppTimer* t, double timeout);
+  void removeTimer_unsafe(DirectAppTimer* t);
+
  public:
   AmAppTimer();
   ~AmAppTimer();
@@ -89,11 +92,6 @@ class AmAppTimer
   void setTimer(DirectAppTimer* t, double timeout);
   /* remove a timer which directly calls your handler */
   void removeTimer(DirectAppTimer* t);
-
-  /* ONLY use this from inside the timer handler of a direct timer */
-  void setTimer_unsafe(DirectAppTimer* t, double timeout);
-  /* ONLY use this from inside the timer handler of a direct timer */
-  void removeTimer_unsafe(DirectAppTimer* t);
 };
 
 #endif

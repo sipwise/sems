@@ -47,7 +47,7 @@ class RelayController {
  * better manageable (less duplicates - the same things were often done for
  * A leg stuff and then for B leg stuff). */
 
-class AudioStreamData {
+class AudioStreamData: private AmRtpStream::Hook {
   private:
     /** The RTP stream itself.
      *
@@ -112,6 +112,12 @@ class AudioStreamData {
     void initialize(AmB2BSession *session);
 
     void clearDtmfSink();
+
+    // RTP stream hooks
+    std::list<AmRtpStream::Hook*> hooks;
+    virtual void receivedPacket(AmRtpPacket *p);
+    virtual void relayedPacket(AmRtpPacket *p);
+    virtual void initStream(const AmSdp& local, const AmSdp& remote, int media_idx);
 
   public:
     /** Creates data based on associated signaling leg data. */
@@ -184,19 +190,8 @@ class AudioStreamData {
       if (stream) stream->clearRTPTimeout(); 
     }
 
-    int getLocalPort() { 
-      if (stream) return stream->getLocalPort(); 
-      else return 0; 
-    }
-
-    int getLocalRtcpPort() {
-      if (stream) return stream->getLocalRtcpPort();
-      else return 0;
-    }
-
-    void setLocalIP(const string& ip) { 
-      // set the address only if it is not used already
-      if (stream && !stream->hasLocalSocket()) stream->setLocalIP(ip);
+    void setRemoteSSRC(unsigned int ssrc) {
+      if (stream) stream->setRemoteSSRC(ssrc);
     }
 
     AmRtpAudio *getStream() { 
@@ -211,9 +206,9 @@ class AudioStreamData {
     void setInput(AmAudio *_in) { in = _in; }
     AmAudio *getInput() { return in; }
 
-    void setLogger(const shared_ptr<msg_logger>& logger) { if (stream) stream->setLogger(logger); }
+    void debug(std::ostream &out);
 
-    void debug();
+    void addHook(AmRtpStream::Hook *h);
 };
 
 /** \brief Class for control over media relaying and transcoding in a B2B session.
@@ -297,14 +292,12 @@ class AmB2BMedia: public AmMediaSession
       AudioStreamData a, b;
       int media_idx;
       AudioStreamPair(AmB2BSession *_a, AmB2BSession *_b, int _media_idx): a(_a), b(_b), media_idx(_media_idx) { }
-      void setLogger(const shared_ptr<msg_logger>& logger) { a.setLogger(logger); b.setLogger(logger); }
       bool requiresProcessing() { return a.getInput() || b.getInput(); }
     };
 
     struct RelayStreamPair {
       AmRtpStream a, b;
       RelayStreamPair(AmB2BSession *_a, AmB2BSession *_b);
-      void setLogger(const shared_ptr<msg_logger>& logger) { a.setLogger(logger); b.setLogger(logger); }
     };
 
     typedef std::vector<AudioStreamPair>::iterator AudioStreamIterator;
@@ -351,13 +344,13 @@ class AmB2BMedia: public AmMediaSession
     void updateAudioStreams();
     void updateRelayStream(AmRtpStream *stream, AmB2BSession *session,
 			   const string& connection_address,
-			   const SdpMedia &m, AmRtpStream *relay_to);
+			   const SdpMedia &m, AmRtpStream *relay_to,
+                           const AmSdp &local_sdp, const AmSdp &remote_sdp, int media_idx);
 
     void setMuteFlag(bool a_leg, bool set);
     void changeSessionUnsafe(bool a_leg, AmB2BSession *new_session);
 
-    shared_ptr<msg_logger> logger; // log RTP traffic
-
+    void clearStreams(); // remove audio & relay streams
     virtual ~AmB2BMedia();
 
   public:
@@ -472,8 +465,6 @@ class AmB2BMedia: public AmMediaSession
     void setFirstStreamInput(bool a_leg, AmAudio *in);
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
-    void setRtpLogger(const shared_ptr<msg_logger>& _logger);
-
     /** enable or disable DTMF receiving on relay streams */
     void setRelayDTMFReceiving(bool enabled);
 
@@ -485,9 +476,10 @@ class AmB2BMedia: public AmMediaSession
 
     /** set 'receving' property of RTP/relay streams (not receiving=drop incoming packets) */
     void setReceiving(bool receiving_a, bool receiving_b);
+    void setReceivingFlag(bool aleg, bool receiving);
 
     // print debug info
-    void debug();
+    void debug(std::ostream &out);
 };
 
 #endif

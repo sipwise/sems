@@ -192,8 +192,26 @@ struct SBCCallProfile
   int rtprelay_bw_limit_rate;
   int rtprelay_bw_limit_peak;
 
+  int bandwidth_limit_a;
+  int bandwidth_limit_b;
+
   list<atomic_int*> aleg_rtp_counters;
   list<atomic_int*> bleg_rtp_counters;
+
+  bool terminate_rtp_a;
+  bool terminate_rtp_b;
+
+  bool terminate_ice_a;
+  bool terminate_ice_b;
+
+  int rtp_keepalive_freq_a;
+  int rtp_keepalive_freq_b;
+
+  int rtp_timeout_a;
+  int rtp_timeout_b;
+
+  bool use_rtcp_fb_a;
+  bool use_rtcp_fb_b;
 
   string outbound_interface;
   int outbound_interface_value;
@@ -350,6 +368,18 @@ struct SBCCallProfile
     aleg_rtprelay_interface_value(-1),
     rtprelay_bw_limit_rate(-1),
     rtprelay_bw_limit_peak(-1),
+    bandwidth_limit_a(0),
+    bandwidth_limit_b(0),
+    terminate_rtp_a(false),
+    terminate_rtp_b(false),
+    terminate_ice_a(false),
+    terminate_ice_b(false),
+    rtp_keepalive_freq_a(0),
+    rtp_keepalive_freq_b(0),
+    rtp_timeout_a(0),
+    rtp_timeout_b(0),
+    use_rtcp_fb_a(false),
+    use_rtcp_fb_b(false),
     outbound_interface_value(-1),
     contact_hiding(false),
     reg_caching(false),

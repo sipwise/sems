@@ -157,6 +157,11 @@ string AmBasicSipDialog::getRoute()
   return res;
 }
 
+bool AmBasicSipDialog::getDlgEarlyStage()
+{
+  return (status == Trying || status == Proceeding || status == Early);
+}
+
 void AmBasicSipDialog::setOutboundInterface(int interface_id) {
   ILOG_DLG(L_DBG, "setting outbound interface to %i\n",  interface_id);
   outbound_interface = interface_id;

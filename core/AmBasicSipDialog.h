@@ -238,6 +238,11 @@ public:
   Status       getStatus() const { return status; }
   virtual void setStatus(Status new_status);
 
+  /**
+   * Check whether the dlg in Trying, Proceeding or Early state.
+   */
+  bool         getDlgEarlyStage();
+
   virtual const char* getStatusStr();
   static const char* getStatusStr(Status st);
   

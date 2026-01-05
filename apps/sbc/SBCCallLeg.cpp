@@ -40,7 +40,6 @@
 #include "RegisterDialog.h"
 #include "SubscriptionDialog.h"
 
-#include "sip/pcap_logger.h"
 #include "sip/sip_parser.h"
 #include "sip/sip_trans.h"
 
@@ -123,14 +122,15 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
     m_state(BB_Init),
     auth(NULL), auth_di(NULL),
     call_profile(call_profile),
+    log_rtp_bw_limit_event(false),
     cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_START),
     ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
-    logger(NULL)
+    bandwidth_limit_a(0),
+    bandwidth_limit_b(0),
+    bandwidth_usage(0),
+    last_sdp_offer(false)
 {
-#ifdef WITH_ZRTP
-  enable_zrtp = false;
-#endif
   set_sip_relay_only(false);
   dlg->setRel100State(Am100rel::REL100_IGNORED);
 
@@ -138,14 +138,7 @@ SBCCallLeg::SBCCallLeg(const SBCCallProfile& call_profile, AmSipDialog* p_dlg,
   memset(&call_connect_ts, 0, sizeof(struct timeval));
   memset(&call_end_ts, 0, sizeof(struct timeval));
 
-  if(call_profile.rtprelay_bw_limit_rate > 0 &&
-     call_profile.rtprelay_bw_limit_peak > 0) {
-
-    RateLimit* limit = new RateLimit(call_profile.rtprelay_bw_limit_rate,
-				     call_profile.rtprelay_bw_limit_peak,
-				     1000);
-    rtp_relay_rate_limit.reset(limit);
-  }
+  setDtmfDetectionEnabled(false);
 }
 
 // B leg constructor (from SBCCalleeSession)
@@ -153,15 +146,15 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
 		       AmSipSubscription* p_subs)
   : auth(NULL), auth_di(NULL),
     call_profile(caller->getCallProfile()),
+    log_rtp_bw_limit_event(false),
     CallLeg(caller,p_dlg,p_subs),
     ext_cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_END + 1),
     cc_started(false),
-    logger(NULL)
+    bandwidth_limit_a(0),
+    bandwidth_limit_b(0),
+    bandwidth_usage(0),
+    last_sdp_offer(false)
 {
-#ifdef WITH_ZRTP
-  enable_zrtp = false;
-#endif
-
   // FIXME: do we want to inherit cc_vars from caller?
   // Can be pretty dangerous when caller stored pointer to object - we should
   // not probably operate on it! But on other hand it could be handy for
@@ -179,9 +172,19 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     dlg->cseq = caller->dlg->r_cseq;
   }
 
-  // copy RTP rate limit from caller leg
+  // apply RTP rate limit from profile
   if(caller->rtp_relay_rate_limit.get()) {
-    rtp_relay_rate_limit.reset(new RateLimit(*caller->rtp_relay_rate_limit.get()));
+    rtp_relay_rate_limit.reset(new RateLimit(call_profile.rtprelay_bw_limit_rate,
+					     call_profile.rtprelay_bw_limit_peak,
+					     1000));
+
+    if (caller->log_rtp_bw_limit_event) {
+      // use the same log event as A leg just with a bit different message
+      // (makes the logs easier to match together)
+      log_rtp_bw_limit_event = true;
+      rtp_bw_limit_event = caller->rtp_bw_limit_event;
+      rtp_bw_limit_event["reason"] = "RTP bandwidth limit towards callee reached";
+    }
   }
 
   // CC interfaces and variables should be already "evaluated" by A leg, we just
@@ -196,26 +199,30 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
     throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
   }
 
-  setLogger(caller->getLogger());
+  setLogger(caller->getLogger(), call_profile.log_sip, call_profile.log_rtp);
 
   subs->allowUnsolicitedNotify(call_profile.allow_subless_notify);
+
+  setDtmfDetectionEnabled(false);
 }
 
 SBCCallLeg::SBCCallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
   : CallLeg(p_dlg,p_subs),
     m_state(BB_Init),
-    auth(NULL),  auth_di(NULL),
+    auth(NULL),
+    log_rtp_bw_limit_event(false),
+    auth_di(NULL),
     cc_timer_id(SBC_TIMER_ID_CALL_TIMERS_START),
     cc_started(false),
-    logger(NULL)
+    bandwidth_limit_a(0),
+    bandwidth_limit_b(0),
+    bandwidth_usage(0),
+    last_sdp_offer(false)
 {
-#ifdef WITH_ZRTP
-  enable_zrtp = false;
-#endif
-
   memset(&call_start_ts, 0, sizeof(struct timeval));
   memset(&call_connect_ts, 0, sizeof(struct timeval));
   memset(&call_end_ts, 0, sizeof(struct timeval));
+  setDtmfDetectionEnabled(false);
 }
 
 void SBCCallLeg::onStart()
@@ -233,7 +240,7 @@ void SBCCallLeg::onStart()
   }
 }
 
-void SBCCallLeg::applyAProfile()
+void SBCCallLeg::applyAProfile(const AmSipRequest &req)
 {
   // apply A leg configuration (but most of the configuration is applied in
   // SBCFactory::onInvite)
@@ -255,6 +262,7 @@ void SBCCallLeg::applyAProfile()
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
+    if (call_profile.rtprelay_dtmf_detection) setDtmfDetectionEnabled(true);
 
     if(call_profile.transcoder.isActive()) {
       setRtpRelayMode(RTP_Transcoding);
@@ -273,12 +281,61 @@ void SBCCallLeg::applyAProfile()
       setRtpRelayMode(RTP_Relay);
     }
 
+
     // copy stats counters
     rtp_pegs = call_profile.aleg_rtp_counters;
+
+    // RTP limits
+    if(call_profile.rtprelay_bw_limit_rate > 0 &&
+       call_profile.rtprelay_bw_limit_peak > 0) {
+
+      if(!rtp_relay_rate_limit.get() ||
+	 (rtp_relay_rate_limit->getRate()
+	  != call_profile.rtprelay_bw_limit_rate) ||
+	 (rtp_relay_rate_limit->getPeak()
+	  != call_profile.rtprelay_bw_limit_peak)) {
+
+	RateLimit* limit = new RateLimit(call_profile.rtprelay_bw_limit_rate,
+					 call_profile.rtprelay_bw_limit_peak,
+					 1000);
+	rtp_relay_rate_limit.reset(limit);
+	log_rtp_bw_limit_event = true;
+
+	// prepare event to be logged if the limit is reached (stores params not
+	// available in the onBeforeRTPRelay callback)
+	rtp_bw_limit_event["source"] = req.remote_ip;
+	rtp_bw_limit_event["src-port"] = req.remote_port;
+	rtp_bw_limit_event["r-uri"] = SBCEventLog::uri2event(req.r_uri);
+	rtp_bw_limit_event["call-id"]  = req.callid;
+	rtp_bw_limit_event["reason"] = "RTP bandwidth limit towards caller reached";
+	rtp_bw_limit_event["from"] = SBCEventLog::uri2event(req.from);
+	rtp_bw_limit_event["to"] = SBCEventLog::uri2event(req.to);
+      }
+    }
+    else {
+      rtp_relay_rate_limit.reset();
+      log_rtp_bw_limit_event = false;
+      rtp_bw_limit_event.clear();
+    }
+
+
+    terminate_rtp = call_profile.terminate_rtp_a;
+
+    ILOG_DLG(L_DBG, "A leg: force RTP = %s\n",
+        call_profile.terminate_rtp_a ? "true" : "false");
+
+    offer_ice = call_profile.terminate_ice_a;
+    offer_rtcp_fb = call_profile.use_rtcp_fb_a;
+
+    rtp_keepalive_freq = call_profile.rtp_keepalive_freq_a;
+    rtp_timeout = call_profile.rtp_timeout_a;
   }
 
   if(!call_profile.dlg_contact_params.empty())
     dlg->setContactParams(call_profile.dlg_contact_params);
+
+  setLogger(call_profile.get_logger(req), call_profile.log_sip, call_profile.log_rtp);
+
 }
 
 int SBCCallLeg::applySSTCfg(AmConfigReader& sst_cfg, 
@@ -396,9 +453,41 @@ void SBCCallLeg::applyBProfile()
     setRtpRelayTransparentSSRC(call_profile.rtprelay_transparent_ssrc);
     setEnableDtmfRtpFiltering(call_profile.rtprelay_dtmf_filtering);
     setEnableDtmfRtpDetection(call_profile.rtprelay_dtmf_detection);
+    if (call_profile.rtprelay_dtmf_detection) setDtmfDetectionEnabled(true);
+
+    if(call_profile.transcoder.isActive()) {
+      setRtpRelayMode(RTP_Transcoding);
+      switch(call_profile.transcoder.dtmf_mode) {
+      case SBCCallProfile::TranscoderSettings::DTMFAlways:
+        enable_dtmf_transcoding = true; break;
+      case SBCCallProfile::TranscoderSettings::DTMFNever:
+        enable_dtmf_transcoding = false; break;
+      case SBCCallProfile::TranscoderSettings::DTMFLowFiCodecs:
+        enable_dtmf_transcoding = false;
+        lowfi_payloads = call_profile.transcoder.lowfi_codecs;
+        break;
+      };
+    }
+    else {
+      setRtpRelayMode(RTP_Relay);
+    }
 
     // copy stats counters
     rtp_pegs = call_profile.bleg_rtp_counters;
+  
+    terminate_rtp = call_profile.terminate_rtp_b;
+
+    ILOG_DLG(L_DBG, "B leg: force RTP = %s\n",
+        call_profile.terminate_rtp_b ? "true" : "false");
+
+    offer_ice = call_profile.terminate_ice_b;
+    offer_rtcp_fb = call_profile.use_rtcp_fb_b;
+
+    rtp_keepalive_freq = call_profile.rtp_keepalive_freq_b;
+    rtp_timeout = call_profile.rtp_timeout_b;
+
+    bandwidth_limit_a = call_profile.bandwidth_limit_a;
+    bandwidth_limit_b = call_profile.bandwidth_limit_b;
   }
 
   // was read from caller but reading directly from profile now
@@ -446,8 +535,7 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             ILOG_DLG(L_DBG, "filtering body for request '%s' (c/t '%s')\n",
                 req_ev->req.method.c_str(),
                 req_ev->req.body.getCTStr().c_str());
-
-            int res = filterSdp(req_ev->req.body, req_ev->req.method);
+            int res = onBeforeB2BRelayBody(req_ev->req.body, req_ev->req.method);
             if (res < 0) {
               delete ev; // failed relayEvent should destroy the event
               return res;
@@ -498,8 +586,7 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             ILOG_DLG(L_DBG, "filtering body for reply '%s' (c/t '%s')\n",
                 reply_ev->trans_method.c_str(),
                 reply_ev->reply.body.getCTStr().c_str());
-
-            filterSdp(reply_ev->reply.body, reply_ev->reply.cseq_method);
+            onBeforeB2BRelayBody(reply_ev->reply.body, reply_ev->reply.cseq_method);
           }
         }
 
@@ -699,6 +786,14 @@ void SBCCallLeg::onRemoteDisappeared(const AmSipReply& reply)
     SBCEventLog::instance()->logCallEnd(dlg,"reply",&call_connect_ts);
 }
 
+void SBCCallLeg::onRtpTimeout()
+{
+  if (a_leg) {
+    SBCEventLog::instance()->logCallEnd(dlg,"rtp-timer-terminated",&call_connect_ts);
+  }
+  CallLeg::onRtpTimeout();
+}
+
 void SBCCallLeg::onBye(const AmSipRequest& req)
 {
   CallLeg::onBye(req);
@@ -836,6 +931,25 @@ void SBCCallLeg::process(AmEvent* ev) {
   CallLeg::process(ev);
 }
 
+void SBCCallLeg::onInitialRelayBody(AmMimeBody& body, const string& method)
+{
+
+  // when INVITE was processed first, stuff was not setup, so do again
+  onRxRelayBody(body, method, true);
+
+  /* ct length 0 means: it was parsed, but indeed it turned out body was empty */
+  if (body.getCTLength() == 0) {
+    ILOG_DLG(L_DBG, "Skip filtering SDP body, because Content-Length is zero.\n");
+  }
+  else {
+    int res = onBeforeB2BRelayBody(body, method);
+    if (res < 0) {
+      // FIXME: quick hack, throw the exception from the filtering function for
+      // requests
+      throw AmSession::Exception(488, SIP_REPLY_NOT_ACCEPTABLE_HERE);
+    }
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // was for caller only (SBCDialog)
@@ -943,7 +1057,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   from = call_profile.from.empty() ? req.from : call_profile.from;
   to = call_profile.to.empty() ? req.to : call_profile.to;
 
-  applyAProfile();
+  applyAProfile(req);
   call_profile.apply_a_routing(ctx,req,*dlg);
 
   m_state = BB_Dialing;
@@ -1011,6 +1125,8 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   }
 
   if (getCallStatus() == Disconnected) {
+    onInitialRelayBody(invite_req.body, invite_req.method);
+
     // no CC module connected a callee yet
     connectCallee(to, ruri, from, req, invite_req); // connect to the B leg(s) using modified request
   }
@@ -1204,12 +1320,6 @@ bool SBCCallLeg::CCStart(const AmSipRequest& req) {
       CCEnd(cc_it);
 
       return false;
-    }
-
-    if (!logger) {
-      // open the logger if not already opened
-      auto l = call_profile.get_logger(req);
-      if (l) setLogger(l);
     }
 
     // evaluate ret
@@ -1430,7 +1540,13 @@ bool SBCCallLeg::onBeforeRTPRelay(AmRtpPacket* p, sockaddr_storage* remote_addr)
 {
   if(rtp_relay_rate_limit.get() &&
      rtp_relay_rate_limit->limit(p->getBufferSize()))
+  {
+    if (log_rtp_bw_limit_event) {
+      SBCEventLog::instance()->logEvent(a_leg ? getLocalTag() : getOtherId(), "limit", rtp_bw_limit_event);
+      log_rtp_bw_limit_event = false; // do not log any more
+    }
     return false; // drop
+  }
 
   return true; // relay
 }
@@ -1470,6 +1586,10 @@ void SBCCallLeg::logCanceledCall()
     ILOG_DLG(L_ERR, "could not log call-attempt (canceled, ci='%s';lt='%s')",
 	  getCallID().c_str(),getLocalTag().c_str());
   }
+}
+
+int SBCCallLeg::onBeforeB2BRelayBody(AmMimeBody &body, const string &method) {
+  return filterSdp(body, method);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1939,38 +2059,7 @@ void SBCCallLeg::createHoldRequest(AmSdp &sdp)
 
 void SBCCallLeg::setMediaSession(AmB2BMedia *new_session)
 {
-  if (new_session) {
-    if (call_profile.log_rtp) new_session->setRtpLogger(logger);
-    else new_session->setRtpLogger(NULL);
-  }
   CallLeg::setMediaSession(new_session);
-}
-
-bool SBCCallLeg::openLogger(const std::string &path)
-{
-  shared_ptr<file_msg_logger> log(new pcap_logger());
-
-  if(log->open(path.c_str()) != 0) {
-    // open error
-    return false;
-  }
-
-  // opened successfully
-  setLogger(log);
-  return true;
-}
-
-void SBCCallLeg::setLogger(const shared_ptr<msg_logger>& _logger)
-{
-  logger = _logger;
-  if (call_profile.log_sip) dlg->setMsgLogger(logger);
-  else dlg->setMsgLogger(NULL);
-
-  AmB2BMedia *m = getMediaSession();
-  if (m) {
-    if (call_profile.log_rtp) m->setRtpLogger(logger);
-    else m->setRtpLogger(NULL);
-  }
 }
 
 void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &mask)
@@ -2028,4 +2117,46 @@ void SBCCallLeg::computeRelayMask(const SdpMedia &m, bool &enable, PayloadMask &
     // for non-transcoding modes use default
     CallLeg::computeRelayMask(m, enable, mask);
   }
+}
+
+void SBCCallLeg::onAudioStreamCreated(AudioStreamData *stream)
+{
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+    (*i)->onAudioStreamCreated(this, stream);
+  }
+}
+
+void SBCCallLeg::copyGlobalSettings(const SBCCallProfile& callee_profile)
+{
+  //TODO: copy all settings that must be the same at caller & callee side
+
+  call_profile.transparent_dlg_id = callee_profile.transparent_dlg_id;
+
+  call_profile.allow_subless_notify = callee_profile.allow_subless_notify;
+  subs->allowUnsolicitedNotify(call_profile.allow_subless_notify);
+  
+  call_profile.headerfilter    = callee_profile.headerfilter;
+  call_profile.messagefilter   = callee_profile.messagefilter;
+  call_profile.anonymize_sdp   = callee_profile.anonymize_sdp;
+  call_profile.sdpfilter       = callee_profile.sdpfilter;
+  call_profile.sdpalinesfilter = callee_profile.sdpalinesfilter;
+  call_profile.mediafilter     = callee_profile.mediafilter;
+
+  call_profile.reply_translations = callee_profile.reply_translations;
+
+  call_profile.rtprelay_enabled = callee_profile.rtprelay_enabled;
+  call_profile.aleg_force_symmetric_rtp_value = callee_profile.aleg_force_symmetric_rtp_value;
+  call_profile.rtprelay_transparent_seqno = callee_profile.rtprelay_transparent_seqno;
+  call_profile.rtprelay_transparent_ssrc  = callee_profile.rtprelay_transparent_ssrc;
+  call_profile.rtprelay_dtmf_filtering    = callee_profile.rtprelay_dtmf_filtering;
+  call_profile.rtprelay_dtmf_detection    = callee_profile.rtprelay_dtmf_detection;
+  call_profile.rtprelay_bw_limit_rate     = callee_profile.rtprelay_bw_limit_rate;
+  call_profile.rtprelay_bw_limit_peak     = callee_profile.rtprelay_bw_limit_peak;
+
+  call_profile.transcoder  = callee_profile.transcoder;
+  call_profile.codec_prefs = callee_profile.codec_prefs;
+
+  // Each call must know the bandwith limit of the other
+  setBandwidthLimits(callee_profile.bandwidth_limit_a,
+                     callee_profile.bandwidth_limit_b);
 }

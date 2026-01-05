@@ -154,7 +154,14 @@ protected:
   int bye(const string& hdrs = "", int flags = 0);
 
   /** @return 0 on success */
-  int cancel();
+  int terminateEarly(const unsigned int sip_code,
+                      const std::string sip_reason,
+                      const string& hdrs = "",
+                      int flags = 0,
+                      bool force_bye = false);
+
+  /** @return 0 on success */
+  int cancel(const string &hdrs = "");
 
   /** @return 0 on success */
   int prack(const AmSipReply &reply1xx,

@@ -379,6 +379,25 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   rtprelay_dtmf_detection =
     cfg.getParameter("rtprelay_dtmf_detection", "no") == "yes";
 
+  terminate_ice_a = cfg.getParameter("terminate_ice_a", "no") == "yes";
+  terminate_ice_b = cfg.getParameter("terminate_ice_b", "no") == "yes";
+
+  rtp_keepalive_freq_a = cfg.getParameterInt("rtp_keepalive_freq_a",-1);
+  if (rtp_keepalive_freq_a == -1)
+    rtp_keepalive_freq_a = AmConfig::RtpKeepaliveFreq;
+
+  rtp_keepalive_freq_b = cfg.getParameterInt("rtp_keepalive_freq_b",-1);
+  if (rtp_keepalive_freq_b == -1)
+    rtp_keepalive_freq_b = AmConfig::RtpKeepaliveFreq;
+
+  rtp_timeout_a = cfg.getParameterInt("rtp_timeout_a",-1);
+  if (rtp_timeout_a == -1)
+    rtp_timeout_a = AmConfig::DeadRtpTime;
+
+  rtp_timeout_b = cfg.getParameterInt("rtp_timeout_b",-1);
+  if (rtp_timeout_b == -1)
+    rtp_timeout_b = AmConfig::DeadRtpTime;
+
   outbound_interface = cfg.getParameter("outbound_interface");
   aleg_outbound_interface = cfg.getParameter("aleg_outbound_interface");
 

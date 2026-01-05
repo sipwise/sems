@@ -37,41 +37,20 @@
 #include <map>
 using std::greater;
 
-class AmRtpStream;
 class _AmRtpReceiver;
 
 /**
- * \brief receiver for RTP for all streams.
+ * \brief receiver for RTP for all RTP transports.
  *
- * The RtpReceiver receives RTP packets for all streams 
- * that are registered to it. It places the received packets in 
- * the stream's buffer. 
+ * The RtpReceiver receives RTP packets for all RTP transports
+ * that are registered to it. The transport places the received packets in
+ * the corresponding stream's buffer.
  */
 class AmRtpReceiverThread
   : public AmThread
 {
-  struct StreamInfo 
-  {
-    AmRtpStream* stream;
-    struct event* ev_read;
-    AmRtpReceiverThread* thread;
-
-    StreamInfo()
-      : stream(NULL),
-	ev_read(NULL),
-	thread(NULL)
-    {}
-  };
-
-  typedef std::map<int, StreamInfo> Streams;
-
   struct event_base* ev_base;
   struct event*      ev_default;
-
-  Streams  streams;
-  AmMutex  streams_mut;
-
-  static void _rtp_receiver_read_cb(evutil_socket_t sd, short what, void* arg);
 
 public:    
   AmRtpReceiverThread();
@@ -79,11 +58,9 @@ public:
     
   void run();
   void on_stop();
+  const char *identify() { return "RTP receiver"; }
 
   struct event_base* getBase();
-
-  void addStream(int sd, AmRtpStream* stream);
-  void removeStream(int sd);
 };
 
 class AmRtpReceiver : public singleton<AmRtpReceiver>
@@ -101,9 +78,6 @@ protected:
 
 public:
   void start();
-
-  void addStream(int sd, AmRtpStream* stream);
-  void removeStream(int sd);
 
   struct event_base* getBase(int sd);
 };

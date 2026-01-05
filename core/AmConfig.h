@@ -265,6 +265,9 @@ struct AmConfig
   /** Time of no RTP after which Session is regarded as dead, 0 for no Timeout */
   static unsigned int DeadRtpTime;
 
+  /** RTP keep alive frequency **/
+  static unsigned int RtpKeepaliveFreq;
+
   /** Ignore RTP Extension headers? */
   static bool IgnoreRTPXHdrs;
 
@@ -332,6 +335,8 @@ struct AmConfig
   static int setSIPServerThreads(const string& th);
   /** Setter for parameter DeadRtpTime, returns 0 on invalid value */
   static int setDeadRtpTime(const string& drt);
+  /** Setter for parameter RtpKeepaliveFreq, returns 0 on invalid value */
+  static int setRtpKeepaliveFreq(const string& rkf);
 
 };
 
