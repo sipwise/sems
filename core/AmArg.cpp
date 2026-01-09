@@ -29,6 +29,8 @@
 #include "log.h"
 #include "AmUtils.h"
 
+using std::shared_ptr;
+
 const char* AmArg::t2str(int type) {
   switch (type) {
   case AmArg::Undef:   return "Undef";
@@ -38,6 +40,7 @@ const char* AmArg::t2str(int type) {
   case AmArg::Double:  return "Double";
   case AmArg::CStr:    return "CStr";
   case AmArg::AObject: return "AObject";
+  case AmArg::AObjectShared: return "AObjectShared";
   case AmArg::ADynInv: return "ADynInv";
   case AmArg::Blob:    return "Blob";
   case AmArg::Array:   return "Array";
@@ -336,6 +339,7 @@ void AmArg::assertArrayFmt(const char* format) const {
       case 'f': assertArgDouble(get(i)); got+='f'; break;
       case 's': assertArgCStr(get(i)); got+='s'; break;
       case 'o': assertArgAObject(get(i)); got+='o'; break;
+      case 'h': assertArgAObjectShared(get(i)); got+='h'; break;
       case 'd': assertArgADynInv(get(i)); got+='d'; break;
       case 'a': assertArgArray(get(i)); got+='a'; break;
       case 'b': assertArgBlob(get(i)); got+='b'; break;
@@ -363,6 +367,7 @@ VECTOR_GETTER(int, asIntVector, asInt)
 VECTOR_GETTER(bool, asBoolVector, asBool)
 VECTOR_GETTER(double, asDoubleVector, asDouble)
 VECTOR_GETTER(AmObject*, asAmObjectVector, asObject)
+VECTOR_GETTER(shared_ptr<AmObject>, asAmObjectSharedVector, asSharedObject)
 #undef  VECTOR_GETTER
 
 vector<ArgBlob> AmArg::asArgBlobVector() const {
@@ -393,6 +398,8 @@ string AmArg::print(const AmArg &a) {
       return "'" + string(a.asCStr()) + "'";
     case AObject:
       return "<Object>";
+    case AObjectShared:
+      return "<ObjectShared>";
     case ADynInv:
       return "<DynInv>";
     case Blob:

@@ -38,6 +38,9 @@ using std::vector;
 #include <string>
 using std::string;
 
+#include <memory>
+using std::shared_ptr;
+
 #include <map>
 #include <variant>
 
@@ -84,6 +87,7 @@ class AmArg
 : public AmObject
 {
  public:
+
   // type enum
   enum {
     Undef=0,
@@ -96,6 +100,8 @@ class AmArg
     AObject, // pointer to an object not owned by AmArg
     ADynInv, // pointer to a AmDynInvoke (useful for call backs)
     Blob,
+
+    AObjectShared,
 
     Array,
     Struct
@@ -117,7 +123,7 @@ class AmArg
   short type;
 
   // value
-  std::variant<std::monostate, long int, long long int, bool, double, std::string, AmObject*,
+  std::variant<std::monostate, long int, long long int, bool, double, std::string, AmObject*, shared_ptr<AmObject>,
     AmDynInvoke*, ArgBlob, ValueArray, ValueStruct> value;
 
   void invalidate();
@@ -181,6 +187,11 @@ class AmArg
     value(v)
     { }
 
+  AmArg(std::shared_ptr<AmObject> v)
+    : type(AObjectShared),
+      value(std::move(v))
+  {}
+
   // convenience constructors
   AmArg(vector<std::string>& v);
   AmArg(const vector<int>& v );
@@ -210,6 +221,7 @@ class AmArg
 #define isArgBool(a) (AmArg::Bool == a.getType())
 #define isArgCStr(a) (AmArg::CStr == a.getType())
 #define isArgAObject(a) (AmArg::AObject == a.getType())
+#define isArgAObjectShared(a) (AmArg::AObjectShared == a.getType())
 #define isArgADynInv(a) (AmArg::ADynInv == a.getType())
 #define isArgBlob(a) (AmArg::Blob == a.getType())
 
@@ -240,6 +252,9 @@ class AmArg
 #define assertArgAObject(a)			\
   if (!isArgAObject(a))				\
 	_THROW_TYPE_MISMATCH(AObject,a);
+#define assertArgAObjectShared(a)			\
+  if (!isArgAObjectShared(a))				\
+	_THROW_TYPE_MISMATCH(AObjectShared,a);
 #define assertArgADynInv(a)			\
   if (!isArgADynInv(a))				\
 	_THROW_TYPE_MISMATCH(ADynInv,a);
@@ -262,17 +277,45 @@ class AmArg
   bool            asBool()     const { return std::get<bool>(value); }
   double          asDouble()   const { return std::get<double>(value); }
   const char*     asCStr()     const { return std::get<std::string>(value).c_str(); }
-  AmObject*       asObject()   const { return std::get<AmObject*>(value); }
   AmDynInvoke*    asDynInv()   const { return std::get<AmDynInvoke*>(value); }
   const ArgBlob&  asBlob()     const { return std::get<ArgBlob>(value); }
   const ValueStruct& asStruct() const { return std::get<ValueStruct>(value); }
   ValueStruct& asStruct()            { return std::get<ValueStruct>(value); }
+
+  /* shared object compatible implementation */
+  AmObject* asObject()   const {
+    if (type == AObjectShared)
+      return std::get<shared_ptr<AmObject>>(value).get();
+    if (type == AObject)
+      return std::get<AmObject*>(value);
+
+    return nullptr;
+  }
+  /* safe accessor for shared AmObject */
+  shared_ptr<AmObject> asSharedObject() const {
+    if (type == AObjectShared)
+      return std::get<shared_ptr<AmObject>>(value);
+
+    return nullptr; /* borrowed pointers cannot be promoted safely */
+  }
+  /* just a helper for all future objects moved to the shared pointer */
+  template<typename T>
+  shared_ptr<T> asShared() const {
+    if (type == AObjectShared) {
+      return std::dynamic_pointer_cast<T>(
+        std::get<shared_ptr<AmObject>>(value)
+      );
+    }
+
+    return nullptr;
+  }
 
   vector<string>     asStringVector()   const;
   vector<int>        asIntVector()      const;
   vector<bool>       asBoolVector()     const;
   vector<double>     asDoubleVector()   const;
   vector<AmObject*> asAmObjectVector()  const;
+  vector<shared_ptr<AmObject>> asAmObjectSharedVector()  const;
   vector<ArgBlob>    asArgBlobVector()  const;
 
   // operations on arrays
