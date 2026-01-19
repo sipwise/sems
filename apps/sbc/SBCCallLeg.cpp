@@ -933,15 +933,14 @@ void SBCCallLeg::process(AmEvent* ev) {
 
 void SBCCallLeg::onInitialRelayBody(AmMimeBody& body, const string& method)
 {
-
-  // when INVITE was processed first, stuff was not setup, so do again
-  onRxRelayBody(body, method, true);
-
   /* ct length 0 means: it was parsed, but indeed it turned out body was empty */
   if (body.getCTLength() == 0) {
-    ILOG_DLG(L_DBG, "Skip filtering SDP body, because Content-Length is zero.\n");
+    ILOG_DLG(L_DBG, "Body is empty, nothing to do.\n");
   }
   else {
+    // when INVITE was processed first, stuff was not setup, so do again
+    onRxRelayBody(body, method, true);
+
     int res = onBeforeB2BRelayBody(body, method);
     if (res < 0) {
       // FIXME: quick hack, throw the exception from the filtering function for
@@ -973,10 +972,9 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
     // fix up module names
     for (CCInterfaceListIteratorT cc_it=call_profile.cc_interfaces.begin();
-	 cc_it != call_profile.cc_interfaces.end(); cc_it++) {
-
-      cc_it->cc_module =
-	ctx.replaceParameters(cc_it->cc_module, "cc_module", req);
+            cc_it != call_profile.cc_interfaces.end(); cc_it++)
+    {
+      cc_it->cc_module = ctx.replaceParameters(cc_it->cc_module, "cc_module", req);
     }
 
     if (!getCCInterfaces()) {
@@ -993,16 +991,15 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
     }
   }
 
-  call_profile.sst_aleg_enabled = 
-    ctx.replaceParameters(call_profile.sst_aleg_enabled,
-			  "enable_aleg_session_timer", req);
+  call_profile.sst_aleg_enabled = ctx.replaceParameters(call_profile.sst_aleg_enabled,
+                                                        "enable_aleg_session_timer", req);
 
-  call_profile.sst_enabled = ctx.replaceParameters(call_profile.sst_enabled, 
-						   "enable_session_timer", req);
+  call_profile.sst_enabled = ctx.replaceParameters(call_profile.sst_enabled,
+                                                  "enable_session_timer", req);
 
   if ((call_profile.sst_aleg_enabled == "yes") &&
-      (call_profile.sst_enabled == "yes")) {
-
+      (call_profile.sst_enabled == "yes"))
+  {
     call_profile.eval_sst_config(ctx,req,call_profile.sst_a_cfg);
     if(applySSTCfg(call_profile.sst_a_cfg,&req) < 0) {
       throw AmSession::Exception(500, SIP_REPLY_SERVER_INTERNAL_ERROR);
@@ -1026,6 +1023,7 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
   string ruri, to, from;
   AmSipRequest uac_req(req);
   AmUriParser uac_ruri;
+
   uac_ruri.uri = uac_req.r_uri;
   if(!uac_ruri.parse_uri()) {
     ILOG_DLG(L_DBG, "Error parsing R-URI '%s'\n",uac_ruri.uri.c_str());
@@ -1118,7 +1116,8 @@ void SBCCallLeg::onInvite(const AmSipRequest& req)
 
   // call extend call controls
   InitialInviteHandlerParams params(to, ruri, from, &req, &invite_req);
-  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
+  for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i)
+  {
     (*i)->onInitialInvite(this, params);
     // initialize possibily added modules
     initPendingCCExtModules();

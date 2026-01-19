@@ -834,7 +834,8 @@ void AmB2BSession::onRxRelayBody(AmMimeBody& body, const string& method,
 				 bool is_offer)
 {
   AmMimeBody* sdp_body = body.hasContentType(SIP_APPLICATION_SDP);
-  if (!sdp_body)
+
+  if (!sdp_body || sdp_body->getCTLength() == -1 || !sdp_body->getCTLength())
     return;
 
   // filter body for given methods only
