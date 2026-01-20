@@ -219,7 +219,7 @@ XmlRpcSocket::nbRead(int fd, std::string& s, bool *eof, SSL* ssl)
 bool XmlRpcSocket::nbWrite(int fd, std::string& s, size_t &bytesSoFar, SSL* ssl)
 {
   /* a guard against overflow */
-  if (bytesSoFar < 0 || bytesSoFar > s.length()) {
+  if (bytesSoFar > s.length()) {
     XmlRpcUtil::log(1, "XmlRpcSocket::nbWrite: Invalid bytesSoFar='%zu' for string length='%zu'",
                     bytesSoFar, s.length());
     return false;
