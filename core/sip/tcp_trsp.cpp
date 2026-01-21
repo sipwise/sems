@@ -536,9 +536,9 @@ int tcp_server_worker::send(const sockaddr_storage* sa, const char* msg,
   else {
     //TODO: add flags to avoid new connections (ex: UAs behind NAT)
     auto new_sock = tcp_trsp_socket::new_connection(server_sock, *this, sa, evbase);
-    connections[dest] = new_sock;
+    connections[dest] = new_sock; // copy
 
-    sock = new_sock;
+    sock = std::move(new_sock);
     new_conn = true;
   }
   connections_mut.unlock();
