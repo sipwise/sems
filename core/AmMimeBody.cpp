@@ -537,10 +537,36 @@ int AmMimeBody::parseMultipart(const char* buf, unsigned int len)
     return -1;
   }
 
-  /* TODO: wtf is this?, rework parsing here to work with std::string */
-  unsigned char* buf_end   = (unsigned char*)(buf + len);
-  unsigned char* part_end  = (unsigned char*)buf;
-  unsigned char* next_part = (unsigned char*)buf_end;
+  unsigned char* buf_end;
+  unsigned char* part_end;
+  unsigned char* next_part;
+  string temp_buffer;
+
+  // if there are quotes around the boundary, we have to fix that
+  if (ct.mp_boundary->value.front() == DQUOTE || ct.mp_boundary->value.back() == DQUOTE) {
+
+    // cast original char array into a temporary string
+    temp_buffer = reinterpret_cast<const char*>(buf);                   // create a temporary string to keep given buffer
+    const string from = ct.mp_boundary->value;                          // value we are looking for
+    const string to = from.substr(1, from.length() - 2);                // value to which we do a substitution
+
+    size_t start_pos = 0;
+    while((start_pos = temp_buffer.find(from, start_pos)) != string::npos) {
+        temp_buffer.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+
+    int eventual_length = temp_buffer.length();
+
+    /* TODO: wtf is this?, rework parsing here to work with std::string */
+    buf_end   = (unsigned char*)temp_buffer.c_str() + eventual_length;
+    part_end  = (unsigned char*)temp_buffer.c_str();
+    next_part = (unsigned char*)buf_end;
+  } else {
+    buf_end  = (unsigned char*)buf + len;
+    part_end  = (unsigned char*)buf;
+    next_part = (unsigned char*)buf_end;
+  }
 
   int err = findNextBoundary(&part_end,&next_part);
   if(err < 0) {
