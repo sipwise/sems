@@ -48,17 +48,25 @@ typedef std::map<uint64_t, timer_list> timer_buckets;
 
 class timer
 {
-    // for fast removal:
-    timer_list::iterator pos;
-    timer_list* list;
+    struct timer_link {
+        // for fast removal:
+        timer_list::iterator pos;
+        timer_list& list;
+
+        timer_link(timer_list& _list, const timer_list::iterator& _pos)
+            : pos(_pos), list(_list)
+        {}
+    };
+
+    std::optional<timer_link> _link;
 
 public:
-    timer() 
-	: list(NULL), expires(0)
+    timer()
+	: expires(0)
     {}
 
     timer(const timer &t)
-        : list(NULL), expires(t.expires)
+        : expires(t.expires)
     {}
 
     virtual ~timer();
@@ -79,24 +87,28 @@ private:
 	expires = us;
     }
 
-    void link(timer_list& new_list)
+    // list must be locked
+    void link(timer_list& list)
     {
-	list = &new_list;
-	list->push_front(this);
-	pos = list->begin();
+        if (_link)
+            throw std::runtime_error("attempting to link already-linked timer");
+
+	list.push_front(this);
+        _link.emplace(list, list.begin());
     }
 
     bool disarm()
     {
 	expires = 0;
 
-	if (list) {
-	    list->erase(pos);
-	    list = NULL;
-	    return true;
-	}
+        if (!_link)
+            return false;
 
-	return false;
+        _link->list.erase(_link->pos);
+
+        _link.reset();
+
+        return true;
     }
 
     uint64_t    expires; // absolute, microseconds, set after arming timer
