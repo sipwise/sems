@@ -342,6 +342,8 @@ private:
 
   virtual ~AmB2BSession();
 
+  virtual void onBeforeDestroy();
+
   /** flag to enable RTP relay mode */
   RTPRelayMode rtp_relay_mode;
   /** force symmetric RTP */

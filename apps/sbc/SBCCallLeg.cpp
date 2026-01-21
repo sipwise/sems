@@ -605,8 +605,12 @@ SBCCallLeg::~SBCCallLeg()
 void SBCCallLeg::onBeforeDestroy()
 {
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin(); i != cc_ext.end(); ++i) {
-    (*i)->onDestroyLeg(this);
+    try {
+      (*i)->onDestroyLeg(this);
+    }
+    catch (...) { /* ignore errors */ }
   }
+  CallLeg::onBeforeDestroy();
 }
 
 UACAuthCred* SBCCallLeg::getCredentials() {

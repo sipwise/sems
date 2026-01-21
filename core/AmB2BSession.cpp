@@ -116,10 +116,15 @@ AmB2BSession::AmB2BSession(const string& other_local_tag, AmSipDialog* p_dlg,
   if(!subs) subs = new AmSipSubscription(dlg,this);
 }
 
+void AmB2BSession::onBeforeDestroy()
+{
+  // cleanup before the instance is destroyed
+  clearRtpReceiverRelay();
+  AmSession::onBeforeDestroy();
+}
+
 AmB2BSession::~AmB2BSession()
 {
-  clearRtpReceiverRelay();
-
   ILOG_DLG(L_DBG, "relayed_req.size() = %zu\n",relayed_req.size());
 
   map<int,AmSipRequest>::iterator it = recvd_req.begin();
