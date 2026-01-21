@@ -26,7 +26,7 @@
  */
 
 #ifndef __ice_utils_h__
-#define __ice_utils_h___
+#define __ice_utils_h__
 
 #include <string>
 
