@@ -385,8 +385,13 @@ void AmRtpStream::getSdp(SdpMedia& m)
   m.nports = 0;
   m.send = !hold;
   m.recv = receiving;
-  m.dir = SdpMedia::DirBoth;
   m.type = MT_AUDIO;
+
+  // direction
+  if (AmConfig::SkipGenerateDirectionBoth)
+    m.dir = SdpMedia::DirUndefined;
+  else
+    m.dir = SdpMedia::DirBoth;
 
   // get Transport description
   if (rtp_transport)

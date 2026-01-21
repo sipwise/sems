@@ -106,6 +106,8 @@ bool         AmConfig::LogSessions             = false;
 bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
+bool         AmConfig::SkipGenerateDirectionBoth = false;
+
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
 bool         AmConfig::enable_zrtp_debuglog    = true;
@@ -404,6 +406,10 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("force_symmetric_rtp")) {
     ForceSymmetricRtp = (cfg.getParameter("force_symmetric_rtp") == "yes");
+  }
+
+  if(cfg.hasParameter("skip_generate_direction_both")) {
+    SkipGenerateDirectionBoth = (cfg.getParameter("skip_generate_direction_both") == "yes");
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {

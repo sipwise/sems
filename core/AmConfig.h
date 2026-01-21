@@ -206,6 +206,8 @@ struct AmConfig
   static bool SingleCodecInOK;
   static vector <string> CodecOrder;
 
+  static bool SkipGenerateDirectionBoth;
+
   enum ApplicationSelector {
     App_RURIUSER,
     App_RURIPARAM,
