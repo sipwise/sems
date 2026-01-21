@@ -88,7 +88,7 @@ struct SdpOrigin
   __uint128_t sessV;
   SdpConnection conn;
 
-  SdpOrigin() : user(), conn() {}
+  SdpOrigin() : user(), conn(), sessId(0), sessV(0) {}
 
   SdpOrigin(const SdpOrigin& other)
     : user(other.user), sessId(other.sessId), sessV(other.sessV),
