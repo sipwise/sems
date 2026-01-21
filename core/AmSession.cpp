@@ -81,6 +81,7 @@ AmSession::AmSession(AmSipDialog* p_dlg)
     refresh_method(REFRESH_UPDATE_FB_REINV),
     processing_status(SESSION_PROCESSING_EVENTS),
     active_rtp_stream_i(false),
+    active_media_index(-1),
     rtp_keepalive_freq(AmConfig::RtpKeepaliveFreq),
     rtp_timeout(AmConfig::DeadRtpTime),
     logger(NULL),
