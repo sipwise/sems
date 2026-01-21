@@ -307,27 +307,28 @@ void AudioStreamData::setDtmfSink(AmDtmfSink *dtmf_sink)
   // TODO: optimize: clear & create the dtmf_detector only if the dtmf_sink changed
   clearDtmfSink();
 
-  return; // FIXME: throw out once DTMF stuff will be working on the target platform
+  return;
 
-  if (dtmf_sink && stream) {
-    dtmf_detector = new AmDtmfDetector(dtmf_sink);
-    dtmf_queue = new AmDtmfEventQueue(dtmf_detector);
-    dtmf_detector->setInbandDetector(AmConfig::DefaultDTMFDetector, stream->getSampleRate());
+  // TODO: uncomment once DTMF stuff will be working on the target platform
+  // if (dtmf_sink && stream) {
+  //   dtmf_detector = new AmDtmfDetector(dtmf_sink);
+  //   dtmf_queue = new AmDtmfEventQueue(dtmf_detector);
+  //   dtmf_detector->setInbandDetector(AmConfig::DefaultDTMFDetector, stream->getSampleRate());
 
-    if(!enable_dtmf_transcoding && lowfi_payloads.size()) {
-      string selected_payload_name = stream->getPayloadName(stream->getPayloadType());
-      for(vector<SdpPayload>::iterator it = lowfi_payloads.begin();
-          it != lowfi_payloads.end(); ++it){
-        DBG("checking %s/%i PL type against %s/%i\n",
-            selected_payload_name.c_str(), stream->getPayloadType(),
-            it->encoding_name.c_str(), it->payload_type);
-        if(selected_payload_name == it->encoding_name) {
-          enable_dtmf_transcoding = true;
-          break;
-        }
-      }
-    }
-  }
+  //   if(!enable_dtmf_transcoding && lowfi_payloads.size()) {
+  //     string selected_payload_name = stream->getPayloadName(stream->getPayloadType());
+  //     for(vector<SdpPayload>::iterator it = lowfi_payloads.begin();
+  //         it != lowfi_payloads.end(); ++it){
+  //       DBG("checking %s/%i PL type against %s/%i\n",
+  //           selected_payload_name.c_str(), stream->getPayloadType(),
+  //           it->encoding_name.c_str(), it->payload_type);
+  //       if(selected_payload_name == it->encoding_name) {
+  //         enable_dtmf_transcoding = true;
+  //         break;
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 bool AudioStreamData::initStream(PlayoutType playout_type,
