@@ -166,7 +166,7 @@ SBCCallLeg::SBCCallLeg(SBCCallLeg* caller, AmSipDialog* p_dlg,
   // we need to apply it here instead of in applyBProfile because we have caller
   // here (FIXME: do it on better place and better way than accessing internals
   // of caller->dlg directly)
-  if (call_profile.transparent_dlg_id && caller) {
+  if (call_profile.transparent_dlg_id) {
     dlg->setCallid(caller->dlg->getCallid());
     dlg->setExtLocalTag(caller->dlg->getRemoteTag());
     dlg->cseq = caller->dlg->r_cseq;
