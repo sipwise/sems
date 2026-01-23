@@ -213,9 +213,9 @@ sip_trans* trans_bucket::match_request(sip_msg* msg, unsigned int ttype)
 	    if(memcmp(cseq->num_str.s,it_cseq->num_str.s,cseq->num_str.len))
 		continue;
 
-	    
+
 	    if(msg->u.request->method == sip_request::ACK){
-		
+
 		// ACKs must include To-tag from previous reply
 		if (c2stlstr(to->tag) != (*it)->to_tag)
 		    continue;

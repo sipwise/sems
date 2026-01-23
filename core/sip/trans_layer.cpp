@@ -331,9 +331,9 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	    if (!(*it)->p) break; // ignore if not parsed
 	    if (!to_tag.empty()) {
 		if(! ((sip_from_to*)(*it)->p)->tag.len ) {
-		    
+
 		    reply_len += 5/* ';tag=' */
-			+ to_tag.length(); 
+			+ to_tag.length();
 		}
 		else {
 		    // To-tag present in request...
@@ -343,7 +343,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 		}
 	    }
 	    else if(reply_code >= 300) {
-		// Let final error replies clear 
+		// Let final error replies clear
 		// the to-tag if not present:
 		// (necessary to match pre-RFC3261 non-200 ACKs)
 		t->to_tag.clear();
@@ -490,13 +490,13 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	    else {
 		memcpy(c,(*it)->name.s,(*it)->name.len);
 		c += (*it)->name.len;
-		
+
 		*(c++) = ':';
 		*(c++) = SP;
-		
+
 		memcpy(c,(*it)->value.s,(*it)->value.len);
 		c += (*it)->value.len;
-		
+
 		memcpy(c,";tag=",5);
 		c += 5;
 
@@ -1827,7 +1827,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 	    goto end;
 	}
     }
-    
+
     to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
     // if((t->msg->u.request->method == sip_request::INVITE) &&
     //    (reply_code < 300) &&
@@ -1942,14 +1942,14 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 		if (t->to_tag.empty() && !to_tag.empty()) {
                         t->to_tag = to_tag;
 		}
-		
+
 		goto pass_reply;
-		
+
 	    case TS_TERMINATED_200: // subsequent 2xx reply (no ACK sent)
-		
+
 		if (to_tag != t->to_tag) {
 
-		    // TODO: 
+		    // TODO:
 		    //   (this should be implemented in the UA)
 		    //   we should also send a 200 ACK here,
 		    //   but this would mean that we should
