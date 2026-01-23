@@ -383,7 +383,7 @@ sip_trans* trans_bucket::match_1xx_prack(sip_msg* msg)
 	sip_from_to* to = dynamic_cast<sip_from_to*>(msg->to->p);
 	if(!to || to->tag.len != t->to_tag.len)
 	    continue;
-	
+
 	if(msg->callid->value.len != t->msg->callid->value.len)
 	    continue;
 
@@ -391,21 +391,21 @@ sip_trans* trans_bucket::match_1xx_prack(sip_msg* msg)
 	sip_cseq* t_cseq = dynamic_cast<sip_cseq*>(t->msg->cseq->p);
 	if (!rack || !t_cseq || rack->cseq != t_cseq->num)
 	    continue;
-	
+
 	if (rack->rseq != t->last_rseq)
 	    continue;
-	
+
 	if (rack->method != t->msg->u.request->method)
 	    continue;
-		
+
 	/* numbers fit, try content */
 	if(memcmp(from->tag.s,t_from->tag.s,from->tag.len))
 	    continue;
-	
+
 	if(memcmp(msg->callid->value.s,t->msg->callid->value.s,
 		  msg->callid->value.len))
 	    continue;
-	
+
 	if(memcmp(to->tag.s,t->to_tag.s,to->tag.len))
 	    continue;
 
@@ -423,10 +423,10 @@ sip_trans* trans_bucket::find_uac_trans(const string& dialog_id,
 
     if(elmts.empty())
 	return NULL;
-    
+
     trans_list::reverse_iterator it = elmts.rbegin();
     for(;it!=elmts.rend();++it) {
-	    
+
 	sip_trans* t = *it;
 	if( t->type != TT_UAC ||
 	    t->msg->type != SIP_REQUEST ){

@@ -416,14 +416,14 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
 }
 
 
-inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg, 
+inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 						 const trans_ticket& tt,
 						 AmSipRequest &req)
 {
     assert(msg);
     assert(msg->from && msg->from->p);
     assert(msg->to && msg->to->p);
-    
+
     req.method   = c2stlstr(msg->u.request->method_str);
     req.user     = c2stlstr(msg->u.request->ruri.user);
     req.domain   = c2stlstr(msg->u.request->ruri.host);

@@ -84,7 +84,7 @@ sip_trans::sip_trans()
 {
 }
 
-sip_trans::~sip_trans() 
+sip_trans::~sip_trans()
 {
     reset_all_timers();
     delete msg;

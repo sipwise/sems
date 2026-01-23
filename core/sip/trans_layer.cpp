@@ -638,7 +638,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     if (!dialog_id.empty() && t->dialog_id.empty()) {
         t->dialog_id = dialog_id;
     }
-    
+
  end:
     bucket->unlock();
     return err;
@@ -666,8 +666,8 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
     return send_reply(&reply, tt, "", to_tag);
 }
 
-int trans_layer::send_sl_reply(sip_msg* req, int reply_code, 
-			       const cstring& reason, const cstring& hdrs, 
+int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
+			       const cstring& reason, const cstring& hdrs,
 			       const cstring& body)
 {
     // Ref.: RFC 3261 8.2.6, 12.1.1
@@ -1379,7 +1379,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     }
 
     tt->_bucket->unlock();
-    
+
     return err;
 }
 
@@ -1447,7 +1447,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 	t->dump();
 	bucket->unlock();
 	return -1;
-	
+
     case TS_PROCEEDING:
     case TS_ABANDONED:
 	// continue with CANCEL request
@@ -1706,14 +1706,14 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
              }
 	}
 	break;
-    
+
     case SIP_REPLY:
         stats.inc_received_replies();
 
 	if((t = bucket->match_reply(msg)) != NULL){
 
 	    // Reply matched UAC transaction
-	    
+
 	    DBG("Reply matched an existing transaction\n");
 
 	    if(t->logger && msg->local_socket && msg->buf && msg->len) {
@@ -1808,7 +1808,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 		// send CANCEL
 		trans_ticket tt(t,bucket);
 		cancel(&tt, "", 0, cstring());
-	    
+
 		// Now remove the transaction
 		bucket->lock();
 		//bucket->remove(t);
@@ -2384,7 +2384,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	    // send CANCEL
 	    trans_ticket tt(tr,bucket);
 	    cancel(&tt, "", 0, cstring());
-	    
+
 	    // Now remove the transaction
 	    bucket->lock();
 	    if(bucket->exist(tr)) {
@@ -2605,7 +2605,7 @@ sip_trans* trans_layer::copy_uac_trans(sip_trans* tr)
 {
     assert(tr && (tr->type == TT_UAC));
     sip_trans* n_tr = new sip_trans();
-    
+
     n_tr->type  = tr->type;
     n_tr->flags = tr->flags;
 

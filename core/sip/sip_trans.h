@@ -137,7 +137,7 @@ class sip_trans
 
     /** Destination list for requests */
     sip_target_set* targets;
-    
+
     /**
      * Retransmission buffer
      *  - UAC transaction: ACK
