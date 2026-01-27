@@ -35,7 +35,7 @@ struct ConferenceRoomParticipant {
 
   int muted;
   
-  struct timeval last_access_time;
+  struct timeval last_access_time {};
 
   ConferenceRoomParticipant() 
     : status(Disconnected), muted(0) { }
