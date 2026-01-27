@@ -96,6 +96,7 @@ string uint128ToStr(__uint128_t val) { return num2str<__uint128_t>(val); }
 string int2str(unsigned long long val) { return num2str<unsigned long long>(val); }
 string int2str(unsigned int val) { return num2str<unsigned int>(val); }
 string int2str(int val) { return num2str<int>(val); }
+string int2str(unsigned long int val) { return num2str<unsigned long int>(val); }
 string long2str(long int val) { return num2str<long int>(val); }
 string longlong2str(long long int val) { return num2str<long long int>(val); }
 

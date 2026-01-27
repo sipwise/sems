@@ -1140,7 +1140,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     request_len += copy_hdrs_len_no_via_contact(msg->hdrs);
     request_len += copy_hdrs_len(n_contacts);
 
-    string content_len = int2str((unsigned int) msg->body.length());
+    string content_len = int2str(msg->body.length());
 
     request_len += content_length_len(stl2cstr(content_len));
     request_len += 2/* CRLF end-of-headers*/;

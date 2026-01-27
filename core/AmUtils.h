@@ -80,6 +80,11 @@ string int2str(unsigned int val);
 string long2str(long int val);
 
 /**
+ * Convert an unsigned long to a string.
+ */
+string int2str(unsigned long int val);
+
+/**
  * Convert a long long to a string.
  */
 string longlong2str(long long int val);
