@@ -60,11 +60,6 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
 /** @file AmUtils.h */
 
 /**
- * Convert an unsigned unsigned long long to a string.
- */
-string ull2str(unsigned long long val);
-
-/**
  * Convert an unsigned int128 to a string.
  */
 string uint128ToStr(__uint128_t val);
@@ -88,11 +83,6 @@ string long2str(long int val);
  * Convert a long long to a string. 
  */
 string longlong2str(long long int val);
-
-/**
- * Convert a unsigned long long to a string.
- */
-string ulonglong2str(unsigned long long val);
 
 /** 
  * Convert a a byte to a string using hexdecimal representation.

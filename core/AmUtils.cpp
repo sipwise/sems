@@ -69,7 +69,7 @@ string uint128ToStr(__uint128_t val)
     return result;
 }
 
-string ull2str(unsigned long long val)
+string int2str(unsigned long long val)
 {
   char buffer[64] = {0};
   sprintf(buffer, "%llu", val);
@@ -115,7 +115,6 @@ string signed2str(T val, T (*abs_func) (T), DT (*div_func) (T, T))
 string int2str(int val) { return signed2str<int, div_t>(val, abs, div); }
 string long2str(long int val) { return signed2str<long, ldiv_t>(val, labs, ldiv); }
 string longlong2str(long long int val) { return signed2str<long long, lldiv_t>(val, llabs, lldiv); }
-string ulonglong2str(unsigned long long val) { return ull2str(val); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };
 static char _int2hex_lookup_l[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','a','b','c','d','e','f' };
