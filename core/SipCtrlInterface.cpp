@@ -439,7 +439,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    WARN("\tcontact = '%.*s'\n",contact.len,contact.s);
 	    WARN("\trequest = '%s'\n", msg->buf.c_str());
 
-	    trans_layer::instance()->send_sf_error_reply(&tt, msg, 400, 
+	    trans_layer::instance()->send_sf_error_reply(&tt, msg, 400,
 							 "Bad Contact");
 	    return false;
 	}
@@ -477,7 +477,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
 	    return false;
 	}
     }
-    
+
     if(req.from_uri.empty()) {
 	req.from_uri = c2stlstr(get_from(msg)->nameaddr.addr);
     }
@@ -516,18 +516,18 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     }
 
     prepare_routes_uas(msg->record_route, req.route);
-	
-    for (list<sip_header *>::const_iterator it = msg->hdrs.begin(); 
+
+    for (list<sip_header *>::const_iterator it = msg->hdrs.begin();
 	 it != msg->hdrs.end(); ++it) {
 
 	switch((*it)->type) {
 	case sip_header::H_OTHER:
 	case sip_header::H_REQUIRE:
-	    req.hdrs += c2stlstr((*it)->name) + ": " 
+	    req.hdrs += c2stlstr((*it)->name) + ": "
 		+ c2stlstr((*it)->value) + CRLF;
 	    break;
 	case sip_header::H_VIA:
-	    req.vias += c2stlstr((*it)->name) + ": " 
+	    req.vias += c2stlstr((*it)->name) + ": "
 		+ c2stlstr((*it)->value) + CRLF;
 	    break;
 	case sip_header::H_MAX_FORWARDS:
@@ -557,7 +557,7 @@ inline bool SipCtrlInterface::sip_msg2am_request(const sip_msg *msg,
     req.via1 = c2stlstr(msg->via1->value);
     if(msg->vias.size() > 1) {
 	req.first_hop = false;
-    } 
+    }
     else {
 	sip_via* via1 = (sip_via*)msg->via1->p;
 	assert(via1); // gets parsed in parse_sip_msg()
@@ -612,7 +612,7 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     }
 
     reply.callid = c2stlstr(msg->callid->value);
-    
+
     reply.to_tag = c2stlstr(((sip_from_to*)msg->to->p)->tag);
     reply.from_tag  = c2stlstr(((sip_from_to*)msg->from->p)->tag);
 
@@ -620,7 +620,7 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
     prepare_routes_uac(msg->record_route, reply.route);
 
     unsigned rseq;
-    for (list<sip_header*>::iterator it = msg->hdrs.begin(); 
+    for (list<sip_header*>::iterator it = msg->hdrs.begin();
 	 it != msg->hdrs.end(); ++it) {
 #ifdef PROPAGATE_UNPARSED_REPLY_HEADERS
         reply.unparsed_headers.push_back(AmSipHeader((*it)->name, (*it)->value));
@@ -628,7 +628,7 @@ inline bool SipCtrlInterface::sip_msg2am_reply(sip_msg *msg, AmSipReply &reply)
         switch ((*it)->type) {
           case sip_header::H_OTHER:
           case sip_header::H_REQUIRE:
-	      reply.hdrs += c2stlstr((*it)->name) + ": " 
+	      reply.hdrs += c2stlstr((*it)->name) + ": "
                   + c2stlstr((*it)->value) + CRLF;
               break;
           case sip_header::H_RSEQ:

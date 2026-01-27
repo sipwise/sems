@@ -398,12 +398,12 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     reply_len += content_length_len((char*)c_len.c_str());
 
     if(msg->body.length()){
-	
+
 	reply_len += msg->body.length();
     }
 
     reply_len += 2/*CRLF*/;
-    
+
     // Allocate buffer for the reply
     //
     char* reply_buf = new char[reply_len];
@@ -536,7 +536,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
     sockaddr_storage remote_ip;
     if(!local_socket) {
-	
+
 	ERROR("request to be replied has no transport socket set\n");
 	delete [] reply_buf;
 	goto end;
@@ -1135,29 +1135,29 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 
     // add 'rport' parameter defaultwise? yes, for now
     request_len += via_len(trsp,stl2cstr(via),branch,true);
- 
+
     request_len += copy_hdrs_len(msg->vias);
     request_len += copy_hdrs_len_no_via_contact(msg->hdrs);
     request_len += copy_hdrs_len(n_contacts);
-     
+
     string content_len = int2str((unsigned int) msg->body.length());
-     
+
     request_len += content_length_len(stl2cstr(content_len));
     request_len += 2/* CRLF end-of-headers*/;
-     
+
     if (msg->body.length()) {
  	request_len += msg->body.length();
     }
-     
+
     // Allocate new message
     p_msg = new sip_msg();
     char* buf = new char[request_len+1];
- 
+
     // generate it
     char* c = buf;
     request_line_wr(&c,msg->u.request->method_str,
  		    msg->u.request->ruri_str);
- 
+
     via_wr(&c,trsp,stl2cstr(via),branch,true);
     copy_hdrs_wr(&c,msg->vias);
     copy_hdrs_wr_no_via_contact(&c,msg->hdrs);
@@ -1166,13 +1166,13 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     free_headers(n_contacts);
 
     content_length_wr(&c,stl2cstr(content_len));
- 
+
     *c++ = CR;
     *c++ = LF;
- 
+
     if (msg->body.length()) {
  	memcpy(c, msg->body.c_str(), msg->body.length());
- 
+
  	c += msg->body.length();
     }
     *c++ = '\0';
@@ -1251,7 +1251,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
     if(!msg->u.request->ruri_str.len ||
        !msg->u.request->method_str.len) {
-	
+
 	ERROR("empty method name or R-URI");
 	return -1;
     }
@@ -1609,9 +1609,9 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 
     int err=0;
     switch(msg->type){
-    case SIP_REQUEST: 
+    case SIP_REQUEST:
         stats.inc_received_requests();
-	
+
 	if((t = bucket->match_request(msg,TT_UAS)) != NULL){
 
 	    if(t->logger) {
@@ -1620,7 +1620,7 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 	    }
 
 	    if(msg->u.request->method != t->msg->u.request->method){
-		
+
 		// ACK matched INVITE transaction
 		DBG("ACK matched INVITE transaction %p\n", t);
 		int t_state = t->state;
@@ -1631,13 +1631,13 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 		    // Anyway, there is nothing we can do...
 		}
 		else {
-		
+
 		    // do not touch the transaction anymore:
 		    // it could have been deleted !!!
-		       
+
 		    // should we forward the ACK to SEMS-App upstream? Yes
 		    bucket->unlock();
-		    
+
 		    if(t_state == TS_TERMINATED_200) {
 			//  let's pass the request to
 			//  the UA, iff it was a 200-ACK
@@ -2071,14 +2071,14 @@ int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	    DBG("update_uac_request(200 ACK, t=%p)\n", t);
 	    // clear old retransmission buffer
 	    delete [] t->retr_buf;
-	
-	    // transfer the message buffer 
+
+	    // transfer the message buffer
 	    // to the transaction (incl. ownership)
 	    t->retr_buf = new char[msg->buf.length() + 1];
             memcpy(t->retr_buf, msg->buf.c_str(), msg->buf.length() + 1);
 	    t->retr_len = msg->buf.length();
 	    msg->buf.clear();
-	
+
 	    // copy destination address
 	    memcpy(&t->retr_addr,&msg->remote_ip,sizeof(sockaddr_storage));
 	    t->retr_socket = msg->local_socket;
@@ -2333,7 +2333,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	n++;
 	tr->msg->send(tr->flags);
         stats.inc_sent_request_retrans();
-	
+
 	if(tr->logger) {
 	    sockaddr_storage src_ip;
 	    tr->msg->local_socket->copy_addr_to(&src_ip);
@@ -2343,7 +2343,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 
 	tr->reset_timer((n<<16) | type, A_TIMER<<n, bucket->get_id());
 	break;
-	
+
     case STIMER_B:  // Calling: -> Terminated
 
 	tr->clear_timer(STIMER_B);
@@ -2370,7 +2370,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	break;
 
     case STIMER_C: // Proceeding -> Terminated
-	
+
 	// Note: remember well, we first set timer C
 	//       after the first provisional reply.
 	tr->clear_timer(STIMER_C);
@@ -2394,7 +2394,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	break;
 
     case STIMER_F:  // Trying/Proceeding: terminate transaction
-	
+
 	tr->clear_timer(STIMER_F);
 
 	switch(tr->state) {
@@ -2734,7 +2734,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 			   tr->msg->callid->value,tr->msg->cseq->value);
 	}
     }
-   
+
 
     // and re-send
     if(tr->msg->send(tr->flags) < 0) {
@@ -2750,7 +2750,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
     }
 
     stats.inc_sent_requests();
-    
+
     if(tr->logger) {
 	sockaddr_storage src_ip;
 	tr->msg->local_socket->copy_addr_to(&src_ip);
@@ -2777,7 +2777,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 	    tr->reset_timer(STIMER_F,F_TIMER,bucket->get_id());
 	}
     }
-    
+
     if(tr->targets->has_next())
 	tr->reset_timer(STIMER_M,M_TIMER,bucket->get_id());
 

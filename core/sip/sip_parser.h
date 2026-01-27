@@ -105,15 +105,15 @@ struct sip_msg
     string buf;
 
     // Request or Reply?
-    int     type; 
-    
+    int     type;
+
     union {
 	sip_request* request;
 	sip_reply*   reply;
     }u;
 
     list<sip_header*>  hdrs;
-    
+
     sip_header*        to;
     sip_header*        from;
 
