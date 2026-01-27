@@ -479,7 +479,7 @@ namespace XmlRpc {
       case TypeDateTime:
         {
           const tm& t = std::get<tm>(_value);
-          char buf[20];
+          char buf[64];
           snprintf(buf, sizeof(buf)-1, "%4d%02d%02dT%02d:%02d:%02d",
             (1900 + t.tm_year), (1 + t.tm_mon), t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
           buf[sizeof(buf)-1] = 0;
