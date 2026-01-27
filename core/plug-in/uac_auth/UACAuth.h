@@ -56,6 +56,7 @@ class UACAuthFactory
   public AmDynInvoke
 {
   static UACAuthFactory* _instance;
+  using AmSessionEventHandlerFactory::getHandler;
   AmSessionEventHandler* getHandler(AmBasicSipDialog* dlg, 
 				    CredentialHolder* s);
  public:
