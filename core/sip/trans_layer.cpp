@@ -277,11 +277,11 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 
 	    for(list<sip_header*>::iterator contact_it = msg.contacts.begin();
 		contact_it != msg.contacts.end(); contact_it++, contact_buf_it++) {
-	
+
 	        patch_contact_transport(*contact_it, trsp, *contact_buf_it);
 	    }
     }
-    
+
     bool have_to_tag = false;
 
     // add 'received' should be added
@@ -539,7 +539,7 @@ int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 	if(!local_socket->is_reliable()) {
 	    // set timer to capture retransmissions
 	    // and delete transaction afterwards
-	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id()); 
+	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id());
 	}
 	else {
 	    // reliable transport
@@ -2141,7 +2141,7 @@ void trans_layer::send_non_200_ack(sip_msg* reply, sip_trans* t)
 	ERROR("Error from transport layer\n");
     }
     else stats.inc_sent_requests();
-    
+
     if(t->logger) {
 	sockaddr_storage src_ip;
 	inv->local_socket->copy_addr_to(&src_ip);
