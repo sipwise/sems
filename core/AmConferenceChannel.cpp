@@ -21,8 +21,8 @@ AmConferenceChannel::AmConferenceChannel(AmConferenceStatus* status, int channel
   conf_id = status->getConfID();
 
   if (AmConfig::DumpConferenceStreams) {
-    in_file_name = AmConfig::DumpConferencePath + "/"+conf_id+"_"+int2str(channel_id)+"_"+long2str((long)this)+"_in.s16";
-    out_file_name = AmConfig::DumpConferencePath + "/"+conf_id+"_"+int2str(channel_id)+"_"+long2str((long)this)+"_out.s16";
+    in_file_name = AmConfig::DumpConferencePath + "/"+conf_id+"_"+int2str(channel_id)+"_"+int2str((long)this)+"_in.s16";
+    out_file_name = AmConfig::DumpConferencePath + "/"+conf_id+"_"+int2str(channel_id)+"_"+int2str((long)this)+"_out.s16";
 
     DBG("conf channel opening in_file '%s'\n", in_file_name.c_str());
     in_file = new ChannelWritingFile(in_file_name.c_str());

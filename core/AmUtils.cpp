@@ -97,7 +97,7 @@ string int2str(unsigned long long val) { return num2str<unsigned long long>(val)
 string int2str(unsigned int val) { return num2str<unsigned int>(val); }
 string int2str(int val) { return num2str<int>(val); }
 string int2str(unsigned long int val) { return num2str<unsigned long int>(val); }
-string long2str(long int val) { return num2str<long int>(val); }
+string int2str(long int val) { return num2str<long int>(val); }
 string longlong2str(long long int val) { return num2str<long long int>(val); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };

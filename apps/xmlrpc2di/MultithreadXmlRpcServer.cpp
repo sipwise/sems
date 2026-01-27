@@ -37,7 +37,7 @@ void WorkerThread::run()
 { 
   running.set(true);
 
-  string eventqueue_name = "MT_XMLRPC_SERVER_" + long2str((unsigned long)pthread_self());
+  string eventqueue_name = "MT_XMLRPC_SERVER_" + int2str((unsigned long)pthread_self());
 
   // register us as SIP event receiver for MOD_NAME
   AmEventDispatcher::instance()->addEventQueue(eventqueue_name, this);

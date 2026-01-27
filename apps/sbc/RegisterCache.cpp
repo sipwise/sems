@@ -774,7 +774,7 @@ bool RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
       }
 
       contact_expires = default_expires;
-      contact_it->params["expires"] = long2str(contact_expires);
+      contact_it->params["expires"] = int2str(contact_expires);
     }
     else {
       if(!str2int(expires_it->second,contact_expires)) {
@@ -792,7 +792,7 @@ bool RegisterCache::throttleRegister(RegisterCacheCtx& ctx,
 	 (contact_expires > (long int)ctx.max_ua_expires)) {
 
 	contact_expires = ctx.max_ua_expires;
-	contact_it->params["expires"] = long2str(contact_expires);
+	contact_it->params["expires"] = int2str(contact_expires);
       }
     }
 

@@ -942,7 +942,7 @@ void DBRegAgent::createDBRegistration(long object_id, const regType type, mysqlp
   // depending on if that is a registration for a subscriber or for a peering
   // do a mysql insertion
   string insert_query = "insert into "+registrations_table+
-    " (" + column_id.c_str() + ")" + "values ("+ long2str(object_id)+");";
+    " (" + column_id.c_str() + ")" + "values ("+ int2str(object_id)+");";
 
   DBG("MYSQL: trying to execute: <%s>\n", insert_query.c_str());
 
@@ -972,7 +972,7 @@ void DBRegAgent::deleteDBRegistration(long object_id, const regType type, mysqlp
   // depending on if that is a de-registration for a subscriber or for a peering
   // do a mysql deletion
   string insert_query = "delete from "+registrations_table+
-    " where " + column_id.c_str() + "=" + long2str(object_id) + ";";
+    " where " + column_id.c_str() + "=" + int2str(object_id) + ";";
 
   try {
     mysqlpp::Query query = conn.query();
@@ -1019,9 +1019,9 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
     // depending on if that is an update for a subscriber or for a peering
     // do a mysql update
     if (type == TYPE_SUBSCRIBER)
-      query << " where " COLNAME_SUBSCRIBER_ID "="+long2str(object_id) + ";";
+      query << " where " COLNAME_SUBSCRIBER_ID "="+int2str(object_id) + ";";
     else
-      query << " where " COLNAME_PEER_ID "="+long2str(object_id) + ";";
+      query << " where " COLNAME_PEER_ID "="+int2str(object_id) + ";";
     string query_str = query.str();
     DBG("updating registration in DB with query '%s'\n", query_str.c_str());
 
