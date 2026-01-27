@@ -54,67 +54,50 @@
 #include <fstream>
 
 
-static char _int2str_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9' };
+// helper template for compile-time max string length
+template<size_t len> size_t maxStrLen;
 
-string uint128ToStr(__uint128_t val)
-{
-    std::string result;
+// max lengths for well known int types
+template<> constexpr size_t maxStrLen<4> = 16; // int32: 4294967296 or -2147483648
+template<> constexpr size_t maxStrLen<8> = 32; // int64: 18446744073709551616 or -9223372036854775808
+template<> constexpr size_t maxStrLen<16> = 64; // int128: 340282366920938463463374607431768211456 or -170141183460469231731687303715884105728
+
+
+template<typename T>
+string num2str(T i) {
     /* support 0 values */
-    if (val == 0)
-      return "0";
-    while (val != 0) {
-        result.insert(result.begin(), '0' + (val % 10));
-        val /= 10;
+    if (i == 0)
+	return "0";
+
+    constexpr size_t maxlen = maxStrLen<sizeof(T)>;
+
+    char buf[maxlen];
+    size_t pos = maxlen - 1;
+
+    bool neg = false;
+    if (i < 0) {
+	neg = true;
+	i = -i;
     }
-    return result;
+
+    while (i != 0) {
+	buf[pos--] = '0' + (i % 10);
+	i /= 10;
+    }
+
+    if (neg)
+	buf[pos--] = '-';
+
+    pos++;
+    return string(&buf[pos], maxlen - pos);
 }
 
-string int2str(unsigned long long val)
-{
-  char buffer[64] = {0};
-  sprintf(buffer, "%llu", val);
-  return string((char*)(buffer));
-}
-
-string int2str(unsigned int val)
-{
-  char buffer[64] = {0};
-  int i=62;
-  lldiv_t d;
-
-  d.quot = val;
-  do{
-    d = lldiv(d.quot,10);
-    buffer[i] = _int2str_lookup[d.rem];
-  }while(--i && d.quot);
-
-  return string((char*)(buffer+i+1));
-}
-
-template<class T, class DT>
-string signed2str(T val, T (*abs_func) (T), DT (*div_func) (T, T))
-{
-  char buffer[64] = {0,0};
-  int i=62;
-  DT d;
-
-  d.quot = abs_func(val);
-  do{
-    d = div_func(d.quot,10);
-    buffer[i] = _int2str_lookup[d.rem];
-  }while(--i && d.quot);
-
-  if (i && (val<0)) {
-    buffer[i]='-';
-    i--;
-  }
-
-  return string((char*)(buffer+i+1));
-}
-
-string int2str(int val) { return signed2str<int, div_t>(val, abs, div); }
-string long2str(long int val) { return signed2str<long, ldiv_t>(val, labs, ldiv); }
-string longlong2str(long long int val) { return signed2str<long long, lldiv_t>(val, llabs, lldiv); }
+string uint128ToStr(__uint128_t val) { return num2str<__uint128_t>(val); }
+string int2str(unsigned long long val) { return num2str<unsigned long long>(val); }
+string int2str(unsigned int val) { return num2str<unsigned int>(val); }
+string int2str(int val) { return num2str<int>(val); }
+string long2str(long int val) { return num2str<long int>(val); }
+string longlong2str(long long int val) { return num2str<long long int>(val); }
 
 static char _int2hex_lookup[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','A','B','C','D','E','F' };
 static char _int2hex_lookup_l[] = { '0', '1', '2', '3', '4', '5', '6' , '7', '8', '9','a','b','c','d','e','f' };
