@@ -112,6 +112,9 @@ namespace XmlRpc {
     //! Assign a string to this XmlRpcValue.
     XmlRpcValue& operator=(const char* rhs) { return operator=(XmlRpcValue(std::string(rhs))); }
 
+    //! Assign a string to this XmlRpcValue.
+    XmlRpcValue& operator=(const std::string& rhs) { return operator=(XmlRpcValue(rhs)); }
+
     //! Tests two XmlRpcValues for equality
     bool operator==(XmlRpcValue const& other) const = default;
 
