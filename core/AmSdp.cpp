@@ -523,8 +523,8 @@ string SdpIceCandidate::print() const
 void AmSdp::print(string& body) const
 {
   string out_buf = "v="+int2str(version)+"\r\n"
-    "o="+origin.user+" "+uint128ToStr(origin.sessId)+" "+
-    uint128ToStr(origin.sessV)+" IN ";
+    "o="+origin.user+" "+int2str(origin.sessId)+" "+
+    int2str(origin.sessV)+" IN ";
 
   if (!origin.conn.address.empty())
     if (origin.conn.address.find(".") != std::string::npos)

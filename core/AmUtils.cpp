@@ -92,7 +92,7 @@ string num2str(T i) {
     return string(&buf[pos], maxlen - pos);
 }
 
-string uint128ToStr(__uint128_t val) { return num2str<__uint128_t>(val); }
+string int2str(__uint128_t val) { return num2str<__uint128_t>(val); }
 string int2str(unsigned long long val) { return num2str<unsigned long long>(val); }
 string int2str(unsigned int val) { return num2str<unsigned int>(val); }
 string int2str(int val) { return num2str<int>(val); }

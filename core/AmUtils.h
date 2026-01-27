@@ -62,7 +62,7 @@ typedef unsigned char HASHHEX[HASHHEXLEN+1];
 /**
  * Convert an unsigned int128 to a string.
  */
-string uint128ToStr(__uint128_t val);
+string int2str(__uint128_t val);
 
 /** 
  * Convert an int to a string. 

@@ -1912,7 +1912,7 @@ void CallLeg::createResumeRequest(AmSdp &sdp)
    * be good enough for unholding (might be held already with zero conncetions) */
   /* keep sessV incremented each time sending SDP offer (hold/resume) */
   non_hold_sdp.origin.sessV++;
-  ILOG_DLG(L_DBG, "Increasing session version in SDP origin line to %s", uint128ToStr(non_hold_sdp.origin.sessV).c_str());
+  ILOG_DLG(L_DBG, "Increasing session version in SDP origin line to %s", int2str(non_hold_sdp.origin.sessV).c_str());
 
   if (!non_hold_sdp.media.empty()) {
     sdp = non_hold_sdp;

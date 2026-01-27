@@ -470,7 +470,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
       force_no_sdp_update = (sdp_local.origin.sessV == parser_sdp.origin.sessV);
       if (force_no_sdp_update)
         ILOG_DLG(L_DBG, "Forcing no OA state update (no SDP changes, same session version: was <%s>, now is <%s>).\n",
-            uint128ToStr(sdp_local.origin.sessV).c_str(), uint128ToStr(parser_sdp.origin.sessV).c_str());
+            int2str(sdp_local.origin.sessV).c_str(), int2str(parser_sdp.origin.sessV).c_str());
     }
   }
 

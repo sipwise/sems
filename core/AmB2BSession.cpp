@@ -766,7 +766,7 @@ void AmB2BSession::saveLocalSdpOrigin(const AmSdp& sdp)
     previous_origin_sessId = sdp.origin.sessId;
     previous_origin_sessV = sdp.origin.sessV;
     ILOG_DLG(L_DBG, "Remembering initial SDP Origin (Id %s V %s)\n",
-        uint128ToStr(sdp.origin.sessId).c_str(), uint128ToStr(sdp.origin.sessV).c_str());
+        int2str(sdp.origin.sessId).c_str(), int2str(sdp.origin.sessV).c_str());
   }
 }
 
@@ -806,10 +806,10 @@ void AmB2BSession::updateLocalSdpOrigin(AmSdp& sdp) {
       // remember the current SDP for the next time
       previous_sdp = sdp;
       ILOG_DLG(L_DBG, "SDP changed; updating Origin (Id %s V %s)\n",
-          uint128ToStr(sdp.origin.sessId).c_str(), uint128ToStr(sdp.origin.sessV).c_str());
+          int2str(sdp.origin.sessId).c_str(), int2str(sdp.origin.sessV).c_str());
     } else {
       ILOG_DLG(L_DBG, "SDP unchanged; keeping Origin (Id %s V %s)\n",
-          uint128ToStr(sdp.origin.sessId).c_str(), uint128ToStr(sdp.origin.sessV).c_str());
+          int2str(sdp.origin.sessId).c_str(), int2str(sdp.origin.sessV).c_str());
     }
   }
 }
