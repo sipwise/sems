@@ -70,6 +70,7 @@ public:
   : bl_bucket_base(id)
   {}
 
+  using ht_map_bucket<bl_addr, bl_entry>::insert;
   bool insert(const bl_addr& addr, uint64_t duration /* ms */,
 	      const char* reason);
   bool remove(const bl_addr& addr);
