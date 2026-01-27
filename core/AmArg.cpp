@@ -389,7 +389,7 @@ string AmArg::print(const AmArg &a) {
     case Int:
       return a.asInt()<0?"-"+int2str(abs(a.asInt())):int2str(abs(a.asInt()));
     case LongLong:
-      return longlong2str(a.asLongLong());
+      return int2str(a.asLongLong());
     case Bool:
       return a.asBool()?"true":"false";
     case Double:
