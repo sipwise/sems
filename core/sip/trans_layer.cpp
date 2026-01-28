@@ -589,7 +589,7 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
     reply.u.reply = new sip_reply(reply_code,reason);
 
     const char* c = hdrs.s;
-    int err = parse_headers(&reply,&c,c+hdrs.len);
+    int err = parse_headers(reply, &c, c+hdrs.len);
     if(err){
 	ERROR("Malformed additional header\n");
 	return -1;
@@ -865,7 +865,7 @@ static void set_err_reply_from_req(sip_msg* err, sip_msg* req,
 void trans_layer::transport_error(sip_msg* msg)
 {
     char* err_msg=0;
-    int ret = parse_sip_msg(msg,err_msg);
+    int ret = parse_sip_msg(*msg, err_msg);
     if(ret){
 	DBG("parse_sip_msg returned %i\n",ret);
 
@@ -1056,7 +1056,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 
     // and parse it
     char* err_msg=0;
-    if(parse_sip_msg(p_msg, err_msg)){
+    if(parse_sip_msg(*p_msg, err_msg)){
  	ERROR("Parser failed on generated request\n");
         ERROR("Message was: <%s>\n", buf.c_str());
  	delete p_msg;
@@ -1362,7 +1362,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 
     // and parse it
     char* err_msg=0;
-    if(parse_sip_msg(p_msg,err_msg)){
+    if(parse_sip_msg(*p_msg, err_msg)){
 	ERROR("Parser failed on generated request\n");
 	ERROR("Message was: <%s>\n", buf.c_str());
 	delete p_msg;
@@ -1420,7 +1420,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 void trans_layer::received_msg(sip_msg* msg)
 {
     char* err_msg=0;
-    int err = parse_sip_msg(msg,err_msg);
+    int err = parse_sip_msg(*msg, err_msg);
 
     if(err){
 	DBG("parse_sip_msg returned %i\n",err);
