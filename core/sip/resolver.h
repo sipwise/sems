@@ -34,6 +34,7 @@
 #include "atomic_types.h"
 #include "parse_dns.h"
 #include "parse_next_hop.h"
+#include "cstring.h"
 
 #include <string>
 #include <vector>

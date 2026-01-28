@@ -1,23 +1,24 @@
 #ifndef _parse_next_hop_h_
 #define _parse_next_hop_h_
 
-#include "cstring.h"
-
 #include <list>
+#include <string>
+
 using std::list;
+using std::string;
 
 struct sip_destination
 {
-  cstring        host;
+  string         host;
   unsigned short port;
-  cstring        trsp;
+  string         trsp;
 
   sip_destination()
     : host(), port(0), trsp()
   {}
 };
 
-int parse_next_hop(const cstring& next_hop,
+int parse_next_hop(const string& next_hop,
 		   list<sip_destination>& dest_list);
 
 #endif

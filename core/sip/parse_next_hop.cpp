@@ -3,7 +3,7 @@
 #include "parse_common.h"
 #include "log.h"
 
-int parse_next_hop(const cstring& next_hop,
+int parse_next_hop(const string& next_hop,
 		   list<sip_destination>& dest_list)
 {
   enum {
@@ -17,8 +17,8 @@ int parse_next_hop(const cstring& next_hop,
 
   int st = IPL_BEG;
 
-  const char* c = next_hop.s;
-  const char* end = c + next_hop.len;
+  const char* c = next_hop.c_str();
+  const char* end = c + next_hop.length();
   const char* beg = NULL;
 
   sip_destination dest;
@@ -48,22 +48,22 @@ int parse_next_hop(const cstring& next_hop,
 	break;
       case ':':
 	st = IPL_PORT;
-	dest.host.set(beg,c-beg);
+	dest.host.assign(beg, c-beg);
 	break;
       case '/':
 	st = IPL_TRSP;
-	dest.host.set(beg,c-beg);
+	dest.host.assign(beg, c-beg);
 	beg = c+1;
 	break;
       case ',':
 	st = IPL_BEG;
-	dest.host.set(beg,c-beg);
+	dest.host.assign(beg, c-beg);
 	dest_list.push_back(dest);
 	break;
       case SP:
       case HTAB:
 	st = IPL_HOST_SEP;
-	dest.host.set(beg,c-beg);
+	dest.host.assign(beg, c-beg);
 	break;
       default:
 	break;
@@ -74,7 +74,7 @@ int parse_next_hop(const cstring& next_hop,
       switch(*c){
       case ']':
 	st = IPL_HOST_SEP;
-	dest.host.set(beg,c-beg);
+	dest.host.assign(beg, c-beg);
 	break;
       default:
 	break;
@@ -129,7 +129,7 @@ int parse_next_hop(const cstring& next_hop,
       switch(*c){
       case ',':
 	st = IPL_BEG;
-	dest.trsp.set(beg,c-beg);
+	dest.trsp.assign(beg, c-beg);
 	dest_list.push_back(dest);
 	break;
       default:
@@ -151,7 +151,7 @@ int parse_next_hop(const cstring& next_hop,
     // possibly, the string was empty
     break;
   case IPL_HOST:
-    dest.host.set(beg,c-beg);
+    dest.host.assign(beg, c-beg);
     dest_list.push_back(dest);
     break;
   case IPL_V6:
@@ -160,7 +160,7 @@ int parse_next_hop(const cstring& next_hop,
     dest_list.push_back(dest);
     break;
   case IPL_TRSP:
-    dest.trsp.set(beg,c-beg);
+    dest.trsp.assign(beg, c-beg);
     dest_list.push_back(dest);
     break;
   }

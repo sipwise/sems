@@ -116,7 +116,7 @@ int dns_ip_entry::fill_ip_list(const list<sip_destination>& ip_list)
 	it != ip_list.end(); ++it) {
 
 	e.port = it->port;
-	ip = c2stlstr(it->host);
+	ip = it->host;
 
 	res = inet_pton(AF_INET6,ip.c_str(),&e.addr6);
 	if(res == 1) {
@@ -1060,16 +1060,16 @@ int resolver::resolve_targets(const list<sip_destination>& dest_list,
 	sip_target t;
 	dns_handle h_dns;
 
-	DBG("sip_destination: %.*s:%u/%.*s",
-	    it->host.len,it->host.s,
+	DBG("sip_destination: %s:%u/%s",
+	    it->host.c_str(),
 	    it->port,
-	    it->trsp.len,it->trsp.s);
+	    it->trsp.c_str());
 
-	if(set_destination_ip(it->host,it->port,it->trsp,&t.ss,&h_dns) != 0) {
+	if(set_destination_ip(stl2cstr(it->host), it->port, stl2cstr(it->trsp), &t.ss, &h_dns) != 0) {
 	    ERROR("Unresolvable destination");
 	    return -478;
 	}
-	t.trsp = c2stlstr(it->trsp);
+	t.trsp = it->trsp;
 
 	do {
 	    targets->dest_list.push_back(t);

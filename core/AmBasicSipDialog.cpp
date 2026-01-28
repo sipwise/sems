@@ -193,10 +193,10 @@ int AmBasicSipDialog::getOutboundIf()
 
   list<sip_destination> ip_list;
   if(!next_hop.empty() && 
-     !parse_next_hop(stl2cstr(next_hop),ip_list) &&
+     !parse_next_hop(next_hop, ip_list) &&
      !ip_list.empty()) {
 
-    dest_ip = c2stlstr(ip_list.front().host);
+    dest_ip = ip_list.front().host;
   }
   else if(!outbound_proxy.empty() &&
 	  (remote_tag.empty() || force_outbound_proxy)) {

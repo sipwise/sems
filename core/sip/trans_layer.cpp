@@ -768,9 +768,9 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 // Ref. RFC 3261 "12.2.1.1 Generating the Request"
 //
 int trans_layer::set_next_hop(sip_msg& msg,
-			       cstring& next_hop,
+			       string& next_hop,
 			       unsigned short& next_port,
-			       cstring& next_trsp)
+			       string& next_trsp)
 {
     static const cstring default_trsp("udp");
 
@@ -787,12 +787,12 @@ int trans_layer::set_next_hop(sip_msg& msg,
 	    return -1;
 	}
 
-	if (next_hop.len == 0) {
-	    next_hop  = route_uri->host;
+	if (next_hop.empty()) {
+	    next_hop  = c2stlstr(route_uri->host);
 	    if(route_uri->port_str.len)
 		next_port = route_uri->port;
 	    if(route_uri->trsp && route_uri->trsp->value.len)
-		next_trsp = route_uri->trsp->value;
+		next_trsp = c2stlstr(route_uri->trsp->value);
 	}
     }
     else {
@@ -806,23 +806,22 @@ int trans_layer::set_next_hop(sip_msg& msg,
 	    return -1;
 	}
 	DBG("setting next-hop based on request-URI\n");
-	next_hop  = parsed_r_uri.host;
+	next_hop  = c2stlstr(parsed_r_uri.host);
 	if(parsed_r_uri.port_str.len)
 	    next_port = parsed_r_uri.port;
 	if(parsed_r_uri.trsp)
-	    next_trsp = parsed_r_uri.trsp->value;
+	    next_trsp = c2stlstr(parsed_r_uri.trsp->value);
     }
 
-    if(!next_trsp.len) {
+    if(next_trsp.empty()) {
 	DBG("no transport specified, setting default one (%.*s)",
 	    default_trsp.len,default_trsp.s);
-	next_trsp = default_trsp;
+	next_trsp = c2stlstr(default_trsp);
     }
 
-    DBG("next_hop:next_port is <%.*s:%u/%.*s>\n",
-	next_hop.len, next_hop.s, next_port,
-	next_trsp.len,
-	next_trsp.s);
+    DBG("next_hop:next_port is <%s:%u/%s>\n",
+	next_hop.c_str(), next_port,
+	next_trsp.c_str());
 
     return 0;
 }
@@ -1096,7 +1095,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     list<sip_destination> dest_list;
     if (_next_hop.len) {
 
-	res = parse_next_hop(_next_hop,dest_list);
+	res = parse_next_hop(c2stlstr(_next_hop), dest_list);
 	if(res || dest_list.empty()) {
 	    DBG("parse_next_hop %.*s failed (%i)\n",
 		_next_hop.len, _next_hop.s, res);

@@ -262,11 +262,10 @@ string replaceParameters(const string& s,
 	  }
 
 	  if(!call_profile->next_hop.empty()) {
-	    cstring _next_hop = stl2cstr(call_profile->next_hop);
 	    list<sip_destination> dest_list;
-	    if(parse_next_hop(_next_hop,dest_list)) {
-	      WARN("parse_next_hop %.*s failed\n",
-		   _next_hop.len, _next_hop.s);
+	    if(parse_next_hop(call_profile->next_hop, dest_list)) {
+	      WARN("parse_next_hop %s failed\n",
+		   call_profile->next_hop.c_str());
 	      break;
 	    }
 
@@ -277,7 +276,7 @@ string replaceParameters(const string& s,
 
 	    const sip_destination& dest = dest_list.front();
 	    if (s[p+1] == 'i') { // $di remote UAS IP address
-	      res += c2stlstr(dest.host);
+	      res += dest.host;
 	      break;
 	    } else if (s[p+1] == 'p') { // $dp remote UAS port
 	      res += int2str(dest.port);

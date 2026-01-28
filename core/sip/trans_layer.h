@@ -257,8 +257,8 @@ protected:
      * Fills the address structure passed and modifies 
      * R-URI and Route headers as needed.
      */
-    int set_next_hop(sip_msg& msg, cstring& next_hop,
-		     unsigned short& next_port, cstring& next_trsp);
+    int set_next_hop(sip_msg& msg, string& next_hop,
+		     unsigned short& next_port, string& next_trsp);
 
     /**
      * Fills the local_socket attribute using the given
