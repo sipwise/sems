@@ -229,13 +229,13 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     if (req.method == "CANCEL")
         return cancel(&req.tt, dialog_id, req.cseq, req.hdrs);
 
-    sip_msg* msg = new sip_msg();
-    
-    msg->type = SIP_REQUEST;
-    msg->u.request = new sip_request();
+    sip_msg msg;
 
-    msg->u.request->method_str = stl2cstr(req.method);
-    msg->u.request->ruri_str = stl2cstr(req.r_uri);
+    msg.type = SIP_REQUEST;
+    msg.u.request = new sip_request();
+
+    msg.u.request->method_str = stl2cstr(req.method);
+    msg.u.request->ruri_str = stl2cstr(req.r_uri);
 
     /* To
      * From
@@ -245,42 +245,39 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
      * Max-Forwards */
     
     const char* c = req.from.c_str();
-    int err = parse_headers(msg, &c, (c + req.from.length()));
+    int err = parse_headers(&msg, &c, (c + req.from.length()));
 
     c = req.to.c_str();
-    err = err || parse_headers(msg, &c, (c + req.to.length()));
+    err = err || parse_headers(&msg, &c, (c + req.to.length()));
 
     if (err) {
         ERROR("Malformed To or From header\n");
-        delete msg;
         return -1;
     }
 
     string cseq = int2str(req.cseq) + " " + req.method;
 
-    msg->cseq = new sip_header(0, SIP_HDR_CSEQ, stl2cstr(cseq));
-    msg->hdrs.push_back(msg->cseq);
+    msg.cseq = new sip_header(0, SIP_HDR_CSEQ, stl2cstr(cseq));
+    msg.hdrs.push_back(msg.cseq);
 
-    msg->callid = new sip_header(0, SIP_HDR_CALL_ID, stl2cstr(req.callid));
-    msg->hdrs.push_back(msg->callid);
+    msg.callid = new sip_header(0, SIP_HDR_CALL_ID, stl2cstr(req.callid));
+    msg.hdrs.push_back(msg.callid);
 
     if (!req.contact.empty()) {
         c = (char*)req.contact.c_str();
-        err = parse_headers(msg,&c,c+req.contact.length());
+        err = parse_headers(&msg, &c, (c + req.contact.length()));
         if (err) {
             ERROR("Malformed Contact header\n");
-            delete msg;
             return -1;
         }
     }
 
     if (!req.route.empty()) {
         c = (char*)req.route.c_str();
-        err = parse_headers(msg,&c,c+req.route.length());
+        err = parse_headers(&msg, &c, (c + req.route.length()));
         if (err) {
             ERROR("Route headers parsing failed\n");
             ERROR("Faulty headers were: <%s>\n",req.route.c_str());
-            delete msg;
             return -1;
         }
     }
@@ -290,15 +287,14 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
     }
 
     string mf = int2str(req.max_forwards);
-    msg->hdrs.push_back(new sip_header(0, SIP_HDR_MAX_FORWARDS, stl2cstr(mf)));
+    msg.hdrs.push_back(new sip_header(0, SIP_HDR_MAX_FORWARDS, stl2cstr(mf)));
 
     if (!req.hdrs.empty()) {
         c = (char*)req.hdrs.c_str();
-        err = parse_headers(msg, &c, (c + req.hdrs.length()));
+        err = parse_headers(&msg, &c, (c + req.hdrs.length()));
         if (err) {
             ERROR("Additional headers parsing failed\n");
-            ERROR("Faulty headers were: <%s>\n",req.hdrs.c_str());
-            delete msg;
+            ERROR("Faulty headers were: <%s>\n", req.hdrs.c_str());
             return -1;
         }
     }
@@ -308,19 +304,18 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
 
     if (!req.body.empty()) {
         content_type = req.body.getCTHdr();
-        msg->content_type = new sip_header(0,SIP_HDR_CONTENT_TYPE, stl2cstr(content_type));
-        msg->hdrs.push_back(msg->content_type);
+        msg.content_type = new sip_header(0, SIP_HDR_CONTENT_TYPE, stl2cstr(content_type));
+        msg.hdrs.push_back(msg.content_type);
         req.body.print(body);
-        msg->body = body;
+        msg.body = body;
     }
 
-    int res = trans_layer::instance()->send_request(*msg, req.tt,
+    int res = trans_layer::instance()->send_request(msg, req.tt,
                                                     dialog_id,
                                                     stl2cstr(next_hop),
                                                     out_interface,
                                                     flags,
                                                     logger);
-    delete msg;
 
     return res;
 }
