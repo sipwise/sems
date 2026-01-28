@@ -732,14 +732,14 @@ sip_target::sip_target(const sip_target& target)
 
 const sip_target& sip_target::operator = (const sip_target& target)
 {
-    memcpy(&ss,&target.ss,sizeof(sockaddr_storage));
+    ss = target.ss;
     memcpy(trsp,target.trsp,SIP_TRSP_SIZE_MAX+1);
     return target;
 }
 
 void sip_target::clear()
 {
-    memset(&ss,0,sizeof(sockaddr_storage));
+    ss = sockaddr_storage{};
     memset(trsp,'\0',SIP_TRSP_SIZE_MAX+1);
 }
 
@@ -758,7 +758,7 @@ bool sip_target_set::has_next()
     return dest_list_it != dest_list.end();
 }
 
-int sip_target_set::get_next(sockaddr_storage* ss, cstring& next_trsp,
+int sip_target_set::get_next(sockaddr_storage& ss, cstring& next_trsp,
 			     unsigned int flags)
 {
     do {
@@ -766,7 +766,7 @@ int sip_target_set::get_next(sockaddr_storage* ss, cstring& next_trsp,
 	    return -1;
 
 	sip_target& t = *dest_list_it;
-	memcpy(ss,&t.ss,sizeof(sockaddr_storage));
+	ss = t.ss;
 	next_trsp = cstring(t.trsp);
 
 	next();

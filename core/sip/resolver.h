@@ -228,7 +228,7 @@ struct sip_target_set
 
     void reset_iterator();
     bool has_next();
-    int  get_next(sockaddr_storage* ss, cstring& next_trsp,
+    int  get_next(sockaddr_storage& ss, cstring& next_trsp,
 		  unsigned int flags);
     bool next();
 

@@ -1270,7 +1270,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     tt->_t = 0;
 
  try_next_dest:
-    if(targets->get_next(&msg->remote_ip,next_trsp,flags) < 0) {
+    if(targets->get_next(msg->remote_ip, next_trsp, flags) < 0) {
 	DBG("next_ip(): no more destinations! reply 500");
 	sip_msg err;
 	set_err_reply_from_req(&err,msg,500,
@@ -1305,7 +1305,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	ERROR("Error from transport layer\n");
 
 	if(default_bl_ttl) {
-	    tr_blacklist::instance()->insert(&p_msg->remote_ip,
+	    tr_blacklist::instance()->insert(p_msg->remote_ip,
 					     default_bl_ttl,"503");
 	}
 
@@ -1852,7 +1852,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 		t->state == TS_PROCEEDING)) {
 
 		if(!(t->flags & TR_FLAG_DISABLE_BL)) {
-		    tr_blacklist::instance()->insert(&t->msg->remote_ip,
+		    tr_blacklist::instance()->insert(t->msg->remote_ip,
 						     default_bl_ttl,"503");
 		}
 
@@ -1984,7 +1984,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 
 	if(reply_code == 503) {
 	    if(default_bl_ttl) {
-		tr_blacklist::instance()->insert(&t->msg->remote_ip,
+		tr_blacklist::instance()->insert(t->msg->remote_ip,
 						 default_bl_ttl,"503");
 	    }
 	    if(!try_next_ip(bucket,t,false))
@@ -2521,7 +2521,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	if(!(tr->flags & TR_FLAG_DISABLE_BL)) {
 	    // insert destination to blacklist
 	    if(default_bl_ttl) {
-		tr_blacklist::instance()->insert(&tr->msg->remote_ip,
+		tr_blacklist::instance()->insert(tr->msg->remote_ip,
 						 default_bl_ttl,
 						 "timeout");
 	    }
@@ -2627,7 +2627,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
  try_next_dest:
     // get the next ip
     if(!tr->targets ||
-       tr->targets->get_next(&sa,next_trsp,tr->flags) < 0){
+       tr->targets->get_next(sa, next_trsp, tr->flags) < 0){
 	DBG("no more destinations!");
 	return -1;
     }
@@ -2741,7 +2741,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 	ERROR("Error from transport layer\n");
 
 	if(default_bl_ttl) {
-	    tr_blacklist::instance()->insert(&tr->msg->remote_ip,
+	    tr_blacklist::instance()->insert(tr->msg->remote_ip,
 					     default_bl_ttl,"503");
 	}
 

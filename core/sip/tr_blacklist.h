@@ -15,10 +15,8 @@
 struct bl_addr: public sockaddr_storage
 {
   bl_addr();
-  bl_addr(const bl_addr&);
-  bl_addr(const sockaddr_storage*);
 
-  unsigned int hash();
+  unsigned int hash() const;
 };
 
 template<> struct std::less<bl_addr> {
@@ -122,10 +120,10 @@ protected:
 
 public:
   // public blacklist API:
-  bool exist(const sockaddr_storage* addr);
-  void insert(const sockaddr_storage* addr, unsigned int duration /* ms */,
+  bool exist(const sockaddr_storage& addr);
+  void insert(const sockaddr_storage& addr, unsigned int duration /* ms */,
 	      const char* reason);
-  void remove(const sockaddr_storage* addr);
+  void remove(const sockaddr_storage& addr);
 };
 
 #endif

@@ -13,17 +13,7 @@ bl_addr::bl_addr()
   ss_family = AF_INET;
 }
 
-bl_addr::bl_addr(const bl_addr& addr)
-{
-  memcpy(this,&addr,SA_len(&addr));
-}
-
-bl_addr::bl_addr(const sockaddr_storage* p_addr)
-{
-  memcpy((sockaddr_storage*)this,p_addr,SA_len(p_addr));
-}
-
-unsigned int bl_addr::hash()
+unsigned int bl_addr::hash() const
 {
   return hashlittle((sockaddr_storage*)this, SA_len(this), 0)
     & BLACKLIST_HT_MASK;
@@ -33,7 +23,7 @@ void bl_timer::fire()
 {
   DBG_BL("blacklist: %s/%i expired",
 	 am_inet_ntop(&addr).c_str(),am_get_port(&addr));
-  tr_blacklist::instance()->remove(&addr);
+  tr_blacklist::instance()->remove(addr);
 }
 
 bool blacklist_bucket::insert(const bl_addr& addr, uint64_t duration /* ms */,
@@ -82,38 +72,41 @@ tr_blacklist::~tr_blacklist()
 { 
 }
 
-bool tr_blacklist::exist(const sockaddr_storage* addr)
+bool tr_blacklist::exist(const sockaddr_storage& addr)
 {
   bool res;
-  blacklist_bucket* bucket = get_bucket(hashlittle(addr, SA_len(addr), 0)
-					& BLACKLIST_HT_MASK);
+  const bl_addr& bl_a = static_cast<const bl_addr&>(addr);
+
+  blacklist_bucket* bucket = get_bucket(bl_a.hash());
   bucket->lock();
-  res = bucket->exist(*(const bl_addr*)addr);
+  res = bucket->exist(bl_a);
   bucket->unlock();
 
   return res;
 }
 
-void tr_blacklist::insert(const sockaddr_storage* addr, unsigned int duration,
+void tr_blacklist::insert(const sockaddr_storage& addr, unsigned int duration,
 			   const char* reason)
 {
   if(!duration)
     return;
 
-  blacklist_bucket* bucket = get_bucket(hashlittle(addr, SA_len(addr), 0)
-					& BLACKLIST_HT_MASK);
+  const bl_addr& bl_a = static_cast<const bl_addr&>(addr);
+
+  blacklist_bucket* bucket = get_bucket(bl_a.hash());
   bucket->lock();
-  if(!bucket->exist(*(const bl_addr*)addr)) {
-    bucket->insert(*(const bl_addr*)addr,duration,reason);
+  if(!bucket->exist(bl_a)) {
+    bucket->insert(bl_a,duration,reason);
   }
   bucket->unlock();
 }
 
-void tr_blacklist::remove(const sockaddr_storage* addr)
+void tr_blacklist::remove(const sockaddr_storage& addr)
 {
-  blacklist_bucket* bucket = get_bucket(hashlittle(addr, SA_len(addr), 0)
-					& BLACKLIST_HT_MASK);
+  const bl_addr& bl_a = static_cast<const bl_addr&>(addr);
+
+  blacklist_bucket* bucket = get_bucket(bl_a.hash());
   bucket->lock();
-  bucket->remove(*(const bl_addr*)addr);
+  bucket->remove(bl_a);
   bucket->unlock();
 }
