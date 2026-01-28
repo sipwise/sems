@@ -180,7 +180,7 @@ public:
      * @param [in]  msg Pre-built message.
      * @param [out] tt transaction ticket (needed for replies & CANCEL)
      */
-    int send_request(sip_msg* msg, trans_ticket* tt, const string& dialog_id,
+    int send_request(sip_msg& msg, trans_ticket& tt, const string& dialog_id,
 		     const cstring& _next_hop, int out_interface = -1,
 		     unsigned int flags=0, const shared_ptr<msg_logger>& logger=NULL);
 

@@ -1070,8 +1070,8 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
  
     return 0;
 }
- 
-int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
+
+int trans_layer::send_request(sip_msg& msg, trans_ticket& tt,
 			       const string& dialog_id,
 			       const cstring& _next_hop, 
 			       int out_interface, unsigned int flags,
@@ -1088,9 +1088,6 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     // Supported / Require
     // Content-Length / Content-Type
 
-    assert(msg);
-    assert(tt);
-
     int res=0;
     list<sip_destination> dest_list;
     if (_next_hop.len) {
@@ -1104,7 +1101,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     }
     else {
 	sip_destination dest;
-	if(set_next_hop(*msg, dest.host, dest.port, dest.trsp) < 0){
+	if(set_next_hop(msg, dest.host, dest.port, dest.trsp) < 0){
 	    DBG("set_next_hop failed\n");
 	    return -1;
 	}
@@ -1122,18 +1119,18 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     targets->reset_iterator();
 
     string uri_buffer; // must have the same scope as 'msg'
-    prepare_strict_routing(msg,uri_buffer);
+    prepare_strict_routing(&msg, uri_buffer);
 
-    if(!msg->u.request->ruri_str.len ||
-       !msg->u.request->method_str.len) {
+    if(!msg.u.request->ruri_str.len ||
+       !msg.u.request->method_str.len) {
 
 	ERROR("empty method name or R-URI");
 	return -1;
     }
     else {
 	DBG("send_request to R-URI <%.*s>",
-	    msg->u.request->ruri_str.len,
-	    msg->u.request->ruri_str.s);
+	    msg.u.request->ruri_str.len,
+	    msg.u.request->ruri_str.s);
     }
 
     int err = 0;
@@ -1141,29 +1138,29 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     string next_trsp;
     sip_msg* p_msg=NULL;
 
-    tt->_bucket = 0;
-    tt->_t = 0;
+    tt._bucket = 0;
+    tt._t = 0;
 
  try_next_dest:
-    if(targets->get_next(msg->remote_ip, next_trsp, flags) < 0) {
+    if(targets->get_next(msg.remote_ip, next_trsp, flags) < 0) {
 	DBG("next_ip(): no more destinations! reply 500");
 	sip_msg err;
-	set_err_reply_from_req(&err,msg,500,
+	set_err_reply_from_req(&err, &msg, 500,
 			       "No destination available");
 	ua->handle_sip_reply(dialog_id, &err);
 	return 0;
     }
 
-    if(set_trsp_socket(*msg, next_trsp, out_interface) < 0)
+    if(set_trsp_socket(msg, next_trsp, out_interface) < 0)
 	return -1;
 
     if((flags & TR_FLAG_NEXT_HOP_RURI) &&
-       (patch_ruri_with_remote_ip(ruri,msg) < 0)) {
+       (patch_ruri_with_remote_ip(ruri, &msg) < 0)) {
  	return -1;
     }
 
     // generate new msg and parse it
-    err = generate_and_parse_new_msg(msg,p_msg);
+    err = generate_and_parse_new_msg(&msg, p_msg);
     if(err != 0) { return err; }
 
     DBG("Sending to %s:%i <%s...>\n",
@@ -1171,10 +1168,10 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	ntohs(((sockaddr_in*)&p_msg->remote_ip)->sin_port),
 	p_msg->buf.c_str());
 
-    tt->_bucket = get_trans_bucket(p_msg->callid->value,
+    tt._bucket = get_trans_bucket(p_msg->callid->value,
 				   get_cseq(p_msg)->num_str);
-    tt->_bucket->lock();
-    
+    tt._bucket->lock();
+
     err = p_msg->send(flags);
     if(err < 0){
 	ERROR("Error from transport layer\n");
@@ -1187,35 +1184,35 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	delete p_msg;
 	p_msg = NULL;
 
-	tt->_bucket->unlock();
+	tt._bucket->unlock();
 	goto try_next_dest;
     }
     else {
         stats.inc_sent_requests();
 
 	// save parsed method, as update_uac_request
-	// might delete p_msg, and msg->u.request->method is not set
+	// might delete p_msg, and msg.u.request->method is not set
 	int method = p_msg->u.request->method;
 
-	DBG("update_uac_request tt->_t =%p\n", tt->_t);
-	err = update_uac_request(tt->_bucket,tt->_t,p_msg);
+	DBG("update_uac_request tt->_t =%p\n", tt._t);
+	err = update_uac_request(tt._bucket, tt._t,p_msg);
 	if(err < 0){
 	    DBG("Could not update UAC state for request\n");
 	    delete p_msg;
-	    tt->_bucket->unlock();
+	    tt._bucket->unlock();
 	    return err;
 	}
 
-	if(tt->_t && (method != sip_request::ACK)) {
+	if(tt._t && (method != sip_request::ACK)) {
 	    // save flags & target set in transaction
-	    tt->_t->flags = flags;
+	    tt._t->flags = flags;
 
-	    if(tt->_t->targets)	delete tt->_t->targets;
-	    tt->_t->targets = targets.release();
+	    if(tt._t->targets)	delete tt._t->targets;
+	    tt._t->targets = targets.release();
 
-	    if(tt->_t->targets->has_next()){
-		tt->_t->reset_timer(STIMER_M,M_TIMER,
-				    tt->_bucket->get_id());
+	    if(tt._t->targets->has_next()){
+		tt._t->reset_timer(STIMER_M, M_TIMER,
+				    tt._bucket->get_id());
 	    }
 	}
 
@@ -1223,16 +1220,16 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
 	if(logger) {
 	    sockaddr_storage src_ip;
-	    msg->local_socket->copy_addr_to(&src_ip);
+	    msg.local_socket->copy_addr_to(&src_ip);
 
-	    cstring method_str = msg->u.request->method_str;
+	    cstring method_str = msg.u.request->method_str;
 	    const char* msg_buffer=NULL;
 	    unsigned int msg_len=0;
 
-	    if(tt->_t && (method == sip_request::ACK)) {
+	    if(tt._t && (method == sip_request::ACK)) {
 		// in case of ACK, p_msg gets deleted in update_uac_request
-		msg_buffer = tt->_t->retr_buf->c_str();
-		msg_len = tt->_t->retr_buf->length();
+		msg_buffer = tt._t->retr_buf->c_str();
+		msg_len = tt._t->retr_buf->length();
 	    }
 		/* p_msg could have been freed already by update_uac_request() */
 	    else if (p_msg) {
@@ -1240,21 +1237,21 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 		msg_len = p_msg->buf.length();
 	    }
 
-	    logger->log(msg_buffer,msg_len,
-			&src_ip,&msg->remote_ip,
+	    logger->log(msg_buffer, msg_len,
+			&src_ip, &msg.remote_ip,
 			method_str);
 
-	    if(tt->_t && !tt->_t->logger) {
-		tt->_t->logger = logger;
+	    if(tt._t && !tt._t->logger) {
+		tt._t->logger = logger;
 	    }
 	}
 
-	if (!dialog_id.empty() && tt->_t && tt->_t->dialog_id.empty()) {
-            tt->_t->dialog_id = dialog_id;
+	if (!dialog_id.empty() && tt._t && tt._t->dialog_id.empty()) {
+            tt._t->dialog_id = dialog_id;
 	}
     }
 
-    tt->_bucket->unlock();
+    tt._bucket->unlock();
 
     return err;
 }

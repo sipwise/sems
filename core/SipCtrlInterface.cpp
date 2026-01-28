@@ -314,7 +314,7 @@ int SipCtrlInterface::send(AmSipRequest &req, const string& dialog_id,
         msg->body = body;
     }
 
-    int res = trans_layer::instance()->send_request(msg,&req.tt,
+    int res = trans_layer::instance()->send_request(*msg, req.tt,
                                                     dialog_id,
                                                     stl2cstr(next_hop),
                                                     out_interface,
