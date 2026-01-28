@@ -205,18 +205,14 @@ public:
     int next_ip(dns_handle* h, sockaddr_storage* sa) { return -1; }
 };
 
-#define SIP_TRSP_SIZE_MAX 4
-
 struct sip_target
 {
     sockaddr_storage ss;
-    char             trsp[SIP_TRSP_SIZE_MAX+1];
+    string           trsp;
 
     sip_target() : ss{}, trsp{} {};
-    sip_target(const sip_target& target);
 
     void clear();
-    const sip_target& operator = (const sip_target& target);
 };
 
 struct sip_target_set
@@ -228,7 +224,7 @@ struct sip_target_set
 
     void reset_iterator();
     bool has_next();
-    int  get_next(sockaddr_storage& ss, cstring& next_trsp,
+    int  get_next(sockaddr_storage& ss, string& next_trsp,
 		  unsigned int flags);
     bool next();
 

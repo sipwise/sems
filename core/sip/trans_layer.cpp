@@ -1263,7 +1263,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 
     int err = 0;
     string ruri; // buffer needs to be @ function scope
-    cstring next_trsp;
+    string next_trsp;
     sip_msg* p_msg=NULL;
 
     tt->_bucket = 0;
@@ -1279,7 +1279,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	return 0;
     }
 
-    if(set_trsp_socket(msg,next_trsp,out_interface) < 0)
+    if(set_trsp_socket(msg, stl2cstr(next_trsp), out_interface) < 0)
 	return -1;
 
     if((flags & TR_FLAG_NEXT_HOP_RURI) &&
@@ -2621,7 +2621,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 {
     tr->clear_timer(STIMER_M);
 
-    cstring next_trsp;
+    string next_trsp;
     sockaddr_storage sa;
 
  try_next_dest:
@@ -2652,7 +2652,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	int out_interface = tmp_msg.local_socket->get_if();
 	tmp_msg.local_socket = NULL;
-	if(set_trsp_socket(&tmp_msg,next_trsp,out_interface) < 0)
+	if(set_trsp_socket(&tmp_msg, stl2cstr(next_trsp), out_interface) < 0)
 	    return -1;
 
 	if(n_tr->flags & TR_FLAG_NEXT_HOP_RURI) {
@@ -2698,7 +2698,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	auto old_sock = tr->msg->local_socket;
 	int out_interface = old_sock->get_if();
-	if(set_trsp_socket(tr->msg,next_trsp,out_interface) < 0)
+	if(set_trsp_socket(tr->msg, stl2cstr(next_trsp), out_interface) < 0)
 	    return -1;
 
 	if(tr->flags & TR_FLAG_NEXT_HOP_RURI) {

@@ -725,22 +725,10 @@ dns_base_entry* dns_naptr_entry::get_rr(dns_record* rr, u_char* begin, u_char* e
     return naptr_r;
 }
 
-sip_target::sip_target(const sip_target& target)
-{
-    *this = target;
-}
-
-const sip_target& sip_target::operator = (const sip_target& target)
-{
-    ss = target.ss;
-    memcpy(trsp,target.trsp,SIP_TRSP_SIZE_MAX+1);
-    return target;
-}
-
 void sip_target::clear()
 {
     ss = sockaddr_storage{};
-    memset(trsp,'\0',SIP_TRSP_SIZE_MAX+1);
+    trsp.clear();
 }
 
 sip_target_set::sip_target_set()
@@ -758,7 +746,7 @@ bool sip_target_set::has_next()
     return dest_list_it != dest_list.end();
 }
 
-int sip_target_set::get_next(sockaddr_storage& ss, cstring& next_trsp,
+int sip_target_set::get_next(sockaddr_storage& ss, string& next_trsp,
 			     unsigned int flags)
 {
     do {
@@ -767,13 +755,13 @@ int sip_target_set::get_next(sockaddr_storage& ss, cstring& next_trsp,
 
 	sip_target& t = *dest_list_it;
 	ss = t.ss;
-	next_trsp = cstring(t.trsp);
+	next_trsp = t.trsp;
 
 	next();
 
 	// set default transport to UDP
-	if(!next_trsp.len)
-	    next_trsp = cstring("udp");
+	if(next_trsp.empty())
+	    next_trsp = "udp";
 
     } while(!(flags & TR_FLAG_DISABLE_BL) &&
 	    tr_blacklist::instance()->exist(ss));
@@ -796,7 +784,7 @@ void sip_target_set::debug()
 
 	DBG("\t%s:%u/%s to target list",
 	    am_inet_ntop(&it->ss).c_str(),
-	    am_get_port(&it->ss),it->trsp);
+	    am_get_port(&it->ss), it->trsp.c_str());
     }
 }
 
@@ -1081,13 +1069,7 @@ int resolver::resolve_targets(const list<sip_destination>& dest_list,
 	    ERROR("Unresolvable destination");
 	    return -478;
 	}
-	if(it->trsp.len && (it->trsp.len <= SIP_TRSP_SIZE_MAX)) {
-	    memcpy(t.trsp,it->trsp.s,it->trsp.len);
-	    t.trsp[it->trsp.len] = '\0';
-	}
-	else {
-	    t.trsp[0] = '\0';
-	}
+	t.trsp = c2stlstr(it->trsp);
 
 	do {
 	    targets->dest_list.push_back(t);
