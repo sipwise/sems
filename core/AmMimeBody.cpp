@@ -591,7 +591,7 @@ int AmMimeBody::parseMultipart(const char* buf, size_t len)
     }
     else {
       AmMimeBody* part = parts.back();
-      DBG("Added new part:\n%s\n", payload_s.c_str());
+      DBG("Added new part:\n%s\n", part->payload_s.c_str());
     }
     
   } while(!err);
