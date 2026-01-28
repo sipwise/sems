@@ -111,7 +111,7 @@ void trans_layer::clear_transports()
     transports.clear();
 }
 
-int trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
+int trans_layer::set_trsp_socket(sip_msg* msg, const string& next_trsp,
 				  int out_interface)
 {
     if((out_interface < 0)
@@ -130,12 +130,12 @@ int trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
     }
 
     prot_collection::iterator prot_sock_it =
-	transports[out_interface].find(c2stlstr(next_trsp));
+	transports[out_interface].find(next_trsp);
 
     if(prot_sock_it == transports[out_interface].end()) {
 
-	DBG("could not find transport '%.*s' in outbound interface %i",
-	    next_trsp.len,next_trsp.s,out_interface);
+	DBG("could not find transport '%s' in outbound interface %i",
+	    next_trsp.c_str(), out_interface);
 
 	prot_sock_it = transports[out_interface].find("udp");
 
@@ -1279,7 +1279,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	return 0;
     }
 
-    if(set_trsp_socket(msg, stl2cstr(next_trsp), out_interface) < 0)
+    if(set_trsp_socket(msg, next_trsp, out_interface) < 0)
 	return -1;
 
     if((flags & TR_FLAG_NEXT_HOP_RURI) &&
@@ -2652,7 +2652,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	int out_interface = tmp_msg.local_socket->get_if();
 	tmp_msg.local_socket = NULL;
-	if(set_trsp_socket(&tmp_msg, stl2cstr(next_trsp), out_interface) < 0)
+	if(set_trsp_socket(&tmp_msg, next_trsp, out_interface) < 0)
 	    return -1;
 
 	if(n_tr->flags & TR_FLAG_NEXT_HOP_RURI) {
@@ -2698,7 +2698,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	auto old_sock = tr->msg->local_socket;
 	int out_interface = old_sock->get_if();
-	if(set_trsp_socket(tr->msg, stl2cstr(next_trsp), out_interface) < 0)
+	if(set_trsp_socket(tr->msg, next_trsp, out_interface) < 0)
 	    return -1;
 
 	if(tr->flags & TR_FLAG_NEXT_HOP_RURI) {
