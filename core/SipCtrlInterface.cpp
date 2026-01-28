@@ -410,7 +410,7 @@ int SipCtrlInterface::send(const AmSipReply &rep, const string& dialog_id,
     msg.u.reply = new sip_reply(rep.code,stl2cstr(rep.reason));
 
     return
-	trans_layer::instance()->send_reply(&msg,(trans_ticket*)&rep.tt,
+	trans_layer::instance()->send_reply(msg, rep.tt,
 					    dialog_id,
 					    rep.to_tag, logger);
 }

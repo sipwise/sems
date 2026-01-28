@@ -111,13 +111,13 @@ void trans_layer::clear_transports()
     transports.clear();
 }
 
-int trans_layer::set_trsp_socket(sip_msg* msg, const string& next_trsp,
+int trans_layer::set_trsp_socket(sip_msg& msg, const string& next_trsp,
 				  int out_interface)
 {
     if((out_interface < 0)
        || ((unsigned int)out_interface >= transports.size())) {
 
-	out_interface = find_outbound_if(&msg->remote_ip);
+	out_interface = find_outbound_if(&msg.remote_ip);
 	if(out_interface < 0) {
 	    DBG("could not find any suitable outbound interface");
 	    return -1;
@@ -147,7 +147,7 @@ int trans_layer::set_trsp_socket(sip_msg* msg, const string& next_trsp,
 	}
     }
 
-    msg->local_socket = prot_sock_it->second;
+    msg.local_socket = prot_sock_it->second;
 
     return 0;
 }
@@ -215,7 +215,7 @@ static int patch_contact_transport(sip_header* contact, const cstring& trsp,
     return 0;
 }
 
-int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
+int trans_layer::send_reply(sip_msg& msg, const trans_ticket& tt,
 			     const string& dialog_id, const string& to_tag,
 			     const shared_ptr<msg_logger>& logger)
 {
@@ -239,15 +239,13 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     // MAY be contained:
     //  - Accept
 
-    assert(tt);
-
-    if (!tt->_bucket || !tt->_t) {
+    if (!tt._bucket || !tt._t) {
 	ERROR("Invalid transaction ticket\n");
 	return -1;
     }
 
-    trans_bucket* bucket = tt->_bucket;
-    sip_trans*    t = tt->_t;
+    trans_bucket* bucket = tt._bucket;
+    sip_trans*    t = tt._t;
 
     bucket->lock();
     if(!bucket->exist(t)){
@@ -262,66 +260,65 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	return -1;
     }
 
-    sip_msg* req = t->msg;
-    assert(req);
+    sip_msg& req = *t->msg;
 
-    auto local_socket = req->local_socket;
+    auto local_socket = req.local_socket;
 
     // patch Contact-HF
     vector<string> contact_buf;
     if(!local_socket->is_opt_set(trsp_socket::no_transport_in_contact)) {
 	    cstring trsp(local_socket->get_transport());
 
-	    contact_buf.resize(msg->contacts.size());
+	    contact_buf.resize(msg.contacts.size());
 	    vector<string>::iterator contact_buf_it = contact_buf.begin();
 
-	    for(list<sip_header*>::iterator contact_it = msg->contacts.begin();
-		contact_it != msg->contacts.end(); contact_it++, contact_buf_it++) {
+	    for(list<sip_header*>::iterator contact_it = msg.contacts.begin();
+		contact_it != msg.contacts.end(); contact_it++, contact_buf_it++) {
 	
 	        patch_contact_transport(*contact_it, trsp, *contact_buf_it);
 	    }
     }
     
     bool have_to_tag = false;
-    int  reply_len   = status_line_len(msg->u.reply->reason);
+    int  reply_len   = status_line_len(msg.u.reply->reason);
 
     // add 'received' should be added
     // check if first Via has rport parameter
 
-    assert(req->via1);
-    assert(req->via_p1);
+    assert(req.via1);
+    assert(req.via_p1);
 
-    unsigned int new_via1_len = copy_hdr_len(req->via1);
-    string remote_ip_str = get_addr_str(&req->remote_ip);
+    unsigned int new_via1_len = copy_hdr_len(req.via1);
+    string remote_ip_str = get_addr_str(&req.remote_ip);
 
-    bool append_received = !(req->via_p1->host == remote_ip_str.c_str());
+    bool append_received = !(req.via_p1->host == remote_ip_str.c_str());
     if(append_received) {
 	new_via1_len += 10/*;received=*/ + remote_ip_str.length();
     }
 
     // needed if rport parameter was present but empty
     string remote_port_str;
-    if(req->via_p1->has_rport) {
-	if(!req->via_p1->rport.len){
-	    remote_port_str = int2str(ntohs(((sockaddr_in*)&req->remote_ip)->sin_port));
+    if(req.via_p1->has_rport) {
+	if(!req.via_p1->rport.len){
+	    remote_port_str = int2str(ntohs(((sockaddr_in*)&req.remote_ip)->sin_port));
 	    new_via1_len += remote_port_str.length() + 1/* "=<port number>" */;
 	}
     }
 
     unsigned int rel100_ext = 0;
     unsigned int rseq = 0;
-    int reply_code = msg->u.reply->code;
-    
+    int reply_code = msg.u.reply->code;
+
     // copy necessary headers
-    for(list<sip_header*>::iterator it = req->hdrs.begin();
-	it != req->hdrs.end(); ++it) {
+    for(list<sip_header*>::iterator it = req.hdrs.begin();
+	it != req.hdrs.end(); ++it) {
 
 	assert((*it));
 	switch((*it)->type){
 
 	case sip_header::H_VIA:
 	    // if first via, take the possibly modified one
-	    if((*it) == req->via1)
+	    if((*it) == req.via1)
 		reply_len += new_via1_len;
 	    else
 		reply_len += copy_hdr_len(*it);
@@ -392,14 +389,14 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	}
     }
 
-    reply_len += copy_hdrs_len(msg->hdrs);
+    reply_len += copy_hdrs_len(msg.hdrs);
 
-    string c_len = int2str((unsigned int) msg->body.length());
+    string c_len = int2str((unsigned int) msg.body.length());
     reply_len += content_length_len((char*)c_len.c_str());
 
-    if(msg->body.length()){
+    if(msg.body.length()){
 
-	reply_len += msg->body.length();
+	reply_len += msg.body.length();
     }
 
     reply_len += 2/*CRLF*/;
@@ -411,17 +408,17 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
     DBG("reply_len = %i\n",reply_len);
 
-    status_line_wr(&c,reply_code,msg->u.reply->reason);
+    status_line_wr(&c,reply_code,msg.u.reply->reason);
 
-    for(list<sip_header*>::iterator it = req->hdrs.begin();
-	it != req->hdrs.end(); ++it) {
+    for(list<sip_header*>::iterator it = req.hdrs.begin();
+	it != req.hdrs.end(); ++it) {
 
 	switch((*it)->type){
 
 	case sip_header::H_VIA:
-	    
-	    if((*it) == req->via1) {// 1st Via
-		
+
+	    if((*it) == req.via1) {// 1st Via
+
 		// move this code to something like:
 		// write_reply_via(old_via1,old_via_p1,remote_ip_str,remote_port_str)
 
@@ -433,11 +430,11 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 		*(c++) = ':';
 		*(c++) = SP;
 		
-		if(req->via_p1->has_rport && !req->via_p1->rport.len){
+		if(req.via_p1->has_rport && !req.via_p1->rport.len){
 
 		    // copy everything from the beginning up to the "rport" param:
-		    len = (req->via_p1->rport.s + req->via_p1->rport.len) - req->via1->value.s;
-		    memcpy(c,req->via1->value.s,len);
+		    len = (req.via_p1->rport.s + req.via_p1->rport.len) - req.via1->value.s;
+		    memcpy(c,req.via1->value.s,len);
 		    c += len;
 
 		    // add '='
@@ -448,14 +445,14 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 		    c += remote_port_str.length();
 
 		    //copy up to the end of the first Via parm
-		    len = req->via_p1->eop - (req->via_p1->rport.s + req->via_p1->rport.len);
-		    memcpy(c,req->via_p1->rport.s + req->via_p1->rport.len, len);
+		    len = req.via_p1->eop - (req.via_p1->rport.s + req.via_p1->rport.len);
+		    memcpy(c,req.via_p1->rport.s + req.via_p1->rport.len, len);
 		    c += len;
 		}
 		else {
 		    //copy up to the end of the first Via parm
-		    len = req->via_p1->eop - req->via1->value.s;
-		    memcpy(c,req->via1->value.s,len);
+		    len = req.via_p1->eop - req.via1->value.s;
+		    memcpy(c,req.via1->value.s,len);
 		    c += len;
 		}
 
@@ -470,8 +467,8 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
 
 		//copy the rest of the first Via header
-		len = req->via1->value.s + req->via1->value.len - req->via_p1->eop;
-		memcpy(c,req->via_p1->eop,len);
+		len = req.via1->value.s + req.via1->value.len - req.via_p1->eop;
+		memcpy(c,req.via_p1->eop,len);
 		c += len;
 
 		*(c++) = CR;
@@ -519,14 +516,14 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	}
     }
 
-    copy_hdrs_wr(&c,msg->hdrs);
+    copy_hdrs_wr(&c,msg.hdrs);
     content_length_wr(&c,(char*)c_len.c_str());
 
     *c++ = CR;
     *c++ = LF;
 
-    if(msg->body.length()){
-	memcpy(c, msg->body.c_str(), msg->body.length());
+    if(msg.body.length()){
+	memcpy(c, msg.body.c_str(), msg.body.length());
     }
 
     int err = -1;
@@ -542,11 +539,11 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	goto end;
     }
 
-    memcpy(&remote_ip,&req->remote_ip,sizeof(sockaddr_storage));
+    remote_ip = req.remote_ip;
 
     // force_via_address option? send to 1st via
     if(local_socket->is_opt_set(trsp_socket::force_via_address)) {
-	string via_host = c2stlstr(req->via_p1->host);
+	string via_host = c2stlstr(req.via_p1->host);
 	DBG("force_via_address: setting remote IP to via '%s'\n", via_host.c_str());
 	if (resolver::instance()->str2ip(via_host.c_str(), &remote_ip,
 					 (address_type)(IPv4 | IPv6)) != 1) {
@@ -558,20 +555,20 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 
     if(local_socket->is_opt_set(trsp_socket::force_via_address)) {
 
-	if(req->via_p1->has_rport){
+	if(req.via_p1->has_rport){
 
-	    if(req->via_p1->rport_i){
+	    if(req.via_p1->rport_i){
 		// use 'rport'
-		((sockaddr_in*)&remote_ip)->sin_port = htons(req->via_p1->rport_i);
+		((sockaddr_in*)&remote_ip)->sin_port = htons(req.via_p1->rport_i);
 	    }
 	    // else: use the source port from the replied request (from IP hdr)
 	    //       (already set).
 	}
 	else {
 
-	    if(req->via_p1->port_i){
+	    if(req.via_p1->port_i){
 		// use port from 'sent-by' via address
-		((sockaddr_in*)&remote_ip)->sin_port = htons(req->via_p1->port_i);
+		((sockaddr_in*)&remote_ip)->sin_port = htons(req.via_p1->port_i);
 	    }
 	    else {
 		// use 5060
@@ -624,7 +621,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	sockaddr_storage src_ip;
 	local_socket->copy_addr_to(&src_ip);
 	logger->log(reply_buf,reply_len,&src_ip,&remote_ip,
-		    req->u.request->method_str,reply_code);
+		    req.u.request->method_str,reply_code);
 
 	if(!t->logger){
 	    t->logger = logger;
@@ -662,7 +659,7 @@ int trans_layer::send_sf_error_reply(const trans_ticket* tt, const sip_msg* req,
     }
     reply.body = c2stlstr(body);
 
-    return send_reply(&reply, tt, "", to_tag);
+    return send_reply(reply, *tt, "", to_tag);
 }
 
 int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
@@ -865,15 +862,14 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 //
 // Ref. RFC 3261 "12.2.1.1 Generating the Request"
 //
-int trans_layer::set_next_hop(sip_msg* msg,
-			       cstring* next_hop,
-			       unsigned short* next_port,
-			       cstring* next_trsp)
+int trans_layer::set_next_hop(sip_msg& msg,
+			       cstring& next_hop,
+			       unsigned short& next_port,
+			       cstring& next_trsp)
 {
     static const cstring default_trsp("udp");
-    assert(msg);
 
-    list<sip_header*>& route_hdrs = msg->route;
+    list<sip_header*>& route_hdrs = msg.route;
     int err=0;
 
     if(!route_hdrs.empty()){
@@ -886,18 +882,18 @@ int trans_layer::set_next_hop(sip_msg* msg,
 	    return -1;
 	}
 
-	if (next_hop->len == 0) {
-	    *next_hop  = route_uri->host;
+	if (next_hop.len == 0) {
+	    next_hop  = route_uri->host;
 	    if(route_uri->port_str.len)
-		*next_port = route_uri->port;
+		next_port = route_uri->port;
 	    if(route_uri->trsp && route_uri->trsp->value.len)
-		*next_trsp = route_uri->trsp->value;
+		next_trsp = route_uri->trsp->value;
 	}
     }
     else {
 
 	sip_uri parsed_r_uri;
-	cstring& r_uri = msg->u.request->ruri_str;
+	cstring& r_uri = msg.u.request->ruri_str;
 
 	err = parse_uri(&parsed_r_uri,r_uri.s,r_uri.len);
 	if(err < 0){
@@ -905,23 +901,23 @@ int trans_layer::set_next_hop(sip_msg* msg,
 	    return -1;
 	}
 	DBG("setting next-hop based on request-URI\n");
-	*next_hop  = parsed_r_uri.host;
+	next_hop  = parsed_r_uri.host;
 	if(parsed_r_uri.port_str.len)
-	    *next_port = parsed_r_uri.port;
+	    next_port = parsed_r_uri.port;
 	if(parsed_r_uri.trsp)
-	    *next_trsp = parsed_r_uri.trsp->value;
+	    next_trsp = parsed_r_uri.trsp->value;
     }
 
-    if(!next_trsp->len) {
+    if(!next_trsp.len) {
 	DBG("no transport specified, setting default one (%.*s)",
 	    default_trsp.len,default_trsp.s);
-	*next_trsp = default_trsp;
+	next_trsp = default_trsp;
     }
 
     DBG("next_hop:next_port is <%.*s:%u/%.*s>\n",
-	next_hop->len, next_hop->s, *next_port,
-	next_trsp ? next_trsp->len : 0,
-	next_trsp ? next_trsp->s : 0);
+	next_hop.len, next_hop.s, next_port,
+	next_trsp.len,
+	next_trsp.s);
 
     return 0;
 }
@@ -1230,7 +1226,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
     }
     else {
 	sip_destination dest;
-	if(set_next_hop(msg,&dest.host,&dest.port,&dest.trsp) < 0){
+	if(set_next_hop(*msg, dest.host, dest.port, dest.trsp) < 0){
 	    DBG("set_next_hop failed\n");
 	    return -1;
 	}
@@ -1280,7 +1276,7 @@ int trans_layer::send_request(sip_msg* msg, trans_ticket* tt,
 	return 0;
     }
 
-    if(set_trsp_socket(msg, next_trsp, out_interface) < 0)
+    if(set_trsp_socket(*msg, next_trsp, out_interface) < 0)
 	return -1;
 
     if((flags & TR_FLAG_NEXT_HOP_RURI) &&
@@ -2653,7 +2649,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	int out_interface = tmp_msg.local_socket->get_if();
 	tmp_msg.local_socket = NULL;
-	if(set_trsp_socket(&tmp_msg, next_trsp, out_interface) < 0)
+	if(set_trsp_socket(tmp_msg, next_trsp, out_interface) < 0)
 	    return -1;
 
 	if(n_tr->flags & TR_FLAG_NEXT_HOP_RURI) {
@@ -2699,7 +2695,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 
 	auto old_sock = tr->msg->local_socket;
 	int out_interface = old_sock->get_if();
-	if(set_trsp_socket(tr->msg, next_trsp, out_interface) < 0)
+	if(set_trsp_socket(*tr->msg, next_trsp, out_interface) < 0)
 	    return -1;
 
 	if(tr->flags & TR_FLAG_NEXT_HOP_RURI) {

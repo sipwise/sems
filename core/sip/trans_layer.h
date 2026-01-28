@@ -169,7 +169,7 @@ public:
      * include a well-formed 'Content-Type', but no
      * 'Content-Length' header.
      */
-    int send_reply(sip_msg* msg, const trans_ticket* tt, const string& dialog_id,
+    int send_reply(sip_msg& msg, const trans_ticket& tt, const string& dialog_id,
 		   const string& to_tag,
 		   const shared_ptr<msg_logger>& logger=NULL);
 
@@ -257,15 +257,15 @@ protected:
      * Fills the address structure passed and modifies 
      * R-URI and Route headers as needed.
      */
-    int set_next_hop(sip_msg* msg, cstring* next_hop,
-		     unsigned short* next_port, cstring* next_trsp);
+    int set_next_hop(sip_msg& msg, cstring& next_hop,
+		     unsigned short& next_port, cstring& next_trsp);
 
     /**
      * Fills the local_socket attribute using the given
      * transport and interface. If out_interface == -1,
      * we will try hard to find an interface based on msg->remote_ip.
      */
-    int set_trsp_socket(sip_msg* msg, const string& next_trsp,
+    int set_trsp_socket(sip_msg& msg, const string& next_trsp,
 			int out_interface);
 
     sip_trans* copy_uac_trans(sip_trans* tr);
