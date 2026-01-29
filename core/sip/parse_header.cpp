@@ -461,6 +461,15 @@ int parse_headers(list<sip_header*>& hdrs, const char** c, const char* end)
     return UNEXPECTED_EOT;
 }
 
+int parse_headers(list<sip_header*>& hdrs, string_view& buf)
+{
+    const char* c = buf.data();
+    const char* end = c + buf.length();
+    int ret = parse_headers(hdrs, &c, end);
+    buf = string_view(c, end - c);
+    return ret;
+}
+
 void free_headers(list<sip_header*>& hdrs)
 {
     while(!hdrs.empty()) {

@@ -33,7 +33,9 @@
 #include "cstring.h"
 
 #include <list>
+#include <string>
 using std::list;
+using std::string_view;
 
 struct sip_parsed_hdr
 {
@@ -82,7 +84,8 @@ struct sip_header
 
 int parse_header_type(sip_header* h);
 
-int parse_headers(list<sip_header*>& hdrs, const char** c, const char* end);
+int parse_headers(list<sip_header*>& hdrs, string_view&);
+int parse_headers(list<sip_header*>& hdrs, const char** c, const char* end); // TODO: obsolete this
 void free_headers(list<sip_header*>& hdrs);
 
 #endif
