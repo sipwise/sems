@@ -157,7 +157,7 @@ bool username2arg(const string &src, AmArg &dst)
   while (pos != string::npos) {
     if (pos + 2 >= encoded.size()) return false;
     unsigned int c;
-    if (reverse_hex2int(string() + encoded[pos + 2] + encoded[pos + 1], c)) {
+    if (!reverse_hex2int(string() + encoded[pos + 2] + encoded[pos + 1], c)) {
       DBG("%c%c does not convert from hex\n", encoded[pos + 1], encoded[pos + 2]);
       return false;
     }

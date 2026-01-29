@@ -188,7 +188,7 @@ string double2str(double val) {
  * Convert a reversed hex string to uint.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
- * @return true if failed. 
+ * @return true on success
  */
 bool reverse_hex2int(const string& str, unsigned int& result)
 {

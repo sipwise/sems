@@ -821,7 +821,7 @@ bool SBCCallProfile::evaluate(ParamReplacerCtx& ctx,
     if (msgflags_symmetric_rtp) {
       string str_msg_flags = getHeader(req.hdrs,"P-MsgFlags", true);
       unsigned int msg_flags = 0;
-      if(reverse_hex2int(str_msg_flags,msg_flags)){
+      if(!reverse_hex2int(str_msg_flags,msg_flags)){
         ERROR("while parsing 'P-MsgFlags' header\n");
         msg_flags = 0;
       }

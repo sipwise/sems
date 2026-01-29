@@ -81,7 +81,7 @@ int AmZRTP::init() {
 
     for (size_t i=0;i<sizeof(zrtp_instance_zid);i++) {
       unsigned int h;
-      if (reverse_hex2int(zid_hex.substr(i*2, 2), h)) {
+      if (!reverse_hex2int(zid_hex.substr(i*2, 2), h)) {
 	ERROR("in zid_hex in zrtp.conf: '%s' is no hex number\n", zid_hex.substr(i*2, 2).c_str());
 	return -1;
       }

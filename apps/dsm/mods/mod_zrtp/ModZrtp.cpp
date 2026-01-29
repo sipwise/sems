@@ -182,7 +182,7 @@ EXEC_ACTION_START(ZRTPGetSessionInfoAction) {
 bool hex2zid(const string& zid1, char* buffer) {
   for (size_t i=0;i<zid1.length()/2;i++) {
     unsigned int h;
-    if (reverse_hex2int(zid1.substr(i*2, 2), h)) {
+    if (!reverse_hex2int(zid1.substr(i*2, 2), h)) {
       ERROR("in zid: '%s' is no hex number\n", zid1.substr(i*2, 2).c_str());
       return false;
     }
