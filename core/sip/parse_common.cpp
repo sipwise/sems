@@ -36,7 +36,7 @@
 #include <memory>
 using std::unique_ptr;
 
-int parse_sip_version(const char* beg, int len)
+int parse_sip_version(const char* beg, size_t len)
 {
     const char* c = beg;
     //char* end = c+len;
@@ -65,7 +65,7 @@ int parse_sip_version(const char* beg, int len)
 }
 
 static int _parse_gen_params(list<sip_avp*>* params, const char** c, 
-			     int len, char stop_char, bool beg_w_sc)
+			     size_t len, char stop_char, bool beg_w_sc)
 {
     enum {
 	VP_PARAM_SEP=0,
@@ -316,13 +316,13 @@ static int _parse_gen_params(list<sip_avp*>* params, const char** c,
 }
 
 int parse_gen_params_sc(list<sip_avp*>* params, const char** c, 
-			int len, char stop_char)
+			size_t len, char stop_char)
 {
     return _parse_gen_params(params,c,len,stop_char,true);
 }
 
 int parse_gen_params(list<sip_avp*>* params, const char** c,
-		     int len, char stop_char)
+		     size_t len, char stop_char)
 {
     return _parse_gen_params(params,c,len,stop_char,false);
 }

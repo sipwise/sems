@@ -33,7 +33,9 @@
 #include "cstring.h"
 
 #include <list>
+#include <string>
 using std::list;
+using std::string_view;
 
 //
 // Constants
@@ -161,7 +163,7 @@ struct sip_avp
 // Functions
 //
 
-inline int lower_cmp(const char* l, const char* r, int len)
+inline int lower_cmp(const char* l, const char* r, size_t len)
 {
     const char* end = l+len;
 
@@ -181,7 +183,12 @@ inline int lower_cmp(const char* l, const char* r, int len)
     return 0;
 }
 
-inline int lower_cmp_n(const char* l, int llen, const char* r, int rlen)
+inline int lower_cmp(const string_view& a, const char* b)
+{
+    return lower_cmp(a.data(), b, a.length());
+}
+
+inline int lower_cmp_n(const char* l, size_t llen, const char* r, size_t rlen)
 {
     if(llen == rlen)
 	return lower_cmp(l,r,rlen);
@@ -196,7 +203,7 @@ inline int lower_cmp_n(const cstring& l, const cstring& r)
     return lower_cmp_n(l.s,l.len,r.s,r.len);
 }
 
-int parse_sip_version(const char* beg, int len);
+int parse_sip_version(const char* beg, size_t len);
 
 /** 
  * Parse a list of Attribute-Value pairs beginning with 
@@ -204,14 +211,14 @@ int parse_sip_version(const char* beg, int len);
  * end of the string is reached.
  */
 int parse_gen_params_sc(list<sip_avp*>* params, const char** c, 
-			int len, char stop_char);
+			size_t len, char stop_char);
 
 /** 
  * Parse a list of Attribute-Value pairs separated 
  * by semi-colons until stop_char or the end of 
  * the string is reached.
  */
-int parse_gen_params(list<sip_avp*>* params, const char** c, int len, char stop_char);
+int parse_gen_params(list<sip_avp*>* params, const char** c, size_t len, char stop_char);
 
 /** Free the parameters in the list (NOT the list itself) */
 void free_gen_params(list<sip_avp*>* params);
