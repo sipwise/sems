@@ -31,24 +31,6 @@
 
 using std::shared_ptr;
 
-const char* AmArg::t2str(int type) {
-  switch (type) {
-  case AmArg::Undef:   return "Undef";
-  case AmArg::Int:     return "Int";
-  case AmArg::LongLong: return "LongLong";
-  case AmArg::Bool:    return "Bool";
-  case AmArg::Double:  return "Double";
-  case AmArg::CStr:    return "CStr";
-  case AmArg::AObject: return "AObject";
-  case AmArg::AObjectShared: return "AObjectShared";
-  case AmArg::ADynInv: return "ADynInv";
-  case AmArg::Blob:    return "Blob";
-  case AmArg::Array:   return "Array";
-  case AmArg::Struct:  return "Struct";
-  default: return "unknown";
-  }
-}
-
 AmArg::AmArg(std::map<std::string, std::string>& v)
   : type(Undef) {
   assertStruct();

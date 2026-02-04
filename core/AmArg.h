@@ -395,8 +395,6 @@ class AmArg
   friend bool json2arg(std::istream& input, AmArg& res);
 
   static string print(const AmArg &a);
-
-  static const char* t2str(int type);
 };
 
 const int arg2int(const AmArg &a);
