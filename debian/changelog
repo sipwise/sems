@@ -1,3 +1,39 @@
+ngcp-sems (1:1.6.0+0~mr14.2.0.0) unstable; urgency=medium
+
+  [ Donat Zenichev ]
+  * [b52ef41] MT#59962 apps: exclude certain apps from compilation
+  * [23325e3] MT#62868 Add timeout to database queries
+  * [50bc94c] MT#62868 Fix order of execution of Option
+  * [1609823] MT#63557 AmB2BSession::onB2BEvent: don't prevent non-fwd updates
+  * [d69d496] MT#59962 AmUtils: add string to double conversion
+  * [526e092] MT#59962 DSM: add float type for setTimer()
+  * [30b0dfc] MT#64120 AmArg: add a possibility to operate on shared ptr
+  * [8e1a41a] MT#59962 core: introduce new RTP transport model
+  * [5afd60d] MT#59962 core: on receive don't run body checks if it's empty
+  * [48bd903] MT#59962 xmlrpc2di: size_t shouldn't be checked against `< 0`
+  * [6eab3ca] MT#64278 AmRtpStream: optionally don't generate direciton
+  * [99b38d3] MT#63553 AmMimeBody: properly parse multi bodies
+  * [a353910] MT#59962 SBCCallLeg: no need to check leg in constructor
+  * [82570bb] MT#59962 tcp_trsp: move new sock to connections map
+  * [81f4ec1] MT#59962 AmSession: initilize `active_media_index`
+  * [f63b807] MT#59962 AmB2BSession: properly clean RTP streams
+  * [9fd65e9] MT#59962 AmB2BMedia: comment some code in `setDtmfSink()`
+  * [5d4ebc3] MT#59962 SdpOrigin: extend constructor
+
+  [ Guillem Jover ]
+  * [a50180d] MT#62899 Update packaging for Debian trixie
+
+  [ Richard Fuchs ]
+  * [9aab884] MT#62181 wheeltimer: optional instead of pointer
+  * [d867db6] MT#55283 fix header guard
+  * [27fb272] MT#62181 change dialog_id to std::string
+  * [19c7bfb] MT#62181 whitespace cleanups
+  * [65cb4ea] MT#62181 change to_tag to std::string
+  * [9fa38e0] MT#62181 whitespace cleanups
+  * [1447377] MT#62181 use const pointers for parsing
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 05 Feb 2026 10:24:54 +0100
+
 ngcp-sems (1:1.6.0+0~mr14.1.0.0) unstable; urgency=medium
 
   [ Guillem Jover ]
