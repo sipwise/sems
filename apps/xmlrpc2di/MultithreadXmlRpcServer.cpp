@@ -1,40 +1,40 @@
-/* 
- * Written by Jae An (jae_young_an@yahoo.com) 
+/*
+ * Written by Jae An (jae_young_an@yahoo.com)
  *
  * adapted for SEMS by Stefan Sayer stefan.sayer at iptego.com
- */ 
-#include "XmlRpcServer.h" 
-#include "XmlRpcServerConnection.h" 
-#include "XmlRpcServerMethod.h" 
-#include "XmlRpcSocket.h" 
-#include "XmlRpcUtil.h" 
-#include "XmlRpcException.h" 
-#include "MultithreadXmlRpcServer.h" 
+ */
+#include "XmlRpcServer.h"
+#include "XmlRpcServerConnection.h"
+#include "XmlRpcServerMethod.h"
+#include "XmlRpcSocket.h"
+#include "XmlRpcUtil.h"
+#include "XmlRpcException.h"
+#include "MultithreadXmlRpcServer.h"
 #include "AmUtils.h"
 #include "AmEventDispatcher.h"
 #include "log.h"
- 
+
 #include "unistd.h"
 #include <errno.h>
 
-using namespace XmlRpc; 
-WorkerThread::WorkerThread(MultithreadXmlRpcServer* chief) 
+using namespace XmlRpc;
+WorkerThread::WorkerThread(MultithreadXmlRpcServer* chief)
   : running(true), runcond(false), chief(chief) {
-} 
- 
-// call this method before calling run 
-void WorkerThread::addXmlRpcSource(XmlRpcSource* source,unsigned eventMask) 
-{ 
-  dispatcher.addSource(source,eventMask); 
+}
+
+// call this method before calling run
+void WorkerThread::addXmlRpcSource(XmlRpcSource* source,unsigned eventMask)
+{
+  dispatcher.addSource(source,eventMask);
   wakeup();
-}  
+}
 
 void WorkerThread::wakeup() {
   runcond.set(true);
 }
 
-void WorkerThread::run() 
-{ 
+void WorkerThread::run()
+{
   running.set(true);
 
   string eventqueue_name = "MT_XMLRPC_SERVER_" + int2str((unsigned long)pthread_self());
@@ -46,9 +46,9 @@ void WorkerThread::run()
 
   while (running.get()) {
     runcond.wait_for();
-    dispatcher.work(-1.0); 
-  
-    dispatcher.clear(); // close socket and others ...  
+    dispatcher.work(-1.0);
+
+    dispatcher.clear(); // close socket and others ...
     runcond.set(false);
 
     /* tell chief we can work again */
@@ -57,7 +57,7 @@ void WorkerThread::run()
 
   AmEventDispatcher::instance()->delEventQueue(eventqueue_name);
   DBG("WorkerThread stopped.\n");
-} 
+}
 
 void WorkerThread::postEvent(AmEvent* ev) {
 
@@ -82,57 +82,57 @@ MultithreadXmlRpcServer::MultithreadXmlRpcServer()
   : XmlRpcServer(), have_waiting(false)   {
 }
 
-// Wait until all the worker threads are done. 
-MultithreadXmlRpcServer::~MultithreadXmlRpcServer() 
-{ 
+// Wait until all the worker threads are done.
+MultithreadXmlRpcServer::~MultithreadXmlRpcServer()
+{
   for (std::vector<WorkerThread*>::iterator it=
 	 workers.begin(); it != workers.end();it++) {
     (*it)->stop();
     (*it)->join();
     delete *it;
   }
-} 
+}
 
-// Accept a client connection request and create a connection to 
-// handle method calls from the client. 
-void MultithreadXmlRpcServer::acceptConnection() 
-{ 
-  int s = XmlRpcSocket::accept(this->getfd()); 
-  if (s < 0) 
-    { 
+// Accept a client connection request and create a connection to
+// handle method calls from the client.
+void MultithreadXmlRpcServer::acceptConnection()
+{
+  int s = XmlRpcSocket::accept(this->getfd());
+  if (s < 0)
+    {
       if (errno != EAGAIN && errno != EWOULDBLOCK) {
 	ERROR("MultithreadXmlRpcServer::acceptConnection: Could not accept connection (%s).",
-			XmlRpcSocket::getErrorMsg().c_str()); 
+			XmlRpcSocket::getErrorMsg().c_str());
 
 	if ((errno == EMFILE) || (errno == ENFILE)) {
 	  // would cause fast loop because we don't get the connection from the listening socket
 	  usleep(500000);
 	}
       }
-      
+
     }
   else if ( ! XmlRpcSocket::setNonBlocking(s))
     {
       XmlRpcSocket::close(s);
       ERROR("XmlRpcServer::acceptConnection: Could not set socket "
-	    "to non-blocking input mode (%s).\n", 
+	    "to non-blocking input mode (%s).\n",
 	    XmlRpcSocket::getErrorMsg().c_str());
     }
-  else // Notify the dispatcher to listen for input on this source when we are in work() 
-    { 
+  else // Notify the dispatcher to listen for input on this source when we are in work()
+    {
       WorkerThread* thr = NULL;
       while (!thr) {
-	if (!have_waiting.get()) 
+	if (!have_waiting.get())
 	    have_waiting.wait_for();
 	thr = getIdleThread();
       }
-      thr->addXmlRpcSource(this->createConnection(s), XmlRpcDispatch::ReadableEvent); 
- 
-      //       // Uh oh.. all threads are busy...  
-      //       // Just close the connection so that the rejected client would try again. 
-      //       XmlRpcSocket::close(s); 
-      //       XmlRpcUtil::error("MultithreadXmlRpcServer::acceptConnection: All threads are busy. Rejected a client"); 
-    } 
+      thr->addXmlRpcSource(this->createConnection(s), XmlRpcDispatch::ReadableEvent);
+
+      //       // Uh oh.. all threads are busy...
+      //       // Just close the connection so that the rejected client would try again.
+      //       XmlRpcSocket::close(s);
+      //       XmlRpcUtil::error("MultithreadXmlRpcServer::acceptConnection: All threads are busy. Rejected a client");
+    }
 }
 
 void MultithreadXmlRpcServer::reportBack(WorkerThread* thr) {
