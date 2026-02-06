@@ -20,8 +20,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
@@ -74,28 +74,28 @@ string int2str(int val);
  */
 string int2str(unsigned int val);
 
-/** 
- * Convert a long to a string. 
+/**
+ * Convert a long to a string.
  */
 string long2str(long int val);
 
-/** 
- * Convert a long long to a string. 
+/**
+ * Convert a long long to a string.
  */
 string longlong2str(long long int val);
 
-/** 
+/**
  * Convert a a byte to a string using hexdecimal representation.
  */
 string char2hex(unsigned char val, bool lowercase = false);
 
 /**
- * Convert an unsigned int to a string using hexdecimal representation. 
+ * Convert an unsigned int to a string using hexdecimal representation.
  */
 string int2hex(unsigned int val, bool lowercase = false);
 
-/** 
- * Convert an unsigned long to a string using hexdecimal representation. 
+/**
+ * Convert an unsigned long to a string using hexdecimal representation.
  */
 string long2hex(unsigned long val);
 
@@ -103,16 +103,16 @@ string long2hex(unsigned long val);
  * Convert a reversed hex string to uint.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
- * @return true if failed. 
+ * @return true if failed.
  */
 bool reverse_hex2int(const string& str, unsigned int& result);
 
-/** 
- * Convert a double to a string. 
+/**
+ * Convert a double to a string.
  */
 string double2str(double val);
 
-/** 
+/**
  * Convert a string to an uint.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
@@ -120,7 +120,7 @@ string double2str(double val);
  */
 bool str2int(const string& str, unsigned int& result);
 
-/** 
+/**
  * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
@@ -130,7 +130,7 @@ bool str2int(const string& str, unsigned int& result);
 bool str2int(char*& str, unsigned int& result, char sep = ' ');
 
 
-/** 
+/**
  * Convert a string to an int.
  * @param str    [in]  string to convert.
  * @param result [out] result integer.
@@ -140,7 +140,7 @@ bool str2int(const string& str, int& result);
 
 bool str2int(const string& str, double& result);
 
-/** 
+/**
  * Internal version of preceeding 'str2int' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
@@ -149,7 +149,7 @@ bool str2int(const string& str, double& result);
  */
 bool str2int(char*& str, int& result, char sep = ' ');
 
-/** 
+/**
  * Convert a string to a long int.
  * On many systems nowadays this could be the same as str2int.
  * @param str    [in]  string to convert.
@@ -158,7 +158,7 @@ bool str2int(char*& str, int& result, char sep = ' ');
  */
 bool str2int(const string& str, long& result);
 
-/** 
+/**
  * Internal version of preceeding 'str2long' method.
  * @param str    [in,out] gets incremented until sep char or error occurs
  * @param result [out] result of the function
@@ -209,12 +209,12 @@ std::string URL_encode(const std::string& s);
  * Syntax: "code reason"
  *
  * @param lbuf line     buffer to parse.
- * @param res_code_str  char[4]; Syntax: xxxx whereby 
+ * @param res_code_str  char[4]; Syntax: xxxx whereby
  *                      each x is a between 0 and 9.
  * @param res_code      where to store the resulting integer 'code'.
  * @param res_msg       where to store the 'reason'.
  */
-int parse_return_code(const char* lbuf, 
+int parse_return_code(const char* lbuf,
 		      unsigned int& res_code, string& res_msg );
 /**
  * Tells if a file exists.
@@ -234,7 +234,7 @@ string filename_from_fullpath(const string& path);
 string file_extension(const string& path);
 
 /**
- * @return new path resulting from the concatanation of path, 
+ * @return new path resulting from the concatanation of path,
  * suffix and eventually a slash between them
  */
 string add2path(const string& path, int n_suffix, ...);
@@ -317,7 +317,7 @@ bool read_regex_mapping(const string& fname, const char* sep,
 			const char* dbg_type,
 			RegexMappingVector& result);
 
-/** run a regex mapping - result is the first matching entry 
+/** run a regex mapping - result is the first matching entry
     @return true if matched
  */
 bool run_regex_mapping(const RegexMappingVector& mapping, const char* test_s,
