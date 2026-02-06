@@ -22,8 +22,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
@@ -138,7 +138,7 @@ int trans_layer::set_trsp_socket(sip_msg* msg, const cstring& next_trsp,
 	    next_trsp.len,next_trsp.s,out_interface);
 
 	prot_sock_it = transports[out_interface].find("udp");
-	
+
 	// if we couldn't find anything, take whatever is there...
 	if(prot_sock_it == transports[out_interface].end()) {
 	    DBG("could not find transport 'udp' in outbound interface %i",
@@ -231,8 +231,8 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     //
     // Fields to generate (if INVITE transaction):
     //    - Contact
-    //    - Route: copied from 
-    // 
+    //    - Route: copied from
+    //
     // SHOULD be contained:
     //  - Allow, Supported
     //
@@ -469,7 +469,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 		}
 
 
-		//copy the rest of the first Via header 
+		//copy the rest of the first Via header
 		len = req->via1->value.s + req->via1->value.len - req->via_p1->eop;
 		memcpy(c,req->via_p1->eop,len);
 		c += len;
@@ -559,7 +559,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
     if(local_socket->is_opt_set(trsp_socket::force_via_address)) {
 
 	if(req->via_p1->has_rport){
-	
+
 	    if(req->via_p1->rport_i){
 		// use 'rport'
 		((sockaddr_in*)&remote_ip)->sin_port = htons(req->via_p1->rport_i);
@@ -568,7 +568,7 @@ int trans_layer::send_reply(sip_msg* msg, const trans_ticket* tt,
 	    //       (already set).
 	}
 	else {
-	
+
 	    if(req->via_p1->port_i){
 		// use port from 'sent-by' via address
 		((sockaddr_in*)&remote_ip)->sin_port = htons(req->via_p1->port_i);
@@ -681,8 +681,8 @@ int trans_layer::send_sl_reply(sip_msg* req, int reply_code,
     //
     // Fields to generate (if INVITE transaction):
     //    - Contact
-    //    - Route: copied from 
-    // 
+    //    - Route: copied from
+    //
     // SHOULD be contained:
     //  - Allow, Supported
     //
@@ -829,15 +829,15 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 
     if(route->elmts.size() == 1){
 	// remove current route header from message
- 	msg->route.pop_front();
+	msg->route.pop_front();
 
-	list<sip_header*>::iterator h_it = 
+	list<sip_header*>::iterator h_it =
 	    std::find(msg->hdrs.begin(),msg->hdrs.end(),fr);
 
-	if(h_it != msg->hdrs.end()) 
+	if(h_it != msg->hdrs.end())
 	    msg->hdrs.erase(h_it);
 
- 	delete fr;
+	delete fr;
     }
     else if(route->elmts.size() > 1) {
 	// remove first element from the list
@@ -847,9 +847,9 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 	// fetch the next route element
 	route_elmt* nxt_re = route->elmts.front();
 
- 	// adjust route header
- 	fr->value.len = (fr->value.s + fr->value.len) - nxt_re->route.s;
- 	fr->value.s   = nxt_re->route.s;
+	// adjust route header
+	fr->value.len = (fr->value.s + fr->value.len) - nxt_re->route.s;
+	fr->value.s   = nxt_re->route.s;
     }
 
     // copy r_uri at the end of the route set.
@@ -857,7 +857,7 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
     ext_uri_buffer = "<" + c2stlstr(msg->u.request->ruri_str) + ">";
     msg->hdrs.push_back(new sip_header(0,"Route",stl2cstr(ext_uri_buffer)));
 
-    // and replace the R-URI with the first route URI 
+    // and replace the R-URI with the first route URI
     msg->u.request->ruri_str = fr_na_addr;
 }
 
@@ -865,7 +865,7 @@ static void prepare_strict_routing(sip_msg* msg, string& ext_uri_buffer)
 //
 // Ref. RFC 3261 "12.2.1.1 Generating the Request"
 //
-int trans_layer::set_next_hop(sip_msg* msg, 
+int trans_layer::set_next_hop(sip_msg* msg,
 			       cstring* next_hop,
 			       unsigned short* next_port,
 			       cstring* next_trsp)
@@ -873,19 +873,19 @@ int trans_layer::set_next_hop(sip_msg* msg,
     static const cstring default_trsp("udp");
     assert(msg);
 
-    list<sip_header*>& route_hdrs = msg->route; 
+    list<sip_header*>& route_hdrs = msg->route;
     int err=0;
 
     if(!route_hdrs.empty()){
-	
+
 	sip_header* fr = route_hdrs.front();
 	sip_uri* route_uri = get_first_route_uri(fr);
 	if(route_uri == NULL) {
-	    
+
 	    DBG("Parsing 1st route uri failed\n");
 	    return -1;
 	}
-	
+
 	if (next_hop->len == 0) {
 	    *next_hop  = route_uri->host;
 	    if(route_uri->port_str.len)
@@ -922,7 +922,7 @@ int trans_layer::set_next_hop(sip_msg* msg,
 	next_hop->len, next_hop->s, *next_port,
 	next_trsp ? next_trsp->len : 0,
 	next_trsp ? next_trsp->s : 0);
-    
+
     return 0;
 }
 
@@ -1000,7 +1000,7 @@ static void translate_string(sip_msg* dst_msg, cstring& dst,
     dst.len = src.len;
 }
 
-static void translate_hdr(sip_msg* dst_msg, sip_header*& dst, 
+static void translate_hdr(sip_msg* dst_msg, sip_header*& dst,
 			  const sip_msg* src_msg, const sip_header* src)
 {
     dst = new sip_header();
@@ -1071,37 +1071,37 @@ static int patch_ruri_with_remote_ip(string& n_uri, sip_msg* msg)
     cstring old_ruri = msg->u.request->ruri_str;
     struct sip_uri parsed_uri;
     if(parse_uri(&parsed_uri, old_ruri.s, old_ruri.len) < 0) {
- 	ERROR("could not parse local R-URI ('%.*s')",old_ruri.len,old_ruri.s);
- 	return -1;
+	ERROR("could not parse local R-URI ('%.*s')",old_ruri.len,old_ruri.s);
+	return -1;
     }
- 	
+
     // copy from the beginning until URI-host
     n_uri = string(old_ruri.s, parsed_uri.host.s - old_ruri.s);
- 
+
     // append new host and port
     n_uri += get_addr_str(&msg->remote_ip);
     unsigned short new_port = am_get_port(&msg->remote_ip);
     if(new_port != 5060) {
  	n_uri += ":" + int2str(new_port);
     }
- 	
+
     if(parsed_uri.port_str.len) {
- 	// copy from end of port-string until the end of old R-URI
- 	n_uri += string(parsed_uri.port_str.s + parsed_uri.port_str.len,
- 			old_ruri.s + old_ruri.len
- 			- (parsed_uri.port_str.s 
- 			   + parsed_uri.port_str.len));
+	// copy from end of port-string until the end of old R-URI
+	n_uri += string(parsed_uri.port_str.s + parsed_uri.port_str.len,
+			old_ruri.s + old_ruri.len
+			- (parsed_uri.port_str.s
+			   + parsed_uri.port_str.len));
     }
     else {
- 	// copy from end of host-string until the end of old R-URI
- 	n_uri += string(parsed_uri.host.s + parsed_uri.host.len,
- 			old_ruri.s + old_ruri.len
- 			- (parsed_uri.host.s 
- 			   + parsed_uri.host.len));
+	// copy from end of host-string until the end of old R-URI
+	n_uri += string(parsed_uri.host.s + parsed_uri.host.len,
+			old_ruri.s + old_ruri.len
+			- (parsed_uri.host.s
+			   + parsed_uri.host.len));
     }
- 
+
     msg->u.request->ruri_str = stl2cstr(n_uri);
- 
+
     return 0;
 }
 
@@ -1109,14 +1109,14 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
 {
     int request_len = request_line_len(msg->u.request->method_str,
  				       msg->u.request->ruri_str);
- 
+
     char branch_buf[BRANCH_BUF_LEN];
     compute_branch(branch_buf,msg->callid->value,msg->cseq->value);
     cstring branch(branch_buf,BRANCH_BUF_LEN);
-     
+
     string via(msg->local_socket->get_advertised_ip());
     if(msg->local_socket->get_port() != 5060)
- 	via += ":" + int2str(msg->local_socket->get_port());
+	via += ":" + int2str(msg->local_socket->get_port());
 
     cstring trsp(msg->local_socket->get_transport());
 
@@ -1124,11 +1124,11 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     vector<string> contact_buffers(msg->contacts.size());
     vector<string>::iterator contact_buf_it = contact_buffers.begin();
     list<sip_header*> n_contacts;
-    
+
     //TODO: patch copies of the Contact-HF instead of the original HFs
     for(list<sip_header*>::iterator contact_it = msg->contacts.begin();
 	contact_it != msg->contacts.end(); contact_it++, contact_buf_it++) {
-	
+
 	n_contacts.push_back(new sip_header(**contact_it));
 	patch_contact_transport(n_contacts.back(),trsp,*contact_buf_it);
     }
@@ -1414,7 +1414,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
     }
 
     sip_msg* req = t->msg;
-    
+
     // RFC 3261 says: SHOULD NOT be sent for other request
     // than INVITE.
     if(req->u.request->method != sip_request::INVITE){
@@ -1424,7 +1424,7 @@ int trans_layer::cancel(trans_ticket* tt, const string& dialog_id,
 	      inv_cseq, dialog_id.c_str());
 	return -1;
     }
-    
+
     switch(t->state){
     case TS_CALLING: {
 	// Abandon canceled transaction
@@ -1598,7 +1598,7 @@ void trans_layer::received_msg(sip_msg* msg)
 }
 
 void trans_layer::process_rcvd_msg(sip_msg* msg)
-{    
+{
     assert(msg->callid && get_cseq(msg));
     unsigned int h = hash(msg->callid->value, get_cseq(msg)->num_str);
 
@@ -1662,16 +1662,16 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
              unsigned inv_h;
              trans_bucket* inv_bucket;
              sip_trans* inv_t;
- 
+
              switch (msg->u.request->method) {
                  case sip_request::ACK:
                      // non-2xx ACK??? drop!
                      break;
- 
+
                  case sip_request::PRACK:
                      bucket->unlock();
                      if (! msg->rack) {
-                       send_sl_reply(msg, 400, 
+                       send_sl_reply(msg, 400,
                            cstring("Missing valid RSeq header"),
                            cstring(),cstring());
                        DROP_MSG;
@@ -1681,7 +1681,7 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
                      inv_bucket = get_trans_bucket(inv_h);
                      inv_bucket->lock();
                      if((inv_t = inv_bucket->match_1xx_prack(msg)) != NULL) {
-                         assert(msg->u.request->method != 
+                         assert(msg->u.request->method !=
                              inv_t->msg->u.request->method);
                          err = update_uas_request(inv_bucket,inv_t,msg);
                          DBG("update_uas_request(bucket,t,msg) = %i\n",err);
@@ -1689,18 +1689,18 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
                      inv_bucket->unlock();
                      bucket->lock();
                      // no break
- 
+
                  default:
                      // New transaction
                      t = bucket->add_trans(msg, TT_UAS);
- 
+
                      bucket->unlock();
- 
+
                      //  let's pass the request to
-                     //  the UA. 
+                     //  the UA.
                      assert(ua);
                      ua->handle_sip_request(trans_ticket(t,bucket),msg);
- 
+
                      // forget the msg: it will be
                      // owned by the new transaction
                      return;
@@ -1743,13 +1743,13 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 	    DBG("reply code = %i\n",msg->u.reply->code);
 	    if( (msg->u.reply->code >= 200) &&
 	        (msg->u.reply->code <  300) ) {
-		
+
 		bucket->unlock();
-		
+
 		// pass to UA
 		//assert(ua);
 		//ua->handle_sip_reply(msg);
-		
+
 		DROP_MSG;
 	    }
 	}
@@ -1841,11 +1841,11 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
     // 	return -1;
     // 	//}
     // }
-    
+
     if(t->msg->u.request->method == sip_request::INVITE){
-    
+
 	if(reply_code >= 300){
-	
+
 	    bool forget_reply = false;
 	    if(reply_code == 503 &&
 	       (t->state == TS_CALLING ||
@@ -1865,27 +1865,27 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 			goto end;
 		}
 	    }
-    
+
 	    // Final error reply
 	    switch(t->state){
-		
+
 	    case TS_CALLING:
 
 		t->reset_all_timers();
 
 	    case TS_PROCEEDING:
-	
+
 		t->clear_timer(STIMER_C);
 
 		t->state = TS_COMPLETED;
 		send_non_200_ack(msg,t);
 		t->reset_timer(STIMER_D, D_TIMER, bucket->get_id());
-		
+
 		if(forget_reply)
 		    goto end;
 
 		goto pass_reply;
-		
+
 	    case TS_ABANDONED:
 	    case TS_TERMINATED:
 		// local reply: do not send an ACK in this case
@@ -1909,14 +1909,14 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 	    default:
 		goto end;
 	    }
-	} 
+	}
 	else {
-	    
+
 	    DBG("Positive final reply to INVITE transaction (state=%i)\n",t->state);
 
 	    // Positive final reply to INVITE transaction
 	    switch(t->state){
-		
+
 	    case TS_CALLING:
 	    case TS_PROCEEDING: // first 2xx reply
 
@@ -1925,7 +1925,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 		//    - on first reply:
 		//      - save to-tag.
 		//    - compare to-tag on subsequent replies.
-		//      - (if different): 
+		//      - (if different):
 		//        - (generate new 200 ACK based on reply).
 		//        - (send BYE (check for existing UAC trans)).
 		//      - else:
@@ -1993,13 +1993,13 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 
 	// Final reply
 	switch(t->state){
-	    
+
 	case TS_TRYING:
 	case TS_CALLING:
 	case TS_PROCEEDING:
-	    
+
 	    t->state = TS_COMPLETED;
-	
+
 	    t->clear_timer(STIMER_E);
 	    t->clear_timer(STIMER_M);
 	    t->clear_timer(STIMER_F);
@@ -2023,7 +2023,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 	case TS_COMPLETED:
 	    // Absorb reply retransmission (only if UDP)
 	    goto end;
-	    
+
 	case TS_ABANDONED:
 	case TS_TERMINATED:
 	    //local reply
@@ -2107,7 +2107,7 @@ int trans_layer::update_uac_request(trans_bucket* bucket, sip_trans*& t,
 	// for any transport type
 	t->reset_timer(STIMER_B,B_TIMER,bucket->get_id());
 	break;
-    
+
     default:
 	if(!msg->local_socket->is_reliable()) {
 	    // if transport == UDP
@@ -2133,7 +2133,7 @@ int trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_
 
 	// error reply
 	t->state = TS_COMPLETED;
-	    
+
 	if(t->msg->u.request->method == sip_request::INVITE){
 
 	    if(!reliable_trsp)
@@ -2143,7 +2143,7 @@ int trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_
 	}
 	else if(!reliable_trsp) {
 	    // 64*T1_TIMER if UDP / 0 if !UDP
-	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id()); 
+	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id());
 	}
 	else {
 	    bucket->remove(t);
@@ -2163,7 +2163,7 @@ int trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_
 	    // required by the RFC.
 	    //
 	    t->state = TS_TERMINATED_200;
-	    
+
 	    if(!reliable_trsp)
 		t->reset_timer(STIMER_G,G_TIMER,bucket->get_id());
 
@@ -2172,7 +2172,7 @@ int trans_layer::update_uas_reply(trans_bucket* bucket, sip_trans* t, int reply_
 	else if(!reliable_trsp) {
 	    // Only for unreliable transports.
 	    t->state = TS_COMPLETED;
-	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id()); 
+	    t->reset_timer(STIMER_J,J_TIMER,bucket->get_id());
 	}
 	else {
 	    // reliable transports
@@ -2224,7 +2224,7 @@ int trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg*
 	    t->clear_timer(STIMER_H);
 	}
         return t->state;
-	    
+
     case TS_COMPLETED: // non-2xx-ACK
 	if(method != sip_request::ACK) return -1;
 	t->state = TS_CONFIRMED;
@@ -2238,17 +2238,17 @@ int trans_layer::update_uas_request(trans_bucket* bucket, sip_trans* t, sip_msg*
 	}
 
 	t->reset_timer(STIMER_I,I_TIMER,bucket->get_id());
-	
+
 	// drop through
     case TS_CONFIRMED: // non-2xx-ACK re-transmission
 	return t->state;
-	    
+
     case TS_TERMINATED_200: // 2xx-ACK
 	if(method != sip_request::ACK) return -1;
 	// remove transaction
 	bucket->remove(t);
 	return TS_REMOVED;
-	    
+
     default:
 	DBG("Bug? Unknown state at this point: %i\n",t->state);
 	break;
@@ -2444,7 +2444,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
             handled = true;
             break;
 
-          default: 
+          default:
             handled = false;
           }
 
@@ -2457,7 +2457,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
     case STIMER_J:  // Completed: -> Terminated
     case STIMER_I:  // Confirmed: -> Terminated
     case STIMER_L:  // Terminated_200 -> Terminated
-	
+
 	// TODO:
 	//  - check if the UA has sent the ACK.
 	//    else, send ACK & BYE.
@@ -2477,7 +2477,7 @@ void trans_layer::timer_expired(trans_timer* t, trans_bucket* bucket,
 	// in a UAS INVITE transaction.
 	//
 	if(tr->type == TT_UAS){
-	    
+
 	    // re-transmit reply to INV
 	    tr->retransmit();
             stats.inc_sent_reply_retrans();
@@ -2548,34 +2548,34 @@ int trans_layer::find_outbound_if(sockaddr_storage* remote_ip)
 
     if(transports.size() == 1)
 	return 0;
-    
+
     int temp_sock = socket(remote_ip->ss_family, SOCK_DGRAM, 0 );
     if (temp_sock == -1) {
 	ERROR( "ERROR: socket() failed: %s\n",
 	       strerror(errno));
 	return 0;
     }
-    
+
     sockaddr_storage from;
     socklen_t    len=sizeof(from);
     trsp_socket* tsock=NULL;
-    
-    if (connect(temp_sock, (sockaddr*)remote_ip, 
-		remote_ip->ss_family == AF_INET ? 
+
+    if (connect(temp_sock, (sockaddr*)remote_ip,
+		remote_ip->ss_family == AF_INET ?
 		sizeof(sockaddr_in) : sizeof(sockaddr_in6))==-1) {
-	
+
 	ERROR("connect failed: %s\n",
 	      strerror(errno));
 	goto error;
     }
-    
+
     if (getsockname(temp_sock, (sockaddr*)&from, &len)==-1) {
 	ERROR("getsockname failed: %s\n",
 	      strerror(errno));
 	goto error;
     }
     close(temp_sock);
-    
+
     // try with alternative address
     char local_ip[NI_MAXHOST];
     if(am_inet_ntop(&from,local_ip,NI_MAXHOST) != NULL) {
@@ -2690,7 +2690,7 @@ int trans_layer::try_next_ip(trans_bucket* bucket, sip_trans* tr,
 	    tr->reset_timer(t_bf,t_bf->type);
 	}
 
-	bucket->append(tr);	
+	bucket->append(tr);
     }
     else {
 	// copy the new address back
@@ -2797,9 +2797,9 @@ void trans_ticket::unlock_bucket() const
 const sip_trans* trans_ticket::get_trans() const
 {
     if(_bucket->exist(_t))
-	return _t; 
-    else 
-	return NULL; 
+	return _t;
+    else
+	return NULL;
 }
 
 void trans_ticket::remove_trans()
