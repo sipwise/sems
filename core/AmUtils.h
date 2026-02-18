@@ -143,6 +143,12 @@ bool str2int(char*& str, unsigned int& result, char sep = ' ');
  */
 bool str2int(const string& str, int& result);
 
+/**
+ * Convert a string to the double.
+ * @param str    [in]  string to convert.
+ * @param result [out] result integer.
+ * @return true on success
+ */
 bool str2int(const string& str, double& result);
 
 /**

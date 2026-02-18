@@ -269,8 +269,27 @@ bool str2int(const string& str, int& result)
 
 bool str2int(const string& str, double& result)
 {
-  char* s = (char*)str.c_str();
-  return atof(s);
+  try
+  {
+    size_t pos;
+    result = std::stod(str, &pos);
+
+    /* check whether the whole stirng was converted */
+    if (pos != str.length())
+      return false;
+
+    return true;
+  }
+  catch (const std::invalid_argument)
+  {
+    return false;
+  }
+  catch (const std::out_of_range)
+  {
+    return false;
+  }
+
+  return false;
 }
 
 bool str2int(char*& str, int& result, char sep)
