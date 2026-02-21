@@ -1064,6 +1064,9 @@ int AmSipDialog::send_200_ack(unsigned int inv_cseq,
   if(body != NULL)
     req.body = *body;
 
+  if (!hdrs.empty())
+    req.hdrs = hdrs;
+
   if(onTxRequest(req,flags) < 0)
     return -1;
 
