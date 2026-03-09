@@ -16,14 +16,14 @@ class IvrDialog(IvrDialogBase):
         self.enqueue(self.audio_msg,None)
 
     def onEmptyQueue(self):
-	return        
+        return
 
     def onTimer(self, timerid):
         self.disconnectMedia()
         debug('hello kitty')
         self.connectCallee(self.dialog.local_party,self.dialog.local_uri, \
                            self.dialog.remote_party,self.dialog.remote_uri,)
-	return        
+        return
 
     def onBye(self):		
 

@@ -27,7 +27,7 @@ from account import *
 #CONTROL_URI="http://127.0.0.1:8090/"
 CONTROL_URI="https://webconference.iptel.org/control"
 
-print "Server Control URI: '%s' - change CONTROL_URI to use local SEMS instance" % CONTROL_URI
+print("Server Control URI: '%s' - change CONTROL_URI to use local SEMS instance" % CONTROL_URI)
 
 # refresh in ms
 REFRESH_INTERVAL=1000
@@ -37,7 +37,7 @@ try:
 	from accountconfig import *
 	HAS_ACCOUNT=True
 except:
-	print "accountconfig.py not found - will ask for account to make calls"
+	print("accountconfig.py not found - will ask for account to make calls")
 	pass
 
 class named_participant(Ui_participant):
@@ -71,7 +71,7 @@ class named_participant(Ui_participant):
 			self.cb_muted.setCheckState(Qt.Unchecked)
 	
 	def muted_changed(self, i):
-		print "callid is" , self.callid
+		print("callid is" , self.callid)
 		self.cb_muted.emit(QtCore.SIGNAL("mute(int,bool)"), self.id, self.cb_muted.isChecked())
 		
 		
@@ -107,20 +107,20 @@ class StartQT4(QtGui.QMainWindow):
 		
 		QtCore.QObject.connect(self.ui.buttonNew, QtCore.SIGNAL("clicked()"), self.new_call)
 		self.s = ServerProxy(CONTROL_URI)
-		print "server has %d running calls " % self.s.calls()
+		print("server has %d running calls " % self.s.calls())
 		for i in range(10):
 			self.roomname = ""
 			for n in range(6):
 				self.roomname+=str(random.randint(0,9))
 			code, result, adminpin, serverstatus = self.s.di('webconference', 'roomCreate', self.roomname)
-			print "server status: %s " % serverstatus
+			print("server status: %s " % serverstatus)
 			if code == 0:
 				self.adminpin = adminpin
 				break
 		if self.adminpin == "":
 			raise "oh, could not get a free room :("
 		
-		print "roomname is %s, adminpin is %s "% (self.roomname, self.adminpin)
+		print("roomname is %s, adminpin is %s "% (self.roomname, self.adminpin))
 		self.ui.label.setText("iptel.org\nwebconference\nhttps://webconference.iptel.org\n\nroom: %s    adminpin:%s\n\n" 
 		                      "to dial in call sip:conference@iptel.org \nand type %s*"
 		   %(self.roomname, self.adminpin, self.roomname))
@@ -132,7 +132,7 @@ class StartQT4(QtGui.QMainWindow):
 	def timer_hit(self):
 		res = self.s.di('webconference', 'roomInfo', self.roomname, self.adminpin)
 		if res[0] != 0:
-			print "oh my god, can't see this room!"
+			print("oh my god, can't see this room!")
 			return
 		
 		code, reason, participants, serverstatus = res
@@ -165,31 +165,31 @@ class StartQT4(QtGui.QMainWindow):
 		return part
 		
 	def new_call(self):
-		print "a new call."
+		print("a new call.")
 		dlg = QtGui.QDialog(self)
 		dlg_cb = Ui_callbox()
 		dlg_cb.setupUi(dlg)
 		if dlg.exec_() == QDialog.Rejected:
 			return
 		
-		print "now calling %s " % dlg_cb.num.text() 
+		print("now calling %s " % dlg_cb.num.text())
 		res = self.s.di('webconference', 'dialout', self.roomname, self.adminpin, str(dlg_cb.num.text()),
 				self.call_user, self.call_domain, self.call_auth_user, self.call_pwd)
 		if res[0] != 0:
-			print "oh, my dear, calling failed with code %d " % res[0]
+			print("oh, my dear, calling failed with code %d " % res[0])
 			return
 		code, result, callid, serverinfo = res	
-		print "code %d result %s " % (code, result)
-		print "serverinfo is %s " % serverinfo 
+		print("code %d result %s " % (code, result))
+		print("serverinfo is %s " % serverinfo)
 						
 		self.createparticipantWidget(dlg_cb.num.text(), callid)
 		
 	def part_ciao(self, id):
-		print "ciao: ", id 
+		print("ciao: ", id)
 		self.s.di('webconference', 'kickout', self.roomname, self.adminpin, self.participants[id].callid)
 		
 	def part_muted(self, id, s):
-		print "mute: ", id, " is ", s
+		print("mute: ", id, " is ", s)
 		if s:
 			self.s.di('webconference', 'mute', self.roomname, self.adminpin, self.participants[id].callid)
 		else:

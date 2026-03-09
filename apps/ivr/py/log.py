@@ -39,9 +39,9 @@ def stacktrace(tb):
 	line = tb.tb_frame.f_lineno
 
 	if f != last_file:
-		error('File ' + `f` + ': line ' + `line`)
+		error('File ' + repr(f) + ': line ' + repr(line))
 	else:
-		error(', line ' + `line`)
+		error(', line ' + repr(line))
 	return f
 
 

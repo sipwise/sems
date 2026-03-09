@@ -30,7 +30,7 @@ class IvrDialog(IvrDialogBase):
 
     def onBye(self):
 
-	self.stopSession()
+        self.stopSession()
 
     def onEmptyQueue(self):
 
