@@ -1,5 +1,6 @@
 import SimpleXMLRPCServer
 
+
 #The server object
 class AuthServer:
 	def __init__(self):
@@ -14,6 +15,7 @@ class AuthServer:
 		else:
 			self.keys[room] = pin
 			return 'OK'
+
 
 authsrv = AuthServer()
 server = SimpleXMLRPCServer.SimpleXMLRPCServer(("127.0.0.1", 9090))

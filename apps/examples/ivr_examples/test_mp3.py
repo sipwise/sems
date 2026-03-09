@@ -4,6 +4,8 @@
 
 from log import *
 from ivr import *
+
+
 class IvrDialog(IvrDialogBase):
 
 	def onSessionStart(self):
@@ -12,4 +14,3 @@ class IvrDialog(IvrDialogBase):
 		self.enqueue(self.voice_msg, None)
 		self.voice_msg.open("record.mp3", AUDIO_WRITE, False)
 		self.enqueue(None, self.voice_msg)
-

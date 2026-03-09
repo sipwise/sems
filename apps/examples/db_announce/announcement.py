@@ -11,7 +11,8 @@
 # Use, copying, modification, and distribution without written
 # permission is not allowed.
 
-import os, MySQLdb
+import os
+import MySQLdb
 
 from log import *
 from ivr import *

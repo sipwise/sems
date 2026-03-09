@@ -1,5 +1,5 @@
 #
-# Simple implementation of (a part) of RFC4240 
+# Simple implementation of (a part) of RFC4240
 # announcement service.
 #
 # supported parameters:
@@ -15,6 +15,7 @@ from os import unlink
 TIMEOUT_TIMER_ID = 1
 DELAY_TIMER_ID   = 2
 
+
 class IvrDialog(IvrDialogBase):
 
 	announcement=None
@@ -23,13 +24,13 @@ class IvrDialog(IvrDialogBase):
 	delay=0
 	duration=-1
 	play=""
-	delete_onbye = False	
+	delete_onbye = False
 	repeat_left = 0
 
 	def onSessionStart(self,hdrs):
 
 		debug("configuration: %s" % repr(config))
-		debug("local_uri = " + self.dialog.local_uri);
+		debug("local_uri = " + self.dialog.local_uri)
 		# we use urlsplit as urlparse only returns the
 		# parameters of the last path
 		params = urlsplit(self.dialog.local_uri)[2].split(";")

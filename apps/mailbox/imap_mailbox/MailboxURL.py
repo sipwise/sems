@@ -1,7 +1,8 @@
 
 import re
 
-class InvalidMailboxURL(Exception):	
+
+class InvalidMailboxURL(Exception):
 	def __init__(self,value):
 		self.value = value
 
@@ -10,7 +11,6 @@ class InvalidMailboxURL(Exception):
 
 
 class MailboxURL:
-
 
 	url    = ""
 	user   = ""
@@ -22,7 +22,6 @@ class MailboxURL:
 	def __init__(self,url):
 		self.url = url
 		self._parse()
-
 
 	def _parse(self):
 		m = re.match('imap://(.+):(.+)@(.+):([0-9]+)/(.+)',self.url)
@@ -42,5 +41,3 @@ class MailboxURL:
 		       ("host:\t%s\n" % self.host) + \
 		       ("port:\t%i\n" % self.port) + \
 		       ("path:\t%s\n" % self.path)
-		       
-		

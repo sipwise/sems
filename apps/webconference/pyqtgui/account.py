@@ -9,6 +9,7 @@
 
 from PyQt4 import QtCore, QtGui
 
+
 class Ui_account(object):
     def setupUi(self, account):
         account.setObjectName("account")
@@ -56,4 +57,3 @@ class Ui_account(object):
         self.e_domain.setText(QtGui.QApplication.translate("account", "iptel.org", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("account", "Password", None, QtGui.QApplication.UnicodeUTF8))
         self.e_pwd.setText(QtGui.QApplication.translate("account", "password", None, QtGui.QApplication.UnicodeUTF8))
-

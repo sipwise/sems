@@ -9,6 +9,7 @@
 
 from PyQt4 import QtCore, QtGui
 
+
 class Ui_callbox(object):
     def setupUi(self, callbox):
         callbox.setObjectName("callbox")
@@ -37,4 +38,3 @@ class Ui_callbox(object):
         callbox.setWindowTitle(QtGui.QApplication.translate("callbox", "call", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("callbox", "calll", None, QtGui.QApplication.UnicodeUTF8))
         self.num.setText(QtGui.QApplication.translate("callbox", "+49", None, QtGui.QApplication.UnicodeUTF8))
-

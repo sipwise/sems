@@ -1,4 +1,7 @@
-import base64, time, os, sip
+import base64
+import time
+import os
+import sip
 
 from py_sems_log import *
 from py_sems import *
@@ -49,7 +52,7 @@ class PySemsScript(PySemsB2ABDialog):
         self.ann = AmAudioFile()
         try:
             self.ann.open(ann_file)
-        except:
+        except Exception:
             self.dlg.reply(req, 500, "File not found", "", "", "")
             self.ann = None
             self.setStopped()

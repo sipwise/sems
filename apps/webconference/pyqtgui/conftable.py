@@ -9,6 +9,7 @@
 
 from PyQt4 import QtCore, QtGui
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -30,7 +31,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtGui.QGridLayout(self.frame_main)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.label = QtGui.QLabel(self.frame_main)
-        self.label.setStyleSheet("""QLabel { 
+        self.label.setStyleSheet("""QLabel {
     background-color: rgb(170, 200, 255);
 }
 """)
@@ -67,4 +68,3 @@ class Ui_MainWindow(object):
 "webconference", None, QtGui.QApplication.UnicodeUTF8))
         self.menuSettings.setTitle(QtGui.QApplication.translate("MainWindow", "Menu", None, QtGui.QApplication.UnicodeUTF8))
         self.actionQuit.setText(QtGui.QApplication.translate("MainWindow", "Quit", None, QtGui.QApplication.UnicodeUTF8))
-

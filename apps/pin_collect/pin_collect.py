@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from log import *
 from ivr import *
 
@@ -12,6 +13,7 @@ connect_failed  = 2
 
 HINT_TIMER   = 1
 HINT_TIMEOUT = 10 # seconds until hint msg is played
+
 
 class IvrDialog(IvrDialogBase):
     # messages to be played to the caller
@@ -28,9 +30,8 @@ class IvrDialog(IvrDialogBase):
 	# cseq of transfer request
 	transfer_cseq    = None
 	# remote_uri of dialog
-	dlg_remote_uri   = None	
+	dlg_remote_uri   = None
 
-		
 	def sessionInfo(self):
 		debug("IVR Session info:")
 		debug(" user:        " + self.dialog.user)
@@ -52,10 +53,10 @@ class IvrDialog(IvrDialogBase):
 	def onSessionStart(self):
 		self.sessionInfo()
 		self.setNoRelayonly()
-		
+
 		self.welcome_msg = IvrAudioFile()
 		self.welcome_msg.open(config['welcome_msg'],AUDIO_READ)
-		
+
 		self.pin_msg = IvrAudioFile()
 		self.pin_msg.open(config['pin_msg'],AUDIO_READ)
 
@@ -78,7 +79,7 @@ class IvrDialog(IvrDialogBase):
 					try:
 						c = xmlrpclib.ServerProxy(config['auth_xmlrpc_url'])
 						erg = c.authorize(self.dialog.user, self.keys)
-	
+
 						debug('result of authentication: '+ str(erg))
 						if erg == 'OK':
 							self.state = connect
@@ -86,27 +87,27 @@ class IvrDialog(IvrDialogBase):
 							self.dlg_remote_uri	= self.dialog.remote_uri
 							debug("saved remote_uri "+ self.dlg_remote_uri)
 							self.transfer_cseq = self.dialog.cseq
-							self.redirect("sip:" + self.dialog.user + "@" + \
+							self.redirect("sip:" + self.dialog.user + "@" +
 								      self.dialog.domain)
 						else:
 							self.flush()
 							self.keys = ''
-							if self.auth_fail_msg == None:
+							if self.auth_fail_msg is None:
 								self.auth_fail_msg = IvrAudioFile()
 								self.auth_fail_msg.open(config['auth_fail_msg'],AUDIO_READ)
 							self.enqueue(self.auth_fail_msg,None)
-					except:
+					except Exception:
 						self.dlg_remote_uri = self.dialog.remote_uri
-						self.state = connect_failed		
+						self.state = connect_failed
 						self.fail_msg = IvrAudioFile()
 						self.fail_msg.open(config['fail_msg'],AUDIO_READ)
 						self.enqueue(self.fail_msg,None)
-						
+
 				elif config['auth_mode'] == 'REFER':
 					self.state = connect
 					self.removeTimer(HINT_TIMER)
 					self.transfer_cseq = self.dialog.cseq
-					self.refer("sip:" + self.dialog.user + "+" + self.keys + "@" + \
+					self.refer("sip:" + self.dialog.user + "+" + self.keys + "@" +
 						self.dialog.domain, 20)
 				else:
 					self.state = connect
@@ -114,10 +115,8 @@ class IvrDialog(IvrDialogBase):
 					self.dlg_remote_uri     = self.dialog.remote_uri
 					debug("saved remote_uri "+ self.dlg_remote_uri)
 					self.transfer_cseq = self.dialog.cseq
-					self.redirect("sip:" + self.dialog.user + "+" + self.keys + "@" + \
+					self.redirect("sip:" + self.dialog.user + "+" + self.keys + "@" +
 						self.dialog.domain)
-
-
 
 	def onEmptyQueue(self):
 		if self.state == collect:
@@ -141,7 +140,7 @@ class IvrDialog(IvrDialogBase):
 				self.dropSession()
 			elif reply.code >= 300:
 				debug("transfer failed. notifying user")
-				self.state = connect_failed		
+				self.state = connect_failed
 				self.fail_msg = IvrAudioFile()
 				self.fail_msg.open(config['fail_msg'],AUDIO_READ)
 				self.enqueue(self.fail_msg,None)

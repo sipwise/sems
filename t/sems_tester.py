@@ -100,12 +100,12 @@ class TestCase(unittest.TestCase):
         s = sock
         if not s:
             s = self.makeXMLRPCSocket()
-        l = len(req)
+        req_len = len(req)
         req = (
             b"POST / HTTP/1.1\r\nConnection: close\r\nHost: 127.0.0.1:"
             + bytes(self._xmlrpc_port)
             + b"\r\nUser-Agent: Tester\r\nContent-Type: text/xml\r\nContent-Length: "
-            + bytes(str(l), "latin1")
+            + bytes(str(req_len), "latin1")
             + b"\r\n\r\n"
             + req
         )

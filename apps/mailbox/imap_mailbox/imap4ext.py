@@ -1,4 +1,6 @@
-import os,base64,time
+import os
+import base64
+import time
 from imaplib import IMAP4
 
 from MailboxURL import *
@@ -20,7 +22,7 @@ class IMAP4_MsgBODY:
 	uid   = ''
 	parts = []
 	ct    = ''
-		
+
 	def __init__(self,imap,uid):
 
 		self.uid   = ''
@@ -40,16 +42,16 @@ class IMAP4_MsgBODY:
 
 		(t,d) = imap.uid('fetch',self.uid,'(BODY.PEEK[%i])' % (part+1))
 		if (t != "OK") or (len(d[0]) != 2):
-			raise IMAP4.error("could not retrieve part %s/%i" \
+			raise IMAP4.error("could not retrieve part %s/%i"
 					  % (self.uid, part+1))
-			
+
 		msg = d[0][1]
 		msg = base64.decodestring(msg)
 		if filename is None:
 			out_file = os.tmpfile()
 		else:
 			out_file = open(filename,'w+')
-			
+
 		out_file.write(msg)
 		out_file.seek(0)
 
@@ -59,11 +61,10 @@ class IMAP4_MsgBODY:
 			out_file.close()
 			return None
 
-
 	def _parse_body_desc(self,desc):
 
 		(_dummy,s) = self._parenthesis2seq(desc)[1]
-		
+
 		self.uid = s[1]
 
 		if type(s[3][0]) is not str:
@@ -78,7 +79,6 @@ class IMAP4_MsgBODY:
 			self.parts.append(s[3])
 			self.ct = s[3][0]
 
-
 	def _parenthesis2seq(self,s,ibeg=0):
 
 		seq = []
@@ -90,7 +90,7 @@ class IMAP4_MsgBODY:
 				(i,tmp_seq) = self._parenthesis2seq(s,i+1)
 				elmt_beg = i
 				seq.append(tmp_seq)
-			
+
 			elif s[i] == ')':
 				if elmt_beg < i:
 					seq.append(s[elmt_beg:i])
@@ -110,7 +110,6 @@ class IMAP4_MsgBODY:
 		return (i,seq)
 
 
-
 class IMAP4_Mailbox:
 
 	url  = None
@@ -123,24 +122,21 @@ class IMAP4_Mailbox:
 
 	def __del__(self):
 
-		if self.imap != None:
+		if self.imap is not None:
 			self.imap.logout()
 			self.imap = None
-		
 
 	def createBox(self):
 
 		self._login()
-		debug("Creating account: " + \
+		debug("Creating account: " +
 		      repr(IMAPCALL(self.imap.create(self.url.path))))
-
 
 	def deleteBox(self):
 
 		self._login()
-		debug("Deleting account: " + \
+		debug("Deleting account: " +
 		      repr(IMAPCALL(self.imap.delete(self.url.path))))
-
 
 	def uploadMsg(self,msg):
 		self._login()
@@ -179,9 +175,8 @@ class IMAP4_Mailbox:
 		IMAPCALL(self.imap.close())
 		return msg_list
 
-
 	def downloadWAV(self,msg_uid):
-		
+
 		self._login()
 		IMAPCALL(self.imap.select(self.url.path))
 		body = IMAP4_MsgBODY(self.imap,msg_uid)
@@ -194,13 +189,12 @@ class IMAP4_Mailbox:
 
 		IMAPCALL(self.imap.close())
 		return fp
-		
 
 	def downloadWAVs(self,search_criterion,file_prefix):
 
 		self._login()
 		IMAPCALL(self.imap.select(self.url.path))
-		
+
 		(t,d) = self.imap.uid('SEARCH',search_criterion)
 		IMAPCALL((t,d))
 
@@ -208,27 +202,26 @@ class IMAP4_Mailbox:
 		for i in d[0].split():
 
 			body = IMAP4_MsgBODY(self.imap,i)
-		
+
 			for p in range(len(body.parts)):
-			
+
 				if body.part_ct(p).upper() == 'AUDIO/X-WAV':
-					
+
 					filename = file_prefix + '-' + body.uid + '.wav'
 					msg_list.append(filename)
 					body.fetch2file(self.imap,p,filename)
-					
+
 		IMAPCALL(self.imap.close())
 		return msg_list
 
 	def _login(self):
 
-		if self.imap != None:
+		if self.imap is not None:
 			return
 
 		self.imap = IMAP4(self.url.host,self.url.port)
 		try:
 			IMAPCALL(self.imap.login(self.url.user,self.url.passwd))
-		except:
+		except IMAP4.error:
 			self.imap = None
 			raise
-		

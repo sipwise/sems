@@ -1,4 +1,5 @@
-import base64,time
+import base64
+import time
 
 from log import *
 from ivr import *
@@ -16,7 +17,7 @@ class IvrDialog(IvrDialogBase):
 	def onSessionStart(self):
 
 		debug("config: %s" % repr(config))
-		self.mailbox = IMAP4_Mailbox(getAppParam("Mailbox-URL"));
+		self.mailbox = IMAP4_Mailbox(getAppParam("Mailbox-URL"))
 		debug("***** Mailbox Url: ******\n" + str(self.mailbox.url))
 
 		self.announcement = IvrAudioFile()
@@ -32,27 +33,21 @@ class IvrDialog(IvrDialogBase):
 		self.enqueue(self.announcement,None)
 		self.enqueue(self.beep,None)
 		self.enqueue(None,self.voice_msg)
-		
-		
+
 	def onBye(self):
-		
+
 		self.stopSession()
 		self.saveMsg()
 
-
 	def onEmptyQueue(self):
-
-		
 
 		self.bye()
 		self.stopSession()
 		self.saveMsg()
 
-
 	def onDtmf(self,key,duration):
-		
-		pass
 
+		pass
 
 	def saveMsg(self):
 
@@ -71,5 +66,5 @@ class IvrDialog(IvrDialogBase):
 		      enc_msg
 
 		#debug("msg = <%s>",msg);
-		
+
 		self.mailbox.uploadMsg(msg)

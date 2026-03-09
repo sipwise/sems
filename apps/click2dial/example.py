@@ -10,6 +10,8 @@
 # of the R-Uri to correctly route it to the destination.
 ########################################################################
 
+from xmlrpclib import *
+
 proxy = "192.168.100.10"
 xmlrpc_url = "http://127.0.0.1:8090"
 
@@ -24,12 +26,11 @@ auth_realm = "iptel.org"
 
 announce_file = "default_en"
 
-from xmlrpclib import *
 s = ServerProxy(xmlrpc_url)
 s.dial_auth_b2b(
-        "click2dial", announce_file, 
-        "sip:" + caller_user + "@" + caller_domain, 
-        "sip:" + callee_user + "@" + callee_domain, 
+        "click2dial", announce_file,
+        "sip:" + caller_user + "@" + caller_domain,
+        "sip:" + callee_user + "@" + callee_domain,
         "sip:" + caller_user + "@" + proxy + ";sw_domain=" + caller_domain,
         "sip:" + callee_user + "@" + proxy + ";sw_domain=" + callee_domain,
         auth_realm, auth_user, auth_pass)

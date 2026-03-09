@@ -16,6 +16,7 @@ beeping                   = 1
 connecting                = 2
 connected                 = 3
 
+
 class IvrDialog(IvrDialogBase):
 
     def onSessionStart(self):
@@ -40,7 +41,7 @@ class IvrDialog(IvrDialogBase):
             return
 
         return
-    
+
     def onOtherReply(self, code, reason):
 
         debug('call_center: got reply: ' + str(code) + ' ' + reason)

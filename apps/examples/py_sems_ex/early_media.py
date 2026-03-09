@@ -1,4 +1,7 @@
-import base64, time, os, sip
+import base64
+import time
+import os
+import sip
 
 from py_sems_log import *
 from py_sems import *
@@ -37,7 +40,7 @@ class PySemsScript(PySemsDialog):
 
             if self.dlg.reply(req, 183, "OK", "application/sdp", sdp_reply, "") != 0:
                 self.setStopped()
-        except:
+        except Exception:
             self.dlg.reply(req, 500, "File not found", "", "", "")
             self.ann = None
             self.setStopped()
@@ -100,7 +103,7 @@ class PySemsScript(PySemsDialog):
                     code_i = int(code)
                     if (code_i < 300) or (code_i > 699):
                         debug("Invalid reply code: %d", code_i)
-                except:
+                except Exception:
                     debug("Invalid reply code: %s", code)
 
                 debug("Replying %d %s" % (code_i, reason))

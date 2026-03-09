@@ -2,6 +2,7 @@
 from log import *
 from ivr import *
 
+
 class IvrDialog(IvrDialogBase):
 	mixin = None
 	announcement = None

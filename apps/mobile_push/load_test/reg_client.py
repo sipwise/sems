@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from xmlrpclib import * 
+from xmlrpclib import *
 from random import *
 import time
 
@@ -16,5 +16,5 @@ while True:
   else:
     print(s.createRegistration(n, str(n), str(n), '192.168.5.110'))
     r.add(n)
-    
+
   time.sleep(.1)

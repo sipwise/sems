@@ -6,6 +6,7 @@ import string
 server = SimpleXMLRPCServer(("localhost", 8000))
 server.register_introspection_functions()
 
+
 class MyFuncs:
 	def getCredit(self, arg):
 		print("Function getCredit")
@@ -27,6 +28,7 @@ class MyFuncs:
 		print("                amount: ", d2['amount'])
 		print("                credit: ", credit)
 		return credit
+
 
 server.register_instance(MyFuncs())
 server.serve_forever()
