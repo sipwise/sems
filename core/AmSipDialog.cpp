@@ -1000,7 +1000,8 @@ int AmSipDialog::cancel(const string &hdrs)
 	  if(getStatus() != Cancelling){
 	    setStatus(Cancelling);
 	    return SipCtrlInterface::cancel(&t->second.tt, local_tag,
-					    t->first, t->second.hdrs);
+					    t->first,
+					    hdrs.empty() ? t->second.hdrs : hdrs);
 	  }
 	  else {
 	    ILOG_DLG(L_ERR, "INVITE transaction has already been cancelled\n");
