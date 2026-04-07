@@ -1,3 +1,32 @@
+ngcp-sems (1:1.6.0+0~mr26.1.0.0) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [d847534] MT#62181 store sip_msg buffer as std::string
+  * [4f91272] MT#62181 whitespace cleanups
+  * [74f0150] MT#62181 replace ull2str
+  * [64aa523] MT#62181 whitespace cleanups
+  * [5aba17a] MT#62181 unify all int-to-string conversions
+  * [0374fb9] MT#62181 add unsigned long overload for int2str
+  * [c4c1634] MT#62181 rename long2str to int2str
+  * [7c5dc88] MT#62181 whitespace cleanups
+  * [5810370] MT#62181 rename longlong2str to int2str
+  * [df77284] MT#62181 rename uint128ToStr to int2str
+  * [818c4e4] MT#62181 silence compiler warning
+  * [2cd6f20] MT#62181 silence compiler warning
+  * [d684e8c] MT#62181 silence compiler warning
+  * [d1553a7] MT#62181 add string assignment operator
+
+  [ Donat Zenichev ]
+  * [d800d8f] MT#64469 AmUtils: fix str2int (double) helper
+  * [b2915b3] MT#64469 DSMCoreModule: fix `str2int()` double usage
+
+  [ Guillem Jover ]
+  * [a74c342] MT#62763 Fix Python code compilation with Python 3.x
+  * [7fc80ae] MT#62763 Fix pycodestyle issues
+  * [506ff62] MT#62763 Fix pycodestyle issues, round two
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 07 Apr 2026 12:59:06 +0200
+
 ngcp-sems (1:1.6.0+0~mr14.2.0.0) unstable; urgency=medium
 
   [ Donat Zenichev ]
