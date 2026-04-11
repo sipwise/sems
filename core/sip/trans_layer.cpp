@@ -1178,6 +1178,7 @@ static int generate_and_parse_new_msg(sip_msg* msg, sip_msg*& p_msg)
     *c++ = '\0';
 
     p_msg->buf = string(buf, request_len);
+	delete[] buf;
 
     // and parse it
     char* err_msg=0;
