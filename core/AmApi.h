@@ -267,7 +267,7 @@ typedef AmPluginFactory* (*FactoryCreate)();
 #define EXPORT_PLUGIN_CLASS_FACTORY(class_name,app_name) \
             EXPORT_FACTORY(FACTORY_PLUGIN_CLASS_EXPORT,class_name,app_name)
 
-#define FACTORY_LOG_FACILITY_EXPORT     log_facilty_factory_create
+#define FACTORY_LOG_FACILITY_EXPORT     log_facility_factory_create
 #define FACTORY_LOG_FACILITY_EXPORT_STR XSTR(FACTORY_LOG_FACILITY_EXPORT)
 
 #define EXPORT_LOG_FACILITY_FACTORY(class_name,app_name) \
