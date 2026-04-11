@@ -205,7 +205,8 @@ void trans_timer::fire()
 		// 2. we have already set a new one
 		// -> anyway, don't fire the old one !!!
                 bucket->unlock();
-		return;
+		delete this;
+        return;
 	    }
 
 	    // timer_expired unlocks the bucket
@@ -220,6 +221,7 @@ void trans_timer::fire()
     else {
 	ERROR("Invalid bucket id\n");
     }
+    delete this;
 }
 
 /**
