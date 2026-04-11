@@ -209,6 +209,7 @@ class AudioStreamData: private AmRtpStream::Hook {
     void debug(std::ostream &out);
 
     void addHook(AmRtpStream::Hook *h);
+    void removeHook(AmRtpStream::Hook *h);
 };
 
 /** \brief Class for control over media relaying and transcoding in a B2B session.
@@ -463,6 +464,8 @@ class AmB2BMedia: public AmMediaSession
     bool isMuted(bool a_leg) { if (a_leg) return a_leg_muted; else return b_leg_muted; }
 
     void setFirstStreamInput(bool a_leg, AmAudio *in);
+    void addFirstStreamHook(bool a_leg, AmRtpStream::Hook *h);
+    void removeFirstStreamHook(bool a_leg, AmRtpStream::Hook *h);
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
     /** enable or disable DTMF receiving on relay streams */

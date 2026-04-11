@@ -497,6 +497,12 @@ void AudioStreamData::addHook(AmRtpStream::Hook *h)
   hooks.push_back(h);
 }
 
+void AudioStreamData::removeHook(AmRtpStream::Hook *h)
+{
+  hooks.remove(h);
+  if (hooks.empty() && stream) stream->setHook(nullptr);
+}
+
 void AudioStreamData::receivedPacket(AmRtpPacket *p)
 {
   for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
@@ -1335,6 +1341,26 @@ void AmB2BMedia::setFirstStreamInput(bool a_leg, AmAudio *in)
     if (in) {
       ERROR("BUG: can't set %s leg's first stream input, no streams\n", a_leg ? "A": "B");
     }
+  }
+}
+
+void AmB2BMedia::addFirstStreamHook(bool a_leg, AmRtpStream::Hook *h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  if (!audio.empty()) {
+    AudioStreamIterator i = audio.begin();
+    if (a_leg) i->a.addHook(h);
+    else i->b.addHook(h);
+  }
+}
+
+void AmB2BMedia::removeFirstStreamHook(bool a_leg, AmRtpStream::Hook *h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  if (!audio.empty()) {
+    AudioStreamIterator i = audio.begin();
+    if (a_leg) i->a.removeHook(h);
+    else i->b.removeHook(h);
   }
 }
 
