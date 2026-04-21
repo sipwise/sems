@@ -30,6 +30,7 @@
 #include "AmSipMsg.h"
 #include "AmUtils.h"
 #include "AmSipHeaders.h"
+#include "AmSipDialog.h"
 
 #include <map>
 
@@ -190,8 +191,7 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 	    getHeader(reply.hdrs, SIP_HDR_WWW_AUTHENTICATE, true);
 	  string result; 
 
-	  string auth_uri; 
-	  auth_uri = dlg->getRemoteUri();
+	  string auth_uri = !ri->second.r_uri.empty() ? ri->second.r_uri : dlg->getRemoteUri();
 
 	  if (do_auth(reply.code, auth_hdr,  
 		      ri->second.method,
@@ -222,9 +222,9 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 
         if (AmConfig::ProxyStickyAuth) {
           /* update remote URI to resolved IP */
-          size_t hpos = dlg->getRemoteUri().find("@");
+          size_t hpos = auth_uri.find("@");
           if (hpos != string::npos && reply.remote_ip.length()) {
-            string remote_uri = dlg->getRemoteUri().substr(0, hpos+1) +
+            string remote_uri = auth_uri.substr(0, hpos+1) +
                                 reply.remote_ip +
                                 ":" +
                                 int2str(reply.remote_port);
@@ -241,7 +241,7 @@ bool UACAuth::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 		findHeader(hdrs, "m", skip, pos1, pos2, hdr_start))
 	      flags |= SIP_FLAGS_NOCONTACT;
 
-	    // resend request 
+	    // resend request
 	    if (dlg->sendRequest(ri->second.method,
 				 &(ri->second.body),
 				 hdrs,  flags) == 0) {
@@ -271,7 +271,7 @@ bool UACAuth::onSendRequest(AmSipRequest& req, int& flags)
   if (!(flags & SIP_FLAGS_NOAUTH) &&
       !challenge.nonce.empty() &&
       do_auth(challenge, challenge_code,
-	      req.method, dlg->getRemoteUri(), &req.body, result)) {
+	      req.method, (!req.r_uri.empty() ? req.r_uri : dlg->getRemoteUri()), &req.body, result)) {
     // add headers
     if (req.hdrs == "\r\n" || req.hdrs == "\r" || req.hdrs == "\n")
       req.hdrs = std::move(result);
@@ -284,11 +284,10 @@ bool UACAuth::onSendRequest(AmSipRequest& req, int& flags)
   }
 
   DBG("adding %d to list of sent requests.\n", req.cseq);
-  sent_requests[req.cseq] = SIPRequestInfo(req.method, 
+  sent_requests[req.cseq] = SIPRequestInfo(req.method,
 					   &req.body,
-					   req.hdrs//,
-					   // TODO: fix this!!!
-					   /*dlg->getOAState()*/);
+					   req.hdrs,
+					   req.r_uri);
   return false;
 }
 
