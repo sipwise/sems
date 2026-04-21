@@ -189,10 +189,18 @@ int AmOfferAnswer::onRequestIn(const AmSipRequest& req)
 
 int AmOfferAnswer::onReplyIn(const AmSipReply& reply)
 {
+  if( (reply.code >= 300) && (reply.cseq == cseq) ) {
+    /* final error reply -> cleanup OA state */
+    ILOG_DLG(L_DBG, "after %u reply to %s: resetting OA state\n",
+	reply.code, reply.cseq_method.c_str());
+    clearTransitionalState();
+    return 0;
+  }
+
   const char* err_txt  = NULL;
   int         err_code = 0;
 
-  if((reply.cseq_method == SIP_METH_INVITE || 
+  if((reply.cseq_method == SIP_METH_INVITE ||
       reply.cseq_method == SIP_METH_UPDATE || 
       reply.cseq_method == SIP_METH_PRACK) &&
      !reply.body.empty() )
