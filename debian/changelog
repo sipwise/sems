@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0+0~mr14.1.1.2) unstable; urgency=medium
+
+  [ Bit-Savva Mikhail ]
+  * [d4ede62] MT#64847 call authentication with peers doesn't work
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 23 Apr 2026 15:20:19 +0200
+
 ngcp-sems (1:1.6.0+0~mr14.1.1.1) unstable; urgency=medium
 
   * New release.
