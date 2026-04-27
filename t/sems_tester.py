@@ -25,6 +25,7 @@ class TestCase(unittest.TestCase):
 
         binary = os.environ.get("BINARY", "core/sems")
 
+        os.makedirs("t/run/", exist_ok=True)
         cmdline = [
             binary,
             "-f",
@@ -55,6 +56,10 @@ class TestCase(unittest.TestCase):
     def tearDownClass(cls):
         cls._proc.terminate()
         cls._proc.wait()
+        try:
+            os.unlink("t/run/" + str(os.getpid()) + ".pid")
+        except FileNotFoundError:
+            pass
 
     def testSdNotify(self):
         self.assertEqual(self._sd_msg, b"READY=1")
@@ -76,25 +81,61 @@ class TestCase(unittest.TestCase):
         sock.connect(("127.0.0.1", cls._xmlrpc_port))
         return sock
 
-    def sendSIP(self, msg: bytes, sock: socket = None):
+    def sendSIP(self, msg: str, sock: socket = None):
         s = sock
         if not s:
             s = self.makeSIPSocket()
-        msg = msg.replace(b"\n", b"\r\n")
-        s.send(msg)
+        s.send(msg.replace("\n", "\r\n").encode("utf-8"))
         if not sock:
             s.close()
 
-    def sendRecvSIP(self, msg: bytes, exp: bytes, sock: socket = None):
+    def sendRecvSIP(self, msg: str, exp: str, sock: socket = None):
         s = sock
         if not s:
             s = self.makeSIPSocket()
-        r = re.compile(exp.replace(b"\n", b"[\r\n]{1,2}"), re.DOTALL)
+        r = re.compile(exp.replace("\n", "[\\r\\n]{1,2}"), re.DOTALL)
         self.sendSIP(msg, s)
-        m = s.recv(1000)
+        m = s.recv(1000).decode("utf-8")
         self.assertRegex(m, r)
         if not sock:
             s.close()
+
+    @classmethod
+    def makeUASSocket(cls, port):
+        """Bind socket on given port — simulates UAS/callee (leg B)."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(3)
+        sock.bind(("127.0.0.1", port))
+        return sock
+
+    @classmethod
+    def makeUACSocket(cls, port):
+        """Bind to port and connect to SIP server — simulates UAC/caller (leg A).
+        Using a bound socket ensures the Contact header IP:port is reachable
+        when the server needs to send requests (BYE, re-INVITE) back to the UAC."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(3)
+        sock.bind(("127.0.0.1", port))
+        sock.connect(("127.0.0.1", cls._sip_port))
+        return sock
+
+    def recvSIP(self, sock: socket.socket) -> str:
+        """Receive a SIP message without asserting."""
+        return sock.recv(4096).decode("utf-8")
+
+    def recvFromSIP(self, sock: socket.socket) -> typing.Tuple[str, tuple]:
+        """Receive a SIP message and return (msg, sender_addr)."""
+        data, addr = sock.recvfrom(4096)
+        return data.decode("utf-8"), addr
+
+    def sendToSIP(self, msg: str, addr: tuple, sock: socket.socket):
+        """Send SIP message to a specific address from a bound socket."""
+        sock.sendto(msg.replace("\n", "\r\n").encode("utf-8"), addr)
+
+    def assertSIP(self, msg: str, exp: str):
+        """Assert a SIP message matches a regex pattern."""
+        r = re.compile(exp.replace("\n", "[\\r\\n]{1,2}"), re.DOTALL)
+        self.assertRegex(msg, r)
 
     def sendRecvXMLRPC(self, req: bytes, exp: bytes, sock: socket = None):
         s = sock

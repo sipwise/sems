@@ -11,7 +11,7 @@ class TestBasic(sems_tester.TestCase):
 
     def testOptions(self):
         self.sendRecvSIP(
-            b"""OPTIONS sip:monitoring@voip.sipwise.local SIP/2.0
+            """OPTIONS sip:monitoring@voip.sipwise.local SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@voip.sipwise.local>
@@ -24,7 +24,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2\\.0/UDP 127\\.0\\.0\\.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=1;received=[\\d.]+
 To: <sip:monitoring@voip.sipwise\\.local>;tag=[A-Z0-9-]+
 From: monit <sip:monit@127\\.0\\.0\\.1>;tag=8667fc7c8b14e846

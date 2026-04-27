@@ -12,7 +12,7 @@ class TestBasic(sems_tester.TestCase):
     def testRegister(self):
         # query
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -23,7 +23,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=1;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -36,7 +36,7 @@ $""",
 
         # register
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -49,7 +49,7 @@ Expires: 5
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=2;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -66,7 +66,7 @@ $""",
 
         # query
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -77,7 +77,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=3;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -93,7 +93,7 @@ $""",
 
         # query again
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -104,7 +104,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=4;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -117,7 +117,7 @@ $""",
 
         # update
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -130,7 +130,7 @@ Expires: 5
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=5;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -144,7 +144,7 @@ $""",
 
         # query
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -155,7 +155,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=6;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -169,7 +169,7 @@ $""",
 
         # unregister
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -182,7 +182,7 @@ Expires: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=7;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
@@ -195,7 +195,7 @@ $""",
 
         # query
         self.sendRecvSIP(
-            b"""REGISTER sip:127.0.0.1 SIP/2.0
+            """REGISTER sip:127.0.0.1 SIP/2.0
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport
 Max-Forwards: 6
 To: <sip:monitoring@127.0.0.1>
@@ -206,7 +206,7 @@ Content-Length: 0
 User-Agent: tester/5.33.0
 
 """,
-            b"""^SIP/2.0 200 OK
+            """^SIP/2.0 200 OK
 Via: SIP/2.0/UDP 127.0.0.1:57715;branch=z9hG4bKhedcec8e2a445fd80;rport=8;received=.*?
 To: <sip:monitoring@127.0.0.1>;tag=.*?
 From: monit <sip:monit@127.0.0.1>;tag=8667fc7c8b14e846
