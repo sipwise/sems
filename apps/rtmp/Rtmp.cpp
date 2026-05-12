@@ -61,7 +61,7 @@ int RtmpFactory::onLoad()
 {
   AmConfigReader cfg_file;
 
-  if(cfg_file.loadPluginConf(MOD_NAME) < 0){
+  if(cfg_file.loadPluginConf(AmConfig::ModConfigPath, MOD_NAME) < 0){
     INFO("No config file for " MOD_NAME " plug-in: using defaults.\n");
   }
   else {

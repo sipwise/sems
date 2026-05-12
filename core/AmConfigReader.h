@@ -25,16 +25,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 /** @file AmConfigReader.h */
-#ifndef AmConfigReader_h
-#define AmConfigReader_h
-
+#pragma once
 #include <string>
 #include <map>
-using std::string;
-
-
-#define MAX_CONFIG_LINE 4096
-#define CONFIG_FILE_SUFFIX ".conf"
 
 /**
  * \brief configuration file reader
@@ -46,30 +39,23 @@ using std::string;
 
 class AmConfigReader
 {
-  std::map<string,string> keys;
+    std::map<std::string, std::string> config;
 
- public:
-  int  loadFile(const string& path);
-  int  loadPluginConf(const string& mod_name);
-  int  loadString(const char* cfg_lines, size_t cfg_len);
+public:
+    int  loadFile(const std::string & path);
+    int  loadPluginConf(const std::string & path, const std::string & mod_name);
 
-  /** get md5 hash of file contents */
-  bool getMD5(const string& path, string& md5hash, bool lowercase = true);
-  void setParameter(const string& param, const string& val);
-  void eraseParameter(const string& param);
-  bool hasParameter(const string& param) const;
+    void setParameter(const std::string & name, const std::string & val);
+    void eraseParameter(const std::string & name);
+    bool hasParameter(const std::string & name) const;
 
-  const string& getParameter(const string& param) const;
-  const string& getParameter(const string& param, const string& defval) const;
-  unsigned int getParameterInt(const string& param, unsigned int defval = 0) const;
+    const std::string & getParameter(const std::string & name) const;
+    const std::string & getParameter(const std::string & name, const std::string & defval) const;
+    int getParameterInt(const std::string & name, int defval = 0) const;
 
-  std::map<string,string>::const_iterator begin() const
-    { return keys.begin(); }
+    std::map<std::string, std::string>::const_iterator begin() { return config.begin(); }
+    std::map<std::string, std::string>::const_iterator end() { return config.end(); }
 
-  std::map<string,string>::const_iterator end() const
-    { return keys.end(); }
-
-  void dump();
+    bool getMD5(const std::string & path, std::string & md5hash, bool lowercase = true);
+    void dump() const;
 };
-
-#endif

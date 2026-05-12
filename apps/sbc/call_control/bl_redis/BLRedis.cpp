@@ -83,7 +83,7 @@ int CCBLRedis::onLoad() {
 
   full_logging = false;
 
-  if(cfg.loadPluginConf(MOD_NAME)) {
+  if(cfg.loadPluginConf(AmConfig::ModConfigPath, MOD_NAME)) {
     INFO(MOD_NAME "configuration  file not found, assuming default "
 	 "configuration is fine\n");
   } else {
