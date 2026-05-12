@@ -363,7 +363,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
   refuse_with = cfg.getParameter("refuse_with");
 
   rtprelay_enabled = cfg.getParameter("enable_rtprelay");
-  aleg_force_symmetric_rtp = cfg.getParameter("rtprelay_force_symmetric_rtp");
+  aleg_force_symmetric_rtp = cfg.getParameter("rtprelay_force_symmetric_rtp","yes");
   force_symmetric_rtp = aleg_force_symmetric_rtp;
   msgflags_symmetric_rtp = cfg.getParameter("rtprelay_msgflags_symmetric_rtp") == "yes";
 

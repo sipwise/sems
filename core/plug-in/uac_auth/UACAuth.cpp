@@ -44,6 +44,9 @@ using std::string;
 
 #define MOD_NAME "uac_auth"
 
+#define DEFAULT_SERVER_SECRET "CKASLD§$>NLKJSLDKFJ"
+
+
 EXPORT_SESSION_EVENT_HANDLER_FACTORY(UACAuthFactory, MOD_NAME);
 EXPORT_PLUGIN_CLASS_FACTORY(UACAuthFactory, MOD_NAME);
 
@@ -100,7 +103,7 @@ int UACAuthFactory::onLoad()
 	 cfg_file_path.c_str());
     secret = AmSession::getNewId(); // ?? TODO: is this cryptoproof?
   } else {
-    secret = conf.getParameter("server_secret");
+    secret = conf.getParameter("server_secret",DEFAULT_SERVER_SECRET);
     if (secret.size()<5) {
       ERROR("server_secret in '%s' too short!\n", cfg_file_path.c_str());
       return -1;
