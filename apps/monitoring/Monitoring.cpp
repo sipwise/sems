@@ -259,14 +259,14 @@ void Monitor::addSample(const AmArg& args, AmArg& ret) {
     cnt = args[2].asInt();
 
     if (args.size() > 3 && isArgBlob(args[3])) {
-      now = *((struct timeval*) args[3].asBlob()->data);
+      now = *((struct timeval*) args[3].asBlob().data);
     }
     else {
       gettimeofday(&now, NULL);
     }
   }
   else if (args.size() > 2 && isArgBlob(args[2])) {
-    now = *((struct timeval*)args[2].asBlob()->data);
+    now = *((struct timeval*)args[2].asBlob().data);
   } else {
     gettimeofday(&now, NULL);
   }
@@ -306,7 +306,7 @@ void Monitor::getCount(const AmArg& args, AmArg& ret) {
 
   struct timeval now;
   if (args.size()>2 && isArgBlob(args[2])) {
-    now = *(struct timeval*)args[2].asBlob()->data;
+    now = *(struct timeval*)args[2].asBlob().data;
   } else {
     gettimeofday(&now, NULL);
   }
@@ -314,10 +314,10 @@ void Monitor::getCount(const AmArg& args, AmArg& ret) {
   struct timeval from;
   struct timeval to;
   if (args.size()>3 && isArgBlob(args[3])) {
-    from = *(struct timeval*)args[3].asBlob()->data;
+    from = *(struct timeval*)args[3].asBlob().data;
 
     if (args.size()>4 && isArgBlob(args[4]))
-      to = *(struct timeval*)args[4].asBlob()->data;
+      to = *(struct timeval*)args[4].asBlob().data;
     else
       to = now;
 
@@ -382,9 +382,9 @@ void Monitor::getAllCounts(const AmArg& args, AmArg& ret) {
 
   struct timeval now;
   if (args.size()>1 && isArgBlob(args[1])) {
-    now = *(struct timeval*)args[1].asBlob()->data;
+    now = *(struct timeval*)args[1].asBlob().data;
   } else if (args.size()>2 && isArgInt(args[1]) && isArgBlob(args[2])) {
-    now = *(struct timeval*)args[2].asBlob()->data;
+    now = *(struct timeval*)args[2].asBlob().data;
 	} else {
     gettimeofday(&now, NULL);
   }
@@ -392,10 +392,10 @@ void Monitor::getAllCounts(const AmArg& args, AmArg& ret) {
   struct timeval from;
   struct timeval to;
   if (args.size()>2 && isArgBlob(args[1]) && isArgBlob(args[2])) {
-    from = *(struct timeval*)args[2].asBlob()->data;
+    from = *(struct timeval*)args[2].asBlob().data;
 
     if (args.size()>3 && isArgBlob(args[3]))
-      to = *(struct timeval*)args[3].asBlob()->data;
+      to = *(struct timeval*)args[3].asBlob().data;
     else
       to = now;
 
@@ -619,8 +619,8 @@ void Monitor::listByFilter(const AmArg& args, AmArg& ret, bool erase) {
       while (it != logs[i].log.end()) {
 	bool match = true;
 	for (size_t a_i=0;a_i<args.size();a_i++) {
-	  AmArg& p = args.get(a_i);	  
-	  if (!(it->second.info[p.get(0).asCStr()]==p.get(1))) {
+	  const AmArg& p = args.get(a_i);
+	  if (!(it->second.info[p.get(0).asCStr()]==p.get(1).asCStr())) {
 	    match = false;
 	    break;
 	  }
