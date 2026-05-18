@@ -397,8 +397,7 @@ public:
   virtual int sendUpdate(const AmMimeBody* body, const string &hdrs);
 
   /** send a Re-INVITE (if connected) */
-  virtual int sendReinvite(bool updateSDP = true, const string& headers = "",
-			   int flags = 0);
+  virtual int sendReinvite(bool updateSDP = true, const string& headers = "", int flags = 0);
 
   /** send an INVITE */
   virtual int sendInvite(const string& headers = "");
@@ -562,8 +561,7 @@ public:
   virtual void onSipRequest(const AmSipRequest& req);
 
   /** Entry point for SIP Replies   */
-  virtual void onSipReply(const AmSipRequest& req, const AmSipReply& reply,
-			  AmBasicSipDialog::Status old_dlg_status);
+  virtual void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmBasicSipDialog::Status old_dlg_status);
 
   /** 2xx reply has been received for an INVITE transaction */
   virtual void onInvite2xx(const AmSipReply& reply);

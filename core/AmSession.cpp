@@ -162,7 +162,7 @@ void AmSession::createRTPStreams() {
 
 void AmSession::setActiveRtpStream(int transport) {
   for (vector<AmRtpAudio*>::iterator it =
-	 rtp_streams.begin(); it != rtp_streams.end(); it++) {
+    rtp_streams.begin(); it != rtp_streams.end(); it++) {
     if (transport == TP_RTPAVP || transport == TP_RTPSAVP || transport == TP_RTPSAVPF) {
       active_rtp_stream = it;
       active_rtp_stream_i = true;
@@ -211,7 +211,7 @@ void AmSession::startMediaProcessing()
   }
   else {
     ILOG_DLG(L_DBG, "no audio input and output set. "
-	"Session will not be attached to MediaProcessor.\n");
+    "Session will not be attached to MediaProcessor.\n");
   }
 }
 
@@ -433,31 +433,30 @@ bool AmSession::processingCycle() {
   case SESSION_PROCESSING_EVENTS:
     {
       if (!processEventsCatchExceptions()) {
-	// exception occured, stop processing
-	processing_status = SESSION_ENDED_DISCONNECTED;
-	return false;
+          // exception occured, stop processing
+          processing_status = SESSION_ENDED_DISCONNECTED;
+          return false;
       }
 
       AmSipDialog::Status dlg_status = dlg->getStatus();
       bool s_stopped = sess_stopped.get();
 
       ILOG_DLG(L_DBG, "^^ S [%s|%s] %s, %s, %i UACTransPending, %i usages ^^\n",
-	  dlg->getCallid().c_str(),getLocalTag().c_str(),
-	  AmBasicSipDialog::getStatusStr(dlg_status),
-	  s_stopped?"stopped":"running",
-	  dlg->getUACTransPending(),
-	  dlg->getUsages());
+                dlg->getCallid().c_str(),getLocalTag().c_str(),
+                AmBasicSipDialog::getStatusStr(dlg_status),
+                s_stopped?"stopped":"running",
+                dlg->getUACTransPending(),
+                dlg->getUsages());
 
       // session running?
-      if (!s_stopped || (dlg_status == AmSipDialog::Disconnecting)
-	  || dlg->getUsages())
-	return true;
+      if (!s_stopped || (dlg_status == AmSipDialog::Disconnecting) || dlg->getUsages())
+          return true;
 
       // session stopped?
       if (s_stopped &&
-	  (dlg_status == AmSipDialog::Disconnected)) {
-	processing_status = SESSION_ENDED_DISCONNECTED;
-	return false;
+          (dlg_status == AmSipDialog::Disconnected)) {
+            processing_status = SESSION_ENDED_DISCONNECTED;
+            return false;
       }
 
       // wait for session's status to be disconnected
@@ -466,13 +465,13 @@ bool AmSession::processingCycle() {
       processing_status = SESSION_WAITING_DISCONNECTED;
 
       if ((dlg_status != AmSipDialog::Disconnected) &&
-	  (dlg_status != AmSipDialog::Cancelling)) {
-	ILOG_DLG(L_DBG, "app did not send BYE - do that for the app\n");
-	if (dlg->bye() != 0) {
-	  processing_status = SESSION_ENDED_DISCONNECTED;
-	  // BYE sending failed - don't wait for dlg status to go disconnected
-	  return false;
-	}
+            (dlg_status != AmSipDialog::Cancelling)) {
+            ILOG_DLG(L_DBG, "app did not send BYE - do that for the app\n");
+            if (dlg->bye() != 0) {
+              processing_status = SESSION_ENDED_DISCONNECTED;
+              // BYE sending failed - don't wait for dlg status to go disconnected
+              return false;
+            }
       }
 
       return true;
@@ -492,11 +491,11 @@ bool AmSession::processingCycle() {
       processing_status = SESSION_ENDED_DISCONNECTED;
 
     ILOG_DLG(L_DBG, "^^ S [%s|%s] %s, %s, %i UACTransPending, %i usages ^^\n",
-	dlg->getCallid().c_str(),getLocalTag().c_str(),
-	dlg->getStatusStr(),
-	sess_stopped.get()?"stopped":"running",
-	dlg->getUACTransPending(),
-	dlg->getUsages());
+                dlg->getCallid().c_str(),getLocalTag().c_str(),
+                dlg->getStatusStr(),
+                sess_stopped.get()?"stopped":"running",
+                dlg->getUACTransPending(),
+                dlg->getUsages());
 
     return res;
   }; break;
@@ -543,8 +542,7 @@ void AmSession::setStopped(bool wakeup) {
     onStop();
   }
   if (wakeup)
-    AmSessionContainer::instance()->postEvent(getLocalTag(),
-					      new AmEvent(0));
+    AmSessionContainer::instance()->postEvent(getLocalTag(), new AmEvent(0));
 }
 
 string AmSession::getAppParam(const string& param_name) const
@@ -673,16 +671,16 @@ void AmSession::postDtmfEvent(AmDtmfEvent *evt)
   if (m_dtmfDetectionEnabled)
     {
       if (dynamic_cast<AmSipDtmfEvent *>(evt) ||
-	  dynamic_cast<AmRtpDtmfEvent *>(evt))
+    dynamic_cast<AmRtpDtmfEvent *>(evt))
         {
-	  // this is a raw event from sip info or rtp
-	  m_dtmfEventQueue.postEvent(evt);
+    // this is a raw event from sip info or rtp
+    m_dtmfEventQueue.postEvent(evt);
         }
       else
         {
-	  // this is an aggregated event,
-	  // post it into our event queue
-	  postEvent(evt);
+    // this is an aggregated event,
+    // post it into our event queue
+    postEvent(evt);
         }
     }
 }
@@ -736,7 +734,7 @@ void AmSession::process(AmEvent* ev)
 
   if (ev->event_id == E_SYSTEM) {
     AmSystemEvent* sys_ev = dynamic_cast<AmSystemEvent*>(ev);
-    if(sys_ev){	
+    if(sys_ev){
       ILOG_DLG(L_DBG, "Session received system Event\n");
       onSystemEvent(sys_ev);
       return;
@@ -758,7 +756,7 @@ void AmSession::process(AmEvent* ev)
   AmDtmfEvent* dtmf_ev = dynamic_cast<AmDtmfEvent*>(ev);
   if (dtmf_ev) {
     ILOG_DLG(L_DBG, "Session received DTMF, event = %d, duration = %d\n",
-	dtmf_ev->event(), dtmf_ev->duration());
+    dtmf_ev->event(), dtmf_ev->duration());
     onDtmf(dtmf_ev->event(), dtmf_ev->duration());
     return;
   }
@@ -827,7 +825,7 @@ void AmSession::onSipRequest(const AmSipRequest& req)
 }
 
 void AmSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
-			   AmBasicSipDialog::Status old_dlg_status)
+                            AmBasicSipDialog::Status old_dlg_status)
 {
   CALL_EVENT_H(onSipReply, req, reply, old_dlg_status);
 
@@ -840,13 +838,13 @@ void AmSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
 
   if (old_dlg_status != dlg->getStatus()) {
     ILOG_DLG(L_DBG, "Dialog status changed %s -> %s (stopped=%s) \n",
-	AmBasicSipDialog::getStatusStr(old_dlg_status),
-	dlg->getStatusStr(),
-	sess_stopped.get() ? "true" : "false");
+    AmBasicSipDialog::getStatusStr(old_dlg_status),
+    dlg->getStatusStr(),
+    sess_stopped.get() ? "true" : "false");
   } else {
     ILOG_DLG(L_DBG, "Dialog status stays %s (stopped=%s)\n",
-	AmBasicSipDialog::getStatusStr(old_dlg_status),
-	sess_stopped.get() ? "true" : "false");
+    AmBasicSipDialog::getStatusStr(old_dlg_status),
+    sess_stopped.get() ? "true" : "false");
   }
 }
 
@@ -939,11 +937,12 @@ bool AmSession::getSdpOffer(AmSdp& offer)
     for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++) {
       int media_idx = (*it)->getSdpMediaIndex();
       if (media_idx < 0) { // shouldn't happen - all streams should be initialized
-	ILOG_DLG(L_ERR, "stream %zd in rtp_streams does not have media index\n", it-rtp_streams.begin());
-	continue;
+        ILOG_DLG(L_ERR, "stream %zd in rtp_streams does not have media index\n", it-rtp_streams.begin());
+        continue;
       }
       if ((unsigned)abs(media_idx) >= offer.media.size())
-      	offer.media.resize(media_idx+1);
+          offer.media.resize(media_idx+1);
+
       (*it)->getSdpOffer(media_idx, offer.media[media_idx]);
     }
   } else {
@@ -986,9 +985,9 @@ public:
   {
     for (vector<string>::iterator it = AmConfig::CodecOrder.begin(); it != AmConfig::CodecOrder.end(); it++) {
       if (strcasecmp(left.encoding_name.c_str(),it->c_str())==0 && strcasecmp(right.encoding_name.c_str(), it->c_str())!=0)
-	return true;
+          return true;
       if (strcasecmp(right.encoding_name.c_str(),it->c_str())==0)
-	return false;
+          return false;
     }
 
     return false;
@@ -1053,8 +1052,8 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
     SdpMedia& answer_media = answer.media.back();
 
     if (audio_1st_stream // still looking for compatible stream?
-	&& m_it->type == MT_AUDIO
-	&& m_it->transport == TP_RTPAVP
+          && m_it->type == MT_AUDIO
+          && m_it->transport == TP_RTPAVP
         && !m_it->isRejected()) {
       // accept media
 
@@ -1065,8 +1064,7 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
       AmRtpTransport* rtp_transport = createRtpTransport(RTPStream(), ip,
                                                          m_it->rtcp_mux,
                                                          offer.hasIce(),
-                                                         false
-							 );
+                                                         false);
 
       if (offer.hasIce()) {
         rtp_transport->setRemoteStunCredentials(m_it->ice_username,
@@ -1083,10 +1081,10 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
       RTPStream()->getSdpAnswer(media_index, *m_it, answer_media);
 
       if(!answer_media.haveNonTelevPayload()) {
-	// no compatible codec found with this stream
-	have_audio_stream = true;
-	rejectMedia(*m_it, answer_media);
-	continue;
+          // no compatible codec found with this stream
+          have_audio_stream = true;
+          rejectMedia(*m_it, answer_media);
+          continue;
       }
 
       // sort payload type in the answer according to the priority given in the codec_order configuration key
@@ -1120,8 +1118,8 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
     string sdp_str_local; string sdp_str_remote;
     local_sdp.print(sdp_str_local); remote_sdp.print(sdp_str_remote);
     ILOG_DLG(L_ERR, "Invalid SDP - Local SDP:<%s> Remote SDP: <%s>\n",
-	  sdp_str_local.empty() ? "<empty>" : sdp_str_local.c_str(),
-	  sdp_str_remote.empty() ? "<empty>" : sdp_str_remote.c_str());
+    sdp_str_local.empty() ? "<empty>" : sdp_str_local.c_str(),
+    sdp_str_remote.empty() ? "<empty>" : sdp_str_remote.c_str());
     return -1;
   }
 
@@ -1138,9 +1136,9 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
   for(vector<SdpMedia>::const_iterator m_it = remote_sdp.media.begin();
       m_it != remote_sdp.media.end(); m_it++) {
     if (m_it->type == MT_AUDIO
-	&& !m_it->isRejected()
-	&& m_it->transport == TP_RTPAVP
-	) {
+        && !m_it->isRejected()
+        && m_it->transport == TP_RTPAVP
+       ) {
       // accept media
       setActiveRtpStream(m_it->transport);
       break;
@@ -1197,8 +1195,7 @@ void AmSession::onSessionTimeout() {
 
 void AmSession::updateRefreshMethod(const string& headers) {
   if (refresh_method == REFRESH_UPDATE_FB_REINV) {
-    if (key_in_list(getHeader(headers, SIP_HDR_ALLOW),
-		    SIP_METH_UPDATE)) {
+    if (key_in_list(getHeader(headers, SIP_HDR_ALLOW), SIP_METH_UPDATE)) {
       ILOG_DLG(L_DBG, "remote allows UPDATE, using UPDATE for session refresh.\n");
       refresh_method = REFRESH_UPDATE;
     }
@@ -1226,7 +1223,7 @@ bool AmSession::refresh(int flags) {
 }
 
 int AmSession::sendUpdate(const AmMimeBody* body,
-			  const string &hdrs)
+                          const string &hdrs)
 {
   return dlg->update(body, hdrs);
 }
@@ -1341,8 +1338,8 @@ string AmSession::localMediaIP(int addrType)
     set_ip = AmConfig::RTP_Ifs[i].LocalIP; // "media_ip" parameter.
     // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
-	((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
-	((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
+      ((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
+      ((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
       return set_ip;
   }
   return set_ip;
@@ -1364,8 +1361,8 @@ string AmSession::advertisedIP(int addrType)
     set_ip = AmConfig::RTP_Ifs[i].getIP(); // "media_ip" parameter.
     // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
-	((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
-	((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
+      ((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
+      ((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
       return set_ip;
   }
   return set_ip;
