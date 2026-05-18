@@ -571,8 +571,6 @@ public:
   /** answer for a locally sent PRACK is received */
   virtual void onPrack2xx(const AmSipReply &);
 
-  virtual void onFailure();
-
   virtual void onNoAck(unsigned int cseq);
   virtual void onNoPrack(const AmSipRequest &req, const AmSipReply &rpl);
 
