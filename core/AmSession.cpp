@@ -139,14 +139,15 @@ AmSession::~AmSession()
 
   delete dlg;
 
-  for (vector<AmRtpAudio*>::iterator it=rtp_streams.begin(); it != rtp_streams.end(); it++) {
+  for (vector<AmRtpAudio*>::iterator it=rtp_streams.begin(); it != rtp_streams.end(); it++)
+  {
     delete *it;
   }
 
-  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
-    if (NULL != *it) {
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++)
+  {
+    if (NULL != *it)
       delete *it;
-    }
   }
 }
 
@@ -161,8 +162,8 @@ void AmSession::createRTPStreams() {
 }
 
 void AmSession::setActiveRtpStream(int transport) {
-  for (vector<AmRtpAudio*>::iterator it =
-    rtp_streams.begin(); it != rtp_streams.end(); it++) {
+  for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++)
+  {
     if (transport == TP_RTPAVP || transport == TP_RTPSAVP || transport == TP_RTPSAVPF) {
       active_rtp_stream = it;
       active_rtp_stream_i = true;
@@ -358,7 +359,8 @@ void AmSession::run() {
     return;
 
   ILOG_DLG(L_DBG, "running session event loop\n");
-  while (true) {
+  while (true)
+  {
     waitForEvent();
     if (!processingCycle())
       break;
@@ -381,11 +383,11 @@ bool AmSession::startup() {
       ILOG_DLG(L_ERR, "%s\n",str.c_str());
       throw AmSession::Exception(500,"unexpected exception.");
     }
-    catch(...){
+    catch(...) {
       throw AmSession::Exception(500,"unexpected exception.");
     }
 
-  } catch(const AmSession::Exception& e){
+  } catch(const AmSession::Exception& e) {
     ILOG_DLG(L_ERR, "%i %s\n",e.code,e.reason.c_str());
     onBeforeDestroy();
     destroy();
@@ -408,7 +410,7 @@ bool AmSession::processEventsCatchExceptions() {
       ILOG_DLG(L_ERR, "%s\n",str.c_str());
       throw AmSession::Exception(500,"unexpected exception.");
     }
-    catch(...){
+    catch(...) {
       throw AmSession::Exception(500,"unexpected exception.");
     }
   } catch(const AmSession::Exception& e){
@@ -453,8 +455,7 @@ bool AmSession::processingCycle() {
           return true;
 
       // session stopped?
-      if (s_stopped &&
-          (dlg_status == AmSipDialog::Disconnected)) {
+      if (s_stopped && (dlg_status == AmSipDialog::Disconnected)) {
             processing_status = SESSION_ENDED_DISCONNECTED;
             return false;
       }
@@ -464,8 +465,7 @@ bool AmSession::processingCycle() {
       //       or react properly on negative reply to BYE (e.g. timeout)
       processing_status = SESSION_WAITING_DISCONNECTED;
 
-      if ((dlg_status != AmSipDialog::Disconnected) &&
-            (dlg_status != AmSipDialog::Cancelling)) {
+      if ((dlg_status != AmSipDialog::Disconnected) && (dlg_status != AmSipDialog::Cancelling)) {
             ILOG_DLG(L_DBG, "app did not send BYE - do that for the app\n");
             if (dlg->bye() != 0) {
               processing_status = SESSION_ENDED_DISCONNECTED;
@@ -669,28 +669,25 @@ void AmSession::setInbandDetector(Dtmf::InbandDetectorType t)
 void AmSession::postDtmfEvent(AmDtmfEvent *evt)
 {
   if (m_dtmfDetectionEnabled)
-    {
-      if (dynamic_cast<AmSipDtmfEvent *>(evt) ||
-    dynamic_cast<AmRtpDtmfEvent *>(evt))
-        {
-    // this is a raw event from sip info or rtp
-    m_dtmfEventQueue.postEvent(evt);
-        }
-      else
-        {
-    // this is an aggregated event,
-    // post it into our event queue
-    postEvent(evt);
-        }
+  {
+    if (dynamic_cast<AmSipDtmfEvent *>(evt) || dynamic_cast<AmRtpDtmfEvent *>(evt)) {
+        // this is a raw event from sip info or rtp
+        m_dtmfEventQueue.postEvent(evt);
     }
+    else {
+      // this is an aggregated event,
+      // post it into our event queue
+      postEvent(evt);
+    }
+  }
 }
 
 void AmSession::processDtmfEvents()
 {
   if (m_dtmfDetectionEnabled)
-    {
-      m_dtmfEventQueue.processEvents();
-    }
+  {
+    m_dtmfEventQueue.processEvents();
+  }
 }
 
 void AmSession::putDtmfAudio(const unsigned char *buf, int size, unsigned long long system_ts)
@@ -866,6 +863,7 @@ void AmSession::onNoAck(unsigned int cseq)
 {
   if (dlg->getStatus() == AmSipDialog::Connected)
     dlg->bye();
+
   setStopped();
 }
 
@@ -934,7 +932,10 @@ bool AmSession::getSdpOffer(AmSdp& offer)
   bool streams_initialized = RTPStream()->getSdpMediaIndex() >= 0;
   if (streams_initialized) {
     ILOG_DLG(L_DBG, "updating offer from %zd already initialized RTP streams\n", rtp_streams.size());
-    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++) {
+    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin();
+         it != rtp_streams.end();
+         it++)
+    {
       int media_idx = (*it)->getSdpMediaIndex();
       if (media_idx < 0) { // shouldn't happen - all streams should be initialized
         ILOG_DLG(L_ERR, "stream %zd in rtp_streams does not have media index\n", it-rtp_streams.begin());
@@ -949,7 +950,10 @@ bool AmSession::getSdpOffer(AmSdp& offer)
     // streams were just newly created
     ILOG_DLG(L_DBG, "creating offer from %zd new RTP streams\n", rtp_streams.size());
     offer.media.clear(); // for safety
-    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin(); it != rtp_streams.end(); it++) {
+    for (vector<AmRtpAudio*>::iterator it = rtp_streams.begin();
+         it != rtp_streams.end();
+         it++)
+    {
       offer.media.push_back(SdpMedia());
       offer.media.back().type=MT_AUDIO;
       (*it)->getSdpOffer(it - rtp_streams.begin(), offer.media.back());
@@ -983,7 +987,10 @@ public:
 
   bool operator()(const SdpPayload& left, const SdpPayload& right)
   {
-    for (vector<string>::iterator it = AmConfig::CodecOrder.begin(); it != AmConfig::CodecOrder.end(); it++) {
+    for (vector<string>::iterator it = AmConfig::CodecOrder.begin();
+         it != AmConfig::CodecOrder.end();
+         it++)
+    {
       if (strcasecmp(left.encoding_name.c_str(),it->c_str())==0 && strcasecmp(right.encoding_name.c_str(), it->c_str())!=0)
           return true;
       if (strcasecmp(right.encoding_name.c_str(),it->c_str())==0)
@@ -1044,7 +1051,10 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
   bool audio_1st_stream = true; // still looking for first audio stream?
   // did we encounter an audio stream already that didn't match, payload-wise?
   bool have_audio_stream = false;
-  for(vector<SdpMedia>::const_iterator m_it = offer.media.begin(); m_it != offer.media.end(); m_it++) {
+  for(vector<SdpMedia>::const_iterator m_it = offer.media.begin();
+      m_it != offer.media.end();
+      m_it++)
+  {
     unsigned int media_index = m_it - offer.media.begin();
     bool rtcp;
 
@@ -1052,9 +1062,10 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
     SdpMedia& answer_media = answer.media.back();
 
     if (audio_1st_stream // still looking for compatible stream?
-          && m_it->type == MT_AUDIO
-          && m_it->transport == TP_RTPAVP
-        && !m_it->isRejected()) {
+        && m_it->type == MT_AUDIO
+        && m_it->transport == TP_RTPAVP
+        && !m_it->isRejected())
+    {
       // accept media
 
       setActiveRtpStream(m_it->transport);
@@ -1133,8 +1144,10 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
   lockAudio();
 
   // set active RTP stream to the one with proper transport
-  for(vector<SdpMedia>::const_iterator m_it = remote_sdp.media.begin();
-      m_it != remote_sdp.media.end(); m_it++) {
+  for (vector<SdpMedia>::const_iterator m_it = remote_sdp.media.begin();
+      m_it != remote_sdp.media.end();
+      m_it++)
+  {
     if (m_it->type == MT_AUDIO
         && !m_it->isRejected()
         && m_it->transport == TP_RTPAVP
@@ -1333,14 +1346,19 @@ string AmSession::localMediaIP(int addrType)
   assert((unsigned int)rtp_interface < AmConfig::RTP_Ifs.size());
 
   string set_ip = "";
-  for (size_t i = rtp_interface; i < AmConfig::RTP_Ifs.size(); i++) {
+  for (size_t i = rtp_interface;
+       i < AmConfig::RTP_Ifs.size();
+       i++)
+  {
     // TODO: AmConfig::RTP_Ifs[i].lock_shared();
     set_ip = AmConfig::RTP_Ifs[i].LocalIP; // "media_ip" parameter.
     // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
       ((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
       ((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
+    {
       return set_ip;
+    }
   }
   return set_ip;
 }
@@ -1356,14 +1374,17 @@ string AmSession::advertisedIP(int addrType)
   assert((unsigned int)rtp_interface < AmConfig::RTP_Ifs.size());
 
   string set_ip = "";
-  for (size_t i = rtp_interface; i < AmConfig::RTP_Ifs.size(); i++) {
+  for (size_t i = rtp_interface; i < AmConfig::RTP_Ifs.size(); i++)
+  {
     // TODO: AmConfig::RTP_Ifs[i].lock_shared();
     set_ip = AmConfig::RTP_Ifs[i].getIP(); // "media_ip" parameter.
     // TODO: AmConfig::RTP_Ifs[i].unlock_shared();
     if ((addrType == AT_NONE) ||
       ((addrType == AT_V4) && (set_ip.find(".") != std::string::npos)) ||
       ((addrType == AT_V6) && (set_ip.find(":") != std::string::npos)))
+    {
       return set_ip;
+    }
   }
   return set_ip;
 }
@@ -1412,12 +1433,16 @@ int AmSession::readStreams(unsigned long long ts, unsigned char *buffer)
   unsigned int f_size = stream->getFrameSize();
   if (stream->checkInterval(ts)) {
     int got = stream->get(ts, buffer, stream->getSampleRate(), f_size);
-    if (got < 0) res = -1;
+
+    if (got < 0)
+      res = -1;
+
     if (got > 0) {
       if (isDtmfDetectionEnabled())
         putDtmfAudio(buffer, got, ts);
 
-      if (input) res = input->put(ts, buffer, stream->getSampleRate(), got);
+      if (input)
+        res = input->put(ts, buffer, stream->getSampleRate(), got);
     }
   }
 
@@ -1434,9 +1459,12 @@ int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
   if (stream->sendIntReached()) { // FIXME: shouldn't depend on checkInterval call before!
     unsigned int f_size = stream->getFrameSize();
     int got = 0;
-    if (output) got = output->get(ts, buffer, stream->getSampleRate(), f_size);
-    if (got < 0) res = -1;
-    if (got > 0) res = stream->put(ts, buffer, stream->getSampleRate(), got);
+    if (output)
+      got = output->get(ts, buffer, stream->getSampleRate(), f_size);
+    if (got < 0)
+      res = -1;
+    if (got > 0)
+      res = stream->put(ts, buffer, stream->getSampleRate(), got);
   }
 
   unlockAudio();
@@ -1447,7 +1475,10 @@ int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
 /* \brief Check whether the given stream is already present */
 bool AmSession::hasStream(AmRtpStream* stream)
 {
-  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+  for (RtpTransportIterator it=rtp_transports.begin();
+       it != rtp_transports.end();
+       it++)
+  {
     if ((NULL != *it) && (*it)->hasStream(stream))
       return true;
   }
@@ -1457,7 +1488,8 @@ bool AmSession::hasStream(AmRtpStream* stream)
 
 /* \brief Get the transport holding the given rtp stream */
 AmRtpTransport* AmSession::getRtpTransport(AmRtpStream* stream) {
-  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++)
+  {
     if ((NULL != *it) && (*it) == stream->rtp_transport)
       return *it;
   }
@@ -1525,7 +1557,8 @@ void AmSession::setLogger(const shared_ptr<msg_logger>& _logger)
   shared_ptr<msg_logger> rtp_logger;
   if (log_rtp) rtp_logger = logger;
 
-  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++) {
+  for (RtpTransportIterator it=rtp_transports.begin(); it != rtp_transports.end(); it++)
+  {
     if (NULL != *it) {
       (*it)->setLogger(rtp_logger);
     }
