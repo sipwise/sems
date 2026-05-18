@@ -1541,10 +1541,3 @@ void AmSession::setLogger(const shared_ptr<msg_logger>& _logger, bool _log_sip, 
   log_rtp = _log_rtp;
   setLogger(_logger);
 }
-
-/** EMACS **
- * Local variables:
- * mode: c++
- * c-basic-offset: 2
- * End:
- */
