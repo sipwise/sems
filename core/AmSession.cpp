@@ -232,31 +232,27 @@ void AmSession::addHandler(AmSessionEventHandler* sess_evh)
 
 void AmSession::setInput(AmAudio* in)
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
   input = in;
-  unlockAudio();
 }
 
 void AmSession::setOutput(AmAudio* out)
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
   output = out;
-  unlockAudio();
 }
 
 void AmSession::setInOut(AmAudio* in,AmAudio* out)
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
   input = in;
   output = out;
-  unlockAudio();
 }
 
 bool AmSession::isAudioSet()
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
   bool set = input || output;
-  unlockAudio();
   return set;
 }
 
@@ -711,7 +707,7 @@ void AmSession::onDtmf(int event, int duration_msec)
 
 void AmSession::clearAudio()
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
 
   if (input) {
     input->close();
@@ -722,7 +718,6 @@ void AmSession::clearAudio()
     output = NULL;
   }
 
-  unlockAudio();
   ILOG_DLG(L_DBG, "Audio cleared !!!\n");
   postEvent(new AmAudioEvent(AmAudioEvent::cleared));
 }
@@ -1145,7 +1140,7 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
   //   set_on_hold = pos != remote_sdp.media[0].attributes.end();
   // }
 
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
 
   // set active RTP stream to the one with proper transport
   for (vector<SdpMedia>::const_iterator m_it = remote_sdp.media.begin();
@@ -1178,7 +1173,6 @@ int AmSession::onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp)
     ILOG_DLG(L_ERR, "Error while initializing RTP stream (unknown exception in AmRTPStream::init)\n");
     ret = -1;
   }
-  unlockAudio();
 
   if (!isProcessingMedia()) {
     setInbandDetector(AmConfig::DefaultDTMFDetector);
@@ -1292,12 +1286,12 @@ int AmSession::sendInvite(const string& headers)
 
 void AmSession::setOnHold(bool hold)
 {
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
+
   bool old_hold = RTPStream()->getOnHold();
   RTPStream()->setOnHold(hold);
   if (hold != old_hold)
     sendReinvite();
-  unlockAudio();
 }
 
 int AmSession::getRtpInterface()
@@ -1403,7 +1397,7 @@ bool AmSession::removeTimers() {
 int AmSession::readStreams(unsigned long long ts, unsigned char *buffer)
 {
   int res = 0;
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
 
   AmRtpAudio *stream = RTPStream();
   unsigned int f_size = stream->getFrameSize();
@@ -1422,14 +1416,13 @@ int AmSession::readStreams(unsigned long long ts, unsigned char *buffer)
     }
   }
 
-  unlockAudio();
   return res;
 }
 
 int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
 {
   int res = 0;
-  lockAudio();
+  lock_guard<AmMutex> lock(audio_mut);
 
   AmRtpAudio *stream = RTPStream();
   if (stream->sendIntReached()) { // FIXME: shouldn't depend on checkInterval call before!
@@ -1443,7 +1436,6 @@ int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
       res = stream->put(ts, buffer, stream->getSampleRate(), got);
   }
 
-  unlockAudio();
   return res;
 
 }
