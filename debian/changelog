@@ -1,3 +1,13 @@
+ngcp-sems (1:1.6.0+0~mr12.5.1.2) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [155f97f] MT#65080 add GH actions to automate release builds
+
+  [ Fabricio Santolin da Silva ]
+  * [edbf163] TT#169904 Activate g729 Codec
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 19 May 2026 15:26:53 +0200
+
 ngcp-sems (1:1.6.0+0~mr12.5.1.1) unstable; urgency=medium
 
   * New release.
