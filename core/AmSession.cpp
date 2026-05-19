@@ -614,8 +614,12 @@ void AmSession::session_stopped() {
   timersub(&now, &avg_last_timestamp, &delta);
   avg_session_num = avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
   avg_last_timestamp = now;
-  //current session number
-  session_num = session_num - 1;
+
+  if (session_num > 0)
+    --session_num;
+  else
+    WARN("AmSession::session_stopped() cannot decrement more! sessions counter is 0 already.\n");
+
   session_num_mut.unlock();
 
   __update_session_count(getSessionNum());
