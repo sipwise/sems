@@ -1,0 +1,60 @@
+name: Coverity Scan
+
+on:
+  push:
+    branches:
+      - coverity_scan
+  schedule:
+    - cron: '13 9 */2 * *'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: github.repository == 'sipwise/sems'
+    runs-on: ubuntu-24.04
+
+    env:
+      COVERITY_SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+      COVERITY_SCAN_PROG_URL: https://scan.coverity.com/download/cxx/linux64
+      COVERITY_SCAN_PROJECT_NAME: sipwise/sems
+      COVERITY_SCAN_NOTIFICATION_EMAIL: development@sipwise.com
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Update APT cache
+        run: |
+          sudo apt-get update
+
+      - name: Get build dependencies
+        run: |
+          echo "Installing Debian packages"
+          sudo apt-get install -q -y --no-install-recommends git ca-certificates curl
+          sudo apt-get build-dep -q -y .
+
+      - name: Get coverity scan
+        run: |
+          curl -o cov-analysis.tgz \
+            $COVERITY_SCAN_PROG_URL \
+            --form project=$COVERITY_SCAN_PROJECT_NAME \
+            --form token=$COVERITY_SCAN_TOKEN
+          tar xfz cov-analysis.tgz
+
+      # We need to disable glib deprecation warnings, as coverity-scan does
+      # not support __attributes__ in enums.
+      - name: Analyze
+        run: |
+          CPPFLAGS="-DGLIB_DISABLE_DEPRECATION_WARNINGS" \
+          cov-analysis-*/bin/cov-build --dir cov-int make -j4
+
+      - name: Submit result
+        run: |
+          tar cfz cov-int.tar.gz cov-int
+          curl \
+            https://scan.coverity.com/builds?project=$COVERITY_SCAN_PROJECT_NAME \
+            --form token=$COVERITY_SCAN_TOKEN \
+            --form email=$COVERITY_SCAN_NOTIFICATION_EMAIL \
+            --form file=@cov-int.tar.gz \
+            --form version="`git describe --tags --always`" \
+            --form description="`git describe --tags --always` / $CI_COMMIT_TITLE / $CI_COMMIT_REF_NAME:$CI_PIPELINE_ID"
