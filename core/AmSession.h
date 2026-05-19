@@ -130,8 +130,6 @@ private:
   void on_stop();
 #else
 
-  typedef vector<AmRtpTransport*>::iterator RtpTransportIterator;
-
 public:
   void start();
   bool is_stopped();
@@ -140,6 +138,8 @@ private:
   void stop();
   void* _pid;
 #endif
+
+  typedef vector<AmRtpTransport*>::iterator RtpTransportIterator;
 
   static void session_started();
   static void session_stopped();
