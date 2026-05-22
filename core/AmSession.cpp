@@ -584,7 +584,8 @@ static inline void __update_session_count(unsigned int num) {
 void AmSession::session_started() {
   struct timeval now, delta;
 
-  session_num_mut.lock();
+  lock_guard<AmMutex> lock(session_num_mut);
+
   //avg session number
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
@@ -597,14 +598,14 @@ void AmSession::session_started() {
   //maximum session number
   if(session_num > max_session_num) max_session_num = session_num;
 
-  session_num_mut.unlock();
-
-  __update_session_count(getSessionNum());
+  __update_session_count(session_num);
 }
 
 void AmSession::session_stopped() {
   struct timeval now, delta;
-  session_num_mut.lock();
+
+  lock_guard<AmMutex> lock(session_num_mut);
+
   //avg session number
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
@@ -616,32 +617,35 @@ void AmSession::session_stopped() {
   else
     WARN("AmSession::session_stopped() cannot decrement more! sessions counter is 0 already.\n");
 
-  session_num_mut.unlock();
-
-  __update_session_count(getSessionNum());
+  __update_session_count(session_num);
 }
 
 unsigned int AmSession::getSessionNum() {
   unsigned int res = 0;
-  session_num_mut.lock();
+
+  lock_guard<AmMutex> lock(session_num_mut);
+
   res = session_num;
-  session_num_mut.unlock();
   return res;
 }
 
 unsigned int AmSession::getMaxSessionNum() {
   unsigned int res = 0;
-  session_num_mut.lock();
+
+  lock_guard<AmMutex> lock(session_num_mut);
+
   res = max_session_num;
   max_session_num = session_num;
-  session_num_mut.unlock();
+
   return res;
 }
 
 unsigned int AmSession::getAvgSessionNum() {
   unsigned int res = 0;
   struct timeval now, delta;
-  session_num_mut.lock();
+
+  lock_guard<AmMutex> lock(session_num_mut);
+
   gettimeofday(&now, NULL);
   timersub(&now, &avg_last_timestamp, &delta);
   avg_session_num = avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
@@ -657,7 +661,7 @@ unsigned int AmSession::getAvgSessionNum() {
   avg_session_num = 0;
   avg_last_timestamp = now;
   avg_first_timestamp = now;
-  session_num_mut.unlock();
+
   return res;
 }
 
