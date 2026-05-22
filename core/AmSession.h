@@ -449,6 +449,10 @@ public:
    */
   static unsigned int getMaxSessionNum();
   /**
+   * Updates the maximum of running sessions since last query
+   */
+  static void updateMaxSessionNum();
+  /**
    * Gets the average of running sessions since last query
    */
   static unsigned int getAvgSessionNum();

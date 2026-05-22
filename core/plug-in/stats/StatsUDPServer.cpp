@@ -376,8 +376,10 @@ int StatsUDPServer::execute(char* msg_buf, string& reply,
 
     else if(cmd_str.substr(4, 8) == "callsavg")
       reply = "Average active calls: " + int2str(AmSession::getAvgSessionNum()) + "\n";
-    else if(cmd_str.substr(4, 8) == "callsmax")
+    else if(cmd_str.substr(4, 8) == "callsmax") {
       reply = "Maximum active calls: " + int2str(AmSession::getMaxSessionNum()) + "\n";
+      AmSession::updateMaxSessionNum(); // also update right away
+    }
     else if(cmd_str.substr(4, 6) == "cpsavg")
       reply = "Average calls per second: " + int2str(sc->getAvgCPS()) + "\n";
     else if(cmd_str.substr(4, 6) == "cpsmax")

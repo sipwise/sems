@@ -621,23 +621,18 @@ void AmSession::session_stopped() {
 }
 
 unsigned int AmSession::getSessionNum() {
-  unsigned int res = 0;
-
   lock_guard<AmMutex> lock(session_num_mut);
-
-  res = session_num;
-  return res;
+  return session_num;
 }
 
 unsigned int AmSession::getMaxSessionNum() {
-  unsigned int res = 0;
-
   lock_guard<AmMutex> lock(session_num_mut);
+  return max_session_num;
+}
 
-  res = max_session_num;
+void AmSession::updateMaxSessionNum() {
+  lock_guard<AmMutex> lock(session_num_mut);
   max_session_num = session_num;
-
-  return res;
 }
 
 unsigned int AmSession::getAvgSessionNum() {
