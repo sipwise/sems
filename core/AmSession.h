@@ -141,6 +141,11 @@ private:
 
   typedef vector<AmRtpTransport*>::iterator RtpTransportIterator;
 
+  // per session flag to prevent double decrement
+  bool session_counter;
+  // per session wrapper to prevent doulbe decrement
+  void session_stopped_wrapper();
+
   static void session_started();
   static void session_stopped();
 

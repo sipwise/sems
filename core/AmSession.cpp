@@ -85,7 +85,8 @@ AmSession::AmSession(AmSipDialog* p_dlg)
     rtp_keepalive_freq(AmConfig::RtpKeepaliveFreq),
     rtp_timeout(AmConfig::DeadRtpTime),
     logger(NULL),
-    log_sip(false), log_rtp(false)
+    log_sip(false), log_rtp(false),
+    session_counter(false)
 #ifdef SESSION_THREADPOOL
   , _pid(this)
 #endif
@@ -388,7 +389,7 @@ bool AmSession::startup() {
     onBeforeDestroy();
     destroy();
 
-    session_stopped();
+    session_stopped_wrapper();
 
     return false;
   }
@@ -511,7 +512,7 @@ void AmSession::finalize()
   onBeforeDestroy();
   destroy();
 
-  session_stopped();
+  session_stopped_wrapper();
 
   ILOG_DLG(L_DBG, "session is stopped.\n");
 }
@@ -618,6 +619,12 @@ void AmSession::session_stopped() {
     WARN("AmSession::session_stopped() cannot decrement more! sessions counter is 0 already.\n");
 
   __update_session_count(session_num);
+}
+
+void AmSession::session_stopped_wrapper() {
+  if (!session_counter)
+    session_stopped();
+  session_counter = true;
 }
 
 unsigned int AmSession::getSessionNum() {
