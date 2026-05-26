@@ -369,7 +369,7 @@ void AmSession::run() {
 #endif
 
 bool AmSession::startup() {
-  session_started();
+  session_started_static();
 
   try {
     try {
@@ -389,7 +389,7 @@ bool AmSession::startup() {
     onBeforeDestroy();
     destroy();
 
-    session_stopped_wrapper();
+    session_stopped();
 
     return false;
   }
@@ -512,7 +512,7 @@ void AmSession::finalize()
   onBeforeDestroy();
   destroy();
 
-  session_stopped_wrapper();
+  session_stopped();
 
   ILOG_DLG(L_DBG, "session is stopped.\n");
 }
@@ -582,7 +582,7 @@ static inline void __update_session_count(unsigned int num) {
       close(fd);
   }
 }
-void AmSession::session_started() {
+void AmSession::session_started_static() {
   struct timeval now, delta;
 
   lock_guard<AmMutex> lock(session_num_mut);
@@ -602,7 +602,7 @@ void AmSession::session_started() {
   __update_session_count(session_num);
 }
 
-void AmSession::session_stopped() {
+void AmSession::session_stopped_static() {
   struct timeval now, delta;
 
   lock_guard<AmMutex> lock(session_num_mut);
@@ -621,9 +621,9 @@ void AmSession::session_stopped() {
   __update_session_count(session_num);
 }
 
-void AmSession::session_stopped_wrapper() {
+void AmSession::session_stopped() {
   if (!session_counter)
-    session_stopped();
+    session_stopped_static();
   session_counter = true;
 }
 

@@ -144,10 +144,10 @@ private:
   // per session flag to prevent double decrement
   bool session_counter;
   // per session wrapper to prevent doulbe decrement
-  void session_stopped_wrapper();
+  void session_stopped();
 
-  static void session_started();
-  static void session_stopped();
+  static void session_started_static();
+  static void session_stopped_static();
 
   static unsigned int session_num;
   static unsigned int max_session_num;
