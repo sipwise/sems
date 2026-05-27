@@ -375,7 +375,14 @@ void AmDtmfDetector::reportEvent()
   if (m_eventPending) {
     long duration = (m_lastReportTime.tv_sec - m_startTime.tv_sec) * 1000 +
       (m_lastReportTime.tv_usec - m_startTime.tv_usec) / 1000;
-    m_dtmfSink->postDtmfEvent(new AmDtmfEvent(m_currentEvent, duration));
+
+    AmDtmfEvent * dtmf_ptr = new AmDtmfEvent(m_currentEvent, duration);
+    if (!m_dtmfSink->postDtmfEvent(dtmf_ptr))
+    {
+      WARN("Unable to post DTMF event. Release it.\n");
+      delete dtmf_ptr;
+    }
+
     m_eventPending = false;
     m_sipEventReceived = false;
     m_rtpEventReceived = false;

@@ -387,7 +387,7 @@ class AmRtpDtmfDetector
 class AmDtmfSink
 {
 public:
-  virtual void postDtmfEvent(AmDtmfEvent *) = 0;
+  virtual bool postDtmfEvent(AmDtmfEvent *) = 0;
   virtual ~AmDtmfSink() { }
 };
 

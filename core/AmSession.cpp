@@ -677,7 +677,7 @@ void AmSession::setInbandDetector(Dtmf::InbandDetectorType t)
   m_dtmfDetector.setInbandDetector(t, RTPStream()->getSampleRate());
 }
 
-void AmSession::postDtmfEvent(AmDtmfEvent *evt)
+bool AmSession::postDtmfEvent(AmDtmfEvent *evt)
 {
   if (m_dtmfDetectionEnabled)
   {
@@ -690,7 +690,9 @@ void AmSession::postDtmfEvent(AmDtmfEvent *evt)
       // post it into our event queue
       postEvent(evt);
     }
+    return true; // the ownership is given further
   }
+  return false; // no ownership acquired, caller has to release the heap allocated event
 }
 
 void AmSession::processDtmfEvents()
@@ -816,7 +818,14 @@ void AmSession::onSipRequest(const AmSipRequest& req)
 
     if (dtmf_body) {
       string dtmf_body_str(dtmf_body->getPayload());
-      postDtmfEvent(new AmSipDtmfEvent(dtmf_body_str));
+
+      AmDtmfEvent * dtmf_ptr = new AmSipDtmfEvent(dtmf_body_str);
+      if (!postDtmfEvent(dtmf_ptr))
+      {
+        ILOG_DLG(L_WARN, "Unable to post DTMF event. Release it.\n");
+        delete dtmf_ptr;
+      }
+
       dlg->reply(req, 200, "OK");
     } else {
       dlg->reply(req, 415, "Unsupported Media Type");

@@ -466,7 +466,7 @@ public:
   /**
    * Entry point for DTMF events
    */
-  void postDtmfEvent(AmDtmfEvent *);
+  bool postDtmfEvent(AmDtmfEvent *);
 
   void setInbandDetector(Dtmf::InbandDetectorType t);
   bool isDtmfDetectionEnabled() { return m_dtmfDetectionEnabled; }
