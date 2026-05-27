@@ -531,15 +531,20 @@ void AmSession::finalize()
 }
 
 void AmSession::setStopped(bool wakeup) {
-  /* make snapshot safe */
-  lock_guard<AmMutex> lock(snapshot_lock);
+  /* explicit lock management, for the case when onStop()'s override
+   * anyhow reaches the same mutex lock in similar scope.
+   */
+  snapshot_lock.lock();
 
   if (!sess_stopped.get()) {
     sess_stopped.set(true);
+    snapshot_lock.unlock(); /* release now for dead-lock safety */
     onStop();
   }
+  snapshot_lock.lock();
   if (wakeup)
     AmSessionContainer::instance()->postEvent(getLocalTag(), new AmEvent(E_TERMINATE_LEG));
+  snapshot_lock.unlock();
 }
 
 string AmSession::getAppParam(const string& param_name) const
