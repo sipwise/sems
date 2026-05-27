@@ -169,7 +169,7 @@ private:
 
 protected:
 
-  AmCondition sess_stopped;
+  atomic_bool sess_stopped;
 
   /** Logger **/
   void setLogger(const shared_ptr<msg_logger>& _logger, bool _log_sip, bool _log_rtp);
@@ -442,7 +442,7 @@ public:
   /**
    * Has the session already been stopped ?
    */
-  bool getStopped() { return sess_stopped.get(); }
+  bool getStopped() { return sess_stopped; }
 
   /* ----         Statistics                    ---- */
   /**

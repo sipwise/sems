@@ -424,7 +424,7 @@ bool AmSession::processingCycle() {
   ILOG_DLG(L_DBG, "vv S [%s|%s] %s, %s, %i UACTransPending, %i usages vv\n",
       dlg->getCallid().c_str(),getLocalTag().c_str(),
       dlg->getStatusStr(),
-      sess_stopped.get()?"stopped":"running",
+      sess_stopped?"stopped":"running",
       dlg->getUACTransPending(),
       dlg->getUsages());
 
@@ -438,7 +438,7 @@ bool AmSession::processingCycle() {
       }
 
       AmSipDialog::Status dlg_status = dlg->getStatus();
-      bool s_stopped = sess_stopped.get();
+      bool s_stopped = sess_stopped;
 
       ILOG_DLG(L_DBG, "^^ S [%s|%s] %s, %s, %i UACTransPending, %i usages ^^\n",
                 dlg->getCallid().c_str(),getLocalTag().c_str(),
@@ -490,7 +490,7 @@ bool AmSession::processingCycle() {
     ILOG_DLG(L_DBG, "^^ S [%s|%s] %s, %s, %i UACTransPending, %i usages ^^\n",
                 dlg->getCallid().c_str(),getLocalTag().c_str(),
                 dlg->getStatusStr(),
-                sess_stopped.get()?"stopped":"running",
+                sess_stopped?"stopped":"running",
                 dlg->getUACTransPending(),
                 dlg->getUsages());
 
@@ -531,20 +531,14 @@ void AmSession::finalize()
 }
 
 void AmSession::setStopped(bool wakeup) {
-  /* explicit lock management, for the case when onStop()'s override
-   * anyhow reaches the same mutex lock in similar scope.
-   */
-  snapshot_lock.lock();
-
-  if (!sess_stopped.get()) {
-    sess_stopped.set(true);
-    snapshot_lock.unlock(); /* release now for dead-lock safety */
+  bool f = false;
+  if (sess_stopped.compare_exchange_strong(f, true))
     onStop();
-  }
-  snapshot_lock.lock();
-  if (wakeup)
+
+  if (wakeup) {
+    lock_guard<AmMutex> lock(snapshot_lock);
     AmSessionContainer::instance()->postEvent(getLocalTag(), new AmEvent(E_TERMINATE_LEG));
-  snapshot_lock.unlock();
+  }
 }
 
 string AmSession::getAppParam(const string& param_name) const
@@ -856,11 +850,11 @@ void AmSession::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
     ILOG_DLG(L_DBG, "Dialog status changed %s -> %s (stopped=%s) \n",
     AmBasicSipDialog::getStatusStr(old_dlg_status),
     dlg->getStatusStr(),
-    sess_stopped.get() ? "true" : "false");
+    sess_stopped ? "true" : "false");
   } else {
     ILOG_DLG(L_DBG, "Dialog status stays %s (stopped=%s)\n",
     AmBasicSipDialog::getStatusStr(old_dlg_status),
-    sess_stopped.get() ? "true" : "false");
+    sess_stopped ? "true" : "false");
   }
 }
 
