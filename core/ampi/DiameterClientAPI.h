@@ -51,7 +51,7 @@ struct DiameterReplyEvent
 
  DiameterReplyEvent(unsigned int commandCode, 
 		    unsigned int applicationId, AmArg avps)
-   : AmEvent(0), commandCode(commandCode), 
+   : AmEvent(E_TERMINATE_LEG), commandCode(commandCode),
     applicationId(applicationId), avps(avps)
   { }
 };

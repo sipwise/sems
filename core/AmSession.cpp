@@ -539,7 +539,7 @@ void AmSession::setStopped(bool wakeup) {
     onStop();
   }
   if (wakeup)
-    AmSessionContainer::instance()->postEvent(getLocalTag(), new AmEvent(0));
+    AmSessionContainer::instance()->postEvent(getLocalTag(), new AmEvent(E_TERMINATE_LEG));
 }
 
 string AmSession::getAppParam(const string& param_name) const

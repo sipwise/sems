@@ -33,6 +33,7 @@
 #include <string>
 using std::string;
 
+#define E_TERMINATE_LEG    0
 #define E_PLUGIN           100
 #define E_SYSTEM           101
 #define E_SIP_SUBSCRIPTION 102

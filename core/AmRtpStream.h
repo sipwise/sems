@@ -97,7 +97,7 @@ class AmRtpTimeoutEvent
 	
 public:
   AmRtpTimeoutEvent() 
-    : AmEvent(0) { }
+    : AmEvent(E_TERMINATE_LEG) { }
   ~AmRtpTimeoutEvent() { }
 };
 
