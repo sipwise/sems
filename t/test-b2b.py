@@ -322,8 +322,11 @@ class TestB2B(sems_tester.TestCase):
         cls._uas_sock.close()
         super().tearDownClass()
 
-    def tearDown(self):
-        """Drain any leftover messages from the shared UAS socket between tests."""
+    def setUp(self):
+        """Non-blocking drain to remove stale datagrams that arrived between
+        tearDown of the previous test and the start of this one.  Prevents
+        recvB2BINVITE from picking up a retransmission from a previous dialog
+        and returning a wrong b2b_cid for the current test."""
         self._uas_sock.settimeout(0)
         try:
             while True:
@@ -333,13 +336,31 @@ class TestB2B(sems_tester.TestCase):
         finally:
             self._uas_sock.settimeout(3)
 
-    def recvSIPSkipRetrans(self, sock, skip_startswith):
-        """Receive SIP, discarding retransmissions that start with skip_startswith."""
-        for _ in range(5):
+    def tearDown(self):
+        """Drain leftover messages from the shared UAS socket between tests.
+        Uses 1.5*T1 timeout to catch SIP retransmissions that SEMS may still
+        be generating on a loaded CI host when the next test starts."""
+        self._uas_sock.settimeout(1.5)
+        try:
+            while True:
+                try:
+                    self._uas_sock.recv(4096)
+                except TimeoutError:
+                    break
+        finally:
+            self._uas_sock.settimeout(3)
+
+    def recvSIPSkipRetrans(self, sock, skip_startswith, b2b_cid=None):
+        """Receive SIP, discarding messages that start with skip_startswith or
+        (when b2b_cid is given) belong to a different B2B dialog."""
+        for _ in range(10):
             msg = self.recvSIP(sock)
-            if not msg.startswith(skip_startswith):
-                return msg
-        return msg
+            if msg.startswith(skip_startswith):
+                continue
+            if b2b_cid is not None and b2b_cid not in msg:
+                continue
+            return msg
+        raise AssertionError("No matching SIP message in recvSIPSkipRetrans")
 
     # ------------------------------------------------------------------
     # Scenario 1: Full call — leg A sends BYE
@@ -366,7 +387,8 @@ class TestB2B(sems_tester.TestCase):
         )
 
         # SEMS → INVITE (B2B) → Leg B
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.assertSIP(b2b_invite,
             "^INVITE sip:bob@voip\\.sipwise\\.local SIP/2\\.0\n"
             ".*"
@@ -416,7 +438,7 @@ class TestB2B(sems_tester.TestCase):
                                src_port=src_port), leg_a)
 
         # SEMS → ACK → Leg B
-        ack_b = self.recvSIP(self._uas_sock)
+        ack_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(ack_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -428,7 +450,7 @@ class TestB2B(sems_tester.TestCase):
                                src_port=src_port), leg_a)
 
         # SEMS → BYE → Leg B
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(bye_b,
             "^BYE sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -470,7 +492,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # drain 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
@@ -482,7 +505,7 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-002-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # ---- Media flow (RTP_Direct: SEMS passes SDP through unchanged) ----
         # In b2b_invite SEMS forwarded leg A's SDP → leg B sends RTP to _RTP_PORT_A
@@ -536,7 +559,7 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_200_ok_for(bye_a), leg_a)
 
         # SEMS → 200 OK → Leg B
-        ok_b = self.recvSIP(self._uas_sock)
+        ok_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(ok_b,
             "^SIP/2\\.0 200 OK\n"
             ".*"
@@ -557,7 +580,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
@@ -575,7 +599,7 @@ class TestB2B(sems_tester.TestCase):
         )
 
         # SEMS → CANCEL → Leg B
-        cancel_b = self.recvSIP(self._uas_sock)
+        cancel_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(cancel_b,
             "^CANCEL sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -590,7 +614,7 @@ class TestB2B(sems_tester.TestCase):
                        sems_addr, self._uas_sock)
 
         # SEMS → ACK → Leg B (for 487)
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -626,7 +650,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         # Send 100 Trying first to stop INVITE retransmissions
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
@@ -637,7 +662,7 @@ class TestB2B(sems_tester.TestCase):
                        sems_addr, self._uas_sock)
 
         # SEMS → ACK → Leg B (skip any retransmitted INVITE)
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -673,7 +698,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         # Send 100 Trying first to stop INVITE retransmissions
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
@@ -684,7 +710,7 @@ class TestB2B(sems_tester.TestCase):
                        sems_addr, self._uas_sock)
 
         # SEMS → ACK → Leg B (skip any retransmitted INVITE)
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -721,11 +747,25 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         # Leg B acknowledges INVITE (stops retransmissions) but doesn't ring yet
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
                        sems_addr, self._uas_sock)
+
+        # Drain any buffered INVITE retransmissions and give SEMS time to process
+        # the 100 Trying before CANCEL arrives.  Without this, on a loaded system
+        # SEMS may see CANCEL before 100 Trying and skip forwarding CANCEL to leg B
+        # (RFC 3261 §9.1 forbids CANCEL before any provisional is received).
+        self._uas_sock.settimeout(0.1)
+        try:
+            while True:
+                self.recvSIP(self._uas_sock)
+        except TimeoutError:
+            pass
+        finally:
+            self._uas_sock.settimeout(3)
 
         # Leg A → CANCEL (before any 180)
         self.sendSIP(_make_cancel(branch, call_id, src_port=src_port), leg_a)
@@ -739,7 +779,7 @@ class TestB2B(sems_tester.TestCase):
         )
 
         # SEMS → CANCEL → Leg B
-        cancel_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        cancel_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(cancel_b,
             "^CANCEL sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -754,7 +794,7 @@ class TestB2B(sems_tester.TestCase):
                        sems_addr, self._uas_sock)
 
         # SEMS → ACK → Leg B (for 487)
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -790,7 +830,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         # Leg B → 183 Session Progress with SDP → SEMS
         self.sendToSIP(_make_provisional(183, "Session Progress", b2b_invite,
@@ -825,12 +866,12 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-007-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # Leg A → BYE → SEMS
         self.sendSIP(_make_bye("z9hG4bK-b2b-007-bye", call_id, to_tag,
                                src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         ok_bye = self.recvSIP(leg_a)
         self.assertSIP(ok_bye, "^SIP/2\\.0 200 OK\n.*CSeq: 2 BYE\n")
@@ -850,7 +891,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -861,7 +903,7 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-008-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # --- re-INVITE: leg A puts call on hold (sendonly) ---
         self.sendSIP(_make_reinvite("z9hG4bK-b2b-008-ri", call_id, to_tag,
@@ -869,7 +911,7 @@ class TestB2B(sems_tester.TestCase):
                                     src_port=src_port), leg_a)
 
         # SEMS → re-INVITE → Leg B (relay)
-        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK")
+        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK", b2b_cid)
         self.assertSIP(ri_b,
             "^INVITE sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -894,7 +936,7 @@ class TestB2B(sems_tester.TestCase):
                                cseq=2, src_port=src_port), leg_a)
 
         # SEMS → ACK → Leg B
-        ack_ri_b = self.recvSIP(self._uas_sock)
+        ack_ri_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(ack_ri_b,
             "^ACK sip:[^\r]+ SIP/2\\.0\n"
             ".*"
@@ -904,7 +946,7 @@ class TestB2B(sems_tester.TestCase):
         # --- Tear down (leg A, cseq=3 after two INVITEs) ---
         self.sendSIP(_make_bye("z9hG4bK-b2b-008-bye", call_id, to_tag,
                                cseq=3, src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(bye_b, "^BYE sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ BYE\n")
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         ok_bye = self.recvSIP(leg_a)
@@ -925,7 +967,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -936,11 +979,11 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-009-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # --- re-INVITE: leg B puts call on hold (sendonly) ---
         # Build re-INVITE in the B2B dialog (leg B → SEMS)
-        cid_b2b  = _hdr(b2b_invite, "Call-ID")
+        cid_b2b  = b2b_cid
         # In B2B dialog: b2b_invite From = SEMS's B-leg local tag (= To from leg B's view)
         to_b2b   = _hdr(b2b_invite, "From")
         sdp_cr   = _SDP_SENDONLY_B.replace("\n", "\r\n")
@@ -959,7 +1002,7 @@ class TestB2B(sems_tester.TestCase):
             + _SDP_SENDONLY_B
         )
         self.sendToSIP(reinvite_from_b, sems_addr, self._uas_sock)
-        self.recvSIP(self._uas_sock)  # drain 100 Trying SEMS sends for the re-INVITE
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain 100 Trying SEMS sends for the re-INVITE
 
         # SEMS → re-INVITE → Leg A
         ri_a = self.recvSIP(leg_a)
@@ -976,7 +1019,7 @@ class TestB2B(sems_tester.TestCase):
                                          contact=f"<sip:alice@127.0.0.1:{src_port}>"), leg_a)
 
         # SEMS → 200 OK → Leg B
-        ok_ri_b = self.recvSIP(self._uas_sock)
+        ok_ri_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(ok_ri_b,
             "^SIP/2\\.0 200 OK\n"
             ".*"
@@ -1027,7 +1070,7 @@ class TestB2B(sems_tester.TestCase):
         )
         self.sendSIP(_make_200_ok_for(bye_a), leg_a)
 
-        ok_b = self.recvSIP(self._uas_sock)
+        ok_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(ok_b, "^SIP/2\\.0 200 OK\n.*CSeq: 10 BYE\n")
 
         leg_a.close()
@@ -1047,7 +1090,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(invite, leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
 
         # Leg B → 100 Trying → SEMS (stops SEMS's own B2B INVITE retransmit timer)
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
@@ -1063,10 +1107,14 @@ class TestB2B(sems_tester.TestCase):
         # SEMS must NOT forward the retransmission to leg B
         self._uas_sock.settimeout(0.2)
         try:
-            extra = self.recvSIP(self._uas_sock)
-            self.fail("SEMS forwarded INVITE retransmission to leg B: " + repr(extra[:80]))
-        except socket.timeout:
-            pass  # expected
+            while True:
+                try:
+                    extra = self.recvSIP(self._uas_sock)
+                except socket.timeout:
+                    break  # no (more) messages — expected
+                if b2b_cid in extra:
+                    self.fail("SEMS forwarded INVITE retransmission to leg B: " + repr(extra[:80]))
+                # else: stale message from a previous test — ignore
         finally:
             self._uas_sock.settimeout(3)
 
@@ -1081,11 +1129,11 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-010-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK
 
         self.sendSIP(_make_bye("z9hG4bK-b2b-010-bye", call_id, to_tag,
                                src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         ok_bye = self.recvSIP(leg_a)
         self.assertSIP(ok_bye, "^SIP/2\\.0 200 OK\n.*CSeq: 2 BYE\n")
@@ -1104,13 +1152,14 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
                        sems_addr, self._uas_sock)
         self.sendToSIP(_make_final_uas(480, "Temporarily Unavailable", b2b_invite),
                        sems_addr, self._uas_sock)
 
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b, "^ACK sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ ACK\n")
 
         err_a = self.recvSIP(leg_a)
@@ -1135,13 +1184,14 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
                        sems_addr, self._uas_sock)
         self.sendToSIP(_make_final_uas(408, "Request Timeout", b2b_invite),
                        sems_addr, self._uas_sock)
 
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b, "^ACK sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ ACK\n")
 
         err_a = self.recvSIP(leg_a)
@@ -1166,13 +1216,14 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(100, "Trying", b2b_invite),
                        sems_addr, self._uas_sock)
         self.sendToSIP(_make_final_uas(503, "Service Unavailable", b2b_invite),
                        sems_addr, self._uas_sock)
 
-        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE")
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
         self.assertSIP(ack_b, "^ACK sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ ACK\n")
 
         err_a = self.recvSIP(leg_a)
@@ -1198,7 +1249,8 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
 
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -1209,13 +1261,13 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-014-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # --- re-INVITE: leg A holds (sendonly, cseq=2) ---
         self.sendSIP(_make_reinvite("z9hG4bK-b2b-014-hold", call_id, to_tag,
                                     cseq=2, sdp=_SDP_SENDONLY_A,
                                     src_port=src_port), leg_a)
-        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK")
+        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK", b2b_cid)
         self.assertSIP(ri_b, "^INVITE sip:[^\r]+ SIP/2\\.0\n.*a=sendonly")
 
         self.sendToSIP(_make_200_ok_invite(ri_b, sdp=_SDP_RECVONLY_B),
@@ -1226,13 +1278,13 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-014-hold-ack", call_id, to_tag,
                                cseq=2, src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # --- re-INVITE: leg A unholds (sendrecv, cseq=3) ---
         self.sendSIP(_make_reinvite("z9hG4bK-b2b-014-unhold", call_id, to_tag,
                                     cseq=3, sdp=_SDP_SENDRECV_A2,
                                     src_port=src_port), leg_a)
-        ri_unhold_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK")
+        ri_unhold_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK", b2b_cid)
         self.assertSIP(ri_unhold_b, "^INVITE sip:[^\r]+ SIP/2\\.0\n.*a=sendrecv")
 
         self.sendToSIP(_make_200_ok_invite(ri_unhold_b, sdp=_SDP_SENDRECV_B2),
@@ -1243,12 +1295,12 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_ack("z9hG4bK-b2b-014-unhold-ack", call_id, to_tag,
                                cseq=3, src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK on leg B
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on leg B
 
         # --- Tear down (cseq=4 after three INVITEs) ---
         self.sendSIP(_make_bye("z9hG4bK-b2b-014-bye", call_id, to_tag,
                                cseq=4, src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.assertSIP(bye_b, "^BYE sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ BYE\n")
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         ok_bye = self.recvSIP(leg_a)
@@ -1268,7 +1320,8 @@ class TestB2B(sems_tester.TestCase):
 
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -1342,10 +1395,10 @@ class TestB2B(sems_tester.TestCase):
                         msg = self.recvSIP(self._uas_sock)
                     except TimeoutError:
                         continue
-                    if msg.startswith("BYE"):
+                    if msg.startswith("BYE") and b2b_cid in msg:
                         bye_b = msg
                         break
-                    # ACK or other — consume silently
+                    # stale BYE/ACK/other from a previous test — consume silently
             finally:
                 self._uas_sock.settimeout(3)
             self.assertIsNotNone(bye_b, "SEMS did not send BYE to leg B after cancel race")
@@ -1363,7 +1416,7 @@ class TestB2B(sems_tester.TestCase):
                         msg = self.recvSIP(self._uas_sock)
                     except TimeoutError:
                         break
-                    if msg.startswith("CANCEL"):
+                    if msg.startswith("CANCEL") and b2b_cid in msg:
                         self.sendToSIP(_make_200_ok_for(msg), sems_addr, self._uas_sock)
                         break
             finally:
@@ -1394,15 +1447,16 @@ class TestB2B(sems_tester.TestCase):
             """Establish a call through ACK. Returns (to_tag, b2b_call_id, sems_addr)."""
             self.sendSIP(_make_invite(invite_branch, call_id, src_port=src_port), leg_a)
             self.recvSIP(leg_a)  # 100 Trying
-            b2b_inv, addr = self.recvFromSIP(self._uas_sock)
+            b2b_inv, addr = self.recvB2BINVITE(self._uas_sock)
+            b2b_call_id = _hdr(b2b_inv, "Call-ID")
             self.sendToSIP(_make_provisional(180, "Ringing", b2b_inv), addr, self._uas_sock)
             self.recvSIP(leg_a)  # 180
             self.sendToSIP(_make_200_ok_invite(b2b_inv), addr, self._uas_sock)
             ok = self.recvSIP(leg_a)
             tag = _to_tag(ok)
             self.sendSIP(_make_ack(ack_branch, call_id, tag, src_port=src_port), leg_a)
-            self.recvSIP(self._uas_sock)  # drain ACK on leg B
-            return tag, _hdr(b2b_inv, "Call-ID"), addr
+            self.recvSIPForCall(self._uas_sock, b2b_call_id)  # drain ACK on leg B
+            return tag, b2b_call_id, addr
 
         to_tag_1, cid_b2b_1, sems_addr = setup_call(
             leg_a1, "z9hG4bK-b2b-016", call_id_1, "z9hG4bK-b2b-016-ack", src_port_1)
@@ -1412,7 +1466,7 @@ class TestB2B(sems_tester.TestCase):
         # Tear down call 1 — must not touch call 2
         self.sendSIP(_make_bye("z9hG4bK-b2b-016-bye", call_id_1, to_tag_1,
                                src_port=src_port_1), leg_a1)
-        bye_b1 = self.recvSIP(self._uas_sock)
+        bye_b1 = self.recvSIPForCall(self._uas_sock, cid_b2b_1)
         # Verify BYE belongs to call 1 (B2B Call-ID)
         self.assertSIP(bye_b1,
             f"^BYE sip:[^\r]+ SIP/2\\.0\n.*Call-ID: {cid_b2b_1}\n")
@@ -1422,7 +1476,7 @@ class TestB2B(sems_tester.TestCase):
         # Call 2 must still be alive: verify by tearing it down successfully
         self.sendSIP(_make_bye("z9hG4bK-b2b-017-bye", call_id_2, to_tag_2,
                                src_port=src_port_2), leg_a2)
-        bye_b2 = self.recvSIP(self._uas_sock)
+        bye_b2 = self.recvSIPForCall(self._uas_sock, cid_b2b_2)
         self.assertSIP(bye_b2,
             f"^BYE sip:[^\r]+ SIP/2\\.0\n.*Call-ID: {cid_b2b_2}\n")
         self.sendToSIP(_make_200_ok_for(bye_b2), sems_addr, self._uas_sock)
@@ -1456,7 +1510,8 @@ class TestB2B(sems_tester.TestCase):
         # --- Initial call setup ---
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -1465,7 +1520,7 @@ class TestB2B(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack("z9hG4bK-b2b-018-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK
 
         # Verify initial RTP (PORT_A ↔ PORT_B)
         self.assertEqual(_sdp_media_port(b2b_invite), _RTP_PORT_A)
@@ -1480,14 +1535,14 @@ class TestB2B(sems_tester.TestCase):
         self.sendSIP(_make_reinvite("z9hG4bK-b2b-018-ri", call_id, to_tag,
                                     cseq=2, sdp=_SDP_SENDRECV_A2,
                                     src_port=src_port), leg_a)
-        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK")
+        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK", b2b_cid)
         self.sendToSIP(_make_200_ok_invite(ri_b, sdp=_SDP_SENDRECV_B2),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 100 Trying for re-INVITE
         ok_ri_a = self.recvSIP(leg_a)
         self.sendSIP(_make_ack("z9hG4bK-b2b-018-ri-ack", call_id, to_tag,
                                cseq=2, src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK
 
         # Verify RTP now flows on new ports (PORT_A2 ↔ PORT_B2)
         self.assertEqual(_sdp_media_port(ri_b),   _RTP_PORT_A2)
@@ -1503,7 +1558,7 @@ class TestB2B(sems_tester.TestCase):
         # BYE (cseq=3 after two INVITEs)
         self.sendSIP(_make_bye("z9hG4bK-b2b-018-bye", call_id, to_tag,
                                cseq=3, src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         self.assertSIP(self.recvSIP(leg_a), "^SIP/2\\.0 200 OK\n.*CSeq: 3 BYE\n")
         leg_a.close()
@@ -1530,7 +1585,14 @@ class TestB2B(sems_tester.TestCase):
         # --- Setup call ---
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
-        b2b_invite, sems_addr = self.recvFromSIP(self._uas_sock)
+        b2b_invite = sems_addr = None
+        for _ in range(10):
+            msg, addr = self.recvFromSIP(self._uas_sock)
+            if msg.startswith("INVITE"):
+                b2b_invite, sems_addr = msg, addr
+                break
+        self.assertIsNotNone(b2b_invite, "SEMS did not forward INVITE to leg B")
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
         self.recvSIP(leg_a)  # 180
@@ -1539,13 +1601,18 @@ class TestB2B(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack("z9hG4bK-b2b-019-ack", call_id, to_tag,
                                src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK
+        # Wait for SEMS to forward the ACK to leg B, skipping stale messages.
+        # Must receive the ACK before sending re-INVITE to avoid a 491 rejection.
+        for _ in range(10):
+            msg = self.recvSIP(self._uas_sock)
+            if msg.startswith("ACK") and b2b_cid in msg:
+                break
 
         # --- Hold: leg A sendonly (PORT_A2), leg B recvonly (PORT_B2) ---
         self.sendSIP(_make_reinvite("z9hG4bK-b2b-019-hold", call_id, to_tag,
                                     cseq=2, sdp=_SDP_SENDONLY_A,
                                     src_port=src_port), leg_a)
-        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK")
+        ri_b = self.recvSIPSkipRetrans(self._uas_sock, "ACK", b2b_cid)
         # SEMS must relay a=sendonly to leg B unchanged
         self.assertSIP(ri_b, "^INVITE sip:[^\r]+ SIP/2\\.0\n.*a=sendonly")
         self.sendToSIP(_make_200_ok_invite(ri_b, sdp=_SDP_RECVONLY_B),
@@ -1556,7 +1623,7 @@ class TestB2B(sems_tester.TestCase):
         self.assertSIP(ok_ri_a, "^SIP/2\\.0 200 OK\n.*a=recvonly")
         self.sendSIP(_make_ack("z9hG4bK-b2b-019-hold-ack", call_id, to_tag,
                                cseq=2, src_port=src_port), leg_a)
-        self.recvSIP(self._uas_sock)  # drain ACK
+        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK
 
         # sendonly → leg A sends to PORT_B2 (from recvonly answer); leg B receives
         dest_a_to_b = _sdp_media_port(ok_ri_a)
@@ -1580,7 +1647,7 @@ class TestB2B(sems_tester.TestCase):
         # BYE (cseq=3)
         self.sendSIP(_make_bye("z9hG4bK-b2b-019-bye", call_id, to_tag,
                                cseq=3, src_port=src_port), leg_a)
-        bye_b = self.recvSIP(self._uas_sock)
+        bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         self.assertSIP(self.recvSIP(leg_a), "^SIP/2\\.0 200 OK\n.*CSeq: 3 BYE\n")
         leg_a.close()

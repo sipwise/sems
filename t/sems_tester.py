@@ -132,6 +132,24 @@ class TestCase(unittest.TestCase):
         """Send SIP message to a specific address from a bound socket."""
         sock.sendto(msg.replace("\n", "\r\n").encode("utf-8"), addr)
 
+    def recvB2BINVITE(self, sock: socket.socket) -> typing.Tuple[str, tuple]:
+        """Receive a B2B INVITE from the shared UAS socket, skipping stale non-INVITE messages
+        (e.g. BYE/ACK retransmissions from the previous test that slipped past tearDown)."""
+        for _ in range(10):
+            msg, addr = self.recvFromSIP(sock)
+            if msg.startswith("INVITE"):
+                return msg, addr
+        raise AssertionError("No B2B INVITE received after 10 attempts")
+
+    def recvSIPForCall(self, sock: socket.socket, b2b_call_id: str) -> str:
+        """Receive a SIP message that belongs to the given B2B Call-ID, discarding any
+        stale messages from previous tests that have a different Call-ID."""
+        for _ in range(10):
+            msg = self.recvSIP(sock)
+            if b2b_call_id in msg:
+                return msg
+        raise AssertionError(f"No SIP message for Call-ID {b2b_call_id} received")
+
     def assertSIP(self, msg: str, exp: str):
         """Assert a SIP message matches a regex pattern."""
         r = re.compile(exp.replace("\n", "[\\r\\n]{1,2}"), re.DOTALL)
