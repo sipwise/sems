@@ -1,3 +1,61 @@
+ngcp-sems (1:1.6.0+0~mr26.2.0.0) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [87f3366] MT#62181 C++ sockaddr_storage
+  * [8f461b7] MT#62181 whitespace cleanups
+  * [3559b8c] MT#62181 convert sip_target::trsp to string
+  * [765ef88] MT#62181 convert arg to string
+  * [125da11] MT#64469 catch exception by reference
+  * [e909c52] MT#62181 remove unused method
+  * [8397b9c] MT#65080 add GH actions to automate release builds
+  * [e4ddedd] MT#62181 fix build of monitoring app
+  * [d67fe16] MT#62181 trans_layer: use references
+  * [578def7] MT#62181 use std::string for string building
+  * [2561fd9] MT#62181 sip_destination: use strings
+  * [884e9fc] MT#62181 send_request: use references
+  * [5159233] MT#62181 put temporary object on stack
+  * [1232a17] MT#62181 parser: use references
+  * [05bee6e] MT#62181 parser type updates
+  * [9419858] MT#62181 const updates
+  * [d028f93] MT#62181 fix MIME part printing
+  * [8201831] MT#62181 whitespace cleanups
+  * [3e9883a] MT#62181 add missing initialiser
+  * [b4cf02d] MT#62181 add parse_header overload w string_view
+  * [3393486] MT#62181 use `false` to indicate failure
+  * [730b4f9] MT#62181 parsing: use size_t for lengths
+  * [e033e0a] MT#59962 convert sess_stopped to atomic bool
+
+  [ Vadim Saranov ]
+  * [fd6ec68] MT#64901 core: fix memory leak in generate_and_parse_new_msg
+  * [c0648c2] MT#64901 core: fix facilty
+  * [6c858bb] MT#64901 core: fix memory leak in trans_timer::fire
+
+  [ Bit-Savva Mikhail ]
+  * [6b0af31] MT#64847 call authentication with peers doesn't work
+  * [954bd66] MT#64955  add B2B SBC integration test suite
+  * [04065d0] MT#64955 test-b2b: guard against stale _uas_sock messages on loaded CI
+
+  [ Donat Zenichev ]
+  * [c4c5c6a] MT#65074 AmConfigReader: rework plug-ins parser
+  * [853adb4] MT#65074 update usage of `getParameter()`
+  * [e08824d] MT#59962 AmSession: clean trailing spaces
+  * [2af60ac] MT#59962 AmSession: remove EMACS mentioning
+  * [07ef9c9] MT#59962 AmSession: substitute tabs with spaces
+  * [c0fb26d] MT#59962 AmSession: refactor styling
+  * [6f90a1a] MT#59962 AmSession: remove unused func `onFailure()`
+  * [1234013] MT#59962 AmSession: move `RtpTransportIterator`
+  * [28f884e] MT#59962 AmSession: `session_stopped()` decrement guard
+  * [a1a7eec] MT#59962 AmSession: use lock guards for `audio_mut`
+  * [fa9906d] MT#59962 AmSession: use lock guards for `session_num_mut`
+  * [7035d68] MT#59962 AmSession: session num getters, use counter directly
+  * [454d2e4] MT#59962 AmSession: prevent `session_num` double decrement
+  * [e2b606b] MT#59962 AmSession: session started/stopped renamings
+  * [c1d75be] MT#59962 AmEvent: explicit define for event `0`
+  * [1ec7457] MT#59962 AmSession: avoid dead-lock in `setStopped()`
+  * [1ec7651] MT#59962 AmSession: do not leak heap allocated `AmDtmfEvent`
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 15 Jun 2026 15:34:37 +0200
+
 ngcp-sems (1:1.6.0+0~mr26.1.0.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
