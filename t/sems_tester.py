@@ -9,8 +9,13 @@ import unittest
 
 
 class TestCase(unittest.TestCase):
+    _stale_b2b_dialogs: typing.ClassVar[typing.Set] = set()
+    _current_b2b_dialogs: typing.ClassVar[typing.List] = []
+
     @classmethod
     def setUpClass(cls):
+        cls._stale_b2b_dialogs = set()
+        cls._current_b2b_dialogs = []
         tmpdir = tempfile.TemporaryDirectory()
         tmpsock = tmpdir.name + "/notify.sock"
 
@@ -132,12 +137,31 @@ class TestCase(unittest.TestCase):
         """Send SIP message to a specific address from a bound socket."""
         sock.sendto(msg.replace("\n", "\r\n").encode("utf-8"), addr)
 
+    def tearDown(self):
+        type(self)._stale_b2b_dialogs.update(type(self)._current_b2b_dialogs)
+        type(self)._current_b2b_dialogs = []
+
+    @staticmethod
+    def _b2b_dialog_key(msg: str) -> tuple:
+        cid      = re.search(r"Call-ID:\s*(\S+)", msg)
+        from_tag = re.search(r"From:[^\r\n]*tag=([A-Za-z0-9\-_\.]+)", msg)
+        to_tag   = re.search(r"To:[^\r\n]*tag=([A-Za-z0-9\-_\.]+)", msg)
+        return (
+            cid.group(1)      if cid      else "",
+            from_tag.group(1) if from_tag else "",
+            to_tag.group(1)   if to_tag   else "",
+        )
+
     def recvB2BINVITE(self, sock: socket.socket) -> typing.Tuple[str, tuple]:
-        """Receive a B2B INVITE from the shared UAS socket, skipping stale non-INVITE messages
-        (e.g. BYE/ACK retransmissions from the previous test that slipped past tearDown)."""
+        """Receive a B2B INVITE, skipping retransmissions from previous dialogs
+        identified by (Call-ID, From-tag, To-tag) per RFC 3261 §12."""
         for _ in range(10):
             msg, addr = self.recvFromSIP(sock)
             if msg.startswith("INVITE"):
+                key = self._b2b_dialog_key(msg)
+                if key in type(self)._stale_b2b_dialogs:
+                    continue
+                type(self)._current_b2b_dialogs.append(key)
                 return msg, addr
         raise AssertionError("No B2B INVITE received after 10 attempts")
 

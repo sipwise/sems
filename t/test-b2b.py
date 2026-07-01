@@ -290,6 +290,7 @@ def _to_tag(msg):
     return m.group(1) if m else ""
 
 
+
 def _sdp_media_port(msg):
     """Return the first m=audio port from a SIP message body."""
     m = _re.search(r"m=audio (\d+)", msg)
@@ -340,6 +341,7 @@ class TestB2B(sems_tester.TestCase):
         """Drain leftover messages from the shared UAS socket between tests.
         Uses 1.5*T1 timeout to catch SIP retransmissions that SEMS may still
         be generating on a loaded CI host when the next test starts."""
+        super().tearDown()
         self._uas_sock.settimeout(1.5)
         try:
             while True:
@@ -1585,13 +1587,7 @@ class TestB2B(sems_tester.TestCase):
         # --- Setup call ---
         self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
         self.recvSIP(leg_a)  # 100 Trying
-        b2b_invite = sems_addr = None
-        for _ in range(10):
-            msg, addr = self.recvFromSIP(self._uas_sock)
-            if msg.startswith("INVITE"):
-                b2b_invite, sems_addr = msg, addr
-                break
-        self.assertIsNotNone(b2b_invite, "SEMS did not forward INVITE to leg B")
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
         b2b_cid = _hdr(b2b_invite, "Call-ID")
         self.sendToSIP(_make_provisional(180, "Ringing", b2b_invite),
                        sems_addr, self._uas_sock)
