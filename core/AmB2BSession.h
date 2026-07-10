@@ -86,9 +86,16 @@ struct B2BSipRequestEvent: public B2BSipEvent
 {
   AmSipRequest req;
 
+  /** the sender marked this request with P-Force-491: 0, asking the
+   *  other leg to queue it instead of answering 491 on a pending INVITE
+   *  transaction. Captured as a flag at request reception, because the
+   *  per-profile header filter run on relay may strip the header itself
+   *  before the other leg gets to see it. */
+  bool skip_491;
+
   B2BSipRequestEvent(const AmSipRequest& req, bool forward)
     : B2BSipEvent(B2BSipRequest,forward),
-       req(req)
+       req(req), skip_491(false)
   { }
 };
 

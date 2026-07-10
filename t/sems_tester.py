@@ -161,6 +161,14 @@ class TestCase(unittest.TestCase):
                 key = self._b2b_dialog_key(msg)
                 if key in type(self)._stale_b2b_dialogs:
                     continue
+                if key[2]:
+                    # An INVITE with a To-tag is in-dialog, so it can never be
+                    # the awaited dialog-initiating B2B INVITE - only leftover
+                    # traffic of an earlier dialog (e.g. a renegotiation
+                    # re-INVITE still retransmitting from a previous test).
+                    # Such a key is also never in _stale_b2b_dialogs, which
+                    # records initial INVITEs (no To-tag yet).
+                    continue
                 type(self)._current_b2b_dialogs.append(key)
                 return msg, addr
         raise AssertionError("No B2B INVITE received after 10 attempts")

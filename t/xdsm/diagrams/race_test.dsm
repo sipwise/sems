@@ -1,0 +1,21 @@
+-- MT#65396 regression test helper.
+-- First in-dialog INFO on this leg triggers sbc.putOnHold(); the second
+-- triggers sbc.resumeHeld() - reproducing, without a transfer module, the
+-- same kind of internally generated hold/resume re-INVITE that a real
+-- blind-transfer completion (call_transfer's ResumeHeldEvent) fires.
+
+import(mod_sbc);
+
+initial state START;
+
+transition "hold trigger" START - sipRequest; test(#method==INFO) / {
+       sbc.putOnHold;
+} -> holding;
+
+state holding;
+
+transition "resume trigger" holding - sipRequest; test(#method==INFO) / {
+       sbc.resumeHeld;
+} -> done;
+
+state done;

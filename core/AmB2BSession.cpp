@@ -670,6 +670,13 @@ void AmB2BSession::onSipRequest(const AmSipRequest& req)
 
   B2BSipRequestEvent* r_ev = new B2BSipRequestEvent(req,fwd);
 
+  /* consume P-Force-491 here, while req.hdrs is still unfiltered:
+   * relayEvent() runs the profile's header filter over r_ev->req.hdrs, so a
+   * whitelist profile silently drops the header before the other leg's
+   * onB2BEvent() could read it */
+  if (req.method == SIP_METH_INVITE)
+    r_ev->skip_491 = (getHeader(req.hdrs, SIP_HDR_P_FORCE_491, true) == "0");
+
   if (fwd) {
     ILOG_DLG(L_DBG, "relaying B2B SIP request (fwd) %s %s\n", r_ev->req.method.c_str(), r_ev->req.r_uri.c_str());
 

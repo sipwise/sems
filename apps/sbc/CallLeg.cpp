@@ -456,13 +456,33 @@ void CallLeg::onB2BEvent(B2BEvent* ev)
         if (req_ev && req_ev->forward) {
           /* in case of already ongoing negotiation in the other leg */
           if (req_ev->req.method == SIP_METH_INVITE && dlg->getUACInvTransPending()) {
-            /* if P-Force-491 is present, then it always marks a skip of 491 usage
-             * for overlapping invite transactions (for the same other leg).
-             * It's in use by the pick-up functionality, where two competing transactions
-             * are sent towards caller to update his media capabilities */
+            /* The sender of the request may mark it with P-Force-491: 0,
+             * which marks a skip of 491 usage for overlapping invite
+             * transactions (for the same other leg). It's in use by the
+             * pick-up functionality, where competing transactions are sent
+             * towards the caller to update his media capabilities: replying
+             * 491 there silently drops the B2B update carrying the new media
+             * offer instead of just delaying it, so the call ends up
+             * signalled as connected but without any audio path (pickup
+             * racing a transfer). Queue the update instead;
+             * applyPendingUpdate()/onTransFinished() re-applies it once the
+             * pending transaction completes.
+             *
+             * Two ways to detect the marker, either is enough to skip 491:
+             *  - p_force_491: read here from the relayed request hdrs. Works
+             *    on profiles that don't strip the header (blacklist ones),
+             *    and covers the general case where the whitelist isn't in
+             *    play at all.
+             *  - skip_491: the same marker captured at request reception
+             *    (AmB2BSession::onSipRequest()), before SBCCallLeg::relayEvent()
+             *    runs the profile's header filter. This is what makes it work
+             *    on whitelist profiles too, which strip the header before this
+             *    leg would otherwise see it - the reason the 491 used to fire
+             *    anyway. */
             string p_force_491 = getHeader(req_ev->req.hdrs, SIP_HDR_P_FORCE_491, true);
 
-            if (AmConfig::send_491_on_pending_session_leg && p_force_491 != "0") {
+            if (AmConfig::send_491_on_pending_session_leg &&
+                ((!p_force_491.empty() && p_force_491 != "0") || !req_ev->skip_491)) {
               /** do not send right away one more re-INVITE towards it,
                *  just delay the current leg, which sent us re-INVITE, with with a 491 response.
                */
