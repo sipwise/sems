@@ -234,6 +234,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     CP_SST_CFGVAR("", "maximum_timer", sst_b_cfg);
     CP_SST_CFGVAR("", "session_refresh_method", sst_b_cfg);
     CP_SST_CFGVAR("", "accept_501_reply", sst_b_cfg);
+    CP_SST_CFGVAR("", "sst_strict_mode", sst_b_cfg);
   }
 
   if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {
@@ -244,6 +245,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     CP_SST_CFGVAR("aleg_", "maximum_timer", sst_a_cfg);
     CP_SST_CFGVAR("aleg_", "session_refresh_method", sst_a_cfg);
     CP_SST_CFGVAR("aleg_", "accept_501_reply", sst_a_cfg);
+    CP_SST_CFGVAR("aleg_", "sst_strict_mode", sst_a_cfg);
   }
 #undef CP_SST_CFGVAR
 
@@ -553,6 +555,8 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	   sst_a_cfg.getParameter("session_refresh_method").c_str());
       INFO("SBC:              accept_501_reply=%s\n",
 	   sst_a_cfg.getParameter("accept_501_reply").c_str());
+      INFO("SBC:              sst_strict_mode=%s\n",
+	   sst_a_cfg.getParameter("sst_strict_mode").c_str());
     }
     INFO("SBC:      SST on B leg enabled: '%s'\n", sst_enabled.empty() ?
 	 "no" : sst_enabled.c_str());
@@ -567,6 +571,8 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 	   sst_b_cfg.getParameter("session_refresh_method").c_str());
       INFO("SBC:              accept_501_reply=%s\n",
 	   sst_b_cfg.getParameter("accept_501_reply").c_str());
+      INFO("SBC:              sst_strict_mode=%s\n",
+	   sst_b_cfg.getParameter("sst_strict_mode").c_str());
     }
 
     INFO("SBC:      SIP auth %sabled\n", auth_enabled?"en":"dis");
@@ -776,6 +782,7 @@ void SBCCallProfile::eval_sst_config(ParamReplacerCtx& ctx,
     "maximum_timer",
     "session_refresh_method",
     "accept_501_reply",
+    "sst_strict_mode",
   };
 
   for(unsigned int i=0; i<SST_CFG_PARAM_COUNT; i++) {

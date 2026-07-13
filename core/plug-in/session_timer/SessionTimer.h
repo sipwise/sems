@@ -85,7 +85,8 @@ class AmSessionTimerConfig
 public:
   AmSessionTimerConfig();
   ~AmSessionTimerConfig();
-  
+
+  bool StrictMode;
 
   /** Session Timer: Enable Session Timer?
       returns 0 on invalid value */
