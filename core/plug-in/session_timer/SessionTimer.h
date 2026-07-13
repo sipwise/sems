@@ -82,11 +82,10 @@ class AmSessionTimerConfig
 
   unsigned int MaximumTimer;
 
+  bool StrictMode;
 public:
   AmSessionTimerConfig();
   ~AmSessionTimerConfig();
-
-  bool StrictMode;
 
   /** Session Timer: Enable Session Timer?
       returns 0 on invalid value */
@@ -107,6 +106,9 @@ public:
   unsigned int getSessionExpires() const { return SessionExpires; }
   unsigned int getMinimumTimer() const { return MinimumTimer; }
   unsigned int getMaximumTimer() const { return MaximumTimer; }
+
+  bool getStrictMode() const { return StrictMode; }
+  void setStrictMode(bool enable) { StrictMode = enable; }
 
   int readFromConfig(AmConfigReader& cfg);
 };

@@ -307,7 +307,7 @@ bool SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
                                       TIMER_OPTION_TAG);
 
     /* disable timers for this leg if not declare explicitly */
-    if (session_timer_conf.StrictMode && !remote_timer_aware) {
+    if (session_timer_conf.getStrictMode() && !remote_timer_aware) {
       /* timer is not supported by originator's leg */
       DBG("Session timer not supported by request originator's leg, remove session timer intervals");
       session_timer_conf.setEnableSessionTimer(false);
@@ -410,7 +410,7 @@ bool SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   remote_timer_aware = key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
                                     TIMER_OPTION_TAG);
 
-  if (session_timer_conf.StrictMode && !remote_timer_aware) {
+  if (session_timer_conf.getStrictMode() && !remote_timer_aware) {
     /* timer is not supported by responder's leg */
     DBG("Session timer not supported by responder's leg, remove session timer intervals");
     session_timer_conf.setEnableSessionTimer(false);
@@ -578,11 +578,11 @@ int AmSessionTimerConfig::readFromConfig(AmConfigReader& cfg)
   if(cfg.hasParameter("sst_strict_mode")){
     if (cfg.getParameter("sst_strict_mode", "no") == "yes") {
       DBG("SST strict mode is enabled by profile settings (default: no).\n");
-      StrictMode = true;
+      setStrictMode(true);
     }
     else {
       DBG("SST strict mode is disabled by profile settings (default: no).\n");
-      StrictMode = false;
+      setStrictMode(false);
     }
   }
 
