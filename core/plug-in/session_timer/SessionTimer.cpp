@@ -85,7 +85,9 @@ bool SessionTimer::process(AmEvent* ev)
 
 bool SessionTimer::onSipRequest(const AmSipRequest& req)
 {
-  updateTimer(s,req);
+  if (!updateTimer(s, req)) {
+    DBG("Session timers aren't supported by this leg.\n");
+  }
   return false;
 }
 
@@ -133,7 +135,9 @@ bool SessionTimer::onSipReply(const AmSipRequest& req, const AmSipReply& reply,
   if ((reply.cseq_method == SIP_METH_INVITE) || 
       (reply.cseq_method == SIP_METH_UPDATE)) {
 
-    updateTimer(s,reply);
+    if (!updateTimer(s, reply)) {
+      DBG("Session timers aren't supported by this leg.\n");
+    }
   }
 
   return false;
@@ -264,12 +268,12 @@ bool SessionTimerFactory::checkSessionExpires(const AmSipRequest& req, AmConfigR
   return true;
 }
 
-void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
+bool SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
 {
   /* if timers aren't supporte by us, then just hesitate */
   if (!session_timer_conf.getEnableSessionTimer()) {
     DBG("Timers aren't supported, nothing to do.");
-    return;
+    return true;
   }
 
   if((req.method == SIP_METH_INVITE)||(req.method == SIP_METH_UPDATE)){
@@ -285,7 +289,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
       DBG("Session timer not supported by request originator's leg, remove session timer intervals");
       session_timer_conf.setEnableSessionTimer(false);
       removeTimers(s);
-      return;
+      return false;
     }
 
     // determine session interval
@@ -359,14 +363,15 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
   } else if (req.method == "BYE") {
     removeTimers(s);
   }
+  return true;
 }
 
-void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
+bool SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
 {
   /* if timers aren't supporte by us, then just hesitate */
   if (!session_timer_conf.getEnableSessionTimer()) {
     DBG("Timers aren't supported, nothing to do.");
-    return;
+    return true;
   }
 
   DBG("Update session timer (reply).");
@@ -375,7 +380,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   if (((reply.code < 200) || (reply.code >= 300)) &&
       (!(accept_501_reply && reply.code == 501)))
   {
-    return;
+    return true;
   }
 
   /* verify if B leg supports Session Timers */
@@ -387,7 +392,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
     DBG("Session timer not supported by responder's leg, remove session timer intervals");
     session_timer_conf.setEnableSessionTimer(false);
     removeTimers(s);
-    return;
+    return false;
   }
 
   /* timer supported by B leg
@@ -430,6 +435,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
 
   removeTimers(s);
   setTimers(s);
+  return true;
 }
 
 void SessionTimer::setTimers(AmSession* s)

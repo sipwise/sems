@@ -139,9 +139,9 @@ protected:
   SessionRefresherRole session_refresher_role;
   bool                 accept_501_reply;
 
-  void updateTimer(AmSession* s,const AmSipRequest& req);
-  void updateTimer(AmSession* s,const AmSipReply& reply);
-    
+  bool updateTimer(AmSession* s,const AmSipRequest& req);
+  bool updateTimer(AmSession* s,const AmSipReply& reply);
+
   virtual void setTimers(AmSession* s);
   void retryRefreshTimer(AmSession* s);
   void removeTimers(AmSession* s);
