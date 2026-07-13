@@ -264,11 +264,17 @@ bool SessionTimerFactory::checkSessionExpires(const AmSipRequest& req, AmConfigR
   return true;
 }
 
-void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
-
-    DBG("Update session timer (request).");
+void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
+{
+  /* if timers aren't supporte by us, then just hesitate */
+  if (!session_timer_conf.getEnableSessionTimer()) {
+    DBG("Timers aren't supported, nothing to do.");
+    return;
+  }
 
   if((req.method == SIP_METH_INVITE)||(req.method == SIP_METH_UPDATE)){
+
+    DBG("Update session timer (request).");
 
     remote_timer_aware = key_in_list(getHeader(req.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
                                       TIMER_OPTION_TAG);
@@ -357,8 +363,11 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
 
 void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
 {
-  if (!session_timer_conf.getEnableSessionTimer())
+  /* if timers aren't supporte by us, then just hesitate */
+  if (!session_timer_conf.getEnableSessionTimer()) {
+    DBG("Timers aren't supported, nothing to do.");
     return;
+  }
 
   DBG("Update session timer (reply).");
 
