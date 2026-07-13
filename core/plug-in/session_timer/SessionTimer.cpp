@@ -262,6 +262,8 @@ bool SessionTimerFactory::checkSessionExpires(const AmSipRequest& req, AmConfigR
 
 void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
 
+    DBG("Update session timer (request).");
+
   if((req.method == SIP_METH_INVITE)||(req.method == SIP_METH_UPDATE)){
     
     remote_timer_aware = 
@@ -337,10 +339,12 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
   }
 }
 
-void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply) 
+void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
 {
   if (!session_timer_conf.getEnableSessionTimer())
     return;
+
+  DBG("Update session timer (reply).");
 
   // only update timer on positive reply, or 501 if config'd
   if (((reply.code < 200) || (reply.code >= 300)) &&
