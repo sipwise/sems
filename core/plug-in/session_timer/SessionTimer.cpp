@@ -333,6 +333,7 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
       session_refresher_role = UAS;
     }
 
+    DBG("Time to re-init session timers.\n");
     removeTimers(s);
     setTimers(s);
 
@@ -393,8 +394,17 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
     if (get_header_param(sess_expires_hdr, "refresher") == "uas") {
       session_refresher = refresh_remote;
       session_refresher_role = UAS;
+      DBG("session refresher will be remote UAS.\n");
+    }
+    else {
+      DBG("session refresher will be local UAC.\n");
     }
   }
+  else {
+    DBG("session refresher will be local UAC.\n");
+  }
+
+  DBG("Time to re-init session timers.\n");
 
   removeTimers(s);
   setTimers(s);
