@@ -54,7 +54,11 @@ SessionTimer::SessionTimer(AmSession* s)
    session_interval(0),
    min_se(0),
    session_refresher(refresh_remote),
-   accept_501_reply(true)
+   accept_501_reply(true),
+   remote_timer_aware(true) /* by default always give a chance! until not proven the opposite */
+   /* TODO: should we init also `session_refresher_role`?
+    * rather not because each leg from B2B perspective can be either UAS or UAC.
+    */
 {
 }
 
