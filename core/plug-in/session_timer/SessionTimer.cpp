@@ -265,76 +265,78 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req) {
     DBG("Update session timer (request).");
 
   if((req.method == SIP_METH_INVITE)||(req.method == SIP_METH_UPDATE)){
-    
-    remote_timer_aware = 
-      key_in_list(getHeader(req.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
-		  TIMER_OPTION_TAG);
-    
+
+    remote_timer_aware = key_in_list(getHeader(req.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
+                                      TIMER_OPTION_TAG);
+
     // determine session interval
-    string sess_expires_hdr = getHeader(req.hdrs, SIP_HDR_SESSION_EXPIRES,
-					SIP_HDR_SESSION_EXPIRES_COMPACT, true);
-    
+    string sess_expires_hdr = getHeader(req.hdrs,
+                                        SIP_HDR_SESSION_EXPIRES,
+                                        SIP_HDR_SESSION_EXPIRES_COMPACT,
+                                        true);
+
     bool rem_has_sess_expires = false;
-    unsigned int rem_sess_expires=0; 
+    unsigned int rem_sess_expires=0;
+
     if (!sess_expires_hdr.empty()) {
-      if (str2int(strip_header_params(sess_expires_hdr),
-		rem_sess_expires)) {
-	WARN("error while parsing " SIP_HDR_SESSION_EXPIRES " header value '%s'\n",
-	     strip_header_params(sess_expires_hdr).c_str()); // exception?
+      if (str2int(strip_header_params(sess_expires_hdr), rem_sess_expires))
+      {
+        WARN("error while parsing " SIP_HDR_SESSION_EXPIRES " header value '%s'\n",
+              strip_header_params(sess_expires_hdr).c_str()); // exception?
       } else {
-	rem_has_sess_expires = true;
+        rem_has_sess_expires = true;
       }
     }
 
-    // get Min-SE
+    /* get Min-SE */
     unsigned int i_minse = min_se;
     string min_se_hdr = getHeader(req.hdrs, SIP_HDR_MIN_SE, true);
     if (!min_se_hdr.empty()) {
-      if (str2int(strip_header_params(min_se_hdr),
-		i_minse)) {
-	WARN("error while parsing " SIP_HDR_MIN_SE " header value '%s'\n",
-	     strip_header_params(min_se_hdr).c_str()); // exception?
+      if (str2int(strip_header_params(min_se_hdr), i_minse)) {
+        WARN("error while parsing " SIP_HDR_MIN_SE " header value '%s'\n",
+              strip_header_params(min_se_hdr).c_str()); // exception?
       }
     }
 
-    // minimum limit of both
+    /* minimum limit of both */
     if (i_minse > min_se)
       min_se = i_minse;
 
-    // calculate actual se
+    /* calculate actual se */
     session_interval = session_timer_conf.getSessionExpires();
 
     if (rem_has_sess_expires) {
       if (rem_sess_expires <= min_se) {
-	session_interval = min_se;
+        session_interval = min_se;
       } else {
-	if (rem_sess_expires < session_interval)
-	  session_interval = rem_sess_expires;
-      }
+        if (rem_sess_expires < session_interval)
+          session_interval = rem_sess_expires;
+        }
     }
-     
+
     DBG("using actual session interval %u\n", session_interval);
 
-    // determine session refresher -- cf rfc4028 Table 2
-    // only if the remote party supports timer and asks 
-    // to be refresher we will let the remote party do it. 
-    // if remote supports timer and does not specify,
-    // could also be refresher=uac
+    /* determine session refresher -- cf rfc4028 Table 2
+     * only if the remote party supports timer and asks
+     * to be refresher we will let the remote party do it.
+     * if remote supports timer and does not specify,
+     * could also be refresher=uac */
     if ((remote_timer_aware) && (!sess_expires_hdr.empty()) &&
-	(get_header_param(sess_expires_hdr, "refresher") == "uac")) {
+        (get_header_param(sess_expires_hdr, "refresher") == "uac"))
+    {
       DBG("session refresher will be remote UAC.\n");
-      session_refresher      = refresh_remote;
+      session_refresher = refresh_remote;
       session_refresher_role = UAC;
     } else {
       DBG("session refresher will be local UAS.\n");
-      session_refresher      = refresh_local;
+      session_refresher = refresh_local;
       session_refresher_role = UAS;
     }
-    
+
     removeTimers(s);
     setTimers(s);
 
-  } else if (req.method == "BYE") { // remove all timers?
+  } else if (req.method == "BYE") {
     removeTimers(s);
   }
 }
@@ -346,67 +348,69 @@ void SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
 
   DBG("Update session timer (reply).");
 
-  // only update timer on positive reply, or 501 if config'd
+  /* only update timer on positive reply, or 501 if config'd */
   if (((reply.code < 200) || (reply.code >= 300)) &&
       (!(accept_501_reply && reply.code == 501)))
+  {
     return;
+  }
 
-  // verify if B leg supports Session Timers
-  remote_timer_aware =
-      key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
-                  TIMER_OPTION_TAG);
+  /* verify if B leg supports Session Timers */
+  remote_timer_aware = key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
+                                    TIMER_OPTION_TAG);
 
   if (!remote_timer_aware) {
-    // timer NOT supported by B leg
+    /* timer NOT supported by B leg */
     DBG("Session Timer NOT supported by leg B, removing internal session timer intervals");
     session_timer_conf.setEnableSessionTimer(false);
     removeTimers(s);
     return;
   }
 
-  // timer supported by B leg
-  // determine session interval
-  string sess_expires_hdr = getHeader(reply.hdrs, SIP_HDR_SESSION_EXPIRES,
-				      SIP_HDR_SESSION_EXPIRES_COMPACT, true);
+  /* timer supported by B leg
+   * determine session interval */
+  string sess_expires_hdr = getHeader(reply.hdrs,
+                                      SIP_HDR_SESSION_EXPIRES,
+                                      SIP_HDR_SESSION_EXPIRES_COMPACT,
+                                      true);
 
   session_refresher = refresh_local;
   session_refresher_role = UAC;
-  
+
   if (!sess_expires_hdr.empty()) {
     unsigned int sess_i_tmp = 0;
-    if (str2int(strip_header_params(sess_expires_hdr),
-	      sess_i_tmp)) {
+    if (str2int(strip_header_params(sess_expires_hdr), sess_i_tmp)) {
       WARN("error while parsing " SIP_HDR_SESSION_EXPIRES " header value '%s'\n",
-	   strip_header_params(sess_expires_hdr).c_str()); // exception?
+            strip_header_params(sess_expires_hdr).c_str());
     } else {
-      // this is forbidden by rfc, but to be sure against 'rogue' proxy/uas
+      /* this is forbidden by rfc, but to be sure against 'rogue' proxy/uas */
       if (sess_i_tmp < min_se) {
-	session_interval = min_se;
+        session_interval = min_se;
       } else {
-	session_interval = sess_i_tmp;
+        session_interval = sess_i_tmp;
       }
     }
     if (get_header_param(sess_expires_hdr, "refresher") == "uas") {
       session_refresher = refresh_remote;
       session_refresher_role = UAS;
-    } 
+    }
   }
-  
+
   removeTimers(s);
   setTimers(s);
 }
 
-void SessionTimer::setTimers(AmSession* s) 
+void SessionTimer::setTimers(AmSession* s)
 {
   // set session timer
-  DBG("Setting session interval timer: %ds, tag '%s'\n", session_interval, 
+  DBG("Setting session interval timer: %ds, tag '%s'\n", session_interval,
       s->getLocalTag().c_str());
 
   s->setTimer(ID_SESSION_INTERVAL_TIMER, session_interval);
-    
+
   // set session refresh action timer, after half the expiration
   if (session_refresher == refresh_local) {
-    DBG("Setting session refresh timer: %ds, tag '%s'\n", session_interval/2, 
+    DBG("Setting session refresh timer: %ds, tag '%s'\n", session_interval/2,
 	s->getLocalTag().c_str());
     s->setTimer(ID_SESSION_REFRESH_TIMER, session_interval/2);
   }
