@@ -41,6 +41,12 @@ bool SessionTimerFactory::onInvite(const AmSipRequest& req, AmConfigReader& cfg)
   return checkSessionExpires(req, cfg);
 }
 
+/* remove `Session-Expires`, `Min-SE` */
+static void removeSSTHeaders(string& hdrs)
+{
+  removeHeader(hdrs, SIP_HDR_SESSION_EXPIRES);
+  removeHeader(hdrs, SIP_HDR_MIN_SE);
+}
 
 AmSessionEventHandler* SessionTimerFactory::getHandler(AmSession* s)
 {
@@ -163,10 +169,18 @@ bool SessionTimer::onSendRequest(AmSipRequest& req, int& flags)
   if  ((req.method != SIP_METH_INVITE) && (req.method != SIP_METH_UPDATE))
     return false; // session-expires / min-se only in INV/UPD
 
-  removeHeader(req.hdrs, SIP_HDR_SESSION_EXPIRES);
-  removeHeader(req.hdrs, SIP_HDR_MIN_SE);
-  req.hdrs += SIP_HDR_COLSP(SIP_HDR_SESSION_EXPIRES) + int2str(session_interval) + CRLF
-    + SIP_HDR_COLSP(SIP_HDR_MIN_SE) + int2str(min_se) + CRLF;
+  /* clean timers related headers given by incoming request */
+  removeSSTHeaders(req.hdrs);
+
+  /* now build up new if this leg actually support it */
+  if (session_timer_conf.getEnableSessionTimer()) {
+    req.hdrs += SIP_HDR_COLSP(SIP_HDR_SESSION_EXPIRES) + int2str(session_interval) + CRLF
+      + SIP_HDR_COLSP(SIP_HDR_MIN_SE) + int2str(min_se) + CRLF;
+    DBG("Append new Session-Expires (interval: '%u').\n", session_interval);
+  }
+  else {
+    DBG("SST timers are disabled for this leg, not adding Session-Expires.\n");
+  }
 
   return false;
 }
@@ -190,12 +204,21 @@ bool SessionTimer::onSendReply(const AmSipRequest& req,
     removeOptionTag(reply.hdrs, SIP_HDR_REQUIRE, TIMER_OPTION_TAG);
   }
 
-  // remove (possibly existing) Session-Expires header
-  removeHeader(reply.hdrs, SIP_HDR_SESSION_EXPIRES);
+  /* clean timers related headers given by incoming reply */
+  removeSSTHeaders(reply.hdrs);
 
-  reply.hdrs += SIP_HDR_COLSP(SIP_HDR_SESSION_EXPIRES) +
-    int2str(session_interval) + ";refresher="+
-    (session_refresher_role==UAC ? "uac":"uas")+CRLF;
+  /* now build up new if this leg actually support it */
+  if (session_timer_conf.getEnableSessionTimer()) {
+    reply.hdrs += SIP_HDR_COLSP(SIP_HDR_SESSION_EXPIRES) +
+      int2str(session_interval) + ";refresher="+
+      (session_refresher_role==UAC ? "uac":"uas")+CRLF;
+    DBG("Append new Session-Expires (interval: '%u'), %s is refresher.\n",
+        session_interval,
+        (session_refresher_role==UAC ? "uac":"uas"));
+  }
+  else {
+    DBG("SST timers are disabled for this leg, not adding Session-Expires.\n");
+  }
 
   return false;
 }
