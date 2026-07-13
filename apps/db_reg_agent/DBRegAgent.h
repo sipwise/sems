@@ -74,6 +74,19 @@ using std::queue;
 
 enum regType { TYPE_UNDEFINED=0, TYPE_PEERING, TYPE_SUBSCRIBER };
 
+#define TYPE_TO_STRING(type) ((type) == TYPE_PEERING ? "peering" : "subscriber")
+
+#define TRANSPORT_UDP            ";transport=udp"
+#define TRANSPORT_TCP            ";transport=tcp"
+#define TRANSPORT_TLS            ";transport=tls"
+
+#define DEFAULT_CONTACT_PORT     "5060"
+#define PORT_UDP            "5060"
+#define PORT_TCP            "5060"
+#define PORT_TLS            "5061"
+
+#define RegistrationActionEventID 117
+
 #define RegistrationActionEventID 117
 
 #define ERR_REASON_UNABLE_TO_SEND_REQUEST  "unable to send request"
@@ -218,6 +231,9 @@ class DBRegAgent
 
   /** remove registration */
   void removeRegistration(long object_id, const regType type);
+
+  /* set desired RURI's realm transport based on Contact */
+  void setRuriTransportContactBased(string& realm, string& contact);
 
   /** schedule this subscriber to REGISTER imminently */
   void scheduleRegistration(long object_id, const regType type);

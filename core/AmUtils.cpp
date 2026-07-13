@@ -857,6 +857,43 @@ string get_header_param(const string& hdr_string,
   return "";
 }
 
+string get_uri_param(const string& uri, const string& param_name) {
+  string param = ";" + param_name + "=";
+  const string::size_type found = uri.find(param);
+
+  if (found == string::npos)
+    return string(); // nothing found
+
+  string::size_type value_pos = found + param.length();
+  string::size_type value_end = uri.find_first_of(";?", value_pos); // end of the uri, or till either ';' / '?'
+
+  return uri.substr(value_pos, value_end - value_pos);
+}
+
+string get_uri_username(const string& uri)
+{
+  const string::size_type scheme_end = uri.find(':');
+  const string::size_type at = uri.find('@', scheme_end);
+
+  if (scheme_end == string::npos || at == string::npos)
+    return string();
+
+  return uri.substr(scheme_end + 1, at - scheme_end - 1);
+}
+
+string get_uri_host(const string& uri)
+{
+  const string::size_type at = uri.find('@');
+
+  if (at == string::npos)
+    return string();
+
+  const string::size_type host_pos = at + 1;
+  const string::size_type host_end = uri.find_first_of(":;?", host_pos);
+
+  return uri.substr(host_pos, host_end - host_pos);
+}
+
 /** get the value of key @param short_name or @param name or from the list param_hdr*/
 string get_header_keyvalue(const string& param_hdr, const string& short_name, const string& name) {
   string res = get_header_keyvalue(param_hdr, short_name);

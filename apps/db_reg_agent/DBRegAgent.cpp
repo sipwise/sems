@@ -27,6 +27,7 @@
 #include "DBRegAgent.h"
 #include "AmSession.h"
 #include "AmEventDispatcher.h"
+#include "AmUtils.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -166,7 +167,7 @@ int DBRegAgent::onLoad()
   save_auth_replies =
     cfg.getParameter("save_auth_replies", "no") == "yes";
 
-  contact_hostport = cfg.getParameter("contact_hostport");
+  contact_hostport = cfg.getParameter("contact_hostport"); // host:port
 
   outbound_proxy = cfg.getParameter("outbound_proxy");
 
@@ -569,23 +570,18 @@ void DBRegAgent::createRegistration(long object_id,
     _user = user.substr(0, user.find('@'));
   }
 
-  string contact_uri = contact;
-  if (contact_uri.empty() && !contact_hostport.empty()) {
-    contact_uri = "sip:"+ _user + "@" + contact_hostport;
-  }
-
   string handle = AmSession::getNewId();
   SIPRegistrationInfo reg_info(realm, _user,
 			       _user, // name
 			       auth_user_temp, // auth_user
 			       pass,
 			       outbound_proxy, // proxy
-			       contact_uri // contact
+			       contact // contact
 			       );
 
   DBG(" >>> realm '%s', user '%s', auth_user '%s', pass '%s', outbound_proxy '%s', contact_uri '%s', type '%s'\n",
       realm.c_str(), user.c_str(), auth_user.c_str(), pass.c_str(),
-      outbound_proxy.c_str(), contact_uri.c_str(), TYPE_TO_STRING(type));
+      outbound_proxy.c_str(), contact.c_str(), TYPE_TO_STRING(type));
 
   registrations_mut.lock();
   try {
@@ -768,6 +764,50 @@ void DBRegAgent::removeRegistration(long object_id, const regType type) {
     DBG("removed registration with ID %ld, type: %s \n", object_id, TYPE_TO_STRING(type));
   } else {
     DBG("registration with ID %ld not found for removing, type: %s \n", object_id, TYPE_TO_STRING(type));
+  }
+}
+
+/**
+ * Sets desired RURI's realm transport and socket based on Contact transport param.
+ */
+void DBRegAgent::setRuriTransportContactBased(string& realm, string& contact) {
+
+  /* rebuild Contact so that port meets the transport */
+  string uuid = get_uri_param(contact, "uuid");
+  string username = get_uri_username(contact);
+  string host = get_uri_host(contact);
+
+  /* default is 0 */
+  if (uuid.empty()) {
+    DBG("Setting UUID to the default value: '0'\n");
+    uuid = "0";
+  }
+
+  /* example of URI to be parsed: sip:peeruser@192.168.0.1:5060;uuid=0;transport=tls */
+
+  /* UDP */
+  if (contact.find(TRANSPORT_UDP) != string::npos) {
+    realm = realm + TRANSPORT_UDP;
+    /* build up the contact accordingly */
+    contact = "sip:" + username + "@" + host + ":" + PORT_UDP + ";uuid=" + uuid + ";transport=udp";
+    DBG("Updating contact to: '%s'\n", contact.c_str());
+  }
+  /* TCP */
+  else if (contact.find(TRANSPORT_TCP) != string::npos) {
+    realm = realm + TRANSPORT_TCP;
+    /* build up the contact accordingly */
+    contact = "sip:" + username + "@" + host + ":" + PORT_TCP + ";uuid=" + uuid + ";transport=tcp";
+    DBG("Updating contact to: '%s'\n", contact.c_str());
+  }
+  /* TLS */
+  else if (contact.find(TRANSPORT_TLS) != string::npos) {
+    realm = realm + TRANSPORT_TLS;
+    /* build up the contact accordingly */
+    contact = "sip:" + username + "@" + host + ":" + PORT_TLS + ";uuid=" + uuid + ";transport=tls";
+    DBG("Updating contact to: '%s'\n", contact.c_str());
+  }
+  else {
+    WARN("Not able to detect transport to be used!\n");
   }
 }
 
@@ -1501,13 +1541,27 @@ void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
               const string& contact, const string& auth_user,
               const regType type, AmArg& ret) {
 
+  /* take care to properly set the transport parameter for the RURI of the REGISTER */
+  string updated_realm = realm;
+  string contact_uri = contact;
+
+  if (contact_uri.empty() && !contact_hostport.empty()) {
+    contact_uri = "sip:"+ user + "@" + contact_hostport;
+    DBG("Given contact was empty, setting to the config provided one: '%s'\n", contact_uri.c_str());
+  }
+  else {
+    /* take care to properly set the transport parameter for the RURI of the REGISTER */
+    setRuriTransportContactBased(updated_realm, contact_uri);
+    DBG("Given contact: '%s' vs eventually used contact: '%s'\n", contact.c_str(), contact_uri.c_str());
+  }
+
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
 
-  DBG("DI method: createRegistration(%i, %s, %s, %s, %s, %s)\n",
+  DBG("DI method: createRegistration(id:%i, auth_user:%s, user:%s, pass:%s, realm:%s, contact:%s)\n",
       object_id, auth_user_temp.c_str(), user.c_str(),
-      pass.c_str(), realm.c_str(), contact.c_str());
+      pass.c_str(), updated_realm.c_str(), contact_uri.c_str());
 
-  createRegistration(object_id, auth_user_temp, user, pass, realm, contact, type);
+  createRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, type);
   scheduleRegistration(object_id, type);
   ret.push(200);
   ret.push("OK");
@@ -1516,20 +1570,28 @@ void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
 void DBRegAgent::DIupdateRegistration(int object_id, const string& user,
               const string& pass, const string& realm,
               const string& contact, const string& auth_user,
-              const regType type, AmArg& ret) {
+              const regType type, AmArg& ret)
+{
+  string updated_realm = realm;
+  string contact_uri = contact;
+
+  if (contact_uri.empty() && !contact_hostport.empty()) {
+    contact_uri = "sip:"+ user + "@" + contact_hostport;
+    DBG("Given contact was empty, setting to the config provided one: '%s'\n", contact_uri.c_str());
+  }
+  else {
+    /* take care to properly set the transport parameter for the RURI of the REGISTER */
+    setRuriTransportContactBased(updated_realm, contact_uri);
+    DBG("Given contact: '%s' vs eventually used contact: '%s'\n", contact.c_str(), contact_uri.c_str());
+  }
 
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
 
-  DBG("DI method: updateRegistration(%i, %s, %s, %s, %s)\n",
+  DBG("DI method: updateRegistration(id:%i, auth_user:%s, user:%s, pass:%s, realm:%s, contact:%s)\n",
       object_id, auth_user_temp.c_str(), user.c_str(),
-      pass.c_str(), realm.c_str());
+      pass.c_str(), updated_realm.c_str(), contact_uri.c_str());
 
-  string contact_uri = contact;
-  if (contact_uri.empty() && !contact_hostport.empty()) {
-    contact_uri = "sip:"+ user + "@" + contact_hostport;
-  }
-
-  updateRegistration(object_id, auth_user_temp, user, pass, realm, contact_uri, type);
+  updateRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, type);
 
   ret.push(200);
   ret.push("OK");

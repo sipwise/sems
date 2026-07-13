@@ -276,6 +276,15 @@ string extract_tag(const string& addr);
  *skips whitespaces, too */
 bool key_in_list(const string& s_list, const string& key, char list_delim = ',');
 
+/** get uri parameter */
+string get_uri_param(const string& uri, const string& param_name);
+
+/** get uri username */
+string get_uri_username(const string& uri);
+
+/** get uri host part */
+string get_uri_host(const std::string& uri);
+
 /** return string with trailing spaces and everything after ; including ; itself removed */
 string strip_header_params(const string& hdr_string);
 
