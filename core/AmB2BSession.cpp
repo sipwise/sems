@@ -127,6 +127,17 @@ AmB2BSession::~AmB2BSession()
 {
   ILOG_DLG(L_DBG, "relayed_req.size() = %zu\n",relayed_req.size());
 
+  /* defensive release of the primary media_session, for the case when
+   * some fork/transfer path forgets to call clearRtpReceiverRelay(),
+   * the media_session ptr still gets nulled out before the object's memory is released.
+   */
+  if (media_session) {
+    ILOG_DLG(L_ERR, "This media_session was not released before AmB2BSession destruction! Do it now.\n");
+    media_session->stop(a_leg);
+    media_session->releaseReference();
+    media_session = NULL;
+  }
+
   map<int,AmSipRequest>::iterator it = recvd_req.begin();
   ILOG_DLG(L_DBG, "recvd_req.size() = %zu\n",recvd_req.size());
   for(;it != recvd_req.end(); ++it){
@@ -137,7 +148,7 @@ AmB2BSession::~AmB2BSession()
     delete subs;
 }
 
-void AmB2BSession::set_sip_relay_only(bool r) { 
+void AmB2BSession::set_sip_relay_only(bool r) {
   if (!getLocalTag().empty())
     ILOG_DLG(L_DBG, "Set sip_relay_only=%s for local_tag '%s'\n", (r ? "true" : "false"), getLocalTag().c_str());
 
