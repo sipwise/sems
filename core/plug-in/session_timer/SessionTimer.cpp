@@ -305,6 +305,13 @@ bool SessionTimer::updateTimer(AmSession* s, const AmSipRequest& req)
 
     remote_timer_aware = key_in_list(getHeader(req.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
                                       TIMER_OPTION_TAG);
+    /* give a second chance with Require header instead.
+     * for the requests, this fallback is still questionable because
+     * RFC 4028 says that the UAC supporting session timers must also include `Supported: timer`
+     * in requests, even if the `Require: timer` is also present. */
+    if (!remote_timer_aware)
+      /* but do not override to false, in case Supported already declared `timer` */
+      remote_timer_aware = key_in_list(getHeader(req.hdrs, SIP_HDR_REQUIRE), TIMER_OPTION_TAG);
 
     /* disable timers for this leg if not declare explicitly */
     if (session_timer_conf.getStrictMode() && !remote_timer_aware) {
@@ -409,6 +416,10 @@ bool SessionTimer::updateTimer(AmSession* s, const AmSipReply& reply)
   /* verify if B leg supports Session Timers */
   remote_timer_aware = key_in_list(getHeader(reply.hdrs, SIP_HDR_SUPPORTED, SIP_HDR_SUPPORTED_COMPACT),
                                     TIMER_OPTION_TAG);
+  /* give a second chance with Require header instead */
+  if (!remote_timer_aware)
+    /* but do not override to false, in case Supported already declared `timer` */
+    remote_timer_aware = key_in_list(getHeader(reply.hdrs, SIP_HDR_REQUIRE), TIMER_OPTION_TAG);
 
   if (session_timer_conf.getStrictMode() && !remote_timer_aware) {
     /* timer is not supported by responder's leg */
@@ -573,7 +584,7 @@ int AmSessionTimerConfig::readFromConfig(AmConfigReader& cfg)
 
   /* SST strict mode allows to re-init timers during the session,
    * whenever remote side with INVITE/UPDATE method doesn't
-   * declare `Supported: timer` explicitly. By default always: no.
+   * declare `Supported: timer` or `Require: timer` explicitly. By default always: no.
    */
   if(cfg.hasParameter("sst_strict_mode")){
     if (cfg.getParameter("sst_strict_mode", "no") == "yes") {
