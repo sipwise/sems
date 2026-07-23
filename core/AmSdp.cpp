@@ -656,6 +656,13 @@ void AmSdp::print(string& body) const
 	out_buf += a_it->print();
       }
 
+      // add DTLS attributes
+      if (!media_it->dtls_role.empty())
+        out_buf += "a=setup:" + media_it->dtls_role + "\r\n";
+      if (!media_it->dtls_hash.empty() && !media_it->dtls_fingerprint.empty())
+        out_buf += "a=fingerprint:" + media_it->dtls_hash + " " +
+          media_it->dtls_fingerprint + "\r\n";
+
       // add ICE credentials
       if (!media_it->ice_username.empty() && !media_it->ice_password.empty()) {
         out_buf += "a=ice-ufrag:" + media_it->ice_username + "\r\n";
@@ -2046,4 +2053,3 @@ static bool attr_check(std::string attr)
     return false;
   }
 }
-
