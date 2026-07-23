@@ -38,9 +38,38 @@ _SDP_B = (
     "a=sendrecv\n"
 )
 
+_WEBRTC_FINGERPRINT = (
+    "AF:B1:42:4D:55:BF:91:44:77:AC:7A:07:FB:4B:0F:7D:"
+    "D5:2D:2E:E3:97:1B:2A:9B:63:F8:2E:45:D4:5E:1B:EA"
+)
 
-def _make_invite(branch, call_id, cseq=1, src_port=57701):
-    sdp = _SDP_A.replace("\n", "\r\n")
+_SDP_WEBRTC_A = (
+    "v=0\n"
+    "o=- 3000000001 3000000001 IN IP4 127.0.0.1\n"
+    "s=-\n"
+    "t=0 0\n"
+    "a=group:BUNDLE 0\n"
+    f"m=audio {_RTP_PORT_A} UDP/TLS/RTP/SAVPF 96 101\n"
+    "c=IN IP4 127.0.0.1\n"
+    "a=mid:0\n"
+    "a=rtpmap:96 opus/48000/2\n"
+    "a=rtpmap:101 telephone-event/8000\n"
+    "a=fmtp:101 0-15\n"
+    "a=sendrecv\n"
+    f"a=rtcp:{_RTP_PORT_A}\n"
+    "a=rtcp-mux\n"
+    "a=setup:actpass\n"
+    f"a=fingerprint:sha-256 {_WEBRTC_FINGERPRINT}\n"
+    "a=tls-id:e0e59df24c44855f90aa8edb0c10139b\n"
+    "a=ice-ufrag:0YSTsmoH\n"
+    "a=ice-pwd:Q3Z6A3zo99spnD0WBzwpudh9SY\n"
+    f"a=candidate:T84ImXh43nv69EDC 1 UDP 2130706431 127.0.0.1 {_RTP_PORT_A} typ host\n"
+)
+
+
+def _make_invite(branch, call_id, cseq=1, src_port=57701, sdp=None):
+    use_sdp = sdp if sdp is not None else _SDP_A
+    sdp_cr = use_sdp.replace("\n", "\r\n")
     return (
         f"INVITE sip:bob@voip.sipwise.local SIP/2.0\n"
         f"Via: SIP/2.0/UDP 127.0.0.1:{src_port};branch={branch};rport\n"
@@ -51,9 +80,9 @@ def _make_invite(branch, call_id, cseq=1, src_port=57701):
         f"CSeq: {cseq} INVITE\n"
         f"Contact: <sip:alice@127.0.0.1:{src_port}>\n"
         f"Content-Type: application/sdp\n"
-        f"Content-Length: {len(sdp)}\n"
+        f"Content-Length: {len(sdp_cr)}\n"
         "\n"
-        + _SDP_A
+        + use_sdp
     )
 
 
@@ -469,6 +498,48 @@ class TestB2B(sems_tester.TestCase):
             "Via: SIP/2\\.0/UDP 127\\.0\\.0\\.1:57701;branch=z9hG4bK-b2b-001-bye[^\r]*\n"
             ".*"
             "CSeq: 2 BYE\n"
+        )
+
+        leg_a.close()
+
+    # ------------------------------------------------------------------
+    # Scenario 1b: WebRTC DTLS attributes survive initial INVITE relay
+    # ------------------------------------------------------------------
+    def testWebRTCDtlsAttributesSurviveInitialInviteRelay(self):
+        src_port = 57720
+        leg_a = self.makeUACSocket(src_port)
+        branch = "z9hG4bK-b2b-webrtc-dtls"
+        call_id = "test-b2b-webrtc-dtls@127.0.0.1"
+
+        self.sendSIP(_make_invite(branch, call_id, src_port=src_port,
+                                  sdp=_SDP_WEBRTC_A), leg_a)
+
+        trying = self.recvSIP(leg_a)
+        self.assertSIP(trying, "^SIP/2\\.0 100 [^\r]+\n.*CSeq: 1 INVITE\n")
+
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
+
+        self.assertIn(f"m=audio {_RTP_PORT_A} UDP/TLS/RTP/SAVPF 96 101", b2b_invite)
+        self.assertIn("a=setup:actpass", b2b_invite)
+        self.assertIn(f"a=fingerprint:sha-256 {_WEBRTC_FINGERPRINT}", b2b_invite)
+        self.assertIn("a=tls-id:e0e59df24c44855f90aa8edb0c10139b", b2b_invite)
+        self.assertIn("a=ice-ufrag:0YSTsmoH", b2b_invite)
+        self.assertIn("a=ice-pwd:Q3Z6A3zo99spnD0WBzwpudh9SY", b2b_invite)
+
+        self.sendToSIP(_make_final_uas(486, "Busy Here", b2b_invite),
+                       sems_addr, self._uas_sock)
+
+        ack_b = self.recvSIPSkipRetrans(self._uas_sock, "INVITE", b2b_cid)
+        self.assertSIP(ack_b, "^ACK sip:[^\r]+ SIP/2\\.0\n.*CSeq: \\d+ ACK\n")
+
+        busy_a = self.recvSIP(leg_a)
+        self.assertSIP(busy_a,
+            "^SIP/2\\.0 486 Busy Here\n"
+            ".*"
+            "Call-ID: test-b2b-webrtc-dtls@127\\.0\\.0\\.1\n"
+            ".*"
+            "CSeq: 1 INVITE\n"
         )
 
         leg_a.close()
