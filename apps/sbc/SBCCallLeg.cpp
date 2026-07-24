@@ -804,11 +804,19 @@ void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
 
   CallLeg::onSendRequest(req, flags);
 
-  /* check whether SST related headers must be removed before sending out */
-  if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
-    ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
-             a_leg ? 'A' : 'B');
-    removeSessionTimerHeaders(req.hdrs);
+  /* clean SST related headers if not supported by the receiving leg
+   * but only if the mode isn't transparent */
+  if (!call_profile.sst_transparent) {
+    /* check whether SST related headers must be removed before sending out */
+    if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
+      ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
+              a_leg ? 'A' : 'B');
+      removeSessionTimerHeaders(req.hdrs);
+    }
+  }
+  else {
+    ILOG_DLG(L_DBG, "Transparent SST mode enabled globally, ignore SST headers for '%c' leg.\n",
+              a_leg ? 'A' : 'B');
   }
 }
 
@@ -816,11 +824,19 @@ void SBCCallLeg::onSendReply(const AmSipRequest& req, AmSipReply& reply, int &fl
 {
   CallLeg::onSendReply(req, reply, flags);
 
-  /* check whether SST related headers must be removed before sending out */
-  if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
-    ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
-             a_leg ? 'A' : 'B');
-    removeSessionTimerHeaders(reply.hdrs);
+  /* clean SST related headers if not supported by the receiving leg
+   * but only if the mode isn't transparent */
+  if (!call_profile.sst_transparent) {
+    /* check whether SST related headers must be removed before sending out */
+    if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
+      ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
+              a_leg ? 'A' : 'B');
+      removeSessionTimerHeaders(reply.hdrs);
+    }
+  }
+  else {
+    ILOG_DLG(L_DBG, "Transparent SST mode enabled globally, ignore SST headers for '%c' leg.\n",
+              a_leg ? 'A' : 'B');
   }
 }
 

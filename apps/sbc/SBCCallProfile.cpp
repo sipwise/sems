@@ -204,6 +204,9 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
     return false;
 
   sst_enabled = cfg.getParameter("enable_session_timer");
+
+  sst_transparent = cfg.getParameter("session_timer_transparent", "no") == "yes";
+
   if (cfg.hasParameter("enable_aleg_session_timer")) {
     sst_aleg_enabled = cfg.getParameter("enable_aleg_session_timer");
   } else {
@@ -544,6 +547,7 @@ bool SBCCallProfile::readFromConfiguration(const string& name,
 
     INFO("SBC:      SST on A leg enabled: '%s'\n", sst_aleg_enabled.empty() ?
 	 "no" : sst_aleg_enabled.c_str());
+    INFO("SBC:      SST transparent mode: %s\n", sst_transparent ? "yes" : "no");
     if (sst_aleg_enabled.size() && sst_aleg_enabled != "no") {
       INFO("SBC:              session_expires=%s\n",
 	   sst_a_cfg.getParameter("session_expires").c_str());
@@ -652,6 +656,7 @@ bool SBCCallProfile::operator==(const SBCCallProfile& rhs) const {
     sdpfilter == rhs.sdpfilter &&
     aleg_sdpfilter == rhs.aleg_sdpfilter &&
     mediafilter == rhs.mediafilter &&
+    sst_transparent == rhs.sst_transparent &&
     sst_enabled == rhs.sst_enabled &&
     sst_aleg_enabled == rhs.sst_aleg_enabled &&
     auth_enabled == rhs.auth_enabled &&

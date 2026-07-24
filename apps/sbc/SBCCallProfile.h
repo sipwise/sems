@@ -142,6 +142,7 @@ struct SBCCallProfile
   vector<FilterEntry> sdpalinesfilter;
   vector<FilterEntry> mediafilter;
 
+  bool sst_transparent;
   string sst_enabled;
   bool sst_enabled_value;
   string sst_aleg_enabled;
@@ -353,6 +354,7 @@ struct SBCCallProfile
     allow_subless_notify(false),
     anonymize_sdp(false),
     have_aleg_sdpfilter(false),
+    sst_transparent(false),
     sst_enabled_value(false),
     auth_aleg_enabled(false),
     uas_auth_bleg_enabled(false),
