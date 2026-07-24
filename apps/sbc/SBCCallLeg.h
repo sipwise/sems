@@ -258,6 +258,7 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   void onSipReply(const AmSipRequest& req, const AmSipReply& reply, AmSipDialog::Status old_dlg_status);
   void onSendRequest(AmSipRequest& req, int &flags);
+  void onSendReply(const AmSipRequest& req, AmSipReply& reply, int &flags);
 
   virtual void onInitialReply(B2BSipReplyEvent *e);
 

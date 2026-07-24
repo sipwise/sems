@@ -70,6 +70,15 @@ static void removeSessionTimerHeaders(string& hdrs)
   removeHeader(hdrs, SIP_HDR_MIN_SE);
 }
 
+/**
+ * Helper to check whether this leg supports SST.
+ */
+static bool sessionTimerSupportedByLeg(const SBCCallProfile& call_profile, bool a_leg)
+{
+  return a_leg ? (call_profile.sst_aleg_enabled == "yes")
+               : (call_profile.sst_enabled == "yes");
+}
+
 static const SdpPayload *findPayload(const std::vector<SdpPayload>& payloads, const SdpPayload &payload, int transport)
 {
   string pname = payload.encoding_name;
@@ -530,18 +539,6 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
             inplaceHeaderFilter(req_ev->req.hdrs, call_profile.headerfilter);
           }
 
-          /* clean SST related headers if not supported by the receiving leg */
-          if (a_leg && call_profile.sst_aleg_enabled != "yes")
-          {
-            ILOG_DLG(L_DBG, "SST isn't supported by A leg, remove according headers and option tags.\n");
-            removeSessionTimerHeaders(req_ev->req.hdrs);
-          }
-          else if (!a_leg && call_profile.sst_enabled != "yes")
-          {
-            ILOG_DLG(L_DBG, "SST isn't supported by B leg, remove according headers and option tags.\n");
-            removeSessionTimerHeaders(req_ev->req.hdrs);
-          }
-
           if (req_ev->req.method == SIP_METH_REFER && call_profile.fix_replaces_ref == "yes")
           {
             fixReplaces(req_ev->req.hdrs, false);
@@ -581,18 +578,6 @@ int SBCCallLeg::relayEvent(AmEvent* ev)
              (reply_ev->reply.from_tag == dlg->getExtLocalTag()))
           {
             reply_ev->reply.from_tag = dlg->getLocalTag();
-          }
-
-          /* clean SST related headers if not supported by the receiving leg */
-          if (a_leg && call_profile.sst_aleg_enabled != "yes")
-          {
-            ILOG_DLG(L_DBG, "SST isn't supported by A leg, remove according headers and option tags.\n");
-            removeSessionTimerHeaders(reply_ev->reply.hdrs);
-          }
-          else if (!a_leg && call_profile.sst_enabled != "yes")
-          {
-            ILOG_DLG(L_DBG, "SST isn't supported by B leg, remove according headers and option tags.\n");
-            removeSessionTimerHeaders(reply_ev->reply.hdrs);
           }
 
           if (call_profile.headerfilter.size() ||
@@ -818,6 +803,25 @@ void SBCCallLeg::onSendRequest(AmSipRequest& req, int &flags) {
   }
 
   CallLeg::onSendRequest(req, flags);
+
+  /* check whether SST related headers must be removed before sending out */
+  if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
+    ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
+             a_leg ? 'A' : 'B');
+    removeSessionTimerHeaders(req.hdrs);
+  }
+}
+
+void SBCCallLeg::onSendReply(const AmSipRequest& req, AmSipReply& reply, int &flags)
+{
+  CallLeg::onSendReply(req, reply, flags);
+
+  /* check whether SST related headers must be removed before sending out */
+  if (!sessionTimerSupportedByLeg(call_profile, a_leg)) {
+    ILOG_DLG(L_DBG, "SST isn't supported by '%c' leg, remove according headers and option tags.\n",
+             a_leg ? 'A' : 'B');
+    removeSessionTimerHeaders(reply.hdrs);
+  }
 }
 
 void SBCCallLeg::onRemoteDisappeared(const AmSipReply& reply)
