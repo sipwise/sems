@@ -134,7 +134,8 @@ def _hdr(msg, name):
     return m.group(1) if m else ""
 
 
-def _make_200_ok_invite(invite_msg, sdp=None, contact="<sip:bob@127.0.0.1:5070>"):
+def _make_200_ok_invite(invite_msg, sdp=None, contact="<sip:bob@127.0.0.1:5070>",
+                        extra_headers=""):
     """Build 200 OK for a received INVITE/re-INVITE.
     sdp=None uses _SDP_B; contact defaults to leg-B's address."""
     via     = _hdr(invite_msg, "Via")
@@ -145,6 +146,8 @@ def _make_200_ok_invite(invite_msg, sdp=None, contact="<sip:bob@127.0.0.1:5070>"
     to_tag  = to + ";tag=uas-tag-001" if ";tag=" not in to else to
     use_sdp = sdp if sdp is not None else _SDP_B
     sdp_cr  = use_sdp.replace("\n", "\r\n")
+    if extra_headers and not extra_headers.endswith("\n"):
+        extra_headers += "\n"
     return (
         f"SIP/2.0 200 OK\n"
         f"Via: {via}\n"
@@ -153,6 +156,7 @@ def _make_200_ok_invite(invite_msg, sdp=None, contact="<sip:bob@127.0.0.1:5070>"
         f"Call-ID: {call_id}\n"
         f"CSeq: {cseq}\n"
         f"Contact: {contact}\n"
+        f"{extra_headers}"
         f"Content-Type: application/sdp\n"
         f"Content-Length: {len(sdp_cr)}\n"
         "\n"
@@ -1717,6 +1721,62 @@ class TestB2B(sems_tester.TestCase):
         bye_b = self.recvSIPForCall(self._uas_sock, b2b_cid)
         self.sendToSIP(_make_200_ok_for(bye_b), sems_addr, self._uas_sock)
         self.assertSIP(self.recvSIP(leg_a), "^SIP/2\\.0 200 OK\n.*CSeq: 3 BYE\n")
+        leg_a.close()
+
+
+class TestB2BSSTHeaders(sems_tester.TestCase):
+    _config_base = "b2b-sst"
+    _sip_port = 5065
+    _uas_port = 5071
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._uas_sock = cls.makeUASSocket(cls._uas_port)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._uas_sock.close()
+        super().tearDownClass()
+
+    def testTimerOptionRemovedFromMultiValueHeadersForUnsupportedALeg(self):
+        src_port = 57720
+        leg_a = self.makeUACSocket(src_port)
+        branch = "z9hG4bK-b2b-sst-001"
+        call_id = "test-b2b-sst-001@127.0.0.1"
+
+        self.sendSIP(_make_invite(branch, call_id, src_port=src_port), leg_a)
+        self.recvSIP(leg_a)  # 100 Trying
+
+        b2b_invite, sems_addr = self.recvB2BINVITE(self._uas_sock)
+        b2b_cid = _hdr(b2b_invite, "Call-ID")
+
+        extra_headers = (
+            "Supported: timer, path, replaces\n"
+            "Require: 100rel, timer\n"
+            "Session-Expires: 900;refresher=uas\n"
+            "Min-SE: 90\n"
+        )
+        self.sendToSIP(_make_200_ok_invite(
+            b2b_invite,
+            contact="<sip:bob@127.0.0.1:5071>",
+            extra_headers=extra_headers),
+            sems_addr, self._uas_sock)
+
+        ok_a = self.recvSIP(leg_a)
+        self.assertEqual(_hdr(ok_a, "Supported"), "path, replaces")
+        self.assertEqual(_hdr(ok_a, "Require"), "100rel")
+        self.assertNotIn("Supported: ,", ok_a)
+        self.assertNotIn("timer", _hdr(ok_a, "Supported"))
+        self.assertNotIn("timer", _hdr(ok_a, "Require"))
+        self.assertNotIn("Session-Expires:", ok_a)
+        self.assertNotIn("Min-SE:", ok_a)
+
+        to_tag = _to_tag(ok_a)
+        self.sendSIP(_make_ack("z9hG4bK-b2b-sst-001-ack", call_id, to_tag,
+                               src_port=src_port), leg_a)
+        self.recvSIPForCall(self._uas_sock, b2b_cid)
+
         leg_a.close()
 
 

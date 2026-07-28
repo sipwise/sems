@@ -132,5 +132,20 @@ FCTMF_SUITE_BGN(test_headers) {
       // DBG("hdrs1 = '%s'\n", hdrs1.c_str());
       fct_chk(hdrs1.empty()== true); // last one
 
+      hdrs1 = "Supported: timer, path, replaces" CRLF;
+      removeOptionTag(hdrs1, "Supported", "timer");
+      // DBG("hdrs1 = '%s'\n", hdrs1.c_str());
+      fct_chk(hdrs1 == "Supported: path, replaces" CRLF);
+
+      hdrs1 = "Supported: path, timer, replaces" CRLF;
+      removeOptionTag(hdrs1, "Supported", "timer");
+      // DBG("hdrs1 = '%s'\n", hdrs1.c_str());
+      fct_chk(hdrs1 == "Supported: path, replaces" CRLF);
+
+      hdrs1 = "Supported: path, replaces, timer" CRLF;
+      removeOptionTag(hdrs1, "Supported", "timer");
+      // DBG("hdrs1 = '%s'\n", hdrs1.c_str());
+      fct_chk(hdrs1 == "Supported: path, replaces" CRLF);
+
     } FCT_TEST_END();
 } FCTMF_SUITE_END();
