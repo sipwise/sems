@@ -292,6 +292,26 @@ int AmAudio::get(unsigned long long system_ts, unsigned char* buffer,
   int size = calcBytesToRead((int)((float)nb_samples * (float)getSampleRate()
 				   / (float)output_sample_rate));
 
+  if (size < 0)
+  {
+    ERROR("AmAudio::get: requested size is unexpected: '%d' bytes, nb_samples=%u, "
+          "input_rate=%d, output_rate=%d\n",
+          size, nb_samples, getSampleRate(), output_sample_rate);
+    return -1;
+  }
+
+  /* guard for the case of overflow attempt.
+   * `samples` is based on `DblBuffer`, which is `AUDIO_BUFFER_SIZE` based
+   *
+   * Important: DblBuffer exposes only half at a time (see char operator overloading of it)
+   * hence track size against only half of it */
+  if ((unsigned int)size > AUDIO_BUFFER_SIZE) {
+    ERROR("AmAudio::get: requested read too large: '%d' bytes, nb_samples=%u, "
+          "input_rate=%d, output_rate=%d\n",
+          size, nb_samples, getSampleRate(), output_sample_rate);
+    return -1;
+  }
+
   unsigned int rd_ts = scaleSystemTS(system_ts);
   //DBG("\tread(rd_ts = %10.u; size = %u)\n",rd_ts,size);
   size = read(rd_ts,size);

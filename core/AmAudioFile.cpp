@@ -375,6 +375,13 @@ int AmAudioFile::read(unsigned int user_ts, unsigned int size)
     return -1;
   }
 
+  /* DblBuffer exposes only half at a time (see char operator overloading of it)
+   * hence track size against only half of it */
+  if (size > AUDIO_BUFFER_SIZE) {
+    ERROR("AmAudioFile::read: requested size too large: '%u' bytes\n", size);
+    return -1;
+  }
+
   int ret;
   int s = size;
 
