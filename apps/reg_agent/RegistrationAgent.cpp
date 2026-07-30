@@ -117,6 +117,9 @@ void RegThread::add_reg(const RegInfo& ri) {
 
 void RegThread::create_registration(RegInfo& ri) {
   AmDynInvokeFactory* di_f = AmPlugIn::instance()->getFactory4Di("registrar_client");
+
+  DBG("registrar_client factory='%p'\n", di_f);
+
   if (di_f == NULL) {
     ERROR("unable to get a registrar_client\n");
   } else {
@@ -144,7 +147,11 @@ void RegThread::create_registration(RegInfo& ri) {
 bool RegThread::check_registration(const RegInfo& ri) {
   if (!ri.handle.length())
     return false;
+
   AmDynInvokeFactory* di_f = AmPlugIn::instance()->getFactory4Di("registrar_client");
+
+  DBG("registrar_client factory='%p'\n", di_f);
+
   if (di_f == NULL) {
     ERROR("unable to get a registrar_client\n");
   } else {
