@@ -179,21 +179,25 @@ bool RegThread::check_registration(const RegInfo& ri) {
 
 void RegThread::run() {
   DBG("registrar client started.\n");
-  sleep(2); // wait for sems to completely start up
 
-  while (true) {
-    for (vector<RegInfo>::iterator it = registrations.begin(); 
-	 it != registrations.end(); it++) {
+  /* wait for sems to completely start up */
+  sleep(2);
+
+  while (true)
+  {
+    for (vector<RegInfo>::iterator it = registrations.begin();
+        it != registrations.end();
+        it++)
+    {
       if (!check_registration(*it)) {
-	// todo: this is very crude... should adjust retry time
-	DBG("Registration %d does not exist or timeout. Creating registration.\n",
-	    (int)(it - registrations.begin()));
-	create_registration(*it);
+        // todo: this is very crude... should adjust retry time
+        DBG("Registration %d does not exist or timeout. Creating registration.\n",
+              (int)(it - registrations.begin()));
+        create_registration(*it);
       }
     }
-    sleep(10); // 10 seconds
+    sleep(10); /* 10 seconds */
   }
-		
 }
 
 void RegThread::on_stop() {
