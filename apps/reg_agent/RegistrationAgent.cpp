@@ -183,7 +183,7 @@ void RegThread::run() {
   /* wait for sems to completely start up */
   sleep(2);
 
-  while (true)
+  while (!stop_requested())
   {
     for (vector<RegInfo>::iterator it = registrations.begin();
         it != registrations.end();
@@ -201,7 +201,7 @@ void RegThread::run() {
 }
 
 void RegThread::on_stop() {
-  DBG("not stopping...\n");
+  DBG("stopping reg_agent thread.\n");
 }
 
 void RegThread::postEvent(AmEvent* ev) {
