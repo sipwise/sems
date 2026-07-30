@@ -349,8 +349,10 @@ int AmOfferAnswer::onRxSdp(unsigned int m_cseq, const string& m_remote_tag,
   return err_code;
 }
 
-int AmOfferAnswer::onTxSdp(unsigned int m_cseq, bool is_reliable,
-                           const AmMimeBody& body, bool force_no_sdp_update)
+int AmOfferAnswer::onTxSdp(unsigned int m_cseq,
+                            bool is_reliable,
+                            const AmMimeBody& body,
+                            bool force_no_sdp_update)
 {
   ILOG_DLG(L_DBG, "AmOfferAnswer::onTxSdp()\n");
 
@@ -444,7 +446,7 @@ int AmOfferAnswer::onRequestOut(AmSipRequest& req)
   }
 
   if ((has_sdp || (has_csta && req.method != SIP_METH_INFO)) &&
-      (onTxSdp(req.cseq, true, req.body) != 0))
+      (onTxSdp(req.cseq, true, req.body, false) != 0))
   {
     ILOG_DLG(L_WARN, "onTxSdp() failed\n");
     return -1;
@@ -458,7 +460,10 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
   AmMimeBody* sdp_body = reply.body.hasContentType(SIP_APPLICATION_SDP);
   AmMimeBody* csta_body = reply.body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
-  bool force_no_sdp_update = false;   /* for sequential 183 responses with similar SDP body (version)  */
+  /* for sequential 183 responses with similar SDP body (version)
+   * or 183 with no SDP body */
+  bool force_no_sdp_update = false;
+
   bool generate_sdp = sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
   bool has_csta = csta_body && csta_body->getLen();
@@ -506,6 +511,13 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
         sdp_body->setPayload(existing_sdp.c_str(), existing_sdp.length());
         has_sdp = true;
         ILOG_DLG(L_DBG, "Now has_sdp has been reset to true.\n");
+
+        /* for empty body 183, don't change the state,
+         * otherwise breaks the OA model exchange
+         * in later updates during the continued early dialog stage */
+        force_no_sdp_update = true;
+
+        ILOG_DLG(L_DBG, "Forcing no OA state update, because this 183 has no SDP.\n");
 
       /* - 183 reply without SDP body, but is very first one (no SDP saved before)
          - 200-299 responses with no SDP */
@@ -582,7 +594,11 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
   if (has_sdp || (has_csta && reply.cseq_method != SIP_METH_INFO)) {
     bool is_reliable = dlg->willBeReliable(reply);
 
-    if ((onTxSdp(reply.cseq, is_reliable, reply.body, force_no_sdp_update) != 0)) {
+    if ((onTxSdp(reply.cseq,
+                 is_reliable,
+                 reply.body,
+                 force_no_sdp_update) != 0))
+    {
       ILOG_DLG(L_WARN, "onTxSdp() failed\n");
       return -1;
     }
