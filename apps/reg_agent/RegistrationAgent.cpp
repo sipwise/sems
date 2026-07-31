@@ -31,6 +31,7 @@
 #include "sems.h"
 #include "log.h"
 
+#include <chrono>
 #include <unistd.h>
 #include "ampi/SIPRegistrarClientAPI.h"
 
@@ -115,7 +116,6 @@ AmSession* RegistrationAgentFactory::onInvite(const AmSipRequest& req, const str
   return NULL;
 }
 
-
 void RegThread::add_reg(const RegInfo& ri) {
   registrations.push_back(ri);
 }
@@ -176,12 +176,30 @@ bool RegThread::check_registration(const RegInfo& ri) {
   return false;
 }
 
+/**
+ * true  => stop was requested
+ * false => timeout elapsed normally
+ */
+bool RegThread::wait_or_stop(unsigned int seconds)
+{
+  /* it should use the same mutex that protects the condition */
+  std::unique_lock<std::mutex> l(run_mut);
+
+  /* wait for `run_cond.notify_all()` / `notify_one()` or timeout */
+  return run_cond.wait_for(
+    l,
+    std::chrono::seconds(seconds),
+    [this] { return stop_requested_unlocked(); });
+}
 
 void RegThread::run() {
   DBG("registrar client started.\n");
 
-  /* wait for sems to completely start up */
-  sleep(2);
+  /* wait for sems to completely start up, but allow clean shutdown */
+  if (wait_or_stop(2)) {
+    DBG("Stop was requested, return..\n");
+    return;
+  }
 
   while (!stop_requested())
   {
@@ -196,7 +214,11 @@ void RegThread::run() {
         create_registration(*it);
       }
     }
-    sleep(10); /* 10 seconds */
+    /* wait until next retry interval, or exit immediately on stop() */
+    if (wait_or_stop(10)) {
+      DBG("Stop was requested, return..\n");
+      break;
+    }
   }
 }
 

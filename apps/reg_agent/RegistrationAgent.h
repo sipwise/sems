@@ -57,6 +57,7 @@ class RegThread : public AmThread {
   void run();
   void on_stop();
  public:
+  bool wait_or_stop(unsigned int seconds);
   void add_reg(const RegInfo& ri);
   void postEvent(AmEvent* ev);
 };
