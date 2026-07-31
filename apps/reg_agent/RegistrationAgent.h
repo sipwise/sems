@@ -49,7 +49,7 @@ struct RegInfo {
 class RegThread : public AmThread {
 
   vector<RegInfo> registrations;
- 
+
   void create_registration(RegInfo& ri);
   bool check_registration(const RegInfo& ri);
 
@@ -64,11 +64,22 @@ class RegThread : public AmThread {
 
 class RegistrationAgentFactory: public AmSessionFactory
 {
-  RegThread dialer;    
+  RegThread dialer;
 
  public:
-  RegistrationAgentFactory(const string& _app_name);
-	
+  RegistrationAgentFactory(const string& _app_name)
+  : AmSessionFactory(_app_name)
+  {
+    DBG("Add new reg agent factory.\n");
+  }
+  ~RegistrationAgentFactory()
+  {
+    /* makes the thread stop as soon as the app factory begins its destruction */
+    DBG("Requested the reg agent thread to stop.\n");
+    dialer.stop();
+    dialer.join();
+  }
+
   int onLoad();
   AmSession* onInvite(const AmSipRequest& req, const string& app_name,
 		      const map<string,string>& app_params);

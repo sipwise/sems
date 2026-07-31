@@ -50,11 +50,6 @@
 
 EXPORT_SESSION_FACTORY(RegistrationAgentFactory,MOD_NAME);
 
-RegistrationAgentFactory::RegistrationAgentFactory(const string& _app_name)
-  : AmSessionFactory(_app_name)
-{
-}
-
 int RegistrationAgentFactory::onLoad()
 {
   AmConfigReader cfg;
