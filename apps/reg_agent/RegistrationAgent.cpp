@@ -206,7 +206,7 @@ void RegThread::run() {
   while (!stop_requested())
   {
     for (vector<RegInfo>::iterator it = registrations.begin();
-        it != registrations.end();
+        it != registrations.end() && !stop_requested();
         it++)
     {
       if (!check_registration(*it)) {

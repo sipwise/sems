@@ -77,7 +77,9 @@ class RegistrationAgentFactory: public AmSessionFactory
     /* makes the thread stop as soon as the app factory begins its destruction */
     DBG("Requested the reg agent thread to stop.\n");
     dialer.stop();
+    INFO("Joining reg_agent thread...\n");
     dialer.join();
+    INFO("reg_agent thread joined.\n");
   }
 
   int onLoad();
