@@ -1,3 +1,44 @@
+ngcp-sems (1:1.6.0+0~mr26.2.1.0) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [f066d7f] MT#62181 add coverity GH workflow
+
+  [ Bit-Savva Mikhail ]
+  * [46f04ef] MT#64955 test-b2b: skip retransmitted B2B INVITEs from previous dialogs
+  * [f9051c4] MT#65396 fix B2B updates racing a pending re-INVITE being 491d/dropped
+
+  [ Donat Zenichev ]
+  * [0d9cde7] MT#64341 DBRegAgent: align contact port with transport (Contact)
+  * [796d735] MT#62266 SessionTimer: add more logs
+  * [fe26411] MT#62266 SessionTimer: refactor code for better reading
+  * [bd85f9f] MT#62266 SessionTimer: add even more logs
+  * [049db98] MT#62266 SessionTimer: track timers support (UPDATE method)
+  * [74343af] MT#62266 SessionTimer: introduce `sst_strict_mode`
+  * [2e0ac43] MT#62266 SessionTimer: init `remote_timer_aware`
+  * [73c0e0d] MT#62266 SessionTimer: check `EnableSessionTimer` before proceeding
+  * [66248b7] MT#62266 SessionTimer: `updateTimer()` return true/false
+  * [25700d7] MT#62266 SessionTimer: remove timer headers, when not supported
+  * [1c4e206] MT#62266 SessionTimer: `StrictMode` add getter/setter
+  * [5e41258] MT#65511 AmB2BSession: `media_session` clean in destructor
+  * [1fdee1a] MT#62266 SessionTimer: StrictMode, add a fallback with `Require: timer`
+  * [ef341cd] MT#62266 SessionTimer: don't share SST headers when not supported
+  * [0162b73] MT#62266 SBCCallLeg: SST handling (removal)
+  * [59275e3] MT#62266 SST: introduce `session_timer_transparent`
+  * [404c692] MT#59962 AmSdp: print DTLS `fingerprint` & `setup`
+  * [fcdb4d8] MT#59962 test suite: add test for WebRTC like media
+  * [c6a33f4] MT#65557 AmAudio/AmAudioFile: add buffer guards (overflow)
+  * [fd830c4] MT#65603 AmSipMsg: fix sip option parser
+  * [618c15d] MT#65603 option: tests covering parser
+  * [68cd8dd] MT#65357 OA: don't change state on empty 183
+  * [d881e16] MT#65612 RegThread: refactor `run()` a little bit
+  * [f0193d9] MT#65612 RegThread: consider `stop_requested()` on `run()`
+  * [e9995a6] MT#65612 RegThread: use `run_cond.wait_for()` instead of sleeping
+  * [a654c9c] MT#65612 RegThread: lifetime hardening
+  * [cf3fc87] MT#65612 RegThread: print DI factory pointer
+  * [65ac23e] MT#65612 RegThread: tighten the check registrations loop
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 11 Aug 2026 14:22:03 +0200
+
 ngcp-sems (1:1.6.0+0~mr26.2.0.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
