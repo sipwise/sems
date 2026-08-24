@@ -598,14 +598,26 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   /* PRACK */
   } else if (reply.cseq_method == SIP_METH_PRACK) {
     /* do not update call leg status for transactions not involving INVITE.
-     * In this case just update the to-tag and route set */
-    if (!reply.to_tag.empty()) {
-      ILOG_DLG(L_DBG, "Updating remote tag (to tag) to: '%s'.\n", reply.to_tag.c_str());
-      setRemoteTag(reply.to_tag);
-    }
-    if (!reply.route.empty()) {
-      ILOG_DLG(L_DBG, "Updating route set to: '%s'.\n", reply.route.c_str());
-      setRouteSet(reply.route);
+     * In strict RFC 3261 mode (strict_route_set=yes) the route set is taken
+     * once when the dialog is created and is not updated by the 200 OK on
+     * PRACK; the remote tag is still taken from the 200 OK on PRACK only if
+     * it was not already known. The default (strict_route_set=no) keeps the
+     * legacy behavior of updating both from the 200 OK on PRACK.
+     */
+    if (AmConfig::StrictRouteSet) {
+      if (!reply.to_tag.empty() && getRemoteTag().empty()) {
+        ILOG_DLG(L_DBG, "Taking remote tag (to tag) from PRACK 200 OK: '%s'.\n", reply.to_tag.c_str());
+        setRemoteTag(reply.to_tag);
+      }
+    } else {
+      if (!reply.to_tag.empty()) {
+        ILOG_DLG(L_DBG, "Updating remote tag (to tag) to: '%s'.\n", reply.to_tag.c_str());
+        setRemoteTag(reply.to_tag);
+      }
+      if (!reply.route.empty()) {
+        ILOG_DLG(L_DBG, "Updating route set to: '%s'.\n", reply.route.c_str());
+        setRouteSet(reply.route);
+      }
     }
   }
 

@@ -107,6 +107,7 @@ bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
 bool         AmConfig::SkipGenerateDirectionBoth = false;
+bool         AmConfig::StrictRouteSet            = false;
 
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
@@ -410,6 +411,10 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("skip_generate_direction_both")) {
     SkipGenerateDirectionBoth = (cfg.getParameter("skip_generate_direction_both") == "yes");
+  }
+
+  if(cfg.hasParameter("strict_route_set")) {
+    StrictRouteSet = (cfg.getParameter("strict_route_set") == "yes");
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {
