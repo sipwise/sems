@@ -379,10 +379,23 @@ XMLRPC2DIServer::XMLRPC2DIServer(unsigned int port,
     s = new XmlRpcServer();
   }
 
+  s->addMethod(&calls_method);
+  s->addMethod(&setloglevel_method);
+  s->addMethod(&getloglevel_method);
+  s->addMethod(&setshutdownmode_method);
+  s->addMethod(&getshutdownmode_method);
+  s->addMethod(&getcallsavg_method);
+  s->addMethod(&getcallsmax_method);
+  s->addMethod(&getcpsavg_method);
+  s->addMethod(&getcpsmax_method);
+  s->addMethod(&setcpslimit_method);
+  s->addMethod(&getcpslimit_method);
+
   // export all methods via 'di' function?
   if (di_export) {
     // register method 'di'
     di_method = new XMLRPC2DIServerDIMethod(s);
+    s->addMethod(di_method);
   }
 
   vector<string> export_ifaces = explode(direct_export, ";");
