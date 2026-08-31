@@ -442,6 +442,11 @@ use_default_signature=yes
 #accept_fr_without_totag=yes
 
 #
+# Parse tel: URIs (RFC 3966), e.g. Request-URI of IMS/VoLTE INVITEs? [yes|no]
+#
+#allow_tel_uri=no
+
+#
 # Log raw messages?  [no|debug|info|warn|error]
 #
 # Default: debug
