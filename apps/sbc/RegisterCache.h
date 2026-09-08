@@ -9,6 +9,7 @@
 #include "AmUriParser.h"
 #include "AmAppTimer.h"
 
+#include <climits>
 #include <string>
 #include <map>
 #include <unordered_map>
