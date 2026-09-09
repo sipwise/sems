@@ -47,6 +47,11 @@ using std::string;
 
 #define SIP_FLAGS_SAVE_ESTB_SDP 1<<10 // save established SDP body when processing in OA, see `AmOfferAnswer::onReplyOut()`
 
+#define SIP_FLAGS_NO_SDP_GENERATION 1<<11 // do not generate an SDP body for this message,
+                                          // even if the O/A state would require one. Used for
+                                          // relayed messages and explicit no-SDP replies.
+
+
 /** \brief SIP transaction representation */
 struct AmSipTransaction
 {
