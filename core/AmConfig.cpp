@@ -107,6 +107,7 @@ bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
 bool         AmConfig::SkipGenerateDirectionBoth = false;
+AmConfig::SdpBandwidthMode AmConfig::SdpBandwidth = AmConfig::SdpBwOff;
 
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
@@ -410,6 +411,18 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("skip_generate_direction_both")) {
     SkipGenerateDirectionBoth = (cfg.getParameter("skip_generate_direction_both") == "yes");
+  }
+
+  if(cfg.hasParameter("sdp_bandwidth")) {
+    const string& sdp_bandwidth = cfg.getParameter("sdp_bandwidth");
+    if (sdp_bandwidth == "off") {
+      SdpBandwidth = SdpBwOff;
+    } else if (sdp_bandwidth == "auto") {
+      SdpBandwidth = SdpBwAuto;
+    } else {
+      ERROR("Unknown value of sdp_bandwidth parameter '%s', using 'off'\n",
+            sdp_bandwidth.c_str());
+    }
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {

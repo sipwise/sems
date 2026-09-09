@@ -207,6 +207,15 @@ struct AmConfig
   static vector <string> CodecOrder;
 
   static bool SkipGenerateDirectionBoth;
+  /** SDP bandwidth modifiers (b=AS/RS/RR) for audio media SEMS generates:
+   *    off  - do not add bandwidth modifiers (default);
+   *    auto - in answers echo the b= lines received in the offer; in own
+   *           offers compute b=AS from codec + ptime and b=RS/RR from AS.
+   *  Per-session override is available through SdpBandwidthCtl (AmSession).
+   *  Relayed (B2BUA) bodies pass the endpoints' b= lines through unchanged,
+   *  independent of this setting. */
+  enum SdpBandwidthMode { SdpBwOff = 0, SdpBwAuto };
+  static SdpBandwidthMode SdpBandwidth;
 
   enum ApplicationSelector {
     App_RURIUSER,
