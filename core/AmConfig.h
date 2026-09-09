@@ -207,6 +207,11 @@ struct AmConfig
   static vector <string> CodecOrder;
 
   static bool SkipGenerateDirectionBoth;
+  /** strict RFC 3261 behavior for the 200 OK on PRACK: when true, the route
+   *  set is not updated (it is taken once when the dialog is created) and the
+   *  remote tag is only taken from the 200 OK on PRACK if it was not yet set.
+   *  false (default) keeps the legacy behavior of updating both. */
+  static bool StrictRouteSet;
 
   enum ApplicationSelector {
     App_RURIUSER,
