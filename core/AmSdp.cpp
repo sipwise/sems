@@ -384,7 +384,18 @@ bool AmSdp::sdp_parse_rtcp()
         DBG("Re-setting rtcp address to '%s'\n", it->conn.address.c_str());
       }
 
-      it->rtcp_address.setPort(it->rtcp_address.getPort() + 1);
+      /* RFC 3550: without an explicit a=rtcp the RTCP port defaults to
+       * the media RTP port + 1, not the unset rtcp port + 1 (which gave 1). */
+      if (it->port > 0) {
+        it->rtcp_address.setPort(it->port + 1);
+        DBG("Setting rtcp port to media port + 1: '%d'\n", it->port + 1);
+      }
+      else {
+        /* rejected media line (m=audio 0): no RTCP endpoint to derive a
+         * port from. This is a valid SDP, so keep parsing; the port stays
+         * 0 and RTCP reporting to this media is skipped (see AmRtpStream). */
+        DBG("Unable to set rtcp port: media line has no port (rejected).\n");
+      }
     }
   }
   return true;

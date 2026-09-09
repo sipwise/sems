@@ -34,6 +34,7 @@
 #include "AmAudio.h"
 #include "AmUtils.h"
 #include "AmSession.h"
+#include "AmArg.h"
 
 #include "AmDtmfDetector.h"
 #include "rtp/telephone_event.h"
@@ -135,6 +136,9 @@ int AmRtpStream::compile_and_send(const int payload, bool marker, unsigned int t
   if (rtp_transport->sendRtp(&rp) < 0)
     return -1;
 
+  if (AmConfig::RtcpSendInterval)
+    update_sender_stats(rp);
+
   return size;
 }
 
@@ -235,6 +239,11 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
   : l_ssrc(0),
     r_ssrc(0),
     r_ssrc_i(false),
+    rtcp_first_report(true),
+    rtcp_prev_tx_pkt(0),
+    rtcp_prev_rx_pkt(0),
+    rtcp_last_tx_rtp_ts(0),
+    rtcp_own_media(false),
     session(_s),
     passive(false),
     passive_rtcp(false),
@@ -257,7 +266,8 @@ AmRtpStream::AmRtpStream(AmSession* _s, int _if)
     rtp_keepalive_freq(0),
     rtp_timeout(0),
     rtp_keepalive_timer(this),
-    rtp_timer(this)
+    rtp_timer(this),
+    rtcp_report_timer(this)
 {
 
   l_ssrc = get_random();
@@ -283,6 +293,9 @@ AmRtpStream::~AmRtpStream()
 
   if (rtp_timeout)
     AmAppTimer::instance()->removeTimer(&rtp_timer);
+
+  if (AmConfig::RtcpSendInterval)
+    AmAppTimer::instance()->removeTimer(&rtcp_report_timer);
 
   if (rtp_transport)
     rtp_transport->removeStream(this);
@@ -629,6 +642,36 @@ int AmRtpStream::init(const AmSdp& local,
 
   active = false; // mark as nothing received yet
 
+  /* init prepared RTCP reports (SR/RR + SDES CNAME) for this stream.
+     CNAME is limited to INET6_ADDRSTRLEN bytes (see RtcpSdesData). */
+  {
+    string cname;
+    char host[256];
+    if (gethostname(host, sizeof(host)) == 0) {
+      host[sizeof(host) - 1] = '\0';
+      cname = host;
+    }
+    if (cname.empty() || cname.size() > INET6_ADDRSTRLEN) {
+      char b[16];
+      snprintf(b, sizeof(b), "%08x", l_ssrc);
+      cname = b;
+    }
+    rtcp_reports.init(l_ssrc, cname);
+    r_ssrc_i = false;
+    rtcp_first_report = true;
+    rtcp_prev_tx_pkt = 0;
+    rtcp_prev_rx_pkt = 0;
+    rtcp_last_tx_rtp_ts = 0;
+    rtcp_own_media = false;
+
+    DBG("stream [%p] RTCP prepared: l_ssrc 0x%08x, CNAME '%s', "
+        "rtcp_send_interval %u, rtcp_mode %s",
+        this, l_ssrc, cname.c_str(), AmConfig::RtcpSendInterval,
+        AmConfig::RtcpMode == AmConfig::RtcpGenerateMode
+          ? "generate"
+          : (AmConfig::RtcpMode == AmConfig::RtcpPassthruMode ? "passthru" : "auto"));
+  }
+
   /* Attach this stream with the corresponding rtp/rtcp transport */
   if (rtp_transport)
     rtp_transport->addStream(this);
@@ -843,6 +886,11 @@ void AmRtpStream::recvRtpPacket(unsigned char* buffer, int size, sockaddr_storag
       mem.freePacket(p);	  
       return;
     }
+
+    if (AmConfig::RtcpSendInterval) {
+      gettimeofday(&p->recv_time, NULL);
+      update_receiver_stats(*p);
+    }
   }
 
   bufferPacket(p, recv_addr);
@@ -850,7 +898,18 @@ void AmRtpStream::recvRtpPacket(unsigned char* buffer, int size, sockaddr_storag
 
 void AmRtpStream::recvRtcpPacket(unsigned char* buffer, int recved_bytes, sockaddr_storage& recv_addr)
 {
-  static const cstring empty;
+  // Parse compound RTCP (SR/RR/SDES), update per-stream statistics.
+  // NOTE: AmRtpTransport::recvRtcp() already demuxed this packet to us by SSRC.
+  // Incoming RTCP is always parsed: rtcp_send_interval only controls
+  // generation of our own reports, not accounting of the remote ones.
+  struct timeval recv_time;
+  gettimeofday(&recv_time, NULL);
+  rtcp_parse_update_stats(buffer, recved_bytes, recv_time, rtp_stats);
+
+  if (AmConfig::RtcpSendInterval && AmConfig::RtcpMode == AmConfig::RtcpGenerateMode)
+    // own reports are generated for this stream: don't relay incoming RTCP,
+    // to keep a single source of reports towards the remote side
+    return;
 
   if(!relay_enabled || !relay_stream)
     return;
@@ -863,6 +922,13 @@ void AmRtpStream::recvRtcpPacket(unsigned char* buffer, int recved_bytes, sockad
 
   if (passive_rtcp)
     handleSymmetricRtp(&recv_addr,true);
+
+  if (relay_stream->getOnHold())
+    // our media towards the destination leg is held: the leg no longer
+    // receives the original stream, so reports describing it are not
+    // forwarded; the held leg is served by our own reports instead
+    // (see rtcp_generate_enabled())
+    return;
 
   int err = relay_stream->rtp_transport->sendRtcp(buffer, recved_bytes);
 
@@ -896,6 +962,8 @@ void AmRtpStream::relay(AmRtpPacket* p)
   if (hook) hook->relayedPacket(p);
 
   if(rtp_transport->sendRtp(p) == 0){
+    if (!relay_raw && AmConfig::RtcpSendInterval)
+      update_sender_stats(*p);
     if(session) session->onAfterRTPRelay(p, rtp_transport->getRemoteRtpSocket());
   }
 }
@@ -996,6 +1064,9 @@ void AmRtpStream::stopReceiving()
   if (rtp_timeout)
     AmAppTimer::instance()->removeTimer(&rtp_timer);
 
+  if (AmConfig::RtcpSendInterval)
+    AmAppTimer::instance()->removeTimer(&rtcp_report_timer);
+
   bool onhold = getOnHold();
 
   if (rtp_transport) {
@@ -1019,6 +1090,10 @@ void AmRtpStream::resumeReceiving()
 
   if (rtp_timeout)
     AmAppTimer::instance()->setTimer(&rtp_timer,rtp_timeout);
+
+  if (AmConfig::RtcpSendInterval)
+    AmAppTimer::instance()->setTimer(&rtcp_report_timer,
+                                     rtcp_report_interval_sec());
 }
 
 
@@ -1147,10 +1222,361 @@ void AmRtpStream::debug(std::ostream &out, const char *line_prefix)
     << line_prefix << "rtcp_mux: " << BOOL_STR(rtcp_mux) << std::endl
     << line_prefix << "RTP timeout: " << rtp_timeout << std::endl
     << line_prefix << "RTP keepalive freq: " << rtp_keepalive_freq << std::endl
-    << line_prefix << "local RTCP port: " << getLocalRtcpPort() << std::endl;
+    << line_prefix << "local RTCP port: " << getLocalRtcpPort() << std::endl
+    << line_prefix << "RTCP SR sent/recv: " << rtp_stats.rtcp_sr_sent << "/" << rtp_stats.rtcp_sr_recv << std::endl
+    << line_prefix << "RTCP RR sent/recv: " << rtp_stats.rtcp_rr_sent << "/" << rtp_stats.rtcp_rr_recv << std::endl
+    << line_prefix << "RTCP own tx pkt/bytes: " << rtp_stats.tx.pkt << "/" << rtp_stats.tx.bytes << std::endl
+    << line_prefix << "RTCP tx loss: " << rtp_stats.tx.loss << std::endl
+    << line_prefix << "RTCP relay tx pkt/bytes: " << rtp_stats.relay_tx_pkt << "/" << rtp_stats.relay_tx_bytes << std::endl
+    << line_prefix << "RTCP own media active: " << BOOL_STR(rtcp_own_media) << std::endl;
 
 
 #undef BOOL_STR
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+// RTCP support
+
+double AmRtpStream::rtcp_report_interval_sec()
+{
+  // RFC 3550, section 6.2: to avoid bursts and to prevent synchronization
+  // of reporting sources, each reporting interval is scaled by a random
+  // factor of [0.5 .. 1.5]. The very first interval is additionally
+  // halved, since we know nothing about other session members.
+  double interval = AmConfig::RtcpSendInterval;
+  if (rtcp_first_report)
+    interval /= 2.0;
+
+  return interval * (5000.0 + (get_random() % 10001)) / 10000.0;
+}
+
+bool AmRtpStream::rtcp_generate_enabled()
+{
+  if (!AmConfig::RtcpSendInterval)
+    return false;
+
+  switch (AmConfig::RtcpMode) {
+  case AmConfig::RtcpGenerateMode:
+    return true;
+  case AmConfig::RtcpPassthruMode:
+    return false;
+  default:
+    // auto: on a relayed stream the relayed reports cover the original
+    // sources; we report on our own SSRC while SEMS supplies the media
+    // (MoH, announcement, relay with SSRC rewrite), and on a stream held
+    // by us: once its media is muted the transparent chain is broken by
+    // us, so SEMS is the remote side's media peer and reporting source
+    // (RFC 3550 sec. 6.1: a participant that keeps receiving RTP must
+    // keep sending RTCP).
+    if (!(relay_enabled && relay_stream))
+      return true;
+    return rtcp_own_media || hold;
+  }
+}
+
+void AmRtpStream::on_rtcp_timeout()
+{
+  // reports are driven by our own timer, independent of the media pump:
+  // a participant keeps reporting while it is in the session, even when
+  // its media is muted or held (RFC 3550 sec. 6.1)
+  if (rtcp_generate_enabled()) {
+    rtcp_first_report = false;
+    rtcp_send_report();
+  }
+
+  if (AmConfig::RtcpSendInterval)
+    AmAppTimer::instance()->setTimer(&rtcp_report_timer,
+                                     rtcp_report_interval_sec());
+}
+
+void AmRtpStream::rtcp_send_report()
+{
+  unsigned char buf[RTCP_REPORT_MAX_LEN];
+  unsigned int  len = 0;
+  struct timeval now;
+
+  // no hold check here: RTCP is not part of the media plane, a held
+  // stream keeps sending receiver reports while it receives RTP
+  if (!rtp_transport)
+    return;
+
+  if (!rtp_transport->getLocalRtpPort() || !rtp_transport->getRemoteRtpPort())
+    return;
+
+  // no RTCP destination advertised (rejected stream, m=audio 0): nothing to send to
+  if (!rtp_transport->getRemoteRtcpPort())
+    return;
+
+  gettimeofday(&now, nullptr);
+
+  rtp_stats.lock();
+
+  unsigned long rx_pkt = 0;
+  for (const auto& rx_it : rtp_stats.rx)
+    rx_pkt += rx_it.second.pkt;
+
+  bool tx_changed = rtp_stats.tx.pkt != rtcp_prev_tx_pkt;
+  // no traffic-based suppression here: RFC 3550 sec. 6.1 lets a
+  // participant cease sending RTCP only if it expects no further RTP,
+  // i.e. once it leaves the session. While our SIP dialog is up we are a
+  // session member (and, for IMS, under peer media-plane RTCP monitoring,
+  // 3GPP TS 26.114), so we keep reporting on every reporting interval
+  // even when the stream is silent in both directions. Streams that
+  // really left the session are destroyed, which disarms the report
+  // timer (see stopReceiving/~AmRtpStream).
+  rtcp_prev_tx_pkt = rtp_stats.tx.pkt;
+  rtcp_prev_rx_pkt = rx_pkt;
+
+  // we are a sender only while our own-SSRC counters are growing; once
+  // sending stops (held or finished announcement) we are no longer a
+  // sender, so reports degrade to RR without stale sender info.
+  // on a relayed stream in auto mode a stable tx counter also means our
+  // SSRC went idle: generation stops with the last report.
+  bool own_sender = tx_changed;
+  if (!tx_changed && relay_stream
+      && AmConfig::RtcpMode == AmConfig::RtcpAutoMode) {
+    rtcp_own_media = false;
+  }
+
+  const void* report;
+  if (own_sender) {
+    if (rtp_stats.current_rx && rtp_stats.current_rx->pkt
+        && !(relay_stream && AmConfig::RtcpMode == AmConfig::RtcpAutoMode)) {
+      // SR with RR data
+      fill_sender_report(rtcp_reports.sr.sr.sender, now, rtcp_last_tx_rtp_ts);
+      fill_receiver_report(rtcp_reports.sr.sr.receiver, now);
+      report = &rtcp_reports.sr;
+      len    = rtcp_reports.sr.packet_length;
+    } else {
+      // SR without RR data
+      fill_sender_report(rtcp_reports.sr_empty.sr.sender, now, rtcp_last_tx_rtp_ts);
+      report = &rtcp_reports.sr_empty;
+      len    = rtcp_reports.sr_empty.packet_length;
+    }
+  } else { // no data sent: send RR with receiver info of the current source
+    if (rtp_stats.current_rx && rtp_stats.current_rx->pkt)
+      fill_receiver_report(rtcp_reports.rr.rr.receiver, now);
+    report = &rtcp_reports.rr;
+    len    = rtcp_reports.rr.packet_length;
+  }
+
+  if (len > sizeof(buf))
+    len = 0;
+  else
+    memcpy(buf, report, len);
+
+  rtp_stats.unlock();
+
+  if (!len)
+    return;
+
+  // send outside of rtp_stats lock: the report is already copied,
+  // the syscall must not block the RTP receive thread
+  if (rtp_transport->sendRtcp(buf, len) < 0) {
+    DBG("stream [%p] failed to send RTCP report: %s", this, strerror(errno));
+    return;
+  }
+
+  DBG("stream [%p] sent RTCP %s+SDES report (%u bytes): tx pkt %llu, rx pkt %lu",
+      this,
+      (report == &rtcp_reports.sr || report == &rtcp_reports.sr_empty) ? "SR" : "RR",
+      len, rtcp_prev_tx_pkt, rtcp_prev_rx_pkt);
+}
+
+void AmRtpStream::update_sender_stats(const AmRtpPacket &p)
+{
+  lock_guard<AmMutex> l(rtp_stats);
+
+  rtp_stats.tx.pkt++;
+  rtp_stats.tx.bytes += p.getDataSize();
+  rtcp_last_tx_rtp_ts = p.timestamp;
+  rtcp_own_media = true;
+}
+
+void AmRtpStream::update_relay_tx_stats(const AmRtpPacket &p)
+{
+  lock_guard<AmMutex> l(rtp_stats);
+
+  rtp_stats.relay_tx_pkt++;
+  rtp_stats.relay_tx_bytes += p.getDataSize();
+}
+
+void AmRtpStream::fill_sender_report(RtcpSenderReportHeader &s, struct timeval &now, unsigned int user_ts)
+{
+  uint64_t i;
+
+  rtp_stats.rtcp_sr_sent++;
+
+  s.sender_pcount = htonl(rtp_stats.tx.pkt);
+  s.sender_bcount = htonl(rtp_stats.tx.bytes);
+  s.rtp_ts        = htonl(user_ts);
+
+  i = now.tv_usec;
+  i <<= 32;
+  i /= 1000000;
+  s.ntp_frac = htonl(i);
+
+  i = now.tv_sec;
+  i += NTP_TIME_OFFSET;
+  s.ntp_sec = htonl(i);
+}
+
+void AmRtpStream::init_receiver_info(const AmRtpPacket &p)
+{
+  r_ssrc = p.ssrc;
+  rtcp_reports.update(r_ssrc);
+  r_ssrc_i = true;
+
+  rtp_stats.probation = MIN_SEQUENTIAL;
+  rtp_stats.init_seq(p.ssrc, p.sequence);
+}
+
+void AmRtpStream::update_receiver_stats(const AmRtpPacket &p)
+{
+  lock_guard<AmMutex> l(rtp_stats);
+
+  if ((!r_ssrc_i) || (p.ssrc != r_ssrc)) {
+    if (rtp_stats.current_rx)
+      rtp_stats.current_rx->loss += rtp_stats.total_lost;
+    init_receiver_info(p);
+  }
+
+  if (rtp_stats.current_rx) {
+    rtp_stats.current_rx->pkt++;
+    rtp_stats.current_rx->bytes += p.getDataSize();
+  }
+
+  if (!rtp_stats.update_seq(p.ssrc, p.sequence)) {
+    /* skip jitter measurement
+       for duplicated/reordered/unexpected sequence packets */
+    return;
+  }
+
+  // https://tools.ietf.org/html/rfc3550#appendix-A.8
+  uint64_t recv_time_msec = p.recv_time.tv_sec * 1000 + p.recv_time.tv_usec / 1000;
+  int      transit        = (recv_time_msec << 3) - p.timestamp;
+  if (rtp_stats.transit) {
+    int d = rtp_stats.transit - transit;
+    if (d < 0)
+      d = -d;
+    if (rtp_stats.current_rx)
+      rtp_stats.current_rx->rtcp_jitter += d - ((rtp_stats.current_rx->rtcp_jitter + 8) >> 4);
+  }
+  rtp_stats.transit = transit;
+
+  if (timerisset(&rtp_stats.rx_recv_time)) {
+    timeval diff;
+    timersub(&p.recv_time, &rtp_stats.rx_recv_time, &diff);
+    if (rtp_stats.current_rx) {
+      MathStat<long> &rx_delta = rtp_stats.current_rx->rx_delta;
+      rx_delta.update((diff.tv_sec * 1000000) + diff.tv_usec);
+      if (rx_delta.n && (0 == rx_delta.n % 250)) {
+        // update jitter every 250 packets (5 seconds)
+        rtp_stats.current_rx->jitter_usec.update(rx_delta.sd());
+      }
+    }
+  }
+  rtp_stats.rx_recv_time = p.recv_time;
+}
+
+void AmRtpStream::fill_receiver_report(RtcpReceiverReportHeader &r, struct timeval &now)
+{
+  struct timeval delay;
+
+  rtp_stats.rtcp_rr_sent++;
+
+  rtp_stats.update_lost();
+
+  r.total_lost_2 = (rtp_stats.total_lost >> 16) & 0xff;
+  r.total_lost_1 = (rtp_stats.total_lost >> 8) & 0xff;
+  r.total_lost_0 = rtp_stats.total_lost & 0xff;
+
+  r.fract_lost = rtp_stats.fraction_lost;
+
+  r.last_seq = ((rtp_stats.cycles << 16) | (rtp_stats.max_seq & 0xffff));
+  r.last_seq = htonl(r.last_seq);
+
+  if (rtp_stats.sr_lsr) {
+    r.lsr = htonl(rtp_stats.sr_lsr);
+
+    timersub(&now, &rtp_stats.sr_recv_time, &delay);
+    r.dlsr = (delay.tv_sec << 16);
+    r.dlsr |= (uint16_t)(delay.tv_usec * 65536 / 1e6);
+    r.dlsr = htonl(r.dlsr);
+  } else {
+    r.lsr  = 0;
+    r.dlsr = 0;
+  }
+
+  if (rtp_stats.current_rx) {
+    uint32_t jitter = rtp_stats.current_rx->rtcp_jitter >> 4;
+    r.jitter = htonl(jitter);
+
+    // update stats
+    rtp_stats.current_rx->rtcp_jitter_usec.update(jitter);
+  } else {
+    r.jitter = 0;
+  }
+}
+
+template <typename T>
+static void rtcp_math_stat_to_arg(AmArg& dst, const MathStat<T>& s)
+{
+  dst["n"]    = (int)s.n;
+  dst["min"]  = (long long)s.min;
+  dst["max"]  = (long long)s.max;
+  dst["last"] = (long long)s.last;
+  dst["mean"] = (double)s.mean;
+  dst["sd"]   = (double)s.sd();
+}
+
+static void rtcp_unidir_stat_to_arg(AmArg& dst, const RtcpUnidirectionalStat& s)
+{
+  dst["pkt"]     = (long long)s.pkt;
+  dst["bytes"]   = (long long)s.bytes;
+  dst["loss"]    = (long long)s.loss;
+  dst["reorder"] = (long long)s.reorder;
+  dst["dup"]     = (long long)s.dup;
+
+  rtcp_math_stat_to_arg(dst["rx_delta"], s.rx_delta);
+  rtcp_math_stat_to_arg(dst["jitter_usec"], s.jitter_usec);
+  rtcp_math_stat_to_arg(dst["rtcp_jitter_usec"], s.rtcp_jitter_usec);
+}
+
+void AmRtpStream::get_rtcp_stats(AmArg& dst)
+{
+  lock_guard<AmMutex> l(rtp_stats);
+
+  dst["l_ssrc"] = (long long)l_ssrc;
+  dst["r_ssrc"] = (long long)r_ssrc;
+
+  dst["sr_sent"] = (long long)rtp_stats.rtcp_sr_sent;
+  dst["sr_recv"] = (long long)rtp_stats.rtcp_sr_recv;
+  dst["rr_sent"] = (long long)rtp_stats.rtcp_rr_sent;
+  dst["rr_recv"] = (long long)rtp_stats.rtcp_rr_recv;
+
+  dst["fraction_lost"] = (int)rtp_stats.fraction_lost;
+  dst["total_lost"]    = (long long)rtp_stats.total_lost;
+
+  AmArg& tx = dst["tx"]; // own SSRC only, not the relayed traffic
+  tx["pkt"]   = (long long)rtp_stats.tx.pkt;
+  tx["bytes"] = (long long)rtp_stats.tx.bytes;
+  // packet loss reported by the remote side in its RR packets
+  tx["loss"]  = (long long)rtp_stats.tx.loss;
+
+  dst["relay_tx_pkt"]   = (long long)rtp_stats.relay_tx_pkt;
+  dst["relay_tx_bytes"] = (long long)rtp_stats.relay_tx_bytes;
+
+  rtcp_math_stat_to_arg(dst["rtt"], rtp_stats.rtt);
+  rtcp_math_stat_to_arg(dst["remote_jitter"], rtp_stats.rtcp_remote_jitter);
+
+  AmArg& rx = dst["rx"];
+  for (const auto& rx_it : rtp_stats.rx) {
+    AmArg item;
+    item["ssrc"] = (long long)rx_it.first;
+    rtcp_unidir_stat_to_arg(item, rx_it.second);
+    rx.push(item);
+  }
 }
 
 void AmRtpStream::onKeepAliveTimeout()
