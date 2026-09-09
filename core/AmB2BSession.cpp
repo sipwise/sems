@@ -846,6 +846,18 @@ void AmB2BSession::updateLocalBody(AmMimeBody& body)
   updateLocalSdp(parser_sdp);
   updateLocalSdpOrigin(parser_sdp);
 
+  // Relayed b= lines (bandwidth modifiers) pass through unchanged, so the
+  // A-leg b=AS/RS/RR are echoed to the B-leg. Only an explicit per-call
+  // control (SdpBandwidthCtl) modifies them.
+  if (sdp_bw_ctl.mode != SdpBandwidthCtl::Inherit) {
+    for (vector<SdpMedia>::iterator it = parser_sdp.media.begin();
+         it != parser_sdp.media.end(); ++it) {
+      if (sdp_bw_ctl.mode == SdpBandwidthCtl::Auto && !it->bandwidth.empty())
+        continue; // keep the passed-through b= lines
+      AmSdpBandwidth::apply(*it, sdp_bw_ctl, NULL);
+    }
+  }
+
   // regenerate SDP
   string n_body;
   parser_sdp.print(n_body);

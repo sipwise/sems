@@ -247,6 +247,8 @@ struct SdpMedia
 
   std::vector<SdpAttribute> attributes; // unknown attributes
 
+  std::vector<std::string> bandwidth; // b= lines (e.g. "AS:29", "RR:1087")
+
   std::vector<SdpIceCandidate> iceCandidates;
 
   bool operator == (const SdpMedia& other) const;
@@ -317,6 +319,8 @@ public:
   string           uri;         // u=
   SdpConnection    conn;        // c=
   std::vector<SdpAttribute> attributes; // unknown session level attributes
+
+  std::vector<std::string> bandwidth; // session-level b= lines
 
   std::vector<SdpMedia> media;  // m= ... [a=rtpmap:...]+
   //TODO: t= lines

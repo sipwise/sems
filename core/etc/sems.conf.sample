@@ -154,6 +154,24 @@ rtp_high_port=60000
 #
 #force_symmetric_rtp=yes
 
+# SDP bandwidth modifiers: sdp_bandwidth={off|auto}
+#
+# Controls b=AS/RS/RR bandwidth modifiers in SDP media (audio) generated
+# by SEMS (b= lines describe the maximum bandwidth for the receiving
+# direction, 3GPP TS 26.114 6.2.7.2):
+#   off  - SEMS does not add bandwidth modifiers;
+#   auto - in answers the b= lines received in the offer are echoed back;
+#          in offers initiated by SEMS b=AS is computed from the offered
+#          codec and a=ptime (incl. IP/UDP/RTP overhead), and b=RS/RR
+#          from b=AS (RFC 3556 defaults: 1.25% / 3.75%).
+# No value is generated for codecs not covered by the internal rate table.
+# Relayed (B2BUA) bodies always pass the endpoints' b= lines through
+# unchanged. Per-call control is available to applications (SdpBandwidthCtl).
+#
+# default: off
+#
+#sdp_bandwidth=off
+
 # optional parameter: outbound_proxy=uri
 #
 # - this sets an outbound proxy for dialogs and registrations initiated 
