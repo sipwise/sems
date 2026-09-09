@@ -862,6 +862,16 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
 
           it->port = rtp_transport->getLocalRtpPort();
 
+          /* a=rtcp must point to our own RTCP endpoint, not to the one
+           * inherited from the remote SDP with the replaced media port.
+           * rtcp_address_orig is updated as well: AmSdp::print() prefers it
+           * whenever the original offer carried an explicit a=rtcp. */
+          it->rtcp_address.setAddress(it->conn);
+          it->rtcp_address.setPort(rtp_transport->isRtcpMux()
+                                     ? rtp_transport->getLocalRtpPort()
+                                     : rtp_transport->getLocalRtcpPort());
+          it->rtcp_address_orig = it->rtcp_address;
+
           if (!replaced_ports.empty()) {
             replaced_ports += "/";
           }
@@ -916,6 +926,14 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
           }
 
           it->port = rtp_transport->getLocalRtpPort();
+
+          /* keep a=rtcp consistent with our own media endpoint
+           * (print() prefers rtcp_address_orig, so update both) */
+          it->rtcp_address.setAddress(it->conn);
+          it->rtcp_address.setPort(rtp_transport->isRtcpMux()
+                                     ? rtp_transport->getLocalRtpPort()
+                                     : rtp_transport->getLocalRtcpPort());
+          it->rtcp_address_orig = it->rtcp_address;
 
           if (!replaced_ports.empty()) {
             replaced_ports += "/";

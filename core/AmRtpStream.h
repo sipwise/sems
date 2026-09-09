@@ -33,6 +33,7 @@
 #include "AmThread.h"
 #include "SampleArray.h"
 #include "AmRtpPacket.h"
+#include "AmRtcpReport.h"
 #include "AmEvent.h"
 #include "AmDtmfSender.h"
 #include "AmAppTimer.h"
@@ -64,6 +65,7 @@ class AmRtpTransport;
  */
 class  AmAudio;
 class  AmSession;
+class  AmArg;
 struct SdpPayload;
 struct amci_payload_t;
 class msg_logger;
@@ -184,10 +186,26 @@ private:
     }
   };
 
+  class RtcpTimer
+    : public DirectAppTimer
+  {
+    AmRtpStream* stream;
+
+  public:
+    RtcpTimer(AmRtpStream* stream)
+      : stream(stream)
+    {}
+
+    void fire(){
+      stream->on_rtcp_timeout();
+    }
+  };
+
 friend class AmSession;
 friend class AmRtpTransport;
 friend class KeepAliveTimer;
 friend class RtpTimer;
+friend class RtcpTimer;
 
 public:
 
@@ -216,6 +234,11 @@ protected:
   unsigned int rtp_timeout;
 
   void onRtpTimeout();
+
+  /* RTCP report Timer */
+  RtcpTimer rtcp_report_timer;
+
+  void on_rtcp_timeout();
 
   // payload collection
   typedef std::vector<Payload> PayloadCollection;
@@ -267,6 +290,26 @@ protected:
   uint32_t  l_ssrc;
   uint32_t  r_ssrc;
   bool           r_ssrc_i;
+
+  /** RTCP stream statistics and prepared reports (RFC 3550 SR/RR/SDES) */
+  RtcpBidirectionalStat   rtp_stats;
+  RtcpReportsPreparedData rtcp_reports;
+
+  /** Next report interval in seconds, randomized per RFC 3550, sec. 6.2 */
+  double rtcp_report_interval_sec();
+
+  bool               rtcp_first_report;
+  unsigned long long rtcp_prev_tx_pkt;
+  unsigned long      rtcp_prev_rx_pkt;
+
+  /** RTP timestamp of the last packet sent with our own SSRC; reported
+   *  in SRs as the timestamp corresponding to the NTP time. */
+  unsigned int       rtcp_last_tx_rtp_ts;
+
+  /** Whether RTP is sent with our own SSRC (own media or relay with SSRC
+   *  rewrite); in auto mode our SRs are generated only while it is set.
+   *  Atomic: written by the media thread, read by the report timer. */
+  std::atomic<bool>  rtcp_own_media;
 
   /** symmetric RTP & RTCP */
   bool           passive;
@@ -335,6 +378,22 @@ protected:
 
   /** handle symmetric RTP/RTCP - if in passive mode, update raddr from rp */
   void handleSymmetricRtp(struct sockaddr_storage* recv_addr, bool rtcp);
+
+  /** RTCP support */
+
+  /** Whether this stream generates its own RTCP reports, per
+   *  AmConfig::RtcpSendInterval and AmConfig::RtcpMode. In auto mode a
+   *  relayed stream reports on its own SSRC while SEMS supplies the media
+   *  (rtcp_own_media) or holds the stream (then SEMS is the remote side's
+   *  media peer and its only reporting source). */
+  bool rtcp_generate_enabled();
+  void init_receiver_info(const AmRtpPacket& p);
+  void update_receiver_stats(const AmRtpPacket& p);
+  void update_sender_stats(const AmRtpPacket& p);
+  void update_relay_tx_stats(const AmRtpPacket& p);
+  void fill_sender_report(RtcpSenderReportHeader& s, struct timeval& now, unsigned int user_ts);
+  void fill_receiver_report(RtcpReceiverReportHeader& r, struct timeval& now);
+  void rtcp_send_report();
 
   void relay(AmRtpPacket* p);
 
@@ -410,6 +469,11 @@ public:
   void recvRtcpPacket(unsigned char*, int, sockaddr_storage&);
 
   void recvRtcpPacket();
+
+  /** RTCP statistics (RFC 3550 SR/RR data: pkt/bytes/loss, jitter,
+   *  RTT, report counters) exported as an AmArg struct for
+   *  applications/modules. */
+  void get_rtcp_stats(AmArg& dst);
 
   /** ping the remote side, to open NATs and enable symmetric RTP */
   void ping();
