@@ -296,12 +296,12 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
   free(pname);
 
-  auto h_dl = make_shared<dlhandle>(dlopen(file.c_str(), dlopen_flags));
-
-  if(!h_dl){
-    ERROR("AmPlugIn::loadPlugIn: %s: %s\n",file.c_str(),dlerror());
+  void* raw_handle = dlopen(file.c_str(), dlopen_flags);
+  if (!raw_handle) {
+    ERROR("AmPlugIn::loadPlugIn: %s: %s\n", file.c_str(), dlerror());
     return -1;
   }
+  auto h_dl = make_shared<dlhandle>(raw_handle);
 
   FactoryCreate fc = NULL;
   amci_exports_t* exports = (amci_exports_t*)dlsym(*h_dl, "amci_exports");
