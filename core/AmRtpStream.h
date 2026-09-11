@@ -198,6 +198,28 @@ public:
       virtual void receivedPacket(AmRtpPacket *p) = 0;
       virtual void relayedPacket(AmRtpPacket *p) = 0;
       virtual void initStream(const AmSdp& local, const AmSdp& remote, int media_idx) = 0;
+      /** Called from AmRtpAudio::put() with the final PCM frame, after the
+       *  source (media processor input or the peer stream in B2B) has
+       *  produced it and before it is encoded and sent out. This is the
+       *  single egress PCM tap for all media topologies: regular sessions
+       *  (UAS/UAC, AmSession) and B2B legs (AmB2BMedia::AudioStreamData,
+       *  which fans the call out to all its subscribed hooks and refines
+       *  the 'from_input' flag from the stream state).
+       *  @param buffer       PCM16 samples about to be encoded. The hook
+       *                      may modify the contents (e.g. audio mixing).
+       *  @param size         buffer size in bytes.
+       *  @param sample_rate  sample rate of the samples.
+       *  @param from_input   true if the audio comes from the stream's own
+       *                      input (e.g. playlist/injector); in B2B refined
+       *                      by AudioStreamData to: false if the frame was
+       *                      read (and possibly decoded) from the peer leg.
+       *  @param ts           media-processor send timestamp of this frame
+       *                      (same clock as AmAudio::get/put calls).
+       *  @param payload_type RTP payload type the frame will be encoded to
+       *                      for sending; UNDEFINED_PAYLOAD if not yet known. */
+      virtual void preEncode(unsigned char* buffer, unsigned int size,
+                             int sample_rate, bool from_input,
+                             unsigned long long ts, int payload_type) {}
       virtual ~Hook() { }
   };
 
