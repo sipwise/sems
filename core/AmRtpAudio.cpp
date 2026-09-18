@@ -294,6 +294,15 @@ int AmRtpAudio::put(unsigned long long system_ts, unsigned char* buffer,
 
   if (mute) return 0;
 
+  // notify hooks with the final PCM frame, exactly as it will be encoded and
+  // sent. This is the single egress PCM tap for both media topologies: the
+  // B2B leg (AudioStreamData::writeStream() -> put()) and the regular session
+  // (media processor -> put()). 'from_input' is true for the stream's own
+  // input; the B2B AudioStreamData refines it from the stream state.
+  if (hook) {
+    hook->preEncode(buffer, size, input_sample_rate, true, system_ts, payload);
+  }
+
   memcpy((unsigned char*)samples,buffer,size);
   size = resampleInput((unsigned char*)samples, size, 
 		       input_sample_rate, getSampleRate());

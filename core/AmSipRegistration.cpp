@@ -163,7 +163,7 @@ bool AmSIPRegistration::doUnregister()
   int flags=0;
   string hdrs = SIP_HDR_COLSP(SIP_HDR_EXPIRES) "0" CRLF;
   if(!info.contact.empty()) {
-    hdrs = SIP_HDR_COLSP(SIP_HDR_CONTACT) "<";
+    hdrs += SIP_HDR_COLSP(SIP_HDR_CONTACT) "<";
     hdrs += info.contact + ">" + CRLF;
     flags = SIP_FLAGS_NOCONTACT;
   }
