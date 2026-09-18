@@ -107,6 +107,8 @@ bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
 bool         AmConfig::SkipGenerateDirectionBoth = false;
+unsigned int AmConfig::RtcpSendInterval          = 0;
+AmConfig::RtcpReportMode AmConfig::RtcpMode     = AmConfig::RtcpAutoMode;
 
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
@@ -410,6 +412,30 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("skip_generate_direction_both")) {
     SkipGenerateDirectionBoth = (cfg.getParameter("skip_generate_direction_both") == "yes");
+  }
+
+  if(cfg.hasParameter("rtcp_send_interval")) {
+    int rtcp_interval = atoi(cfg.getParameter("rtcp_send_interval").c_str());
+    if (rtcp_interval >= 0 && rtcp_interval <= 3600) {
+      RtcpSendInterval = rtcp_interval;
+    } else {
+      ERROR("Bad value of rtcp_send_interval parameter '%s', using default %u\n",
+            cfg.getParameter("rtcp_send_interval").c_str(), RtcpSendInterval);
+    }
+  }
+
+  if(cfg.hasParameter("rtcp_mode")) {
+    const string& rtcp_mode = cfg.getParameter("rtcp_mode");
+    if (rtcp_mode == "auto") {
+      RtcpMode = RtcpAutoMode;
+    } else if (rtcp_mode == "generate") {
+      RtcpMode = RtcpGenerateMode;
+    } else if (rtcp_mode == "passthru") {
+      RtcpMode = RtcpPassthruMode;
+    } else {
+      ERROR("Unknown value of rtcp_mode parameter '%s', using 'auto'\n",
+            rtcp_mode.c_str());
+    }
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {
