@@ -50,6 +50,13 @@
 using std::set;
 using std::make_shared;
 
+/** Weak stub so plugins that accidentally reference this symbol (e.g. via shared
+ *  headers) still load. Plugins that provide a log facility (e.g. di_log) define
+ *  it strongly and override this. */
+__attribute__((weak)) extern "C" void* log_facility_factory_create(void) {
+  return nullptr;
+}
+
 static unsigned int pcm16_bytes2samples(long h_codec, unsigned int num_bytes)
 {
   return num_bytes / 2;
@@ -296,12 +303,12 @@ int AmPlugIn::loadPlugIn(const string& file, const string& plugin_name,
   }
   free(pname);
 
-  auto h_dl = make_shared<dlhandle>(dlopen(file.c_str(), dlopen_flags));
-
-  if(!h_dl){
-    ERROR("AmPlugIn::loadPlugIn: %s: %s\n",file.c_str(),dlerror());
+  void* raw_handle = dlopen(file.c_str(), dlopen_flags);
+  if (!raw_handle) {
+    ERROR("AmPlugIn::loadPlugIn: %s: %s\n", file.c_str(), dlerror());
     return -1;
   }
+  auto h_dl = make_shared<dlhandle>(raw_handle);
 
   FactoryCreate fc = NULL;
   amci_exports_t* exports = (amci_exports_t*)dlsym(*h_dl, "amci_exports");
