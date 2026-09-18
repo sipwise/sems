@@ -32,6 +32,7 @@
 #include "ice_utils.h"
 #include "sip/msg_logger.h"
 
+#include <stdexcept>
 #include <sys/ioctl.h>
 
 
@@ -45,11 +46,36 @@ AmRtpSocketPair::AmRtpSocketPair(AmRtpTransport* transport, int interface,
     rtp_socket(NULL),
     rtcp_socket(NULL)
 {
+  /* Without rtcp-mux: allocate an even RTP port and then RTCP = RTP+1 (odd).
+   * The cyclic RTP counter may hand us a port whose +1 neighbour is still in
+   * use by a session that is being torn down (port released at OS level but
+   * not yet out of the active-session range).  Retry the whole even/odd pair
+   * up to RTP_RTCP_PAIR_RETRIES times before giving up.
+   *
+   * With rtcp-mux (rtcp == false): only one socket needed; no retry required. */
+  static const int RTP_RTCP_PAIR_RETRIES = 5;
 
-  rtp_socket = new AmRtpUdpSocket(this, interface, ip, port);
-  if (rtcp) {
-    rtcp_socket = new AmRtpUdpSocket(this, interface, ip,
-                                      rtp_socket->getLocalPort()+1);
+  for (int attempt = 0; ; ++attempt) {
+    rtp_socket = new AmRtpUdpSocket(this, interface, ip, port);
+
+    if (!rtcp) break;   /* rtcp-mux: single socket, done */
+
+    unsigned int rtcp_port = (unsigned int)rtp_socket->getLocalPort() + 1;
+    try {
+      rtcp_socket = new AmRtpUdpSocket(this, interface, ip, rtcp_port);
+      break;            /* RTP+RTCP pair successfully bound */
+    } catch (const std::runtime_error& e) {
+      /* RTCP port busy — release the RTP socket and try the next pair. */
+      DBG("RTP+RTCP pair failed (RTP=%u, RTCP=%u busy): %s; attempt %d/%d\n",
+          rtp_socket->getLocalPort(), rtcp_port, e.what(),
+          attempt + 1, RTP_RTCP_PAIR_RETRIES);
+      delete rtp_socket;
+      rtp_socket = nullptr;
+      port = 0;  /* draw a fresh even port from the pool on the next attempt */
+
+      if (attempt >= RTP_RTCP_PAIR_RETRIES - 1)
+        throw std::runtime_error("could not find a free RTP+RTCP port pair");
+    }
   }
 
   ice_foundation = createIceFoundation();
