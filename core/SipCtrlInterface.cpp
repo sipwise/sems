@@ -154,6 +154,13 @@ int SipCtrlInterface::load()
 	DBG("accept_fr_without_totag = %s\n", 
 	    trans_layer::accept_fr_without_totag?"yes":"no");
 
+    if (cfg.hasParameter("allow_tel_uri")) {
+        sip_uri::allow_tel_uri =
+            cfg.getParameter("allow_tel_uri") == "yes";
+    }
+    DBG("allow_tel_uri = %s\n",
+        sip_uri::allow_tel_uri?"yes":"no");
+
 	if (cfg.hasParameter("default_bl_ttl")) {
 	    trans_layer::default_bl_ttl = 
 		cfg.getParameterInt("default_bl_ttl",

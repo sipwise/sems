@@ -32,6 +32,8 @@
 #include "parse_uri.h"
 #include "log.h"
 
+bool sip_uri::allow_tel_uri = false;
+
 sip_uri::sip_uri()
     : scheme(UNKNOWN),
       port(0),
@@ -56,6 +58,33 @@ sip_uri::~sip_uri()
     }
 }
 
+
+static int finish_uri(sip_uri* uri)
+{
+    if(uri->port_str.len){
+	uri->port = 0;
+	for(unsigned int i=0; i<uri->port_str.len; i++){
+	    uri->port = uri->port*10 + (uri->port_str.s[i] - '0');
+	}
+    }
+    else {
+	uri->port = 5060;
+    }
+
+    DBG("Converted URI port (%.*s) to int (%i)\n",
+	uri->port_str.len,uri->port_str.s,uri->port);
+
+    for(list<sip_avp*>::iterator it = uri->params.begin();
+	it != uri->params.end(); it++) {
+
+	if(!lower_cmp_n((*it)->name.s,(*it)->name.len,
+			"transport",9)) {
+	    uri->trsp = *it;
+	}
+    }
+
+    return 0;
+}
 
 static int parse_sip_uri(sip_uri* uri, const char* beg, int len)
 {
@@ -325,29 +354,89 @@ static int parse_sip_uri(sip_uri* uri, const char* beg, int len)
 	break;
     }
 
-    if(uri->port_str.len){
-	uri->port = 0;
-	for(unsigned int i=0; i<uri->port_str.len; i++){
-	    uri->port = uri->port*10 + (uri->port_str.s[i] - '0');
+    return finish_uri(uri);
+}
+
+// RFC 3966: tel-uri = "tel:" global-number [tel-param] [";" generic-param]
+static int parse_tel_uri(sip_uri* uri, const char* beg, int len)
+{
+    enum {
+	TEL_NUM=0,
+	TEL_PNAME,
+	TEL_PVALUE
+    };
+
+    int st = TEL_NUM;
+    cstring tmp1, tmp2;
+
+    uri->user.s = beg;
+
+    for(const char* c = beg; c != beg+len; c++){
+	switch(*c){
+	case ';':
+	    switch(st){
+	    case TEL_NUM:
+		uri->user.len = c - uri->user.s;
+		st = TEL_PNAME;
+		tmp1.set(c+1,0);
+		break;
+
+	    case TEL_PNAME:
+		tmp1.len = c - tmp1.s;
+		uri->params.push_back(new sip_avp(tmp1,cstring(0,0)));
+		tmp1.s = c+1;
+		break;
+
+	    case TEL_PVALUE:
+		tmp2.len = c - tmp2.s;
+		uri->params.push_back(new sip_avp(tmp1,tmp2));
+		tmp1.s = c+1;
+		st = TEL_PNAME;
+		break;
+	    }
+	    break;
+
+	case '=':
+	    if(st == TEL_PNAME){
+		tmp1.len = c - tmp1.s;
+		if(!tmp1.len){
+		    DBG("Empty param name in tel: URI\n");
+		    return MALFORMED_URI;
+		}
+		tmp2.s = c+1;
+		st = TEL_PVALUE;
+	    }
+	    break;
+
+	case '?':
+	case '@':
+	case HCOLON:
+	    DBG("Illegal char '%c' in tel: URI\n",*c);
+	    return MALFORMED_URI;
 	}
     }
-    else {
-	uri->port = 5060;
-    }
 
-    DBG("Converted URI port (%.*s) to int (%i)\n",
-	uri->port_str.len,uri->port_str.s,uri->port);
-
-    for(list<sip_avp*>::iterator it = uri->params.begin();
-	it != uri->params.end(); it++) {
-
-	if(!lower_cmp_n((*it)->name.s,(*it)->name.len,
-			"transport",9)) {
-	    uri->trsp = *it;
+    switch(st){
+    case TEL_NUM:
+	uri->user.len = len;
+	if(!uri->user.len){
+	    DBG("Empty number in tel: URI\n");
+	    return MALFORMED_URI;
 	}
+	break;
+
+    case TEL_PNAME:
+	tmp1.len = (beg+len) - tmp1.s;
+	uri->params.push_back(new sip_avp(tmp1,cstring(0,0)));
+	break;
+
+    case TEL_PVALUE:
+	tmp2.len = (beg+len) - tmp2.s;
+	uri->params.push_back(new sip_avp(tmp1,tmp2));
+	break;
     }
 
-    return 0;
+    return finish_uri(uri);
 }
 
 int parse_uri(sip_uri* uri, const char* beg, int len)
@@ -357,7 +446,10 @@ int parse_uri(sip_uri* uri, const char* beg, int len)
 	SIP_S,   // Sip
 	SIP_I,   // sIp
 	SIP_P,   // siP
-	SIPS_S   // sipS
+	SIPS_S,  // sipS
+	TEL_T,   // Tel
+	TEL_E,   // tEl
+	TEL_L    // teL
     };
 
     int st = URI_BEG;
@@ -371,6 +463,14 @@ int parse_uri(sip_uri* uri, const char* beg, int len)
 	    case 'S':
 		st = SIP_S;
 		continue;
+	    case 't':
+	    case 'T':
+		if (sip_uri::allow_tel_uri) {
+		    st = TEL_T;
+		    continue;
+		}
+		DBG("Unknown URI scheme\n");
+		return MALFORMED_URI;
 	    default:
 		DBG("Unknown URI scheme\n");
 		return MALFORMED_URI;
@@ -419,6 +519,39 @@ int parse_uri(sip_uri* uri, const char* beg, int len)
 		//DBG("scheme: sips\n");
 		uri->scheme = sip_uri::SIPS;
 		return parse_sip_uri(uri,c+1,len-(c+1-beg));
+	    default:
+		DBG("Unknown URI scheme\n");
+		return MALFORMED_URI;
+	    }
+	    break;
+	case TEL_T:
+	    switch(*c){
+	    case 'e':
+	    case 'E':
+		st = TEL_E;
+		continue;
+	    default:
+		DBG("Unknown URI scheme\n");
+		return MALFORMED_URI;
+	    }
+	    break;
+	case TEL_E:
+	    switch(*c){
+	    case 'l':
+	    case 'L':
+		st = TEL_L;
+		continue;
+	    default:
+		DBG("Unknown URI scheme\n");
+		return MALFORMED_URI;
+	    }
+	    break;
+	case TEL_L:
+	    switch(*c){
+	    case HCOLON:
+		//DBG("scheme: tel\n");
+		uri->scheme = sip_uri::TEL;
+		return parse_tel_uri(uri,c+1,len-(c+1-beg));
 	    default:
 		DBG("Unknown URI scheme\n");
 		return MALFORMED_URI;
