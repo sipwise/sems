@@ -41,6 +41,7 @@
 #include "AmSessionEventHandler.h"
 #include "AmMediaProcessor.h"
 #include "AmRtpTransport.h"
+#include "AmSdpBandwidth.h"
 
 #include <string>
 #include <vector>
@@ -226,6 +227,9 @@ public:
   vector<AmRtpAudio*>::iterator active_rtp_stream;
   bool active_rtp_stream_i;
   int active_media_index;
+
+  /** per-session SDP bandwidth modifiers (b=AS/RS/RR) control */
+  SdpBandwidthCtl sdp_bw_ctl;
 
   AmRtpTransport* createRtpTransport(AmRtpStream* stream, const string& ip,
                                      bool rtcp_mux, bool ice, bool srtp);
@@ -611,6 +615,11 @@ public:
 
   /** Hook called when an SDP offer is required */
   virtual bool getSdpAnswer(const AmSdp& offer, AmSdp& answer);
+
+  /** Per-session control of SDP bandwidth modifiers (b=AS/RS/RR).
+   *  Allows applications (e.g. lua_sems) to override the global
+   *  sdp_bandwidth configuration per call. */
+  SdpBandwidthCtl& getSdpBandwidthCtl() { return sdp_bw_ctl; }
 
   /** Hook called when an SDP OA transaction has been completed */
   virtual int onSdpCompleted(const AmSdp& offer, const AmSdp& answer);

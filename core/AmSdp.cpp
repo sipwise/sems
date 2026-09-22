@@ -349,7 +349,8 @@ AmSdp::AmSdp(const AmSdp& p_sdp_msg)
     sessionName(p_sdp_msg.sessionName),
     conn(p_sdp_msg.conn),
     media(p_sdp_msg.media),
-    attributes(p_sdp_msg.attributes)
+    attributes(p_sdp_msg.attributes),
+    bandwidth(p_sdp_msg.bandwidth)
 {
 }
 
@@ -556,6 +557,12 @@ void AmSdp::print(string& body) const
 
   out_buf += "t=0 0\r\n";
 
+  // add bandwidth (session level)
+  for (std::vector<std::string>::const_iterator bw_it =
+       bandwidth.begin(); bw_it != bandwidth.end(); bw_it++) {
+    out_buf += "b=" + *bw_it + CRLF;
+  }
+
   // add attributes (session level)
   for (std::vector<SdpAttribute>::const_iterator a_it=
 	 attributes.begin(); a_it != attributes.end(); a_it++) {
@@ -615,6 +622,12 @@ void AmSdp::print(string& body) const
       if (!media_it->conn.address.empty())
         out_buf += "\r\nc=IN " + addr_t_2_str(media_it->conn.addrType) + 
 		" " + media_it->conn.address;
+
+      // add bandwidth (media level)
+      for (std::vector<std::string>::const_iterator bw_it =
+           media_it->bandwidth.begin(); bw_it != media_it->bandwidth.end(); bw_it++) {
+        out_buf += "\r\nb=" + *bw_it;
+      }
 
       out_buf += "\r\n" + options;
 
@@ -829,6 +842,7 @@ void AmSdp::clear()
   uri.clear();
   conn = SdpConnection();
   attributes.clear();
+  bandwidth.clear();
   media.clear();
   l_origin = SdpOrigin();
 }
@@ -1006,11 +1020,18 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, const char * s)
           case 'i':
           case 'e':
           case 'p':
-          case 'b':
           case 't':
           case 'k':
             s = is_eql_next(s);
             s = skip_till_next_line(s, line_len);
+            state = SDP_DESCR;
+            break;
+          case 'b':
+            s = is_eql_next(s);
+            next = skip_till_next_line(s, line_len);
+            if (line_len)
+              sdp_msg->bandwidth.push_back(string(s, line_len));
+            s = next;
             state = SDP_DESCR;
             break;
           case 'a':
@@ -1075,7 +1096,10 @@ static bool parse_sdp_line_ex(AmSdp* sdp_msg, const char * s)
 
           case 'b':
             s = is_eql_next(s);
-            s = skip_till_next_line(s, line_len);
+            next = skip_till_next_line(s, line_len);
+            if (line_len && !sdp_msg->media.empty())
+              sdp_msg->media.back().bandwidth.push_back(string(s, line_len));
+            s = next;
             state = SDP_MEDIA;
             break;
 
