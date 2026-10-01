@@ -2,6 +2,8 @@
 #include "async_file_writer.h"
 #include "log.h"
 
+#include <event2/event.h>
+
 #define MIN_WRITE_SIZE 128*1024 /* 128 KB */
 
 #include <event2/event_struct.h>
