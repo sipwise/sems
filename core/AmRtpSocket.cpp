@@ -32,6 +32,8 @@
 #include "sip/ip_util.h"
 #include "sip/msg_logger.h"
 
+#include <event2/event.h>
+
 #include <sys/ioctl.h>
 #include <stdexcept>
 

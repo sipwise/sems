@@ -30,7 +30,13 @@
 
 #include "sip/ip_util.h"
 
-#include <event2/event.h>
+/* opaque libevent handles: keep event2/event.h (with its EV_READ/EV_WRITE
+ * compat macros) out of headers, it breaks libev-based plug-ins.
+ * util.h is macro-safe here (evutil_socket_t only) */
+#include <event2/util.h>
+struct event_base;
+struct event;
+
 #include <netinet/in.h>
 #include <string>
 #include <memory>

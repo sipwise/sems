@@ -31,6 +31,8 @@
 #include "log.h"
 #include "AmConfig.h"
 
+#include <event2/event.h>
+
 #include <errno.h>
 
 // Not on Solaris!

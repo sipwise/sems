@@ -1,5 +1,7 @@
 #include "async_file_writer.h"
 
+#include <event2/event.h>
+
 async_file_writer::async_file_writer()
 {
   evbase = event_base_new();

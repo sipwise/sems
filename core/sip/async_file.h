@@ -2,7 +2,10 @@
 
 #include "fifo_buffer.h"
 
-#include <event2/event.h>
+/* opaque libevent handles: keep event2/event.h (with its EV_READ/EV_WRITE
+ * compat macros) out of headers, it breaks libev-based plug-ins */
+struct event_base;
+struct event;
 
 class async_file
   : protected fifo_buffer,
