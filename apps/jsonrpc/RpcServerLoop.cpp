@@ -54,6 +54,16 @@
 
 #include "RpcPeer.h"
 
+/* The core headers included above may pull libevent's event2/event.h,
+ * whose EV_* compatibility macros shadow libev's enumerators and would
+ * silently register io watchers on the wrong events.  Restore libev's
+ * values for the code below. */
+#ifdef EV_READ
+#undef EV_READ
+#undef EV_WRITE
+#undef EV_TIMEOUT
+#endif
+
 ev_io ev_accept;
 ev_async JsonRPCServerLoop::async_w;
 struct ev_loop* JsonRPCServerLoop::loop = 0;
