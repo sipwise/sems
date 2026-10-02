@@ -217,6 +217,14 @@ int JsonrpcNetstringsConnection::netstringsRead() {
 	  return REMOVE;
 	}
 	// received len - switch to receive msg mode
+	if (msg_size > MAX_RPC_MSG_SIZE - 2) {
+	  // ensure there is enough room in msgbuf for the message body,
+	  // the ',' separator and the terminating '\0'
+	  ERROR("Protocol error on connection [%p/%d]: message size %u too large\n",
+		this, fd, msg_size);
+	  close();
+	  return REMOVE;
+	}
 	in_msg = true;
 	rcvd_size = read(fd,msgbuf,msg_size+1);
 	// DBG("received '%.*s'\n", rcvd_size, msgbuf);
