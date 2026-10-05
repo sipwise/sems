@@ -1,3 +1,17 @@
+ngcp-sems (1:1.6.0+0~mr26.3.1.0) unstable; urgency=medium
+
+  [ Vadim Saranov ]
+  * [f087b2a] MT#64901 core: pass custom headers through send_200_ack()
+  * [a84cb0e] MT#64901 core: honor caller-provided headers in AmSipDialog::cancel()
+  * [cac6485] MT#64901 core: add `ignore_routeset_on_prack`
+  * [d950dc5] MT#64901 xmlrpc2di: actually register builtin XML-RPC methods
+
+  [ Fedorov Volodymyr ]
+  * [c3ceb9c] MT#64901 RegisterCache: fix missing climits include for LONG_MAX
+  * [66cc62a] MT#64901 reg_agent: keep Expires: 0 on de-REGISTER with contact
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 05 Oct 2026 12:37:13 +0200
+
 ngcp-sems (1:1.6.0+0~mr26.3.0.0) unstable; urgency=medium
 
   [ Richard Fuchs ]
