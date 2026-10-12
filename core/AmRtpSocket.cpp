@@ -132,14 +132,14 @@ AmRtpSocket::AmRtpSocket(AmRtpSocketPair* listener, int interface,
 
 AmRtpSocket::~AmRtpSocket()
 {
-  if(l_sd) {
-    close(l_sd);
-  }
-
   // event_free does remove the Socket
   // from the event loop as well.
   if(ev_read)
     event_free(ev_read);
+
+  if(l_sd) {
+    close(l_sd);
+  }
 }
 
 void AmRtpSocket::read_cb(evutil_socket_t sd, short what, void* arg)
