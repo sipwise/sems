@@ -45,6 +45,11 @@ AmRtpTransport::AmRtpTransport(int interface, const string& ip,
 
 AmRtpTransport::~AmRtpTransport()
 {
+  /* Detach from the event loop first.
+   * The RTP receiver thread reads `rtp_streams` in `recvRtp()`, `recvRtcp()` or `recvUnknown()`.
+   * `event_del()` then blocks until a running callback has finished (see `addStream()`). */
+  removeFromReceiver();
+
   rtp_streams.clear();
 
   delete socket;
