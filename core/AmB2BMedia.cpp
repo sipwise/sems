@@ -23,6 +23,11 @@ using namespace std;
  * all payloads supported by remote party */
 static B2BMediaStatistics b2b_stats;
 
+static void emit_codec_usage(StatCounterInterface::iterate_func_type callback)
+{
+  B2BMediaStatistics::instance()->iterateCodecUsage(callback);
+}
+
 static const string zero_ip("0.0.0.0");
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -66,6 +71,30 @@ void B2BMediaStatistics::decCodecReadUsage(const string &codec_name)
   map<string, int>::iterator i = codec_read_usage.find(codec_name);
   if (i != codec_read_usage.end()) {
     if (i->second > 0) i->second--;
+  }
+}
+
+B2BMediaStatistics::B2BMediaStatistics()
+{
+  stat_group(Gauge, "core", "codec_usage")
+    .setHelp("number of media streams per codec, by direction")
+    .addFunctionGroupCounter(emit_codec_usage);
+}
+
+void B2BMediaStatistics::iterateCodecUsage(StatCounterInterface::iterate_func_type callback)
+{
+  lock_guard<AmMutex> lock(mutex);
+
+  for (map<string, int>::iterator i = codec_write_usage.begin();
+      i != codec_write_usage.end(); ++i)
+  {
+    callback(i->second, {{"direction", "write"}, {"codec", i->first}});
+  }
+
+  for (map<string, int>::iterator i = codec_read_usage.begin();
+      i != codec_read_usage.end(); ++i)
+  {
+    callback(i->second, {{"direction", "read"}, {"codec", i->first}});
   }
 }
 
