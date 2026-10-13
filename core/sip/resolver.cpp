@@ -831,7 +831,20 @@ bool resolver::disable_srv = false;
 
 resolver::resolver()
     : cache(DNS_CACHE_SIZE)
+    , requests_total(stat_group(Counter, "resolver", "requests_total").addAtomicCounter())
+    , requests_cached(stat_group(Counter, "resolver", "requests_cached").addAtomicCounter())
+    , requests_failed(stat_group(Counter, "resolver", "requests_failed").addAtomicCounter())
+    , queries_total(stat_group(Counter, "resolver", "queries_total").addAtomicCounter())
 {
+    stat_group(Counter, "resolver", "requests_total")
+      .setHelp("resolving attempts total");
+    stat_group(Counter, "resolver", "requests_cached")
+      .setHelp("resolving attempts processed by the cache");
+    stat_group(Counter, "resolver", "requests_failed")
+      .setHelp("resolving attempts failed");
+    stat_group(Counter, "resolver", "queries_total")
+      .setHelp("DNS queries");
+
     start();
 }
 
@@ -847,6 +860,8 @@ int resolver::query_dns(const char* name, dns_entry_map& entry_map, dns_rr_type 
     if(!name) return -1;
 
     DBG("Querying '%s' (%s)...",name,dns_rr_type_str(t));
+
+    queries_total.inc();
 
     int dns_res_len = res_search(name,ns_c_in,(ns_type)t,
 				 dns_res,NS_PACKETSZ);
@@ -892,6 +907,8 @@ int resolver::resolve_name(const char* name,
 	return h->next_ip(sa);
     }
 
+    requests_total.inc();
+
     if(t != dns_r_srv &&
        t != dns_r_naptr) {
 
@@ -913,12 +930,15 @@ int resolver::resolve_name(const char* name,
     if(e){
 	int ret = e->next_ip(h,sa);
 	dec_ref(e);
+	if(ret == 0) requests_cached.inc();
+	else requests_failed.inc();
 	return ret;
     }
 
     // no valid IP, query the DNS
     dns_entry_map entry_map;
     if(query_dns(name,entry_map,t) < 0) {
+	requests_failed.inc();
 	return -1;
     }
 
@@ -939,10 +959,13 @@ int resolver::resolve_name(const char* name,
 
     e = entry_map.fetch(name);
     if(e) {
-	// now we should have a valid IP
-	return e->next_ip(h,sa);
+        // now we should have a valid IP
+        int ret = e->next_ip(h,sa);
+        if(ret != 0) requests_failed.inc();
+        return ret;
     }
 
+    requests_failed.inc();
     return -1;
 }
 
