@@ -243,6 +243,67 @@ def _recv_fresh_invite(test, sock, seen_cseqs):
     raise AssertionError("no fresh INVITE received")
 
 
+def _answer_stray_request(test, sock, msg):
+    """Answer an in-dialog INFO relayed to Bob that we are not waiting for
+    right now - usually a timer-E copy, or one whose earlier read took such
+    a copy instead. Returns whether `msg` was one."""
+    if msg.startswith("SIP/2.0 ") or msg.split(" ", 1)[0] in ("INVITE", "ACK"):
+        return False
+    test.sendToSIP(_make_200_ok_for_request(msg), ("127.0.0.1", test._sip_port),
+                   sock)
+    return True
+
+
+def _recv_ack(test, sock, call_id, invite_msg):
+    """Wait for the ACK SEMS sends for our 2xx to `invite_msg`.
+
+    Answered later than T1, the INVITE has already been retransmitted
+    (timer A) and that copy sits in front of the ACK. Taking it for the ACK
+    lets our next in-dialog INVITE go out before SEMS has even processed
+    our 2xx; read by another UDP receiver thread it can overtake the 2xx
+    and is then rightly 491'd as glare (RFC 3261 14.2). Only the ACK proves
+    SEMS is done with its INVITE, so skip the retransmissions and insist on
+    it. Responses are skipped too: copies of a fake 200 keep coming (timer
+    G) for a while even after we have ACKed it. An INFO relayed meanwhile
+    is answered."""
+    cseq = _cseq(invite_msg)
+    for _ in range(20):
+        msg = test.recvSIPForCall(sock, call_id)
+        if msg.startswith("SIP/2.0 ") or _answer_stray_request(test, sock, msg):
+            continue
+        if _cseq(msg) == cseq:
+            if msg.startswith("ACK"):
+                return msg
+            if msg.startswith("INVITE"):
+                continue
+        raise AssertionError(f"expected the ACK for CSeq {cseq}, got:\n{msg}")
+    raise AssertionError(f"no ACK for CSeq {cseq} received")
+
+
+def _recv_reply(test, sock, call_id, cseq):
+    """Return the final reply to our request with `cseq`, skipping 100
+    Trying and timer-G copies of replies to our earlier requests (a fake
+    200 keeps being resent for a while even after we have ACKed it), and
+    answering any INFO relayed meanwhile."""
+    for _ in range(20):
+        msg = test.recvSIPForCall(sock, call_id)
+        if _answer_stray_request(test, sock, msg):
+            continue
+        if (msg.startswith("SIP/2.0 ") and not msg.startswith("SIP/2.0 1")
+                and _cseq(msg) == str(cseq)):
+            return msg
+    raise AssertionError(f"no final reply for CSeq {cseq} received")
+
+
+def _make_ack_non2xx_uas(call_id, reply, branch, cseq):
+    """ACK a non-2xx final response to one of Bob's own re-INVITEs. It is
+    part of that INVITE transaction (RFC 3261 17.1.1.3): same branch, To
+    taken from the response. Without it SEMS keeps retransmitting the
+    response (timer G) and the copies get read as replies to whatever we
+    send next."""
+    return _make_ack_uas(call_id, _hdr(reply, "To"), branch, cseq)
+
+
 class TestXdsmRace(sems_tester.TestCase):
     _config_base = "xdsm"
     _sip_port = 5066
@@ -320,7 +381,7 @@ class TestXdsmRace(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack(branch + "-ack", call_id, to_tag, 1, src_port),
                      leg_a)
-        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on Bob
+        _recv_ack(self, self._uas_sock, b2b_cid, b2b_invite)
 
         # Track CSeqs already handled on Alice's leg so their timer-A
         # retransmissions don't get mistaken later for the queued update.
@@ -336,7 +397,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(hold_alice, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        self.recvSIP(leg_a)  # drain ACK
+        _recv_ack(self, leg_a, call_id, hold_alice)
 
         # The INFO itself gets relayed to Bob too - just answer it.
         info_bob = self.recvSIPForCall(self._uas_sock, b2b_cid)
@@ -369,9 +430,7 @@ class TestXdsmRace(sems_tester.TestCase):
             "z9hG4bK-xdsm-001-collide", cseq=12, extra_hdrs="P-Force-491: 0\n")
         self.sendToSIP(collide, sems_addr, self._uas_sock)
 
-        collide_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
-        while collide_reply.startswith("SIP/2.0 100"):
-            collide_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        collide_reply = _recv_reply(self, self._uas_sock, b2b_cid, 12)
         # This is the actual regression check: without the fix, SEMS replies
         # 491 Request Pending here and silently drops the update instead of
         # queueing it for once Alice's own resume transaction completes.
@@ -392,7 +451,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(queued_update, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        self.recvSIP(leg_a)  # drain ACK
+        _recv_ack(self, leg_a, call_id, queued_update)
 
         leg_a.close()
 
@@ -440,7 +499,7 @@ class TestXdsmRace(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack(branch + "-ack", call_id, to_tag, 1, src_port),
                      leg_a)
-        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on Bob
+        _recv_ack(self, self._uas_sock, b2b_cid, b2b_invite)
 
         # Track CSeqs already handled on Alice's leg so their timer-A
         # retransmissions don't get mistaken later for a queued update.
@@ -502,9 +561,7 @@ class TestXdsmRace(sems_tester.TestCase):
             "z9hG4bK-xdsm-002-collide", cseq=12, extra_hdrs="P-Force-491: 0\n")
         self.sendToSIP(collide, sems_addr, self._uas_sock)
 
-        collide_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
-        while collide_reply.startswith("SIP/2.0 100"):
-            collide_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        collide_reply = _recv_reply(self, self._uas_sock, b2b_cid, 12)
         self.assertSIP(collide_reply, "^SIP/2\\.0 200 OK\n")
 
         # --- Complete hold's transaction: the resume we stacked earlier
@@ -539,7 +596,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(queued_update, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        self.recvSIP(leg_a)  # drain ACK
+        _recv_ack(self, leg_a, call_id, queued_update)
 
         leg_a.close()
 
@@ -573,7 +630,7 @@ class TestXdsmRace(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack(branch + "-ack", call_id, to_tag, 1, src_port),
                      leg_a)
-        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on Bob
+        _recv_ack(self, self._uas_sock, b2b_cid, b2b_invite)
 
         # --- Bob sends his own re-INVITE towards Alice, left unanswered
         # on purpose - this is a genuinely external, non-hold pending UAC
@@ -592,12 +649,14 @@ class TestXdsmRace(sems_tester.TestCase):
         second = _make_reinvite_uas(
             b2b_cid, b2b_from, _SDP_BOB2, "z9hG4bK-xdsm-003-second", cseq=3)
         self.sendToSIP(second, sems_addr, self._uas_sock)
-        second_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
-        while second_reply.startswith("SIP/2.0 100"):
-            second_reply = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        second_reply = _recv_reply(self, self._uas_sock, b2b_cid, 3)
         # A genuine external-vs-external glare (no hold/resume involved)
         # must still get 491, unaffected by the MT#65396 fix.
         self.assertSIP(second_reply, "^SIP/2\\.0 491 Request Pending\n")
+        self.sendToSIP(
+            _make_ack_non2xx_uas(b2b_cid, second_reply,
+                                 "z9hG4bK-xdsm-003-second", 3),
+            sems_addr, self._uas_sock)
 
         # --- Clean up: complete the first (still pending) re-INVITE.
         # SEMS relays Alice's 200 OK back to Bob and waits for Bob's own
@@ -606,7 +665,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(reinvite_alice, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        relayed_200 = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        relayed_200 = _recv_reply(self, self._uas_sock, b2b_cid, 2)
         self.assertSIP(relayed_200, "^SIP/2\\.0 200 OK\n")
         ack_from_bob = (
             f"ACK sip:alice@voip.sipwise.local SIP/2.0\n"
@@ -620,7 +679,7 @@ class TestXdsmRace(sems_tester.TestCase):
             "\n"
         )
         self.sendToSIP(ack_from_bob, sems_addr, self._uas_sock)
-        self.recvSIP(leg_a)  # drain ACK to Alice
+        _recv_ack(self, leg_a, call_id, reinvite_alice)
 
         leg_a.close()
 
@@ -663,7 +722,7 @@ class TestXdsmRace(sems_tester.TestCase):
         to_tag = _to_tag(ok_a)
         self.sendSIP(_make_ack(branch + "-ack", call_id, to_tag, 1, src_port),
                      leg_a)
-        self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK on Bob
+        _recv_ack(self, self._uas_sock, b2b_cid, b2b_invite)
 
         # Track CSeqs already handled on Alice's leg so their timer-A
         # retransmissions don't get mistaken later for a replayed update.
@@ -678,7 +737,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(hold_alice, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        self.recvSIP(leg_a)  # drain ACK
+        _recv_ack(self, leg_a, call_id, hold_alice)
 
         info_bob1 = self.recvSIPForCall(self._uas_sock, b2b_cid)
         if info_bob1.startswith("INFO"):
@@ -705,9 +764,7 @@ class TestXdsmRace(sems_tester.TestCase):
             b2b_cid, b2b_from, _SDP_BOB2, "z9hG4bK-xdsm-004-collide1",
             cseq=12, extra_hdrs="P-Force-491: 0\n")
         self.sendToSIP(collide1, sems_addr, self._uas_sock)
-        reply1 = self.recvSIPForCall(self._uas_sock, b2b_cid)
-        while reply1.startswith("SIP/2.0 100"):
-            reply1 = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        reply1 = _recv_reply(self, self._uas_sock, b2b_cid, 12)
         self.assertSIP(reply1, "^SIP/2\\.0 200 OK\n")
         self.sendToSIP(
             _make_ack_uas(b2b_cid, b2b_from, "z9hG4bK-xdsm-004-collide1-ack",
@@ -727,26 +784,23 @@ class TestXdsmRace(sems_tester.TestCase):
         replayed1 = _recv_fresh_invite(self, leg_a, seen_cseqs)
         self.assertIn("m=audio 30006 ", replayed1)
 
-        # --- The fake 200 to collide1 may be followed by SEMS
-        # renegotiating Bob's leg with Alice's actual answer; if that
-        # re-INVITE shows up, complete it so Bob's dialog is free and
-        # O/A-settled again before the next collision (otherwise the
-        # dialog layer would 491 it before any B2B code runs). ---
-        self._uas_sock.settimeout(1)
-        try:
+        # --- The fake 200 to collide1 promised Bob a later renegotiation:
+        # SEMS now re-INVITEs him with Alice's actual answer. Complete it,
+        # so Bob's dialog is free and O/A-settled again before the next
+        # collision (otherwise the dialog layer would 491 it before any B2B
+        # code runs). Waiting for it only briefly let a late one get in the
+        # way of collide2; skip the responses in front of it - 100 Trying
+        # and timer-G copies of the fake 200 - and answer late INFOs. ---
+        renego = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        while (renego.startswith("SIP/2.0 ") or
+               _answer_stray_request(self, self._uas_sock, renego)):
             renego = self.recvSIPForCall(self._uas_sock, b2b_cid)
-            while renego.startswith("SIP/2.0 100"):
-                renego = self.recvSIPForCall(self._uas_sock, b2b_cid)
-            if renego.startswith("INVITE"):
-                self.sendToSIP(
-                    _make_200_ok_invite(renego, _SDP_BOB2,
-                                         "<sip:bob@127.0.0.1:5070>"),
-                    sems_addr, self._uas_sock)
-                self.recvSIPForCall(self._uas_sock, b2b_cid)  # drain ACK
-        except (TimeoutError, AssertionError):
-            pass
-        finally:
-            self._uas_sock.settimeout(3)
+        self.assertSIP(renego, "^INVITE sip:[^\r]+ SIP/2\\.0\n")
+        self.sendToSIP(
+            _make_200_ok_invite(renego, _SDP_BOB2,
+                                 "<sip:bob@127.0.0.1:5070>"),
+            sems_addr, self._uas_sock)
+        _recv_ack(self, self._uas_sock, b2b_cid, renego)
 
         # --- The actual regression check: Bob sends one more re-INVITE,
         # marked P-Force-491: 0. The whitelist header filter strips the
@@ -757,9 +811,7 @@ class TestXdsmRace(sems_tester.TestCase):
             b2b_cid, b2b_from, _SDP_BOB3, "z9hG4bK-xdsm-004-collide2",
             cseq=13, extra_hdrs="P-Force-491: 0\n")
         self.sendToSIP(collide2, sems_addr, self._uas_sock)
-        reply2 = self.recvSIPForCall(self._uas_sock, b2b_cid)
-        while reply2.startswith("SIP/2.0 100"):
-            reply2 = self.recvSIPForCall(self._uas_sock, b2b_cid)
+        reply2 = _recv_reply(self, self._uas_sock, b2b_cid, 13)
         self.assertSIP(reply2, "^SIP/2\\.0 200 OK\n")
         self.sendToSIP(
             _make_ack_uas(b2b_cid, b2b_from, "z9hG4bK-xdsm-004-collide2-ack",
@@ -779,7 +831,7 @@ class TestXdsmRace(sems_tester.TestCase):
             _make_200_ok_invite(replayed2, _SDP_ALICE,
                                  f"<sip:alice@127.0.0.1:{src_port}>"),
             sems_addr, leg_a)
-        self.recvSIP(leg_a)  # drain ACK
+        _recv_ack(self, leg_a, call_id, replayed2)
 
         leg_a.close()
 
