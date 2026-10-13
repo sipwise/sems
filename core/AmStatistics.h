@@ -205,12 +205,25 @@ public:
   }
   const string& getHelp() { return help_; }
 
+  /** reset callback for read-to-reset metrics (maximums), invoked by the
+   *  statistics DI interface; counter callbacks must stay side-effect free */
+  using reset_function_type = std::function<void()>;
+
+  StatCountersGroupsInterface& setReset(reset_function_type func)
+  {
+    reset_ = std::move(func);
+    return *this;
+  }
+  bool hasReset() const { return static_cast<bool>(reset_); }
+  void reset() { if (reset_) reset_(); }
+
   void setType(Type type) { type_ = type; }
   Type getType() { return type_; }
 
 private:
   Type type_;
   string help_;
+  reset_function_type reset_;
 };
 
 /** provider of metric groups, registered into the registry by name */
@@ -256,6 +269,12 @@ public:
   StatCountersSingleGroup& setHelp(const string& help)
   {
     StatCountersGroupsInterface::setHelp(help);
+    return *this;
+  }
+
+  StatCountersSingleGroup& setReset(reset_function_type func)
+  {
+    StatCountersGroupsInterface::setReset(std::move(func));
     return *this;
   }
 
@@ -311,5 +330,10 @@ private:
 
 #define stat_group(type, grouping_name, name) \
   AmStatistics::instance()->group(StatCountersSingleGroup::type, grouping_name, name)
+
+// Registers the "statistics" DI interface.  Must be called after
+// AmPlugIn::init() and before the modules are loaded, so that modules can
+// register their metrics and find the interface already exported.
+void register_statistics();
 
 #endif

@@ -677,6 +677,11 @@ int main(int argc, char* argv[])
   
   INFO("Loading plug-ins\n");
   AmPlugIn::instance()->init();
+
+  // before the modules are loaded, so that they can use the metrics
+  // registry and the statistics interface
+  register_statistics();
+
   if(AmPlugIn::instance()->load(AmConfig::PlugInPath, AmConfig::LoadPlugins))
     goto error;
 
