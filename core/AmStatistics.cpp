@@ -29,9 +29,13 @@
 /** @file AmStatistics.cpp - metrics registry */
 
 #include "AmStatistics.h"
+#include "AmApi.h"
+#include "AmPlugIn.h"
 #include "log.h"
 
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 StatCounterInterface::~StatCounterInterface() {}
 
@@ -272,7 +276,7 @@ StatCountersSingleGroup& AmStatistics::group(StatCountersSingleGroup::Type type,
 
   if (!it.second && existent_group->getType() != type) {
     ERROR("attempt to add counter '%s' with type '%s' to existing counters group with another type '%s'",
-          name.data(), StatCountersGroupsInterface::type2str(type),
+          name.c_str(), StatCountersGroupsInterface::type2str(type),
           StatCountersGroupsInterface::type2str(existent_group->getType()));
     throw std::logic_error("attempt to redefine existent StatCountersSingleGroup");
   }
@@ -286,7 +290,144 @@ void AmStatistics::addGroupsContainer(const string& name, StatsCountersGroupsCon
   lock_guard<AmMutex> lock(groups_mutex);
   auto it = counters_groups_containers.try_emplace(name, container, is_managed_by_am_statistics);
   if (!it.second) {
-    ERROR("attempt to add groups container %p by existing name: %s", container, name.data());
+    ERROR("attempt to add groups container %p by existing name: %s", container, name.c_str());
     throw std::logic_error("attempt to redefine existent StatCountersGroup");
+  }
+}
+
+/** read the metrics registry over the DI command channels: the UDP
+ *  stats socket ("DI statistics ..."), jsonrpc ("statistics....")
+ *  and xmlrpc2di ("di", "statistics", ...).
+ *
+ *  Replies are flat {metric: number} maps: one entry per series, its
+ *  labels embedded in the key (core_codec_usage{codec=pcmu,...}).
+ *  Type and description of a metric are read with meta. */
+class AmStatisticsDI : public AmDynInvoke, public AmDynInvokeFactory {
+public:
+  AmStatisticsDI() : AmDynInvoke(), AmDynInvokeFactory("statistics") {}
+  ~AmStatisticsDI() override {}
+
+  int onLoad() override { return 0; }
+  AmDynInvoke* getInstance() override { return this; }
+
+  void invoke(const string& method, const AmArg& args, AmArg& ret) override
+  {
+    if (method == "_list") {
+      ret.push(AmArg("dump"));
+      ret.push(AmArg("get"));
+      ret.push(AmArg("meta"));
+      ret.push(AmArg("reset"));
+    } else if (method == "dump") {
+      AmStatistics::instance()->iterateGroups([&ret](const string& name,
+                                                     StatCountersGroupsInterface& group) {
+        for (auto& s : collect_series(group, name))
+          ret[s.first.c_str()] = AmArg(static_cast<long long>(s.second));
+      });
+    } else if (method == "get") {
+      args.assertArrayFmt("s");
+      get_metric(string(args[0].asCStr()), ret);
+    } else if (method == "meta") {
+      args.assertArrayFmt("s");
+      meta_metric(string(args[0].asCStr()), ret);
+    } else if (method == "reset") {
+      args.assertArrayFmt("s");
+      reset_metric(string(args[0].asCStr()));
+    } else {
+      throw AmDynInvoke::NotImplemented(method);
+    }
+  }
+
+private:
+  static StatCountersGroupsInterface* find_group(const string& name)
+  {
+    StatCountersGroupsInterface* found = nullptr;
+    AmStatistics::instance()->iterateGroups([&name, &found](const string& group_name,
+                                                            StatCountersGroupsInterface& group) {
+      if (group_name == name) found = &group;
+    });
+    return found;
+  }
+
+  /** rendered series name and value */
+  typedef std::pair<string, unsigned long long> series_entry;
+
+  /** labels go into the key: name{k1=v1,k2=v2} */
+  static string render_name(const string& base, const map<string, string>& labels)
+  {
+    if (labels.empty())
+      return base;
+
+    string s = base + "{";
+    bool first = true;
+    for (auto& l : labels) {
+      if (!first)
+        s += ",";
+      s += l.first + "=" + l.second;
+      first = false;
+    }
+    return s + "}";
+  }
+
+  /** the series have to be collected before rendering: iterate callbacks
+   *  run under the group lock */
+  static vector<series_entry> collect_series(StatCountersGroupsInterface& group, const string& base)
+  {
+    vector<std::pair<map<string, string>, unsigned long long>> series;
+    group.iterateCounters([&series](unsigned long long value, const map<string, string>& labels) {
+      series.emplace_back(labels, value);
+    });
+
+    vector<series_entry> entries;
+    for (auto& s : series)
+      entries.emplace_back(render_name(base, s.first), s.second);
+    return entries;
+  }
+
+  /** a base name selects all series of the metric, a rendered series name
+   *  selects one; a metric with no series right now renders an empty map */
+  static void get_metric(const string& name, AmArg& ret)
+  {
+    string base = name.substr(0, name.find('{'));
+    StatCountersGroupsInterface* group = find_group(base);
+    if (!group) throw string("no such counters group: '") + base + "'";
+
+    ret.assertStruct();
+    size_t matched = 0;
+    for (auto& s : collect_series(*group, base)) {
+      if (name == base || name == s.first) {
+        ret[s.first.c_str()] = AmArg(static_cast<long long>(s.second));
+        ++matched;
+      }
+    }
+    if (!matched && name != base) throw string("no such series: '") + name + "'";
+  }
+
+  /** {metric: {type, help}} */
+  static void meta_metric(const string& name, AmArg& ret)
+  {
+    StatCountersGroupsInterface* group = find_group(name);
+    if (!group) throw string("no such counters group: '") + name + "'";
+
+    AmArg& info = ret[name.c_str()];
+    info["type"] = AmArg(StatCountersGroupsInterface::type2str(group->getType()));
+    info["help"] = AmArg(group->getHelp());
+  }
+
+  /** reset through the callback registered by the group owner, if any */
+  static void reset_metric(const string& name)
+  {
+    StatCountersGroupsInterface* group = find_group(name);
+    if (!group) throw string("no such counters group: '") + name + "'";
+    if (!group->hasReset()) throw string("counters group '") + name + "' is not resettable";
+    group->reset();
+  }
+};
+
+void register_statistics()
+{
+  AmStatisticsDI* di = new AmStatisticsDI();
+  if (!AmPlugIn::instance()->registerDIInterface("statistics", di)) {
+    ERROR("registering 'statistics' DI interface\n");
+    delete di;
   }
 }

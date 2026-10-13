@@ -205,12 +205,30 @@ public:
   }
   const string& getHelp() { return help_; }
 
+  /** reset callback for read-to-reset metrics (maximums), invoked by the
+   *  statistics DI interface; counter callbacks must stay side-effect free.
+   *  A function pointer, not a std::function: the registry is disposed after
+   *  the plug-ins are unloaded, so a std::function built in a plug-in would
+   *  be destroyed through code that is no longer mapped. */
+  using reset_function_type = void (*)();
+
+  StatCountersGroupsInterface& setReset(reset_function_type func)
+  {
+    reset_ = func;
+    return *this;
+  }
+  bool hasReset() const { return static_cast<bool>(reset_); }
+  void reset() { if (reset_) reset_(); }
+
   void setType(Type type) { type_ = type; }
   Type getType() { return type_; }
 
 private:
   Type type_;
   string help_;
+  /** initialized explicitly: a group that registers no reset callback must
+   *  read as not resettable (a plain pointer has no default constructor) */
+  reset_function_type reset_ = nullptr;
 };
 
 /** provider of metric groups, registered into the registry by name */
@@ -256,6 +274,12 @@ public:
   StatCountersSingleGroup& setHelp(const string& help)
   {
     StatCountersGroupsInterface::setHelp(help);
+    return *this;
+  }
+
+  StatCountersSingleGroup& setReset(reset_function_type func)
+  {
+    StatCountersGroupsInterface::setReset(func);
     return *this;
   }
 
@@ -322,5 +346,10 @@ private:
 
 #define stat_group(type, grouping_name, name) \
   AmStatistics::instance()->group(StatCountersSingleGroup::type, grouping_name, name)
+
+// Registers the "statistics" DI interface.  Must be called after
+// AmPlugIn::init() and before the modules are loaded, so that modules can
+// register their metrics and find the interface already exported.
+void register_statistics();
 
 #endif
