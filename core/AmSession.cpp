@@ -1495,7 +1495,7 @@ AmRtpTransport* AmSession::createRtpTransport(AmRtpStream* stream, const string&
   if (!hasStream(stream)) {
 
     rtp_transports.push_back(new AmRtpTransport(rtp_interface, ip, !rtcp_mux,
-                                                ice, srtp));
+                                                ice));
 
     stream->setRtpTransport(rtp_transports.back());
 
