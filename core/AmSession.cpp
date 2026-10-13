@@ -641,6 +641,25 @@ void AmSession::updateMaxSessionNum() {
   max_session_num = session_num;
 }
 
+unsigned int AmSession::peekAvgSessionNum() {
+  lock_guard<AmMutex> lock(session_num_mut);
+
+  struct timeval now, delta;
+  gettimeofday(&now, NULL);
+
+  timersub(&now, &avg_last_timestamp, &delta);
+  unsigned long long acc =
+    avg_session_num + (session_num * (delta.tv_sec * 1000000ULL + delta.tv_usec));
+
+  timersub(&now, &avg_first_timestamp, &delta);
+  unsigned long long d_usec = delta.tv_sec * 1000000ULL + delta.tv_usec;
+  if (!d_usec)
+    return 0;
+
+  //Round up
+  return (unsigned int)((acc + d_usec - 1) / d_usec);
+}
+
 unsigned int AmSession::getAvgSessionNum() {
   unsigned int res = 0;
   struct timeval now, delta;
