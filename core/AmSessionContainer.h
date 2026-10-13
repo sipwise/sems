@@ -30,6 +30,7 @@
 
 #include "AmThread.h"
 #include "AmSession.h"
+#include "AmStatistics.h"
 
 #include "ampi/MonitoringAPI.h"
 
@@ -102,6 +103,9 @@ class AmSessionContainer : public AmThread
   bool emergency_flag;
 
  public:
+  /** incremented when a new session is rejected by AmConfig::SessionLimit */
+  AtomicCounter* session_limit_rejects;
+
   static AmSessionContainer* instance();
 
   static void dispose();
@@ -209,6 +213,10 @@ class AmSessionContainer : public AmThread
    * Gets the maximum of calls per second since last query
    */
   unsigned int getMaxCPS();
+  /** max CPS without resetting it */
+  unsigned int peekMaxCPS();
+  /** reset the max CPS value */
+  void resetMaxCPS();
 
   void initMonitoring();
 
