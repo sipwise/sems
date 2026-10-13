@@ -62,6 +62,7 @@ AmSessionContainer::AmSessionContainer()
 
   stat_group(Gauge, "core", "max_session_num")
     .setHelp("maximum number of running sessions")
+    .setReset([]() { AmSession::updateMaxSessionNum(); })
     .addFunctionCounter([]() -> unsigned long long { return AmSession::getMaxSessionNum(); });
 
   stat_group(Gauge, "core", "dead_sessions_count")
@@ -78,6 +79,7 @@ AmSessionContainer::AmSessionContainer()
 
   stat_group(Gauge, "core", "cps_max")
     .setHelp("maximum calls per second since the last reset")
+    .setReset([]() { AmSessionContainer::instance()->resetMaxCPS(); })
     .addFunctionCounter([]() -> unsigned long long {
       return AmSessionContainer::instance()->peekMaxCPS();
     });
