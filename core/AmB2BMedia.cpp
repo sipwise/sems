@@ -216,16 +216,19 @@ void AudioStreamData::clear()
     //delete in;
     in = NULL;
   }
+
+  // Detach the hook from the stream we are about to drop, but keep the
+  // subscriber list: the hooks are owned by whoever installed them (an
+  // application, e.g. lua_sems). Deleting them here would leave the owner
+  // with a dangling pointer, since clear() runs on renegotiation too, and
+  // clearing the list would silently lose the subscription. initialize()
+  // re-attaches the stream hook for the new stream, so subscriptions
+  // survive stream tear-down.
+  if (!hooks.empty() && stream) stream->setHook(NULL);
+
   stream.reset();
   clearDtmfSink();
   initialized = false;
-
-  // clear stream hooks (FIXME: do we really want this unless destroying the
-  // AudioStreamData?)
-  for (list<AmRtpStream::Hook*>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
-    if (*i) delete *i;
-  }
-  hooks.clear();
 }
 
 void AudioStreamData::stopStreamProcessing()
@@ -497,6 +500,12 @@ void AudioStreamData::addHook(AmRtpStream::Hook *h)
   hooks.push_back(h);
 }
 
+void AudioStreamData::removeHook(AmRtpStream::Hook *h)
+{
+  hooks.remove(h);
+  if (hooks.empty() && stream) stream->setHook(NULL);
+}
+
 void AudioStreamData::receivedPacket(AmRtpPacket *p)
 {
   for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
@@ -508,6 +517,20 @@ void AudioStreamData::relayedPacket(AmRtpPacket *p)
 {
   for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
     (*i)->relayedPacket(p);
+  }
+}
+
+void AudioStreamData::preEncode(unsigned char* buffer, unsigned int size,
+                                int sample_rate, bool from_input,
+                                unsigned long long ts, int payload_type)
+{
+  // the stream-level tap reports our own 'in' as the source: from_input
+  // passed by AmRtpAudio::put() is always true there (its caller is either
+  // the media processor pulling from this stream's input or from the peer),
+  // so refine it from the actual stream state
+  from_input = (in != NULL);
+  for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
+    (*i)->preEncode(buffer, size, sample_rate, from_input, ts, payload_type);
   }
 }
 
@@ -1336,6 +1359,30 @@ void AmB2BMedia::setFirstStreamInput(bool a_leg, AmAudio *in)
       ERROR("BUG: can't set %s leg's first stream input, no streams\n", a_leg ? "A": "B");
     }
   }
+}
+
+bool AmB2BMedia::addStreamHook(bool a_leg, int media_idx, AmRtpStream::Hook *h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
+    if (i->media_idx != media_idx) continue;
+    if (a_leg) i->a.addHook(h);
+    else       i->b.addHook(h);
+    return true;
+  }
+  return false;
+}
+
+bool AmB2BMedia::removeStreamHook(bool a_leg, int media_idx, AmRtpStream::Hook *h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
+    if (i->media_idx != media_idx) continue;
+    if (a_leg) i->a.removeHook(h);
+    else       i->b.removeHook(h);
+    return true;
+  }
+  return false;
 }
 
 void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con)

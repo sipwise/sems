@@ -118,6 +118,11 @@ class AudioStreamData: private AmRtpStream::Hook {
     virtual void receivedPacket(AmRtpPacket *p);
     virtual void relayedPacket(AmRtpPacket *p);
     virtual void initStream(const AmSdp& local, const AmSdp& remote, int media_idx);
+    // fan-out of the stream-level PCM tap to all subscribed hooks;
+    // refines 'from_input' (this stream's own input vs. the peer leg)
+    virtual void preEncode(unsigned char* buffer, unsigned int size,
+                           int sample_rate, bool from_input,
+                           unsigned long long ts, int payload_type);
 
   public:
     /** Creates data based on associated signaling leg data. */
@@ -209,6 +214,7 @@ class AudioStreamData: private AmRtpStream::Hook {
     void debug(std::ostream &out);
 
     void addHook(AmRtpStream::Hook *h);
+    void removeHook(AmRtpStream::Hook *h);
 };
 
 /** \brief Class for control over media relaying and transcoding in a B2B session.
@@ -463,6 +469,13 @@ class AmB2BMedia: public AmMediaSession
     bool isMuted(bool a_leg) { if (a_leg) return a_leg_muted; else return b_leg_muted; }
 
     void setFirstStreamInput(bool a_leg, AmAudio *in);
+
+    /** Install/remove a hook on the audio stream of the given SDP media line.
+     *  media_idx is the 0-based index over all m= lines of the SDP, matching
+     *  AudioStreamPair::media_idx. Returns false when no stream with that
+     *  index exists. */
+    bool addStreamHook(bool a_leg, int media_idx, AmRtpStream::Hook *h);
+    bool removeStreamHook(bool a_leg, int media_idx, AmRtpStream::Hook *h);
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
     /** enable or disable DTMF receiving on relay streams */
