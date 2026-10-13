@@ -78,10 +78,47 @@ bool trans_layer::less_case_i::operator () (const string& lhs, const string& rhs
 		       rhs.c_str(),rhs.length()) < 0;
 }
 
+trans_stats::trans_stats()
+    : sent_requests(stat_group(Counter, "core", "tx_requests")
+          .setHelp("SIP requests transmitted")
+          .addAtomicCounter())
+    , sent_replies(stat_group(Counter, "core", "tx_replies")
+          .setHelp("SIP replies transmitted")
+          .addAtomicCounter())
+    , received_requests(stat_group(Counter, "core", "rx_requests")
+          .setHelp("SIP requests received, including retransmissions")
+          .addAtomicCounter())
+    , received_request_retransmits(stat_group(Counter, "core", "rx_requests_retrans")
+          .setHelp("request retransmissions received")
+          .addAtomicCounter())
+    , received_replies(stat_group(Counter, "core", "rx_replies")
+          .setHelp("SIP replies received, including retransmissions")
+          .addAtomicCounter())
+    , received_200_reply_retransmits(stat_group(Counter, "core", "rx_200_replies_retrans")
+          .setHelp("200 reply retransmissions received")
+          .addAtomicCounter())
+    , sent_reply_retrans(stat_group(Counter, "core", "tx_replies_retrans")
+          .setHelp("SIP replies retransmitted")
+          .addAtomicCounter())
+    , sent_request_retrans(stat_group(Counter, "core", "tx_requests_retrans")
+          .setHelp("SIP requests retransmitted")
+          .addAtomicCounter())
+{
+}
+
 trans_layer::trans_layer()
     : ua(NULL),
       transports()
 {
+    stat_group(Gauge, "core", "sip_transactions")
+      .setHelp("number of live entries in the SIP transaction table")
+      .addFunctionCounter(count_transactions);
+
+    stat_group(Gauge, "core", "blacklist_entries")
+      .setHelp("number of destinations in the transaction blacklist")
+      .addFunctionCounter([]() -> unsigned long long {
+        return tr_blacklist::instance()->get_size();
+      });
 }
 
 trans_layer::~trans_layer()
@@ -1505,6 +1542,7 @@ void trans_layer::process_rcvd_msg(sip_msg* msg)
 	    }
 	    else {
 		DBG("Found retransmission\n");
+		stats.inc_received_requests_retransmits();
 		t->retransmit(); // retransmit reply
 	    }
 	}
@@ -1813,6 +1851,7 @@ int trans_layer::update_uac_reply(trans_bucket* bucket, sip_trans* t, sip_msg* m
 		}
 
 		DBG("Received 200 reply retransmission\n");
+		stats.inc_received_200_replies_retransmits();
 		t->retransmit();
 		goto end;
 

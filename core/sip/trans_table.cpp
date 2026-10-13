@@ -559,6 +559,20 @@ trans_bucket* get_trans_bucket(unsigned int h)
     return _trans_table[h];
 }
 
+unsigned long long count_transactions()
+{
+    unsigned long long n = 0;
+
+    for (unsigned long l = 0; l < _trans_table.get_size(); l++) {
+        trans_bucket* b = _trans_table[l];
+        b->lock();
+        n += b->size();
+        b->unlock();
+    }
+
+    return n;
+}
+
 void dumps_transactions()
 {
     _trans_table.dump();
