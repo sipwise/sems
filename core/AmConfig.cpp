@@ -108,6 +108,7 @@ int          AmConfig::UnhandledReplyLoglevel  = 0;
 
 bool         AmConfig::SkipGenerateDirectionBoth = false;
 bool         AmConfig::IgnoreRouteSetOnPrack     = false;
+AmConfig::SdpBandwidthMode AmConfig::SdpBandwidth = AmConfig::SdpBwOff;
 
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
@@ -415,6 +416,18 @@ int AmConfig::readConfiguration()
 
   if(cfg.hasParameter("ignore_routeset_on_prack")) {
     IgnoreRouteSetOnPrack = (cfg.getParameter("ignore_routeset_on_prack") == "yes");
+  }
+
+  if(cfg.hasParameter("sdp_bandwidth")) {
+    const string& sdp_bandwidth = cfg.getParameter("sdp_bandwidth");
+    if (sdp_bandwidth == "off") {
+      SdpBandwidth = SdpBwOff;
+    } else if (sdp_bandwidth == "auto") {
+      SdpBandwidth = SdpBwAuto;
+    } else {
+      ERROR("Unknown value of sdp_bandwidth parameter '%s', using 'off'\n",
+            sdp_bandwidth.c_str());
+    }
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {

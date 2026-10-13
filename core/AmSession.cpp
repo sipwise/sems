@@ -990,6 +990,12 @@ bool AmSession::getSdpOffer(AmSdp& offer)
   // RTPStream()->setLocalIP(localMediaIP());
   // RTPStream()->getSdpOffer(media_idx,offer.media.back());
 
+  // SDP bandwidth modifiers (b=AS/RS/RR) for own offers
+  for (vector<SdpMedia>::iterator it = offer.media.begin();
+       it != offer.media.end(); ++it) {
+    AmSdpBandwidth::apply(*it, sdp_bw_ctl, NULL);
+  }
+
   return true;
 }
 
@@ -1113,6 +1119,10 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
 
       // sort payload type in the answer according to the priority given in the codec_order configuration key
       std::stable_sort(answer_media.payloads.begin(),answer_media.payloads.end(),codec_priority_cmp());
+
+      // SDP bandwidth modifiers (b=AS/RS/RR): echo from offer or compute
+      AmSdpBandwidth::apply(answer_media, sdp_bw_ctl, &*m_it);
+
       // we have one accepted audio stream, reject the others
       audio_1st_stream = false;
     } else {
