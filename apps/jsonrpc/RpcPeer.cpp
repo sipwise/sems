@@ -226,10 +226,12 @@ int JsonrpcNetstringsConnection::netstringsRead() {
           return REMOVE;
         }
         in_msg = true;
-        rcvd_size = read(fd,msgbuf,msg_size+1);
-        // DBG("received '%.*s'\n", rcvd_size, msgbuf);
+        rcvd_size = 0;
+        r = read(fd,msgbuf,msg_size+1);
+        // DBG("received '%.*s'\n", r, msgbuf);
 
-        if (rcvd_size == msg_size+1) {
+        if (r == (ssize_t)(msg_size+1)) {
+          // whole message (body + ',') already arrived
           if (msgbuf[msg_size] == ',') {
             msgbuf[msg_size+1] = '\0';
             return DISPATCH;
@@ -240,23 +242,25 @@ int JsonrpcNetstringsConnection::netstringsRead() {
           return REMOVE;
         }
 
-        if (!rcvd_size) {
+        if (!r) {
           DBG("closing connection [%p/%d] on peer hangup\n", this, fd);
           close();
           return REMOVE;
         }
 
-        if ((rcvd_size<0 && errno == EAGAIN) ||
-            (rcvd_size<0 && errno == EWOULDBLOCK))
-          return CONTINUE; // necessary?
+        if ((r<0 && errno == EAGAIN) ||
+            (r<0 && errno == EWOULDBLOCK))
+          return CONTINUE; // body not here yet, retry from msgbuf[0]
 
-        if (rcvd_size<0) {
+        if (r<0) {
           INFO("socket error on connection [%p/%d]: %s\n",
                this, fd, strerror(errno));
           close();
           return REMOVE;
         }
 
+        // partial body, continue in the in_msg branch
+        rcvd_size = r;
         return CONTINUE;
       }
 
