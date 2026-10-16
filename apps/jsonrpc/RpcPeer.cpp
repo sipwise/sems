@@ -280,8 +280,10 @@ int JsonrpcNetstringsConnection::netstringsRead() {
       DBG("msgbuf='%.*s'\n", msg_size+1,msgbuf);
       if (rcvd_size == msg_size+1) {
         DBG("msg_size = %d, rcvd_size = %d, <%c> \n", msg_size, rcvd_size, msgbuf[msg_size-1]);
-        if (msgbuf[msg_size] == ',')
+        if (msgbuf[msg_size] == ',') {
+          msgbuf[msg_size+1] = '\0';
           return DISPATCH;
+        }
         INFO("Protocol error on connection [%p/%d]: netstring not terminated with ','\n",
              this, fd);
         close();
