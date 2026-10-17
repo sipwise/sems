@@ -16,14 +16,25 @@
 void tcp_trsp_socket::on_sock_read(int fd, short ev, void* arg)
 {
   if(ev & (EV_READ|EV_TIMEOUT)){
-    ((tcp_trsp_socket*)arg)->on_read(ev);
+    tcp_trsp_socket* sock = (tcp_trsp_socket*)arg;
+    // hold a reference to the socket for the duration of the callback:
+    // on_read() may close the connection, which drops the connection
+    // map's reference in the server worker. That might otherwise be the
+    // last one, destroying the socket (and its events) while still
+    // inside this callback.
+    shared_ptr<tcp_trsp_socket> self = sock->shared_from_this();
+    self->on_read(ev);
   }
 }
 
 void tcp_trsp_socket::on_sock_write(int fd, short ev, void* arg)
 {
   if(ev & (EV_WRITE|EV_TIMEOUT)){
-    ((tcp_trsp_socket*)arg)->on_write(ev);
+    tcp_trsp_socket* sock = (tcp_trsp_socket*)arg;
+    // see on_sock_read(): keep the socket alive until the callback
+    // returns, as on_write() may close the connection.
+    shared_ptr<tcp_trsp_socket> self = sock->shared_from_this();
+    self->on_write(ev);
   }
 }
 
@@ -511,7 +522,9 @@ void tcp_server_worker::remove_connection(const tcp_trsp_socket* client_sock)
 
   connections_mut.lock();
   auto sock_it = connections.find(conn_id);
-  if(sock_it != connections.end()) {
+  if(sock_it != connections.end() && sock_it->second.get() == client_sock) {
+    // erase only our own connection: the connection ID (peer ip:port)
+    // may have been reused by a brand new connection in the meantime
     connections.erase(sock_it);
     DBG("TCP connection from %s removed",conn_id.c_str());
   }
