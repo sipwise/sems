@@ -93,7 +93,8 @@ public:
   /** Event handlers */
   int onRequestIn(const AmSipRequest& req);
   int onReplyIn(const AmSipReply& reply);
-  int onRequestOut(AmSipRequest& req);
+  /* `no_sdp_generation` - suppress SDP generation (relayed messages, explicit no-SDP replies) */
+  int onRequestOut(AmSipRequest& req, bool no_sdp_generation = false);
   /* `no_sdp_generation` - can be used for cases like absent SDP in coming INVITE */
   int onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_body, bool no_sdp_generation = false);
   int onRequestSent(const AmSipRequest& req);

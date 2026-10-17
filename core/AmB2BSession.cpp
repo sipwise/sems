@@ -1269,6 +1269,12 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
     updateLocalBody(body);
   }
 
+  /* a relayed message is sent as-is (SDP-wise): never generate an SDP body
+   * for it, only update endpoints in an existing one (updateLocalBody) */
+  int relay_flags = SIP_FLAGS_VERBATIM;
+  if (!body.hasContentType(SIP_APPLICATION_SDP))
+    relay_flags |= SIP_FLAGS_NO_SDP_GENERATION;
+
   /* all methods apart ACK */
   if (req.method != "ACK") {
     relayed_req[dlg->cseq] = req;
@@ -1303,7 +1309,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
 
     ILOG_DLG(L_DBG, "relaying SIP request %s %s\n", req.method.c_str(), req.r_uri.c_str());
 
-    int err = dlg->sendRequest(req.method, &body, *hdrs, SIP_FLAGS_VERBATIM);
+    int err = dlg->sendRequest(req.method, &body, *hdrs, relay_flags);
 
     if(err < 0){
       ILOG_DLG(L_ERR, "dlg->sendRequest() failed\n");
@@ -1336,7 +1342,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
 
     ILOG_DLG(L_DBG, "sending relayed 200 ACK\n");
 
-    int err = dlg->send_200_ack(t->first, &body, req.hdrs, SIP_FLAGS_VERBATIM);
+    int err = dlg->send_200_ack(t->first, &body, req.hdrs, relay_flags);
     if(err < 0) {
       ILOG_DLG(L_ERR, "dlg->send_200_ack() failed\n");
       return err;
@@ -1381,6 +1387,13 @@ int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply)
   int flags = SIP_FLAGS_VERBATIM;
   if(reply.to_tag.empty())
     flags |= SIP_FLAGS_NOTAG;
+
+  /* a relayed message is sent as-is (SDP-wise): never generate an SDP body
+   * for it, only update endpoints in an existing one (updateLocalBody).
+   * IMS preconditions: the O/A is completed in 183+PRACK, the final 200 OK
+   * has no body and must not get one. */
+  if (!body.hasContentType(SIP_APPLICATION_SDP))
+    flags |= SIP_FLAGS_NO_SDP_GENERATION;
 
   int err = dlg->reply(orig,reply.code,reply.reason,
 		       &body, *hdrs, flags);
