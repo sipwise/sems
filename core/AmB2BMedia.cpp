@@ -441,6 +441,7 @@ int AudioStreamData::writeStream(unsigned long long ts, unsigned char *buffer, A
 {
   if (!initialized) return 0;
   if (stream->getOnHold()) return 0; // ignore hold streams?
+  if (!stream->isFrameSizeValid()) return -1;
 
   unsigned int f_size = stream->getFrameSize();
   if (stream->sendIntReached(ts)) {

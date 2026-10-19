@@ -129,6 +129,11 @@ public:
 
   unsigned int getFrameSize();
 
+  /* check that the current frame size (in samples) fits
+   * into the media processor buffer (`AUDIO_BUFFER_SIZE` of PCM16)
+   * PCM16 is the internal format of the shared media buffer */
+  bool isFrameSizeValid();
+
   bool checkInterval(unsigned long long ts);
   bool sendIntReached();
   bool sendIntReached(unsigned long long ts);

@@ -1414,6 +1414,9 @@ int AmSession::readStreams(unsigned long long ts, unsigned char *buffer)
   lock_guard<AmMutex> lock(audio_mut);
 
   AmRtpAudio *stream = RTPStream();
+  if (!stream->isFrameSizeValid())
+    return -1;
+
   unsigned int f_size = stream->getFrameSize();
   if (stream->checkInterval(ts)) {
     int got = stream->get(ts, buffer, stream->getSampleRate(), f_size);
@@ -1440,6 +1443,9 @@ int AmSession::writeStreams(unsigned long long ts, unsigned char *buffer)
 
   AmRtpAudio *stream = RTPStream();
   if (stream->sendIntReached()) { // FIXME: shouldn't depend on checkInterval call before!
+    if (!stream->isFrameSizeValid())
+      return -1;
+
     unsigned int f_size = stream->getFrameSize();
     int got = 0;
     if (output)

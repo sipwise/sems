@@ -289,9 +289,24 @@ void AmAudio::close()
 int AmAudio::get(unsigned long long system_ts, unsigned char* buffer, 
 		 int output_sample_rate, unsigned int nb_samples)
 {
-  int size = calcBytesToRead((int)((float)nb_samples * (float)getSampleRate()
-				   / (float)output_sample_rate));
+  /* `samples` is based on `DblBuffer`, which is `AUDIO_BUFFER_SIZE` based */
 
+  unsigned int in_samples = (unsigned int)((float)nb_samples * (float)getSampleRate()
+                                           / (float)output_sample_rate);
+  unsigned int channels = fmt->channels > 0 ? fmt->channels : 1;
+
+  /* Firstly, predict the result sizes of `decode()` and `resampleOutput()`
+   * after `decode()`: in_samples of PCM16 per each channel,
+   * and after `resampleOutput()`: nb_samples of mono PCM16 */
+  if (in_samples > PCM16_B2S(AUDIO_BUFFER_SIZE) / channels ||
+      nb_samples > PCM16_B2S(AUDIO_BUFFER_SIZE)) {
+    ERROR("AmAudio::get: predicted decoded/resampled size too large: nb_samples=%u, "
+          "in_samples=%u, channels=%u, input_rate=%d, output_rate=%d\n",
+          nb_samples, in_samples, channels, getSampleRate(), output_sample_rate);
+    return -1;
+  }
+
+  int size = calcBytesToRead(in_samples);
   if (size < 0)
   {
     ERROR("AmAudio::get: requested size is unexpected: '%d' bytes, nb_samples=%u, "
@@ -300,8 +315,7 @@ int AmAudio::get(unsigned long long system_ts, unsigned char* buffer,
     return -1;
   }
 
-  /* guard for the case of overflow attempt.
-   * `samples` is based on `DblBuffer`, which is `AUDIO_BUFFER_SIZE` based
+  /* Secondly, guard for the case of overflow attempt.
    *
    * Important: DblBuffer exposes only half at a time (see char operator overloading of it)
    * hence track size against only half of it */
@@ -328,7 +342,16 @@ int AmAudio::get(unsigned long long system_ts, unsigned char* buffer,
 
   size = resampleOutput((unsigned char*)samples, size, 
 			getSampleRate(), output_sample_rate);
-  
+
+  /* decoding and resampling can grow the size,
+   * check it now again by factual size against the destination `buffer` */
+  if (size > AUDIO_BUFFER_SIZE) {
+    ERROR("AmAudio::get: resulting size too large: '%d' bytes, nb_samples=%u, "
+          "input_rate=%d, output_rate=%d\n",
+          size, nb_samples, getSampleRate(), output_sample_rate);
+    return -1;
+  }
+
   if(size>0)
     memcpy(buffer,(unsigned char*)samples,size);
 

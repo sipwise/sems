@@ -265,18 +265,36 @@ int AmRtpAudio::get(unsigned long long system_ts, unsigned char* buffer,
 
   unsigned int user_ts = scaleSystemTS(system_ts);
 
-  nb_samples = (unsigned int)((float)nb_samples * (float)getSampleRate()
-			     / (float)output_sample_rate);
+  unsigned int in_samples = (unsigned int)((float)nb_samples * (float)getSampleRate()
+                                           / (float)output_sample_rate);
+
+  /* samples is DblBuffer based, which exposes only AUDIO_BUFFER_SIZE at a time,
+   * predict result sizes of the buffer read and resampleOutput() (in_samples and nb_samples of PCM16) */
+  if (in_samples > PCM16_B2S(AUDIO_BUFFER_SIZE) ||
+      nb_samples > PCM16_B2S(AUDIO_BUFFER_SIZE)) {
+    ERROR("AmRtpAudio::get: expected read/resampled size too large: nb_samples=%u, "
+          "in_samples=%u, input_rate=%d, output_rate=%d\n",
+          nb_samples, in_samples, getSampleRate(), output_sample_rate);
+    return -1;
+  }
 
   u_int32_t size =
     PCM16_S2B(playout_buffer->read(user_ts,
 				   (ShortSample*)((unsigned char*)samples),
-				   nb_samples));
+				   in_samples));
   if(output_sample_rate != getSampleRate()) {
     size = resampleOutput((unsigned char*)samples, size,
 			  getSampleRate(), output_sample_rate);
   }
-  
+
+  /* `buffer` is the media processor's one, of AUDIO_BUFFER_SIZE */
+  if (size > AUDIO_BUFFER_SIZE) {
+    ERROR("AmRtpAudio::get: resulting size too large: '%u' bytes, "
+          "input_rate=%d, output_rate=%d\n",
+          size, getSampleRate(), output_sample_rate);
+    return -1;
+  }
+
   memcpy(buffer,(unsigned char*)samples,size);
 
   return size;
@@ -367,6 +385,20 @@ unsigned int AmRtpAudio::getFrameSize()
     return 0;
 
   return ((AmAudioRtpFormat*)fmt.get())->getFrameSize();
+}
+
+bool AmRtpAudio::isFrameSizeValid()
+{
+  unsigned int f_size = getFrameSize();
+
+  if (f_size > PCM16_B2S(AUDIO_BUFFER_SIZE)) {
+    ERROR("RTP stream [%p]: frame size too large: %u samples (max %u), "
+          "payload=%i, rate=%d\n",
+          this, f_size, PCM16_B2S(AUDIO_BUFFER_SIZE), payload, getSampleRate());
+    return false;
+  }
+
+  return true;
 }
 
 int AmRtpAudio::setCurrentPayload(int payload)

@@ -77,8 +77,16 @@ int AmPlaylist::get(unsigned long long system_ts, unsigned char* buffer,
   }
 
   if(!cur_item || !cur_item->play) {
-    ret = calcBytesToRead(nb_samples);
-    memset(buffer,0,ret);
+    unsigned int size = calcBytesToRead(nb_samples);
+    /* `buffer` is the media processor's one, of AUDIO_BUFFER_SIZE */
+    if (size > AUDIO_BUFFER_SIZE) {
+      ERROR("AmPlaylist::get: requested silence too large: '%u' bytes, nb_samples=%u\n",
+            size, nb_samples);
+      ret = -1;
+    } else {
+      memset(buffer,0,size);
+      ret = size;
+    }
   }
 
   cur_mut.unlock();
