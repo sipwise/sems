@@ -54,7 +54,7 @@ static unsigned int g729_samples2bytes(long, unsigned int);
 
 static amci_codec_fmt_info_t g729_fmt_description[] = { { AMCI_FMT_FRAME_LENGTH, 20 },
 						       { AMCI_FMT_FRAME_SIZE, 160 },
-						       { AMCI_FMT_ENCODED_FRAME_SIZE, 33 },
+						       { AMCI_FMT_ENCODED_FRAME_SIZE, 20 },
 						       { 0, 0 }
 };
 
@@ -67,7 +67,7 @@ BEGIN_EXPORTS( "g729", AMCI_NO_MODULEINIT, AMCI_NO_MODULEDESTROY)
 
     BEGIN_CODECS
     CODEC( CODEC_G729, pcm16_2_g729, g729_2_pcm16, AMCI_NO_CODEC_PLC,
-	   (amci_codec_init_t)g729_create, (amci_codec_destroy_t)g729_destroy,
+	   g729_create, (amci_codec_destroy_t)g729_destroy,
             g729_bytes2samples, g729_samples2bytes
           )
     END_CODECS
