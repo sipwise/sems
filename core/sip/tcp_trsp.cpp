@@ -105,8 +105,11 @@ shared_ptr<tcp_trsp_socket> tcp_trsp_socket::new_connection(const shared_ptr<tcp
 tcp_trsp_socket::~tcp_trsp_socket()
 {
   DBG("********* connection destructor ***********");
-  event_free(read_ev);
-  event_free(write_ev);
+  // no events if connecting never got as far as create_events()
+  if(read_ev)
+    event_free(read_ev);
+  if(write_ev)
+    event_free(write_ev);
 
   // a connection replaced in the worker map is destroyed without close()
   while(!send_q.empty()) {
