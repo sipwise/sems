@@ -1,3 +1,10 @@
+ngcp-sems (1:1.6.0+0~mr26.2.1.2) unstable; urgency=medium
+
+  [ Bit-Savva Mikhail ]
+  * [6c3257c] MT#66037 t: wait for the very ACK instead of draining blind
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 20 Oct 2026 11:00:36 +0200
+
 ngcp-sems (1:1.6.0+0~mr26.2.1.1) unstable; urgency=medium
 
   * New release.
