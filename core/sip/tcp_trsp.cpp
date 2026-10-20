@@ -107,6 +107,12 @@ tcp_trsp_socket::~tcp_trsp_socket()
   DBG("********* connection destructor ***********");
   event_free(read_ev);
   event_free(write_ev);
+
+  // a connection replaced in the worker map is destroyed without close()
+  while(!send_q.empty()) {
+    delete send_q.front();
+    send_q.pop_front();
+  }
 }
 
 void tcp_trsp_socket::create_events()
