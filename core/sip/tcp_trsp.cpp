@@ -22,7 +22,13 @@ void tcp_trsp_socket::on_sock_read(int fd, short ev, void* arg)
     // map's reference in the server worker. That might otherwise be the
     // last one, destroying the socket (and its events) while still
     // inside this callback.
-    shared_ptr<tcp_trsp_socket> self = sock->shared_from_this();
+
+    // If another thread is already destroying the socket (its destructor
+    // waits in `event_free()` for this callback), there is nothing to do,
+    // `shared_from_this()` would throw through libevent's C frames
+    shared_ptr<tcp_trsp_socket> self = sock->weak_from_this().lock();
+    if(!self)
+      return;
     self->on_read(ev);
   }
 }
@@ -33,7 +39,9 @@ void tcp_trsp_socket::on_sock_write(int fd, short ev, void* arg)
     tcp_trsp_socket* sock = (tcp_trsp_socket*)arg;
     // see on_sock_read(): keep the socket alive until the callback
     // returns, as on_write() may close the connection.
-    shared_ptr<tcp_trsp_socket> self = sock->shared_from_this();
+    shared_ptr<tcp_trsp_socket> self = sock->weak_from_this().lock();
+    if(!self)
+      return;
     self->on_write(ev);
   }
 }
