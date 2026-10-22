@@ -38,6 +38,7 @@
 #include <deque>
 #include <list>
 #include <map>
+#include <stdexcept>
 
 #include "log.h"
 
