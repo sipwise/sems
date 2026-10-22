@@ -60,6 +60,7 @@ using std::queue;
 #define COLNAME_USER             "user"
 #define COLNAME_PASS             "pass"
 #define COLNAME_REALM            "realm"
+#define COLNAME_REGISTRAR        "registrar_server"
 #define COLNAME_CONTACT          "contact"
 
 #define COLNAME_STATUS           "registration_status"
@@ -87,11 +88,7 @@ enum regType { TYPE_UNDEFINED=0, TYPE_PEERING, TYPE_SUBSCRIBER };
 
 #define RegistrationActionEventID 117
 
-#define RegistrationActionEventID 117
-
 #define ERR_REASON_UNABLE_TO_SEND_REQUEST  "unable to send request"
-
-#define TYPE_TO_STRING(type) ((type) == TYPE_PEERING ? "peering" : "subscriber")
 
 struct RegistrationActionEvent : public AmEvent {
 
@@ -131,6 +128,7 @@ class DBRegAgentProcessorThread
 
   void run();
   void on_stop();
+  const char *identify() { return "DB reg agent processor"; }
 
 };
 
@@ -164,9 +162,9 @@ class DBRegAgent
 
   static string contact_hostport;
 
-  static bool username_with_domain;
-
   static string outbound_proxy;
+  static string outbound_proxy_set_port;
+  static map<string, string>   outbound_proxy_set;
 
   static bool save_auth_replies;
 
@@ -213,20 +211,22 @@ class DBRegAgent
 			    bool update_contacts=false, const string& contacts = "");
 
   /** create registration in our list */
-    void createRegistration(long object_id,
+  void createRegistration(long object_id,
         const string& auth_user,
         const string& user,
         const string& pass,
         const string& realm,
         const string& contact,
+        const string& registrar_server,
         const regType type);
   /** update registration in our list */
-  void updateRegistration(long subscriber_id,
+  void updateRegistration(long object_id,
         const string& auth_user,
         const string& user,
         const string& pass,
         const string& realm,
         const string& contact,
+        const string& registrar_server,
         const regType type);
 
   /** remove registration */
@@ -259,21 +259,21 @@ class DBRegAgent
 
   /** remove timer object */
   void removeRegistrationTimer(long object_id, const regType type);
-  
+
   /** handle timer object */
   void handleRegistrationTimer(long object_id, const regType type);
-
   /** handle registration scheduling */
   void handleRegistrationScheduling(long object_id, const std::string &auth_user,
                                     const std::string &user, const std::string &pass,
                                     const std::string &realm, const std::string &contact,
-                                    const regType type);
+                                    const string& registrar_server, const regType type);
 
   //  void run_tests();
 
   // amThread
   void run();
   void on_stop();
+  const char *identify() { return "DB reg agent"; }
 
   // AmEventHandler
   void process(AmEvent* ev);
@@ -289,13 +289,14 @@ class DBRegAgent
 
   void DIcreateRegistration(int object_id, const string& user,
           const string& pass, const string& realm,
-          const string& contact, const string& auth_user, const regType type, AmArg& ret);
+          const string& contact, const string& auth_user,
+          const regType type, const string& registrar_server, AmArg& ret);
   void DIupdateRegistration(int object_id, const string& user,
           const string& pass, const string& realm,
-          const string& contact, const string& auth_user, const regType type, AmArg& ret);
+          const string& contact, const string& auth_user,
+          const regType type, const string& registrar_server, AmArg& ret);
   void DIremoveRegistration(int object_id, const regType type, AmArg& ret);
   void DIrefreshRegistration(int object_id, const regType type, AmArg& ret);
-
 
  public:
   DBRegAgent(const string& _app_name);

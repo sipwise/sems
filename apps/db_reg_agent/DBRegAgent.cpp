@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <sstream>
+
 EXPORT_MODULE_FACTORY(DBRegAgent);
 DEFINE_MODULE_INSTANCE(DBRegAgent, MOD_NAME);
 
@@ -55,9 +57,9 @@ bool DBRegAgent::delete_failed_deregistrations = false;
 bool DBRegAgent::save_contacts = true;
 bool DBRegAgent::db_read_contact = false;
 string DBRegAgent::contact_hostport;
-bool DBRegAgent::username_with_domain = false;
 string DBRegAgent::outbound_proxy;
-
+string DBRegAgent::outbound_proxy_set_port;
+map<string, string> DBRegAgent::outbound_proxy_set;
 bool DBRegAgent::save_auth_replies = false;
 
 unsigned int DBRegAgent::error_retry_interval = 300;
@@ -88,6 +90,7 @@ DBRegAgent::~DBRegAgent() {
 
 int DBRegAgent::onLoad()
 {
+  string outbound_proxy_set_raw;
 
   DBG("loading db_reg_agent....\n");
 
@@ -161,15 +164,38 @@ int DBRegAgent::onLoad()
   db_read_contact =
     cfg.getParameter("db_read_contact", "no") == "yes";
 
-  username_with_domain =
-    cfg.getParameter("username_with_domain", "no") == "yes";
-
   save_auth_replies =
     cfg.getParameter("save_auth_replies", "no") == "yes";
 
   contact_hostport = cfg.getParameter("contact_hostport"); // host:port
 
   outbound_proxy = cfg.getParameter("outbound_proxy");
+  outbound_proxy_set_port = cfg.getParameter("outbound_proxy_set_port");
+  outbound_proxy_set_raw = cfg.getParameter("outbound_proxy_set");
+
+  if (!outbound_proxy_set_raw.empty() && !outbound_proxy_set_port.empty()) {
+    vector<std::string> tmp;
+    std::string buf;
+    std::stringstream ss(outbound_proxy_set_raw);
+
+    INFO("outbound_proxy_set = <%s>, outbound_proxy_set port = <%s>\n",
+          outbound_proxy_set_raw.c_str(), outbound_proxy_set_port.c_str());
+
+    /* each outbound proxy is delimited by ';' */
+    while (getline(ss, buf, ';')) tmp.push_back(buf);
+
+    for (auto it=tmp.begin(); it!=tmp.end(); ++it)
+    {
+      string row = *it;
+      string sip_int = row.substr(0, row.find(":"));
+      string sockets_list = row.substr(sip_int.length() + 1, row.length());
+
+      if (!sip_int.empty() && !sockets_list.empty())
+        outbound_proxy_set.insert(std::make_pair(sip_int, sockets_list));
+    }
+  } else {
+    INFO("outbound_proxy_set/outbound_proxy_set port is empty, outbound_proxy will be used instead\n");
+  }
 
   error_retry_interval = cfg.getParameterInt("error_retry_interval", 300);
   if (!error_retry_interval) {
@@ -195,7 +221,6 @@ int DBRegAgent::onLoad()
   mysql_db = cfg.getParameter("mysql_db", "sems");
 
   try {
-
     std::initializer_list<DBArgOption> args = {
       dbReconnectOption,          // if present = dbReconnectOption(true)
       dbConnectTimeoutOption(5),  // seconds
@@ -250,6 +275,7 @@ int DBRegAgent::onLoad()
     ERROR("REGISTER: loading registrations for subscribers from DB\n");
     return -1;
   }
+
   if (!loadRegistrationsPeerings()) {
     ERROR("REGISTER: loading registrations for peerings from DB\n");
     return -1;
@@ -302,7 +328,7 @@ bool DBRegAgent::loadRegistrations() {
         continue;
       }
 
-			DBG("REGISTER: Triggering for subscriber with object_id=<%ld>\n", object_id);
+      DBG("REGISTER: Triggering for subscriber with object_id=<%ld>\n", object_id);
 
       string contact_uri;
       if (db_read_contact && row[COLNAME_CONTACT] != mysqlpp::null) {
@@ -331,6 +357,7 @@ bool DBRegAgent::loadRegistrations() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
           scheduleRegistration(object_id, type);
         }; break;
@@ -343,6 +370,7 @@ bool DBRegAgent::loadRegistrations() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
 
           time_t dt_expiry = now_time;
@@ -389,6 +417,7 @@ bool DBRegAgent::loadRegistrations() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
           scheduleDeregistration(object_id, type);
         };
@@ -423,7 +452,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
       long object_id = row[COLNAME_PEER_ID];
 
       if (object_id == 0) {
-        WARN("REGISTER: object_id is NULL or 0 for this peering, skipping..\n");
+        WARN("REGISTER: object_id is 0 for this peering, skipping..\n");
         continue;
       }
 
@@ -456,6 +485,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
           scheduleRegistration(object_id, type);
         }; break;
@@ -468,6 +498,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
 
           time_t dt_expiry = now_time;
@@ -514,6 +545,7 @@ bool DBRegAgent::loadRegistrationsPeerings() {
                 (string)row[COLNAME_PASS],
                 (string)row[COLNAME_REALM],
                 contact_uri,
+                (string)row[COLNAME_REGISTRAR],
                 type);
           scheduleDeregistration(object_id, type);
         };
@@ -544,12 +576,12 @@ void DBRegAgent::handleRegistrationTimer(long object_id, const regType type) {
 void DBRegAgent::handleRegistrationScheduling(long object_id, const std::string &auth_user,
     const std::string &user, const std::string &pass,
     const std::string &realm, const std::string &contact,
-    const regType type)
+    const string& registrar_server, const regType type)
 {
     registrations_mut.unlock();
     WARN("updateRegistration - registration %ld %s@%s unknown, creating. Type: %s.\n",
         object_id, user.c_str(), realm.c_str(), TYPE_TO_STRING(type));
-    createRegistration(object_id, auth_user, user, pass, realm, contact, type);
+    createRegistration(object_id, auth_user, user, pass, realm, contact,registrar_server, type);
     scheduleRegistration(object_id, type);
 }
 
@@ -560,28 +592,53 @@ void DBRegAgent::createRegistration(long object_id,
             const string& pass,
             const string& realm,
             const string& contact,
+            const string& registrar_server, /* this is set to realm's value beforehand, if not given explicitly */
             const regType type) {
 
-  string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
-	DBG("REGISTER: authentication user picked out: <%s> \n", auth_user_temp.c_str());
+  /* can be outbound_proxy or the one from the outbound_proxy_set */
+  string proxy_to_use = outbound_proxy;
 
-  string _user = user;
-  if (username_with_domain && user.find('@')!=string::npos) {
-    _user = user.substr(0, user.find('@'));
+  /* a separate value `peer_auth_registrar_server` can be set, in this case
+   * set R-URI and To/From domains using it. Otherwise the `peer_auth_realm` will be used.
+   */
+  string domain_to_use = (registrar_server.empty() || registrar_server == "NULL") ? realm : registrar_server;
+
+  string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
+  DBG("REGISTER: authentication user picked out: <%s> \n", auth_user_temp.c_str());
+
+  /* if we have the outbound_proxy_set defined, try to use it instead */
+  if (!outbound_proxy_set.empty()) {
+    string contactIP = contact.substr(contact.find("@") + 1, contact.length());
+    contactIP = contactIP.substr(0, contactIP.find(":"));
+
+    for (auto it = outbound_proxy_set.begin(); it != outbound_proxy_set.end(); it++)
+    {
+      if (it->second.find(contactIP) != string::npos) {
+        if (!outbound_proxy_set_port.empty())
+          proxy_to_use = "sip:" + it->first + ":" + outbound_proxy_set_port;
+        else
+          proxy_to_use = "sip:" + it->first + ":" + DEFAULT_CONTACT_PORT;
+        DBG("The outbound proxy has been found in the outbound_proxy_set: <%s>\n", proxy_to_use.c_str());
+        break;
+      }
+    }
   }
 
-  string handle = AmSession::getNewId();
-  SIPRegistrationInfo reg_info(realm, _user,
-			       _user, // name
-			       auth_user_temp, // auth_user
-			       pass,
-			       outbound_proxy, // proxy
-			       contact // contact
-			       );
+  INFO("The outbound proxy which will be used to send a request: <%s>\n", proxy_to_use.c_str());
 
-  DBG(" >>> realm '%s', user '%s', auth_user '%s', pass '%s', outbound_proxy '%s', contact_uri '%s', type '%s'\n",
-      realm.c_str(), user.c_str(), auth_user.c_str(), pass.c_str(),
-      outbound_proxy.c_str(), contact.c_str(), TYPE_TO_STRING(type));
+  string handle = AmSession::getNewId();
+  SIPRegistrationInfo reg_info(realm,
+                                user,
+                                user,               // name
+                                auth_user_temp,     // auth_user
+                                pass,               // password
+                                proxy_to_use,       // realm
+                                contact,           // contact
+                                domain_to_use);  // value for R-URI and To/From domains
+
+  DBG("createRegistration: realm '%s', registrar '%s', user '%s', auth_user '%s', pass '%s', outbound_proxy '%s', contact_uri '%s', type '%s'\n",
+      realm.c_str(), domain_to_use.c_str(), user.c_str(), auth_user.c_str(), pass.c_str(),
+      proxy_to_use.c_str(), contact.c_str(), TYPE_TO_STRING(type));
 
   registrations_mut.lock();
   try {
@@ -591,7 +648,6 @@ void DBRegAgent::createRegistration(long object_id,
         registrations_peers.find(object_id) != registrations_peers.end())
     {
         handleRegistrationTimer(object_id, type);
-
     /* remove already existing for a usual subscriber */
     } else if (type != TYPE_PEERING &&
         registrations.find(object_id) != registrations.end())
@@ -650,22 +706,47 @@ void DBRegAgent::createRegistration(long object_id,
 }
 
 void DBRegAgent::updateRegistration(long object_id,
-				    const string& auth_user,
-				    const string& user,
-				    const string& pass,
-				    const string& realm,
+            const string& auth_user,
+            const string& user,
+            const string& pass,
+            const string& realm,
             const string& contact,
+            const string& registrar_server, /* this is set to realm's value beforehand, if not given explicitly */
             const regType type) {
 
+  /* can be outbound_proxy or the one from the outbound_proxy_set */
+  string proxy_to_use = outbound_proxy;
+
+  /* a separate value `peer_auth_registrar_server` can be set, in this case
+   * set R-URI and To/From domains using it. Otherwise the `peer_auth_realm` will be used.
+   */
+  string domain_to_use = (registrar_server.empty() || registrar_server == "NULL") ? realm : registrar_server;
+
+  registrations_mut.lock();
   string auth_user_temp = (auth_user.empty() || auth_user == "" || auth_user == "NULL") ? user : auth_user;
   DBG("REGISTER: authentication user picked out: <%s> \n", auth_user_temp.c_str());
 
-  string _user = user;
-  if (username_with_domain && user.find('@')!=string::npos) {
-    _user = user.substr(0, user.find('@'));
+  /* if we have the outbound_proxy_set defined, try to use it instead */
+  if (!outbound_proxy_set.empty()) {
+    string contactIP = contact.substr(contact.find("@") + 1, contact.length());
+    contactIP = contactIP.substr(0, contactIP.find(":"));
+
+    for (auto it = outbound_proxy_set.begin(); it != outbound_proxy_set.end(); it++)
+    {
+      if (it->second.find(contactIP) != string::npos) {
+        if (!outbound_proxy_set_port.empty())
+          proxy_to_use = "sip:" + it->first + ":" + outbound_proxy_set_port;
+        else
+          proxy_to_use = "sip:" + it->first + ":" + DEFAULT_CONTACT_PORT;
+        DBG("The outbound proxy has been found in the outbound_proxy_set: <%s>\n", proxy_to_use.c_str());
+        break;
+      }
+    }
   }
 
-  registrations_mut.lock();
+  DBG("updateRegistration: realm '%s', registrar '%s', user '%s', auth_user '%s', pass '%s', outbound_proxy '%s', contact '%s', type '%s'\n",
+      realm.c_str(), domain_to_use.c_str(), user.c_str(), auth_user.c_str(), pass.c_str(),
+      proxy_to_use.c_str(), contact.c_str(), TYPE_TO_STRING(type));
 
   map<long, AmSIPRegistration*>::iterator it = (type == TYPE_PEERING ? registrations_peers.find(object_id) : registrations.find(object_id));
 
@@ -673,32 +754,33 @@ void DBRegAgent::updateRegistration(long object_id,
   if (type == TYPE_PEERING &&
       it == registrations_peers.end())
   {
-    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type); /* unlocks */
+    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, registrar_server, type); /* unlocks */
     return;
 
   /* handle subscribers */
   } else if (type != TYPE_PEERING &&
       it == registrations.end())
   {
-    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, type); /* unlocks */
+    handleRegistrationScheduling(object_id, auth_user_temp, user, pass, realm, contact, registrar_server, type); /* unlocks */
     return;
   }
 
   bool need_reregister = it->second->getInfo().domain != realm
     || it->second->getInfo().auth_user != auth_user_temp
-    || it->second->getInfo().user != _user
+    || it->second->getInfo().user != user
     || it->second->getInfo().pwd  != pass
     || it->second->getInfo().contact != contact;
 
   string old_realm = it->second->getInfo().domain;
   string old_user = it->second->getInfo().user;
   string old_auth_user = it->second->getInfo().auth_user;
-  it->second->setRegistrationInfo(SIPRegistrationInfo(realm, _user,
-						      _user, // name
-						      auth_user_temp, // auth_user
-						      pass,
-						      outbound_proxy,   // proxy
-						      contact)); // contact
+  it->second->setRegistrationInfo(SIPRegistrationInfo(realm, user,
+                                                      user,                // name
+                                                      auth_user_temp,      // auth_user
+                                                      pass,                // password
+                                                      proxy_to_use,        // proxy
+                                                      contact,             // contact
+                                                      domain_to_use));  // registrar server (R-URI and From/To domains)
 
   registrations_mut.unlock();
 
@@ -815,12 +897,12 @@ void DBRegAgent::setRuriTransportContactBased(string& realm, string& contact) {
 void DBRegAgent::scheduleRegistration(long object_id, const regType type) {
   if (enable_ratelimiting) {
     registration_processor.
-    postEvent(new RegistrationActionEvent(RegistrationActionEvent::Register,
-                object_id, type));
+      postEvent(new RegistrationActionEvent(RegistrationActionEvent::Register,
+					    object_id, type));
   } else {
     // use our own thread
     postEvent(new RegistrationActionEvent(RegistrationActionEvent::Register,
-                object_id, type));
+					  object_id, type));
   }
   DBG("Added to pending actions: REGISTER of %ld, type: %s\n", object_id, TYPE_TO_STRING(type));
 }
@@ -830,11 +912,11 @@ void DBRegAgent::scheduleDeregistration(long object_id, const regType type) {
   if (enable_ratelimiting) {
     registration_processor.
       postEvent(new RegistrationActionEvent(RegistrationActionEvent::Deregister,
-                object_id, type));
+					    object_id, type));
   } else {
     // use our own thread
       postEvent(new RegistrationActionEvent(RegistrationActionEvent::Deregister,
-                object_id, type));
+					    object_id, type));
   }
   DBG("added to pending actions: DEREGISTER of %ld, type: %s\n", object_id, TYPE_TO_STRING(type));
 }
@@ -935,7 +1017,6 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
       {
           DBG("ignoring scheduled De-REGISTER of unknown registration %ld\n", reg_action_ev->object_id);
           marker = false;
-
       /* handle subscribers */
       } else if (reg_action_ev->type != TYPE_PEERING &&
           it == registrations.end())
@@ -965,7 +1046,7 @@ void DBRegAgent::onRegistrationActionEvent(RegistrationActionEvent* reg_action_e
       registrations_mut.unlock();
     } break;
 
-  case RegistrationActionEvent::Unknown:
+    case RegistrationActionEvent::Unknown:
     {
       DBG("Unknown action, cannot handle this in correct way.");
     } break;
@@ -993,7 +1074,7 @@ void DBRegAgent::createDBRegistration(long object_id, const regType type, mysqlp
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
       WARN("creating registration in DB with query '%s' failed: '%s', type: %s\n",
-          insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
+           insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
     }
   } catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
@@ -1004,15 +1085,17 @@ void DBRegAgent::createDBRegistration(long object_id, const regType type, mysqlp
 
 void DBRegAgent::deleteDBRegistration(long object_id, const regType type, mysqlpp::Connection& conn) {
 
-  string column_id = COLNAME_SUBSCRIBER_ID;
+	string column_id = COLNAME_SUBSCRIBER_ID;
   if (type == TYPE_PEERING) {
     column_id = COLNAME_PEER_ID;
   }
 
-  // depending on if that is a de-registration for a subscriber or for a peering
-  // do a mysql deletion
-  string insert_query = "delete from "+registrations_table+
-    " where " + column_id.c_str() + "=" + int2str(object_id) + ";";
+	// depending on if that is a de-registration for a subscriber or for a peering
+	// do a mysql deletion
+	string insert_query = "delete from "+registrations_table+
+		" where " + column_id.c_str() + "=" + int2str(object_id) + ";";
+
+  DBG("MYSQL: trying to execute: <%s>\n", insert_query.c_str());
 
   try {
     mysqlpp::Query query = conn.query();
@@ -1021,7 +1104,7 @@ void DBRegAgent::deleteDBRegistration(long object_id, const regType type, mysqlp
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
       WARN("removing registration in DB with query '%s' failed: '%s', type: %s\n",
-          insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
+           insert_query.c_str(), res.info(), TYPE_TO_STRING(type));
     }
   } catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
@@ -1049,7 +1132,8 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
     }
 
     if (update_ts) {
-      query << ", last_registration=NOW(), expiry=TIMESTAMPADD(SECOND," + int2str(expiry) + ", NOW())";
+      query << ", last_registration=NOW(), "
+	"expiry=TIMESTAMPADD(SECOND,"+int2str(expiry)+", NOW())";
     }
 
     if (update_contacts) {
@@ -1067,7 +1151,8 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
 
     mysqlpp::SimpleResult res = query.execute();
     if (!res) {
-      WARN("updating registration in DB with query '%s' failed: '%s'\n", query_str.c_str(), res.info());
+      WARN("updating registration in DB with query '%s' failed: '%s'\n",
+      query_str.c_str(), res.info());
     } else {
       if (!res.rows()) {
         // should not happen - DB entry is created on load or on createRegistration
@@ -1076,14 +1161,15 @@ void DBRegAgent::updateDBRegistration(mysqlpp::Connection& db_connection,
         query.reset();
         query << query_str;
 
-        mysqlpp::SimpleResult res = query.execute();
-        if (!res || !res.rows()) {
-          WARN("updating registration in DB with query '%s' failed: '%s'\n", query_str.c_str(), res.info());
+        mysqlpp::SimpleResult res_ = query.execute();
+        if (!res_ || !res_.rows()) {
+          WARN("updating registration in DB with query '%s' failed: '%s'\n",
+               query_str.c_str(), res_.info());
         }
       }
     }
 
-  }  catch (const mysqlpp::Exception& er) {
+  } catch (const mysqlpp::Exception& er) {
     // Catch-all for any MySQL++ exceptions
     ERROR("MySQL++ error: %s\n", er.what());
     return;
@@ -1121,7 +1207,6 @@ void DBRegAgent::onSipReplyEvent(AmSipReplyEvent* ev) {
   // if that is related to a peering type or subscriber type
   // now a basic attempt to first look into subscribers cache buckets then into
   // peerings cache buckets (can this happen that ltag will overlap? must be unique)
-
 
   // first try to find a registration object in a cache for subscribers (most common case)
   it=registration_ltags.find(local_tag);
@@ -1275,6 +1360,14 @@ void DBRegAgent::run() {
     processEvents();
   }
 
+  DBG("DBRegAgent done, removing all registrations from Event Dispatcher for subscribers...\n");
+  registrations_mut.lock();
+  for (map<string, long>::iterator it=registration_ltags.begin();
+       it != registration_ltags.end(); it++) {
+    AmEventDispatcher::instance()->delEventQueue(it->first);
+  }
+  registrations_mut.unlock();
+
   DBG("DBRegAgent done, removing all registrations from Event Dispatcher for peerings...\n");
   registrations_mut.lock();
   for (map<string, long>::iterator it=registration_ltags_peers.begin();
@@ -1310,7 +1403,6 @@ void DBRegAgent::setRegistrationTimer(long object_id, uint64_t timeout,
       it == registration_timers_peers.end())
   {
     marker = true;
-
   /* handle subscribers */
   } else if (type != TYPE_PEERING &&
       it == registration_timers.end())
@@ -1369,6 +1461,7 @@ void DBRegAgent::setRegistrationTimer(long object_id,
   {
     marker = true;
   }
+
 
   if (marker) {
     DBG("timer object for subscription %ld not found, type: %s\n", object_id, TYPE_TO_STRING(type));
@@ -1469,8 +1562,8 @@ void DBRegAgent::clearRegistrationTimer(long object_id, const regType type) {
     return;
   }
 
-  DBG("removing timer [%p] from scheduler\n", it->second);
 
+  DBG("removing timer [%p] from scheduler\n", it->second);
   /* remote_timer() in this case takes care to deallocate the timer object */
   registration_scheduler.remove_timer(it->second);
 
@@ -1537,9 +1630,9 @@ void DBRegAgent::timer_cb(RegTimer* timer) {
 }
 
 void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
-              const string& pass, const string& realm,
-              const string& contact, const string& auth_user,
-              const regType type, AmArg& ret) {
+				      const string& pass, const string& realm,
+				      const string& contact, const string& auth_user,
+				      const regType type, const string& registrar_server, AmArg& ret) {
 
   /* take care to properly set the transport parameter for the RURI of the REGISTER */
   string updated_realm = realm;
@@ -1561,16 +1654,16 @@ void DBRegAgent::DIcreateRegistration(int object_id, const string& user,
       object_id, auth_user_temp.c_str(), user.c_str(),
       pass.c_str(), updated_realm.c_str(), contact_uri.c_str());
 
-  createRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, type);
+  createRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, registrar_server, type);
   scheduleRegistration(object_id, type);
   ret.push(200);
   ret.push("OK");
 }
 
 void DBRegAgent::DIupdateRegistration(int object_id, const string& user,
-              const string& pass, const string& realm,
-              const string& contact, const string& auth_user,
-              const regType type, AmArg& ret)
+				      const string& pass, const string& realm,
+				      const string& contact, const string& auth_user,
+				      const regType type, const string& registrar_server, AmArg& ret)
 {
   string updated_realm = realm;
   string contact_uri = contact;
@@ -1591,7 +1684,7 @@ void DBRegAgent::DIupdateRegistration(int object_id, const string& user,
       object_id, auth_user_temp.c_str(), user.c_str(),
       pass.c_str(), updated_realm.c_str(), contact_uri.c_str());
 
-  updateRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, type);
+  updateRegistration(object_id, auth_user_temp, user, pass, updated_realm, contact_uri, registrar_server, type);
 
   ret.push(200);
   ret.push("OK");
@@ -1625,11 +1718,12 @@ void DBRegAgent::invoke(const string& method,
 {
   // create a brand new registration
   if (method == "createRegistration"){
-    args.assertArrayFmt("issssss"); // object_id, user, pass, realm, contact, auth_user, type
+    args.assertArrayFmt("isssssss"); // object_id, user, pass, realm, contact, auth_user, type, registrar_server
     string contact;
     string auth_user;
     string type_str;                   // 'peering' or 'subscriber'
     regType type = TYPE_UNDEFINED;
+    string registrar_server;       // specific value for a R-URI and To/From domain
 
     // for case when: object_id, user, pass, realm, contact
     if (args.size() == 5) {
@@ -1658,6 +1752,23 @@ void DBRegAgent::invoke(const string& method,
         else if (type_str == TYPE_SUBSCRIBER_STR)
           type = TYPE_SUBSCRIBER;
       }
+
+    // for case when: object_id, user, pass, realm, contact, auth_user, type, registrar_server
+    } else if (args.size() == 8) {
+      assertArgCStr(args.get(4));
+      assertArgCStr(args.get(5));
+      assertArgCStr(args.get(6));
+      contact = args.get(4).asCStr();
+      auth_user = args.get(5).asCStr();
+      type_str = args.get(6).asCStr();
+      /* handle types setting */
+      if (!type_str.empty()) {
+        if (type_str == TYPE_PEERING_STR)
+          type = TYPE_PEERING;
+        else if (type_str == TYPE_SUBSCRIBER_STR)
+          type = TYPE_SUBSCRIBER;
+      }
+      registrar_server = args.get(7).asCStr();
     }
 
     /* we only allow three possible types: 'peering', 'subscriber' and 'undefined'
@@ -1667,19 +1778,27 @@ void DBRegAgent::invoke(const string& method,
       WARN("REGISTER: Type of the registration object is undefined.\n");
     }
 
-    DBG("REGISTER: SEMS is about to Create a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s> \n",
-      args.get(0).asInt(), type_str.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+    /* if not given, just set to the realm value */
+    if (registrar_server.empty())
+      registrar_server = args.get(3).asCStr();
+
+    DBG("REGISTER: SEMS is about to Create a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s>, registrar=<%s>\n",
+          args.get(0).asInt(), type_str.c_str(),
+          args.get(1).asCStr(), args.get(3).asCStr(),
+          registrar_server.c_str());
 
     DIcreateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
-        args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, type, ret);
+                        args.get(2).asCStr(), args.get(3).asCStr(),
+                        contact, auth_user, type, registrar_server, ret);
 
   // update an existing registration
   } else if (method == "updateRegistration"){
-    args.assertArrayFmt("issssss"); // object_id, user, pass, realm, contact, auth_user, type
+    args.assertArrayFmt("isssssss"); // object_id, user, pass, realm, contact, auth_user, type, registrar_server
     string contact;
     string auth_user;
     string type_str;                   // 'peering' or 'subscriber'
     regType type = TYPE_UNDEFINED;
+    string registrar_server;       // specific value for a R-URI and To/From domain
 
     // for case when: object_id, user, pass, realm, contact
     if (args.size() == 5) {
@@ -1708,6 +1827,23 @@ void DBRegAgent::invoke(const string& method,
         else if (type_str == TYPE_SUBSCRIBER_STR)
           type = TYPE_SUBSCRIBER;
       }
+
+    // for case when: object_id, user, pass, realm, contact, auth_user, type, registrar_server
+    } else if (args.size() == 8) {
+      assertArgCStr(args.get(4));
+      assertArgCStr(args.get(5));
+      assertArgCStr(args.get(6));
+      contact = args.get(4).asCStr();
+      auth_user = args.get(5).asCStr();
+      type_str = args.get(6).asCStr();
+      /* handle types setting */
+      if (!type_str.empty()) {
+        if (type_str == TYPE_PEERING_STR)
+          type = TYPE_PEERING;
+        else if (type_str == TYPE_SUBSCRIBER_STR)
+          type = TYPE_SUBSCRIBER;
+      }
+      registrar_server = args.get(7).asCStr();
     }
 
     /* we only allow three possible types: 'peering', 'subscriber' and 'undefined'
@@ -1717,11 +1853,18 @@ void DBRegAgent::invoke(const string& method,
       WARN("REGISTER: Type of the registration object is undefined.\n");
     }
 
-    DBG("REGISTER: SEMS is about to Update a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s> \n",
-      args.get(0).asInt(), type_str.c_str(), args.get(1).asCStr(), args.get(3).asCStr());
+    /* if not given, just set to the realm value */
+    if (registrar_server.empty())
+      registrar_server = args.get(3).asCStr();
+
+    DBG("REGISTER: SEMS is about to Update a registration for: object_id=<%d>, type=<%s>, user=<%s>, realm=<%s>, registrar=<%s>\n",
+        args.get(0).asInt(), type_str.c_str(),
+        args.get(1).asCStr(), args.get(3).asCStr(),
+        registrar_server.c_str());
 
     DIupdateRegistration(args.get(0).asInt(), args.get(1).asCStr(),
-			 args.get(2).asCStr(), args.get(3).asCStr(), contact, auth_user, type, ret);
+			                  args.get(2).asCStr(), args.get(3).asCStr(),
+                        contact, auth_user, type, registrar_server, ret);
 
   // remove an existing registration
   } else if (method == "removeRegistration") {
@@ -1766,6 +1909,7 @@ void DBRegAgent::invoke(const string& method,
     ret.push(AmArg("updateRegistration"));
     ret.push(AmArg("removeRegistration"));
     ret.push(AmArg("refreshRegistration"));
+
   } else {
     throw AmDynInvoke::NotImplemented(method);
   }

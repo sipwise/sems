@@ -21,8 +21,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
@@ -36,43 +36,47 @@ using std::string;
 #include "AmUriParser.h"
 #include "AmSessionEventHandler.h"
 
-#define REGISTER_SEND_TIMEOUT 60 
+#define REGISTER_SEND_TIMEOUT 60
 
 struct SIPRegistrationInfo {
-  string domain;
   string user;
   string name;
-  string auth_user;
-  string pwd;
-  string proxy;
-  string contact;
+  string domain;            /* registration realm */
+  string registrar_server;  /* separate value for R-URI and To-From domain */
+  string auth_user;         /* authentication user */
+  string pwd;               /* password */
+  string proxy;             /* outbound proxy within NGCP */
+  string contact;           /* contact field */
 
   SIPRegistrationInfo(const string& domain,
-		      const string& user,
-		      const string& name,
-		      const string& auth_user,
-		      const string& pwd,
-		      const string& proxy,
-		      const string& contact)
-    : domain(domain),user(user),name(name),
-    auth_user(auth_user),pwd(pwd),proxy(proxy),contact(contact)
+          const string& user,
+          const string& name,
+          const string& auth_user,
+          const string& pwd,
+          const string& proxy,
+          const string& contact,
+          const string& registrar_server
+  ): domain(domain), user(user),
+     name(name), auth_user(auth_user),
+     pwd(pwd), proxy(proxy),
+     contact(contact), registrar_server(registrar_server)
   { }
 };
 
-class AmSIPRegistration 
+class AmSIPRegistration
 : public AmBasicSipEventHandler,
   public DialogControl,
   public CredentialHolder
-	
+
 {
-	
+
   AmBasicSipDialog dlg;
   UACAuthCred cred;
 
   SIPRegistrationInfo info;
 
-  // session to post events to 
-  string sess_link;      
+  // session to post events to
+  string sess_link;
 
   AmSessionEventHandler* seh;
 
@@ -81,9 +85,9 @@ class AmSIPRegistration
   AmUriParser server_contact;
   AmUriParser local_contact;
 
-  time_t reg_begin;	
+  time_t reg_begin;
   unsigned int reg_expires;
-  time_t reg_send_begin; 
+  time_t reg_send_begin;
 
   unsigned int expires_interval;
 
@@ -101,7 +105,7 @@ class AmSIPRegistration
 
   bool doRegistration();
   bool doUnregister();
-	
+
   bool timeToReregister(time_t now_sec);
   bool registerExpired(time_t now_sec);
   void onRegisterExpired();
@@ -114,15 +118,15 @@ class AmSIPRegistration
 
   // DialogControl if
   AmBasicSipDialog* getDlg() { return &dlg; }
-  // CredentialHolder	
+  // CredentialHolder
   UACAuthCred* getCredentials() { return &cred; }
 
   void onSipReply(const AmSipRequest& req,
-		  const AmSipReply& reply, 
+		  const AmSipReply& reply,
 		  AmBasicSipDialog::Status old_dlg_status);
 
   /** is this registration registered? */
-  bool active; 
+  bool active;
   /** should this registration be removed from container? */
   bool remove;
   /** are we waiting for the response to a register? */
@@ -136,7 +140,7 @@ class AmSIPRegistration
     RegisterExpired
   };
   /** return the state of the registration */
-  RegistrationState getState(); 
+  RegistrationState getState();
   /** return the expires left for the registration */
   unsigned int getExpiresLeft();
   /** return the expires TS for the registration */

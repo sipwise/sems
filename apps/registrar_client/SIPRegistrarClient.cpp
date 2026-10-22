@@ -337,7 +337,7 @@ string SIPRegistrarClient::createRegistration(const string& domain,
   instance()->
     postEvent(new SIPNewRegistrationEvent(SIPRegistrationInfo(domain, user, 
 							      name, auth_user, pwd, 
-							      proxy, contact),
+							      proxy, contact, domain),
 					  l_handle, sess_link));
 
   return l_handle;
