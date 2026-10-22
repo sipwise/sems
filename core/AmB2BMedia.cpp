@@ -862,6 +862,8 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
           }
 
           it->port = rtp_transport->getLocalRtpPort();
+          /* the media port is ours now, so must be the advertised RTCP one */
+          it->replaceRtcpAddress(rtp_transport->getLocalRtcpPort());
 
           if (!replaced_ports.empty()) {
             replaced_ports += "/";
@@ -917,6 +919,8 @@ void AmB2BMedia::replaceConnectionAddress(AmSdp &parser_sdp, bool a_leg,
           }
 
           it->port = rtp_transport->getLocalRtpPort();
+          /* the media port is ours now, so must be the advertised RTCP one */
+          it->replaceRtcpAddress(rtp_transport->getLocalRtcpPort());
 
           if (!replaced_ports.empty()) {
             replaced_ports += "/";

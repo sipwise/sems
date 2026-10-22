@@ -934,6 +934,24 @@ string SdpMedia::getAttribute(const string& name)
 }
 
 /**
+ * Advertise our own RTCP port instead of the one received from the remote
+ * party. To be called whenever the media port is replaced with a local one:
+ * the received "a=rtcp" then describes the remote party, while RFC 3605
+ * expects the sender's own RTCP port there.
+ */
+void SdpMedia::replaceRtcpAddress(unsigned int local_rtcp_port)
+{
+  /* print() emits the attribute only for a port flagged as explicitly given,
+   * and RtcpAddress::parse() is the only place setting that flag - hence the
+   * detour over a string */
+  rtcp_address_orig = RtcpAddress(int2str(local_rtcp_port));
+
+  /* the effective address was derived from the media port we have just
+   * replaced, so it describes the remote party as well */
+  rtcp_address = rtcp_address_orig;
+}
+
+/**
  * SDP body parser
  *
  * TODO: rework to deal with std::string and refactor user(s) accordingly.

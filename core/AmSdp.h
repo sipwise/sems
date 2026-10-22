@@ -286,6 +286,12 @@ struct SdpMedia
   string getAttribute(const string& name);
 
   bool hasRtcpMux() const { return rtcp_mux; }
+
+  /**
+   * Replace the RTCP address taken over from the remote SDP with our own port
+   */
+  void replaceRtcpAddress(unsigned int local_rtcp_port);
+
   /**
    * Remove attribute
    */
