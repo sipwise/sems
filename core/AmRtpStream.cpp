@@ -633,6 +633,13 @@ int AmRtpStream::init(const AmSdp& local,
   if (rtp_transport)
     rtp_transport->addStream(this);
 
+  /* Arm the RTP inactivity guard. AmB2BMedia arms it from resumeReceiving()
+   * for relayed streams; a stream carrying its own local media (RTP_Direct)
+   * never goes through that path and would otherwise be able to outlive its
+   * session unnoticed. */
+  if (rtp_timeout)
+    AmAppTimer::instance()->setTimer(&rtp_timer, rtp_timeout);
+
   return 0;
 }
 
@@ -1166,7 +1173,8 @@ void AmRtpStream::onRtpTimeout()
   if (!session)
     return;
 
-  if (!rtp_transport || !rtp_transport->getLocalRtpPort() || hold || !receiving) {
+  if (!monitor_rtp_timeout || !rtp_transport || !rtp_transport->getLocalRtpPort()
+      || hold || !receiving) {
     AmAppTimer::instance()->setTimer(&rtp_timer,rtp_timeout);
     return;
   }
