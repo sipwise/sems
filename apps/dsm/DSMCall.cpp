@@ -640,8 +640,12 @@ void DSMCall::process(AmEvent* event)
     /* get reply via B2BSipReplyEvent (we know event's id, hence can surely cast it) */
     AmSipReply& reply = (static_cast<B2BSipReplyEvent*>(b2b_ev))->reply;
 
-    string pai_from_hdr = getVar(DSM_B2B_BUILD_PAI_FROM_HDR);
-    string mark_dsm = getVar(DSM_B2B_MARK_DSM_FOR_UPDATES);
+    string pai_from_hdr = getVar(DSM_B2B_BUILD_PAI_FROM_HDR); /* e.g. P-COLP-Identity */
+
+    /* DSM specific headers and states */
+    string mark_dsm = getVar(DSM_B2B_MARK_DSM);               /* e.g. `play-and-connect` */
+    string mark_dsm_pai = getVar(DSM_B2B_MARK_PAI);           /* e.g. `updating` */
+    string mark_dsm_connected = getVar(DSM_B2B_MARK_STATE);   /* e.g. `connected` */
     string hdrs;
 
     /* add P-Asserted-Identity */
@@ -658,11 +662,32 @@ void DSMCall::process(AmEvent* event)
         DBG("Impossible to get the value of '%s'.\n", pai_from_hdr.c_str());
       }
     }
-    /* add P-DSM-App */
+
+    /* add DSM specific header */
     if (!mark_dsm.empty()) {
-      DBG("Passing '%s' with value '%s' to B2BSipReply handling.\n", SIP_HDR_P_DSM_APP, mark_dsm.c_str());
-      hdrs += SIP_HDR_COLSP(SIP_HDR_P_DSM_APP) + mark_dsm + CRLF;
+      string dsm_hdr = SIP_HDR_COLSP(SIP_HDR_P_DSM_APP) + mark_dsm;
+
+      /* PAI related state
+       * TODO: handle only for 18X replies? */
+      if (!mark_dsm_pai.empty()) {
+        dsm_hdr += ";state=" + mark_dsm_pai;
+      }
+
+      /* general state, only when 2XX answer was given */
+      if (reply.code == 200 || reply.code == 202) {
+        if (!mark_dsm_pai.empty() && !mark_dsm_connected.empty()) {
+          dsm_hdr += "," + mark_dsm_connected;
+        } else if (!mark_dsm_connected.empty())
+        {
+          dsm_hdr += ";state=" + mark_dsm_connected;
+        }
+      }
+
+      hdrs += dsm_hdr + CRLF;
+
+      DBG("Passing DSM specific header with value '%s' to B2BSipReply handling.\n", dsm_hdr.c_str());
     }
+
     /* add headers if any */
     if (!hdrs.empty()) {
         b2b_ev->params["hdrs"] = std::move(hdrs);
