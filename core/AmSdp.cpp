@@ -458,6 +458,8 @@ bool AmSdp::parse(const string& sdp_copy)
 {
   if (sdp_copy.empty()) {
     WARN("Nothing to parse.\n");
+    /* remove all values already parsed before */
+    clear();
     return false;
   }
 
@@ -500,6 +502,9 @@ bool AmSdp::parse(const string& sdp_copy)
   sdp_parse_ice();
   sdp_parse_fingerprint();
   sdp_parse_ssrc();
+
+  if (parsed)
+    DBG("SDP parsing finished OK.\n");
 
   return parsed;
 }

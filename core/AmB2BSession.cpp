@@ -313,18 +313,22 @@ void AmB2BSession::addFakeSDPbasedOnPort(const AmMimeBody *src_sdp, AmMimeBody &
   /* create fake AmSdp from AmMimeBody */
   AmSdp fake_sdp;
   AmMimeBody fake_mimebody;
-  if (!fake_sdp.parse(src_sdp->getPayload()))
-  {
-    ILOG_DLG(L_WARN, "Failed to parse SDP.\n");
+  if (!fake_sdp.parse(src_sdp->getPayload())) {
+    WARN("SDP parsing failed, can't put the desired port value: '%u'!\n", desired_port);
+    DBG("Fall-back to the createFakeReply().\n");
+    createFakeReply(nullptr, new_body); /* create a brand new fake body */
     return;
   }
 
+  /* parsing into AmSdp is required only to set desired source port */
   for (auto it = fake_sdp.media.begin(); it != fake_sdp.media.end(); ++it)
   {
     it->port = desired_port;
   }
 
+  /* after rewriting the port, put the SDP back into AmMimeBody */
   sdp2body(fake_sdp, fake_mimebody);
+  /* based on that create a new body to be used in reply */
   createFakeReply(&fake_mimebody, new_body);
 }
 
@@ -392,6 +396,10 @@ void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
     return;
   }
 
+  if (!sdp) {
+    WARN("No application/sdp body found!\n");
+  }
+
   AmSipReply n_reply;
 
   /* local sdp, which was already learned before */
@@ -410,7 +418,7 @@ void AmB2BSession::acceptPendingInviteB2B(const AmSipRequest& invite)
     }
   }
 
-  if (remote_port > 0) {
+  if (remote_port > 0 && sdp) {
     ILOG_DLG(L_DBG, "Using remotely seen SDP port for faking this reply: '%d'\n", remote_port);
     addFakeSDPbasedOnPort(sdp, n_reply.body, remote_port);
   }
