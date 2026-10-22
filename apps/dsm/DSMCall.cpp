@@ -676,7 +676,7 @@ void DSMCall::process(AmEvent* event)
       /* general state, only when 2XX answer was given */
       if (reply.code == 200 || reply.code == 202) {
         if (!mark_dsm_pai.empty() && !mark_dsm_connected.empty()) {
-          dsm_hdr += "," + mark_dsm_connected;
+          dsm_hdr += "+" + mark_dsm_connected;
         } else if (!mark_dsm_connected.empty())
         {
           dsm_hdr += ";state=" + mark_dsm_connected;
