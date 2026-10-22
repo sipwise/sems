@@ -384,7 +384,9 @@ bool AmSdp::sdp_parse_rtcp()
         DBG("Re-setting rtcp address to '%s'\n", it->conn.address.c_str());
       }
 
-      it->rtcp_address.setPort(it->rtcp_address.getPort() + 1);
+      /* without a=rtcp, RTCP goes to RTP port + 1 */
+      if (it->port)
+        it->rtcp_address.setPort(it->port + 1);
     }
   }
   return true;

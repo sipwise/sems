@@ -199,4 +199,67 @@ FCTMF_SUITE_BGN(test_sdp) {
       fct_chk(sdp2.find("38004") == string::npos);
     } FCT_TEST_END();
 
+  /* no a=rtcp and no rtcp-mux: the remote RTCP port is the media port + 1 */
+  FCT_TEST_BGN(sdp_default_rtcp_port) {
+    const char* sdp1 =
+      "v=0\r\n"
+      "o=- 0 0 IN IP4 192.168.1.20\r\n"
+      "s=-\r\n"
+      "c=IN IP4 192.168.1.20\r\n"
+      "t=0 0\r\n"
+      "m=audio 61775 RTP/AVP 8\r\n"
+      "a=rtpmap:8 PCMA/8000\r\n"
+      "a=sendrecv\r\n";
+
+      AmSdp sdp;
+      fct_chk(sdp.parse((char *)sdp1));
+      fct_chk(sdp.media[0].rtcp_address.getPort() == 61776);
+
+      /* derived, not advertised - so it must not be printed back out */
+      string sdp2;
+      sdp.print(sdp2);
+      fct_chk(sdp2.find("a=rtcp:") == string::npos);
+    } FCT_TEST_END();
+
+  /* with rtcp-mux and no a=rtcp the RTCP port is the media port itself */
+  FCT_TEST_BGN(sdp_default_rtcp_port_muxed) {
+    const char* sdp1 =
+      "v=0\r\n"
+      "o=- 0 0 IN IP4 192.168.1.20\r\n"
+      "s=-\r\n"
+      "c=IN IP4 192.168.1.20\r\n"
+      "t=0 0\r\n"
+      "m=audio 40000 RTP/AVP 8\r\n"
+      "a=rtpmap:8 PCMA/8000\r\n"
+      "a=rtcp-mux\r\n"
+      "a=sendrecv\r\n";
+
+      AmSdp sdp;
+      fct_chk(sdp.parse((char *)sdp1));
+      fct_chk(sdp.media[0].hasRtcpMux());
+      fct_chk(sdp.media[0].rtcp_address.getPort() == 40000);
+
+      /* derived, not advertised - only a=rtcp-mux goes back out */
+      string sdp2;
+      sdp.print(sdp2);
+      fct_chk(sdp2.find("a=rtcp:") == string::npos);
+      fct_chk(sdp2.find("a=rtcp-mux\r\n") != string::npos);
+    } FCT_TEST_END();
+
+  /* a rejected media line keeps a zeroed RTCP port, not port 1 */
+  FCT_TEST_BGN(sdp_default_rtcp_port_rejected) {
+    const char* sdp1 =
+      "v=0\r\n"
+      "o=- 0 0 IN IP4 192.168.1.20\r\n"
+      "s=-\r\n"
+      "c=IN IP4 192.168.1.20\r\n"
+      "t=0 0\r\n"
+      "m=audio 0 RTP/AVP 8\r\n"
+      "a=rtpmap:8 PCMA/8000\r\n";
+
+      AmSdp sdp;
+      fct_chk(sdp.parse((char *)sdp1));
+      fct_chk(sdp.media[0].rtcp_address.getPort() == 0);
+    } FCT_TEST_END();
+
 } FCTMF_SUITE_END();
