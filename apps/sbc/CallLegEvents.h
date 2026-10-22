@@ -73,6 +73,7 @@ struct ReconnectLegEvent: public ReliableB2BEvent
 
   unsigned int r_cseq;
   bool relayed_invite;
+  string call_id; /* of the one who gets reconnected */
 
   AmB2BMedia *media; // avoid direct access to this
   AmB2BSession::RTPRelayMode rtp_mode;
@@ -90,7 +91,8 @@ struct ReconnectLegEvent: public ReliableB2BEvent
     media(NULL),
     rtp_mode(AmB2BSession::RTP_Direct),
     session_tag(tag),
-    role(B) // we have relayed_invite (only in A leg) thus reconnect as regular B leg
+    role(B), // we have relayed_invite (only in A leg) thus reconnect as regular B leg,
+    call_id(relayed_invite.callid)
   { setSender(tag); }
 
   ReconnectLegEvent(Role _role, const string &tag, const string &_hdrs, const AmMimeBody &_body):
@@ -104,6 +106,8 @@ struct ReconnectLegEvent: public ReliableB2BEvent
     session_tag(tag),
     role(_role)
   { setSender(tag); }
+
+  string getReplaceCallId() { return call_id; }
 
     virtual ~ReconnectLegEvent() { if (media) media->releaseReference(); }
 };
