@@ -320,34 +320,41 @@ sip_trans* trans_bucket::match_reply(sip_msg* msg)
 
 sip_trans* trans_bucket::match_200_ack(sip_trans* t, sip_msg* msg)
 {
-    sip_from_to* from = dynamic_cast<sip_from_to*>(msg->from->p);
-    sip_from_to* to = dynamic_cast<sip_from_to*>(msg->to->p);
-    sip_cseq* cseq = dynamic_cast<sip_cseq*>(msg->cseq->p);
+  /* cast values from the received ACK */
+  sip_from_to* from = dynamic_cast<sip_from_to*>(msg->from->p);
+  sip_from_to* to = dynamic_cast<sip_from_to*>(msg->to->p);
+  sip_cseq* cseq = dynamic_cast<sip_cseq*>(msg->cseq->p);
 
-    assert(from && to && cseq);
+  assert(from && to && cseq);
 
-    sip_from_to* t_from = dynamic_cast<sip_from_to*>(t->msg->from->p);
-    if(!t_from || from->tag.len != t_from->tag.len)
-	return NULL;
-    
-    sip_cseq* t_cseq = dynamic_cast<sip_cseq*>(t->msg->cseq->p);
-    if(!t_cseq || cseq->num != t_cseq->num)
-	return NULL;
+  /* cast values from the transaction being matched */
+  sip_from_to* t_from = dynamic_cast<sip_from_to*>(t->msg->from->p);
+  sip_from_to* t_to = dynamic_cast<sip_from_to*>(t->msg->to->p);
+  sip_cseq* t_cseq = dynamic_cast<sip_cseq*>(t->msg->cseq->p);
 
-    if(msg->callid->value.len != t->msg->callid->value.len)
-	return NULL;
+  if (from->tag.len != t_from->tag.len)
+    return NULL;
 
-    if(c2stlstr(to->tag) != t->to_tag)
-	return NULL;
-    
-    if(memcmp(from->tag.s,t_from->tag.s,from->tag.len))
-	return NULL;
+  if (cseq->num != t_cseq->num)
+    return NULL;
 
-    if(memcmp(msg->callid->value.s,t->msg->callid->value.s,
-	      msg->callid->value.len))
-	return NULL;
-    
-    return t;
+  if (msg->callid->value.len != t->msg->callid->value.len)
+    return NULL;
+
+  if (!t->to_tag.empty() && c2stlstr(to->tag) != t->to_tag)
+    return NULL;
+  /* as a fallback in case of t->to_tag zero length
+   * use To tag from the transaction's msg struct */
+  else if (t->to_tag.empty() && c2stlstr(to->tag) != c2stlstr(t_to->tag))
+    return NULL;
+
+  if (memcmp(from->tag.s, t_from->tag.s, from->tag.len))
+    return NULL;
+
+  if (memcmp(msg->callid->value.s, t->msg->callid->value.s, msg->callid->value.len))
+    return NULL;
+
+  return t;
 }
 
 sip_trans* trans_bucket::match_1xx_prack(sip_msg* msg)
