@@ -1238,6 +1238,27 @@ void SBCCallLeg::onCallConnected(const AmSipReply& reply) {
   }
 }
 
+void SBCCallLeg::onPeerReplaced(const string &peer_hdrs)
+{
+  /* After a supervision pickup (or an unpark) our remote party is not the one
+   * from the initial INVITE of this call any more. Remember who it is now, so
+   * that call control modules building a follow-up call (cc_xfer) do not
+   * describe this call with the party which is no longer in it. */
+  string uuid = getHeader(peer_hdrs, SIP_HDR_P_CALLER_UUID, true);
+  string device_id = getHeader(peer_hdrs, SIP_HDR_P_NGCP_CALLER_DEVICE_ID, true);
+
+  if (uuid.empty() && device_id.empty()) {
+    ILOG_DLG(L_DBG, "no new peer identity in the reconnect INVITE, keeping "
+             "the one derived from the initial call\n");
+    return;
+  }
+
+  ILOG_DLG(L_DBG, "new peer identity: uuid '%s', device '%s'\n",
+           uuid.c_str(), device_id.c_str());
+
+  setReplacedPeerIdentity(uuid, device_id);
+}
+
 int SBCCallLeg::onSdpCompleted(const AmSdp& local, const AmSdp& remote) {
 
   for (vector<ExtendedCCInterface*>::iterator i = cc_ext.begin();

@@ -79,6 +79,13 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   SBCCallProfile call_profile;
 
+  // Identity of the party this leg got connected to on a reconnect (supervision
+  // pickup, unpark). Consumed by cc_xfer to describe a follow-up call with the
+  // party currently in the call instead of the one from the initial INVITE.
+  // Written only by onPeerReplaced(), so it stays scoped to that scenario.
+  string replaced_peer_uuid;
+  string replaced_peer_device_id;
+
   // Rate limiting
   unique_ptr<RateLimit> rtp_relay_rate_limit;
   AmArg rtp_bw_limit_event; // event to be logged for reached bandwidth limit
@@ -131,6 +138,10 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
 
   /** handler called when the second leg is connected */
   virtual void onCallConnected(const AmSipReply& reply);
+
+  /** remember the identity of the party we got connected to on reconnect,
+   * @see CallLeg::onPeerReplaced() */
+  virtual void onPeerReplaced(const string &peer_hdrs);
 
   /** Call-backs used by RTP stream(s)
    *  Note: these methods will be called from the RTP receiver thread.
@@ -187,6 +198,20 @@ class SBCCallLeg : public CallLeg, public CredentialHolder
   }
 
   SBCCallProfile &getCallProfile() { return call_profile; }
+
+  /** Identity of the party this leg got connected to on a reconnect (pickup,
+   * unpark). Set only by onPeerReplaced(), read by cc_xfer; returns false when
+   * no reconnect happened and the stored identity is empty. */
+  void setReplacedPeerIdentity(const string &uuid, const string &device_id) {
+    replaced_peer_uuid = uuid;
+    replaced_peer_device_id = device_id;
+  }
+  bool getReplacedPeerIdentity(string &uuid, string &device_id) const {
+    uuid = replaced_peer_uuid;
+    device_id = replaced_peer_device_id;
+    return !replaced_peer_uuid.empty() || !replaced_peer_device_id.empty();
+  }
+
   CallStatus getCallStatus() { return CallLeg::getCallStatus(); }
 
   /** 

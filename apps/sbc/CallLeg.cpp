@@ -874,6 +874,7 @@ void CallLeg::onB2BReconnect(ReconnectLegEvent* ev)
   }
 
   setOtherId(ev->session_tag);
+  onPeerReplaced(ev->hdrs);
   if (ev->role == ReconnectLegEvent::A) a_leg = true;
   else a_leg = false;
   // FIXME: What about calling SBC CC modules in this case? Original CC

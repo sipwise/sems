@@ -195,6 +195,12 @@ class CallLeg: public AmB2BSession
     void onB2BReconnect(ReconnectLegEvent *e);
     void onB2BReplace(ReplaceLegEvent *e);
     void onB2BReplaceInProgress(ReplaceInProgressEvent *e);
+
+    /** Called from onB2BReconnect() once this leg has been connected to another
+     * remote party (call pickup, unpark, transfer). Gives the upper layer a
+     * chance to refresh whatever it derived from the previous peer.
+     * @param peer_hdrs headers of the INVITE of the leg we got connected to */
+    virtual void onPeerReplaced(const string &peer_hdrs) { }
     void b2bInitial1xx(AmSipReply& reply, bool forward);
     void b2bInitial2xx(AmSipReply& reply, bool forward);
     void b2bInitialErr(AmSipReply& reply, bool forward);
