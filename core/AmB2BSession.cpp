@@ -572,6 +572,17 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
               /* TODO: save until trans is finished? */
               return;
             }
+
+            if (dlg->uasInvite2xxAckPending()) {
+              /* we still owe/await the ACK for a 2xx we sent this leg;
+               * refreshing now would re-INVITE it on top of an unfinished
+               * transaction. Defer until the ACK arrives. */
+              ILOG_DLG(L_DBG, "changed session, but awaiting ACK for our 2xx - "
+                  "deferring re-INVITE until it arrives\n");
+              deferEstablishedReInvite();
+              return;
+            }
+
             ILOG_DLG(L_DBG, "session description changed - refreshing\n");
             if (sendEstablishedReInvite() < 0) {
                 ILOG_DLG(L_ERR, "could not re-Invite after locally initiated request"
@@ -1247,6 +1258,12 @@ bool AmB2BSession::refresh(int flags) {
   // refresh with re-INVITE
   if (dlg->getUACInvTransPending()) {
     ILOG_DLG(L_DBG, "INVITE transaction pending - not refreshing now\n");
+    return false;
+  }
+  if (dlg->uasInvite2xxAckPending()) {
+    /* still awaiting the ACK for a 2xx we sent this leg; refreshing now would
+     * re-INVITE it on top of an unfinished transaction */
+    ILOG_DLG(L_DBG, "awaiting ACK for our 2xx - not refreshing now\n");
     return false;
   }
   return sendEstablishedReInvite() == 0;

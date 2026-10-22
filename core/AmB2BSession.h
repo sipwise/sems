@@ -196,6 +196,14 @@ private:
    */
   bool sip_relay_only;
 
+  /** The other leg changed the session description while this leg still owed
+   *  an ACK for a 2xx we sent it (uasInvite2xxAckPending): a refreshing
+   *  re-INVITE now would land on top of an unfinished transaction. Ask the
+   *  session to defer it until that ACK arrives. Only overridden where it can
+   *  actually be carried out (CallLeg); the base does nothing, so plain
+   *  AmB2BSession legs keep no dangling state. */
+  virtual void deferEstablishedReInvite() { }
+
   bool a_leg;
 
   bool terminate_rtp;

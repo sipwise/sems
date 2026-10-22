@@ -278,11 +278,17 @@ class CallLeg: public AmB2BSession
 
     // returns false if there is a pending INVITE so the session can not be
     // changed right now
-    bool canUpdateSession() { return !(dlg->getUACInvTransPending() || dlg->getUASPendingInv()); }
+    bool canUpdateSession();
     void applyPendingUpdate();
     void updateSession(SessionUpdate *op);
 
     virtual void onTransFinished();
+
+    /** @see AmB2BSession::deferEstablishedReInvite(): remember that the
+     * established re-INVITE has to wait for the outstanding ACK; it is fired
+     * from onTransFinished() once the transaction is over */
+    virtual void deferEstablishedReInvite() { pending_established_reinvite = true; }
+    bool pending_established_reinvite;
 
   protected:
 

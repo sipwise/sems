@@ -46,6 +46,17 @@ protected:
   // Number of open UAS INVITE transactions
   unsigned int pending_invites;
 
+  // CSeq of the INVITE we answered with a 2xx as UAS and whose ACK we are
+  // still waiting for, 0 if there is none. The INVITE transaction is already
+  // gone from uas_trans at that point (2xx terminates it, the ACK goes to the
+  // TU), so this is the only signal that the O/A is not finished and the leg
+  // must not be updated with a new re-INVITE until the ACK arrives.
+  // The CSeq is kept rather than a flag because nothing stops a remote from
+  // sending the next INVITE before it ACKs our 2xx: pending_invites is already
+  // decremented and the O/A is complete by then, so such an INVITE is not
+  // rejected with 491 and the ACK of the previous one must not open the leg up.
+  unsigned int uas_2xx_ack_cseq;
+
   AmSdp   sdp_local;
   AmSdp   sdp_remote;
 
@@ -101,6 +112,10 @@ protected:
 
   /** @return a pending UAS INVITE transaction or NULL */
   AmSipRequest* getUASPendingInv();
+
+  /** @return whether we sent a 2xx to an INVITE as UAS and are still
+   *  waiting for its ACK (the O/A is not finished yet) */
+  bool uasInvite2xxAckPending() const { return uas_2xx_ack_cseq != 0; }
 
   /**
    * Calls onSdpReceived on the session event handler

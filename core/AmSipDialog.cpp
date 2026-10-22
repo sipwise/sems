@@ -89,7 +89,7 @@ AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
   : AmBasicSipDialog(h),oa(this),rel100(this,h),
     offeranswer_enabled(true),
     early_session_started(false),session_started(false),
-    pending_invites(0),
+    pending_invites(0), uas_2xx_ack_cseq(0),
     sdp_local(), sdp_remote(), faked_183_as_200(false), force_early_announce(false)
 {
 }
@@ -101,6 +101,14 @@ AmSipDialog::~AmSipDialog()
 bool AmSipDialog::onRxReqSanity(const AmSipRequest& req)
 {
   if (req.method == SIP_METH_ACK) {
+    /* ACK for our 2xx received: the O/A is finished, the leg may be updated
+     * again. Only the ACK of the INVITE we are waiting for counts - an older
+     * one leaves the leg closed until the outstanding ACK arrives. Cleared
+     * before onTransFinished() so any pending update queued meanwhile is
+     * applied now. */
+    if (req.cseq == uas_2xx_ack_cseq)
+      uas_2xx_ack_cseq = 0;
+
     if(onRxReqStatus(req) && hdl)
       hdl->onSipRequest(req);
     return false;
@@ -368,8 +376,14 @@ void AmSipDialog::onReplyTxed(const AmSipRequest& req, const AmSipReply& reply)
   }
 
   if (reply.code >= 200) {
-    if(reply.cseq_method == SIP_METH_INVITE)
+    if(reply.cseq_method == SIP_METH_INVITE) {
 	pending_invites--;
+	/* a 2xx to an INVITE (as UAS) starts waiting for the ACK: the leg
+	 * must not be updated with a new re-INVITE until it arrives, even
+	 * though the INVITE transaction itself is already gone */
+	if (reply.code < 300)
+	  uas_2xx_ack_cseq = reply.cseq;
+    }
   }
 }
 
@@ -663,6 +677,10 @@ void AmSipDialog::uasTimeout(AmSipTimeoutEvent* to_ev)
   switch(to_ev->type){
   case AmSipTimeoutEvent::noACK:
     ILOG_DLG(L_DBG, "Timeout: missing ACK\n");
+    /* the ACK we were waiting for will never arrive - stop holding the leg
+     * back, the session is torn down by the handler below anyway */
+    if (to_ev->cseq == uas_2xx_ack_cseq)
+      uas_2xx_ack_cseq = 0;
     if (offeranswer_enabled) {
       oa.onNoAck(to_ev->cseq);
     }

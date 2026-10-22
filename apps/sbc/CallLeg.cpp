@@ -179,7 +179,8 @@ CallLeg::CallLeg(const CallLeg* caller, AmSipDialog* p_dlg, AmSipSubscription* p
     call_status(Disconnected),
     on_hold(false),
     hold(PreserveHoldStatus),
-    hold_type_requested(NonHold)
+    hold_type_requested(NonHold),
+    pending_established_reinvite(false)
 {
   a_leg = !caller->a_leg; // we have to be the complement
 
@@ -241,7 +242,8 @@ CallLeg::CallLeg(AmSipDialog* p_dlg, AmSipSubscription* p_subs)
     call_status(Disconnected),
     on_hold(false),
     hold(PreserveHoldStatus),
-    hold_type_requested(NonHold)
+    hold_type_requested(NonHold),
+    pending_established_reinvite(false)
 {
   a_leg = true;
 
@@ -1984,6 +1986,19 @@ int CallLeg::onSdpCompleted(const AmSdp& offer, const AmSdp& answer)
   return AmB2BSession::onSdpCompleted(offer, answer);
 }
 
+// returns false if there is a pending INVITE so the session can not be
+// changed right now
+bool CallLeg::canUpdateSession() {
+  /* Also refuse to update while we still owe / await an ACK for a 2xx we
+   * sent to an INVITE as UAS: the INVITE transaction is already gone from
+   * uas_trans (2xx terminates it), so getUASPendingInv() no longer sees
+   * it, but sending a re-INVITE now would reach the peer before it ACKed
+   * our 2xx - overlapping transactions on its side (e.g. a
+   * reconnect/pickup update fired right behind the fake 200 OK). */
+  return !(dlg->getUACInvTransPending() || dlg->getUASPendingInv()
+           || dlg->uasInvite2xxAckPending());
+}
+
 void CallLeg::applyPendingUpdate()
 {
   ILOG_DLG(L_DBG, "going to apply pending updates");
@@ -2017,6 +2032,15 @@ void CallLeg::onTransFinished()
 {
   ILOG_DLG(L_DBG, "UAC/UAS transaction finished");
   AmB2BSession::onTransFinished();
+
+  /* a session refresh was deferred because this leg owed an ACK for our 2xx
+   * earlier; now that the transaction is finished, fire it */
+  if (pending_established_reinvite && canUpdateSession()) {
+    pending_established_reinvite = false;
+    ILOG_DLG(L_DBG, "transaction finished, sending the deferred established re-INVITE\n");
+    if (sendEstablishedReInvite() < 0)
+      ILOG_DLG(L_ERR, "could not send the deferred established re-INVITE\n");
+  }
 
   if (pending_updates.empty() || !canUpdateSession()) return; // there is nothing we can do now
 
