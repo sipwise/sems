@@ -576,17 +576,19 @@ use_default_signature=yes
 #
 #100rel=require
 
-# ignore the route set from the 200 OK on PRACK? [yes, no]
+# strict route set update (RFC 3261)? [yes, no]
 #
-# yes  - strict RFC 3261: the route set is taken once when the dialog is
-#        created and not updated, and the remote tag is taken from the 200 OK
-#        on PRACK only if it was not already known.
-# no   - legacy behavior: the route set and remote tag are updated from the
-#        200 OK on PRACK.
+# yes  - the route set is taken once, from the first response that
+#        establishes the dialog (empty included); no provisional response
+#        rebuilds it (RFC 3261 13.2.2.1), and the 200 OK on PRACK neither
+#        rebuilds it nor overwrites a known remote tag (RFC 3262 4).  The
+#        final 2xx to INVITE always recomputes it (RFC 3261 13.2.2.4).
+# no   - the route set is also rebuilt from provisional 180/183 responses
+#        and from the 200 OK on PRACK.
 #
 # Default: no
 #
-#ignore_routeset_on_prack=yes
+#strict_routeset_update=yes
 
 # force the use of outbound interface? [yes, no]
 #
