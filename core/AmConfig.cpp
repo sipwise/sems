@@ -107,7 +107,7 @@ bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
 
 bool         AmConfig::SkipGenerateDirectionBoth = false;
-bool         AmConfig::IgnoreRouteSetOnPrack     = false;
+bool         AmConfig::StrictRoutesetUpdate      = false;
 
 #ifdef WITH_ZRTP
 bool         AmConfig::enable_zrtp             = true;
@@ -413,8 +413,8 @@ int AmConfig::readConfiguration()
     SkipGenerateDirectionBoth = (cfg.getParameter("skip_generate_direction_both") == "yes");
   }
 
-  if(cfg.hasParameter("ignore_routeset_on_prack")) {
-    IgnoreRouteSetOnPrack = (cfg.getParameter("ignore_routeset_on_prack") == "yes");
+  if(cfg.hasParameter("strict_routeset_update")) {
+    StrictRoutesetUpdate = (cfg.getParameter("strict_routeset_update") == "yes");
   }
 
   if(cfg.hasParameter("sip_nat_handling")) {

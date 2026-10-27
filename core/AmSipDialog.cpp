@@ -433,8 +433,12 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
           }
 
           /* we should always keep Route set for this leg updated in case
-             the provisional response updates the list of routes for any reason */
-          if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
+             the provisional response updates the list of routes for any
+             reason; strict_routeset_update skips it: a provisional
+             response that matches the dialog does not change its route
+             set (RFC 3261 13.2.2.1) */
+          if (!AmConfig::StrictRoutesetUpdate
+              && (reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
             ILOG_DLG(L_DBG, "<%d> Response code is processed, reset the Route set for the leg.\n",
                 reply.code);
             setRouteSet(reply.route);
@@ -498,8 +502,12 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
           setForcedEarlyAnnounce(isDSMEarlyAnnounceForced(reply.hdrs));
 
           /* we should always keep Route set for this leg updated in case
-             the provisional response updates the list of routes for any reason */
-          if ((reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
+             the provisional response updates the list of routes for any
+             reason; strict_routeset_update skips it: the dialog took its
+             route set from the first tagged response, a later
+             provisional does not change it (RFC 3261 13.2.2.1) */
+          if (!AmConfig::StrictRoutesetUpdate
+              && (reply.code == 180 || reply.code == 183) && !reply.route.empty()) {
             ILOG_DLG(L_DBG, "<%d> Response code is processed, reset the Route set for the leg.\n",
                 reply.code);
             setRouteSet(reply.route);
@@ -535,6 +543,9 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
         /* 200-299 */
         } else if(reply.code < 300) {
           setStatus(Connected);
+          /* RFC 3261 13.2.2.4: confirming an existing (early) dialog
+             recomputes the route set from this 2xx; it is the only piece
+             of dialog state recomputed at the transition to confirmed */
           setRouteSet(reply.route);
 
           /* reset faked 183, if was previously set and this is 200OK received in this leg */
@@ -598,13 +609,13 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
   /* PRACK */
   } else if (reply.cseq_method == SIP_METH_PRACK) {
     /* do not update call leg status for transactions not involving INVITE.
-     * With ignore_routeset_on_prack=yes the route set is taken once when the
-     * dialog is created and is not updated by the 200 OK on PRACK; the remote
-     * tag is still taken from the 200 OK on PRACK only if it was not already
-     * known. The default (no) keeps the legacy behavior of updating both from
-     * the 200 OK on PRACK.
+     * Under strict_routeset_update the 200 OK on PRACK neither rebuilds
+     * the route set (it belongs to the dialog, taken when it was
+     * established, 12.1.2; RFC 3262 4 gives this response no power to
+     * change it) nor overwrites a known remote tag.  The default (no)
+     * updates both from the 200 OK on PRACK.
      */
-    if (AmConfig::IgnoreRouteSetOnPrack) {
+    if (AmConfig::StrictRoutesetUpdate) {
       if (!reply.to_tag.empty() && getRemoteTag().empty()) {
         ILOG_DLG(L_DBG, "Taking remote tag (to tag) from PRACK 200 OK: '%s'.\n", reply.to_tag.c_str());
         setRemoteTag(reply.to_tag);
