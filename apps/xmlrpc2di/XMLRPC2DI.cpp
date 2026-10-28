@@ -35,6 +35,7 @@
 #include "TOXmlRpcClient.h"
 
 #include <exception>
+#include <climits>
 
 #define MOD_NAME "xmlrpc2di"
 
@@ -515,13 +516,13 @@ void XMLRPC2DIServer::on_stop() {
 void XMLRPC2DIServerCallsMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
   long res = AmSession::getSessionNum();
   DBG("XMLRPC2DI: calls = %ld\n", res);
-  result = res;
+  result = static_cast<long long>(res);
 }
 
 void XMLRPC2DIServerGetLoglevelMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
   long res = log_level;
   DBG("XMLRPC2DI: get_loglevel returns %ld\n", res);
-  result = res;
+  result = static_cast<long long>(res);
 }
 
 void XMLRPC2DIServerSetLoglevelMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
@@ -558,19 +559,19 @@ void XMLRPC2DIServerSetCPSLimitMethod::execute(XmlRpcValue& params, XmlRpcValue&
 void XMLRPC2DIServerGetCpsavgMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
   long l = AmSessionContainer::instance()->getAvgCPS();
   DBG("XMLRPC2DI: get_cpsavg returns %ld\n", l);
-  result = l;
+  result = static_cast<long long>(l);
 }
 
 void XMLRPC2DIServerGetCpsmaxMethod::execute(XmlRpcValue& params, XmlRpcValue& result) {
   long l = AmSessionContainer::instance()->getMaxCPS();
   DBG("XMLRPC2DI: get_cpsmax returns %ld\n", l);
-  result = l;
+  result = static_cast<long long>(l);
 }
 
 #define XMLMETH_EXEC(_meth, _sess_func, _descr)				\
   void _meth::execute(XmlRpcValue& params, XmlRpcValue& result) {	\
   unsigned long res = AmSession::_sess_func();				\
-  result = (long)res;							\
+  result = static_cast<long long>(res);					\
   DBG("XMLRPC2DI: " _descr "(): %lu\n", res);				\
 }
 
@@ -654,7 +655,9 @@ void XMLRPC2DIServer::xmlrpcval2amargarray(XmlRpcValue& v, AmArg& a,
 void XMLRPC2DIServer::xmlrpcval2amarg(XmlRpcValue& v, AmArg& a) {
   if (v.valid()) {
     switch (v.getType()) {
-    case XmlRpcValue::TypeLong:   {  /* DBG("X->A INT\n"); */ a = static_cast<long>(v);    }  break;
+    // values beyond the range of a long keep their width as AmArg::LongLong
+    case XmlRpcValue::TypeLong:   {  /* DBG("X->A INT\n"); */ long long ll = static_cast<long long>(v);
+                                     a = (ll < LONG_MIN || ll > LONG_MAX) ? AmArg(ll) : AmArg(static_cast<long>(ll)); }  break;
     case XmlRpcValue::TypeDouble:{  /*  DBG("X->A DBL\n"); */ a = static_cast<double>(v); }  break;
     case XmlRpcValue::TypeString:{  /*  DBG("X->A STR\n"); */ a = (static_cast<string>(v)).c_str(); }  break;
     case XmlRpcValue::TypeBoolean : { /*   DBG("X->A BOL\n"); */ a = static_cast<bool>(v);  }
@@ -692,7 +695,7 @@ void XMLRPC2DIServer::amarg2xmlrpcval(const AmArg& a,
   switch (a.getType()) {
 
   case AmArg::Undef:
-    result = static_cast<long>(0); // XmlRpcValue();
+    result = static_cast<long long>(0); // XmlRpcValue();
     break;
   
   case AmArg::Bool:  
@@ -705,7 +708,11 @@ void XMLRPC2DIServer::amarg2xmlrpcval(const AmArg& a,
 
   case AmArg::Int:
     //    DBG("a->X INT\n");  
-    result = static_cast<long>(a.asInt()); break;
+    result = static_cast<long long>(a.asInt()); break;
+
+  case AmArg::LongLong:
+    //    DBG("a->X LONGLONG\n");
+    result = a.asLongLong(); break;
 
   case AmArg::Double: 
     //    DBG("a->X DOUBLE\n");  

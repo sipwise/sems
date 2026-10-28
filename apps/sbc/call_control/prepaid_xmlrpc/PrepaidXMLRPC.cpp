@@ -288,7 +288,7 @@ long PrepaidXMLRPC::getCredit(string pin, bool& found) {
   found = xmlrpccall.execute("getCredit", xmlArg, result);
   long res = 0;
   if (found)
-    res = result;
+    res = static_cast<long long>(result);
   DBG("Credit Left '%ld' .\n", res);
   return res;
 }
@@ -303,12 +303,12 @@ long PrepaidXMLRPC::subtractCredit(string pin, long amount, bool& found) {
   XmlRpcValue xmlArg;
   xmlArg[0][0]["methodName"] = "subtractCredit";
   xmlArg[0][0]["pin"] = pin;
-  xmlArg[0][0]["amount"] = amount;
+  xmlArg[0][0]["amount"] = static_cast<long long>(amount);
   DBG("subtractCredit pin# '%s', Seconds '%ld'.\n", pin.c_str(), amount );
   found = xmlrpccall.execute("subtractCredit", xmlArg, result);
   long res = 0;
   if (found)
-    res = result;
+    res = static_cast<long long>(result);
   DBG("Credit Left '%ld' .\n", res);
   return res;
 }

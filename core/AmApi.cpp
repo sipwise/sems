@@ -30,6 +30,7 @@
 #include "log.h"
 #include "AmSession.h"
 #include "AmB2BMedia.h" // just because of statistics in reply to OPTIONS
+#include "AmSessionContainer.h"
 
 AmDynInvoke::AmDynInvoke() {}
 AmDynInvoke::~AmDynInvoke() {}
@@ -115,6 +116,7 @@ void AmSessionFactory::replyOptions(const AmSipRequest& req) {
     if (AmConfig::OptionsSessionLimit &&
 	(AmSession::getSessionNum() >= AmConfig::OptionsSessionLimit)) {
       // return error code if near to overload
+      AmSessionContainer::instance()->session_limit_rejects->inc();
       AmSipDialog::reply_error(req,
           AmConfig::OptionsSessionLimitErrCode, 
           AmConfig::OptionsSessionLimitErrReason,
