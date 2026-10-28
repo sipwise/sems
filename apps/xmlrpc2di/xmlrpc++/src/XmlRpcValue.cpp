@@ -9,6 +9,7 @@
 # include <ostream>
 # include <stdlib.h>
 # include <stdio.h>
+# include <stdint.h>
 #endif
 
 
@@ -25,6 +26,8 @@ namespace XmlRpc {
   static const char INT_TAG[]       = "<int>";
   static const char I4_TAG[]        = "<i4>";
   static const char I4_ETAG[]       = "</i4>";
+  static const char I8_TAG[]        = "<i8>";
+  static const char I8_ETAG[]       = "</i8>";
   static const char STRING_TAG[]    = "<string>";
   static const char DATETIME_TAG[]  = "<dateTime.iso8601>";
   static const char DATETIME_ETAG[] = "</dateTime.iso8601>";
@@ -145,7 +148,7 @@ namespace XmlRpc {
     bool result = false;
     if (typeTag == BOOLEAN_TAG)
       result = boolFromXml(valueXml, offset);
-    else if (typeTag == I4_TAG || typeTag == INT_TAG)
+    else if (typeTag == I4_TAG || typeTag == INT_TAG || typeTag == I8_TAG)
       result = longFromXml(valueXml, offset);
     else if (typeTag == DOUBLE_TAG)
       result = doubleFromXml(valueXml, offset);
@@ -222,7 +225,7 @@ namespace XmlRpc {
   {
     const char* valueStart = valueXml.c_str() + *offset;
     char* valueEnd;
-    long ivalue = strtol(valueStart, &valueEnd, 10);
+    long long ivalue = strtoll(valueStart, &valueEnd, 10);
     if (valueEnd == valueStart)
       return false;
 
@@ -235,12 +238,21 @@ namespace XmlRpc {
   std::string XmlRpcValue::longToXml() const
   {
     char buf[256];
-    snprintf(buf, sizeof(buf)-1, "%ld", std::get<long>(_value));
+    long long ivalue = std::get<long long>(_value);
+    snprintf(buf, sizeof(buf)-1, "%lld", ivalue);
     buf[sizeof(buf)-1] = 0;
     std::string xml = VALUE_TAG;
-    xml += I4_TAG;
-    xml += buf;
-    xml += I4_ETAG;
+    /* <i4> is 32-bit in XML-RPC; values that do not fit are encoded with
+     * the <i8> extension understood by common XML-RPC clients */
+    if (ivalue < INT32_MIN || ivalue > INT32_MAX) {
+      xml += I8_TAG;
+      xml += buf;
+      xml += I8_ETAG;
+    } else {
+      xml += I4_TAG;
+      xml += buf;
+      xml += I4_ETAG;
+    }
     xml += VALUE_ETAG;
     return xml;
   }
@@ -473,7 +485,7 @@ namespace XmlRpc {
     switch (_type) {
       default:           break;
       case TypeBoolean:  os << std::get<bool>(_value);        break;
-      case TypeLong:      os << std::get<long>(_value);        break;
+      case TypeLong:      os << std::get<long long>(_value); break;
       case TypeDouble:   os << std::get<double>(_value);      break;
       case TypeString:   os << std::get<std::string>(_value); break;
       case TypeDateTime:

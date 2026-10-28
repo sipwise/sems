@@ -74,7 +74,7 @@ long CCAcc::getCredit(string pin) {
    XmlRpcValue xmlArg;
    xmlArg[0] = pin;
    xmlrpccall.execute("getCredit", xmlArg, result);
-   long res = result;
+   long res = static_cast<long long>(result);
    DBG("Credit Left '%ld' .\n", res);
    return res;
 }
@@ -90,11 +90,11 @@ long CCAcc::subtractCredit(string pin, long amount) {
    XmlRpcValue xmlArg;
    xmlArg[0][0]["methodName"] = "subtractCredit";
    xmlArg[0][0]["pin"] = pin;
-   xmlArg[0][0]["amount"] = amount;
+   xmlArg[0][0]["amount"] = static_cast<long long>(amount);
    DBG("subtractCredit pin# '%s', Seconds '%ld'.\n", pin.c_str(),
 amount );
    xmlrpccall.execute("subtractCredit", xmlArg, result);
-   long res = result;
+   long res = static_cast<long long>(result);
    DBG("Credit Left '%ld' .\n", res);
    return res;
 }
