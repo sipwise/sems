@@ -54,8 +54,8 @@ namespace XmlRpc {
     //! Construct an XmlRpcValue with a bool value
     XmlRpcValue(bool value) : _type(TypeBoolean) { _value = value; }
 
-    //! Construct an XmlRpcValue with a long value
-    XmlRpcValue(long value)  : _type(TypeLong) { _value = value; }
+    //! Construct an XmlRpcValue with a long long value
+    XmlRpcValue(long long value)  : _type(TypeLong) { _value = value; }
 
     //! Construct an XmlRpcValue with a double value
     XmlRpcValue(double value)  : _type(TypeDouble) { _value = value; }
@@ -100,8 +100,8 @@ namespace XmlRpc {
     //! @param rhs The value in rhs is copied to this value.
     XmlRpcValue& operator=(XmlRpcValue const& rhs) = default;
 
-    //! Assign a long to this XmlRpcValue.
-    XmlRpcValue& operator=(long const& rhs) { return operator=(XmlRpcValue(rhs)); }
+    //! Assign a long long to this XmlRpcValue.
+    XmlRpcValue& operator=(long long const& rhs) { return operator=(XmlRpcValue(rhs)); }
 
     //! Assign a double to this XmlRpcValue.
     XmlRpcValue& operator=(double const& rhs) { return operator=(XmlRpcValue(rhs)); }
@@ -126,10 +126,10 @@ namespace XmlRpc {
     //! a type that is not TypeBoolean.
     operator bool&()          { assertTypeOrInvalid(TypeBoolean); return std::get<bool>(_value); }
 
-    //! Treat an XmlRpcValue as an int.
+    //! Treat an XmlRpcValue as a long long.
     //! Throws XmlRpcException if the value is initialized to
     //! a type that is not TypeLong.
-    operator long&()           { assertTypeOrInvalid(TypeLong); return std::get<long>(_value); }
+    operator long long&()         { assertTypeOrInvalid(TypeLong); return std::get<long long>(_value); }
 
     //! Treat an XmlRpcValue as a double.
     //! Throws XmlRpcException if the value is initialized to
@@ -245,7 +245,7 @@ namespace XmlRpc {
 
     // Type tag and values
     Type _type;
-    std::variant<std::monostate, bool, long, double, std::string, tm, BinaryData, ValueArray, ValueStruct> _value;
+    std::variant<std::monostate, bool, long long, double, std::string, tm, BinaryData, ValueArray, ValueStruct> _value;
 
   };
 } // namespace XmlRpc
