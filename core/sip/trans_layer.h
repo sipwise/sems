@@ -32,6 +32,7 @@
 #include "cstring.h"
 #include "singleton.h"
 #include "atomic_types.h"
+#include "AmStatistics.h"
 
 #include "parse_next_hop.h"
 
@@ -79,40 +80,49 @@ class msg_logger;
 class trans_stats
 {
   private:
-    atomic_int sent_requests;
-    atomic_int sent_replies;
-    atomic_int received_requests;
-    atomic_int received_replies;
-    atomic_int sent_reply_retrans;
-    atomic_int sent_request_retrans;
+    AtomicCounter& sent_requests;
+    AtomicCounter& sent_replies;
+    AtomicCounter& received_requests;
+    AtomicCounter& received_request_retransmits;
+    AtomicCounter& received_replies;
+    AtomicCounter& received_200_reply_retransmits;
+    AtomicCounter& sent_reply_retrans;
+    AtomicCounter& sent_request_retrans;
 
   public:
+    trans_stats();
 
     /** increment number of sent requests */
-    void inc_sent_requests() { sent_requests++; }
+    void inc_sent_requests() { sent_requests.inc(); }
 
     /** increment number of sent replies */
-    void inc_sent_replies() { sent_replies++; }
+    void inc_sent_replies() { sent_replies.inc(); }
 
     /** increment number of received requests */
-    void inc_received_requests() { received_requests++; }
+    void inc_received_requests() { received_requests.inc(); }
+
+    /** increment number of received requests retransmits */
+    void inc_received_requests_retransmits() { received_request_retransmits.inc(); }
 
     /** increment number of received replies */
-    void inc_received_replies() { received_replies++; }
+    void inc_received_replies() { received_replies.inc(); }
+
+    /** increment number of received 200 OK retransmits */
+    void inc_received_200_replies_retransmits() { received_200_reply_retransmits.inc(); }
 
     /** increment number of sent request retransmissions */
-    void inc_sent_request_retrans() { sent_request_retrans++; }
+    void inc_sent_request_retrans() { sent_request_retrans.inc(); }
 
     /** increment number of sent reply retransmissions */
-    void inc_sent_reply_retrans() { sent_reply_retrans++; }
+    void inc_sent_reply_retrans() { sent_reply_retrans.inc(); }
 
 
-    unsigned get_sent_requests() const { return sent_requests; }
-    unsigned get_sent_replies() const { return sent_replies; }
-    unsigned get_received_requests() const { return received_requests; }
-    unsigned get_received_replies() const { return received_replies; }
-    unsigned get_sent_request_retrans() const { return sent_request_retrans; }
-    unsigned get_sent_reply_retrans() const { return sent_reply_retrans; }
+    unsigned long long get_sent_requests() const { return sent_requests.get(); }
+    unsigned long long get_sent_replies() const { return sent_replies.get(); }
+    unsigned long long get_received_requests() const { return received_requests.get(); }
+    unsigned long long get_received_replies() const { return received_replies.get(); }
+    unsigned long long get_sent_request_retrans() const { return sent_request_retrans.get(); }
+    unsigned long long get_sent_reply_retrans() const { return sent_reply_retrans.get(); }
 };
 
 /** 

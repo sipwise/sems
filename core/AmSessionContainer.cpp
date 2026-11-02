@@ -52,6 +52,53 @@ AmSessionContainer::AmSessionContainer()
   max_cps(0),
   cps_samplerate(5)
 {
+  stat_group(Gauge, "core", "session_num")
+    .setHelp("number of running sessions")
+    .addFunctionCounter([]() -> unsigned long long { return AmSession::getSessionNum(); });
+
+  stat_group(Gauge, "core", "avg_session_num")
+    .setHelp("average number of running sessions since the process start")
+    .addFunctionCounter([]() -> unsigned long long { return AmSession::peekAvgSessionNum(); });
+
+  stat_group(Gauge, "core", "max_session_num")
+    .setHelp("maximum number of running sessions")
+    .setReset([]() { AmSession::updateMaxSessionNum(); })
+    .addFunctionCounter([]() -> unsigned long long { return AmSession::getMaxSessionNum(); });
+
+  stat_group(Gauge, "core", "dead_sessions_count")
+    .setHelp("sessions waiting to be cleaned up")
+    .addFunctionCounter([]() -> unsigned long long {
+      return AmSessionContainer::instance()->d_sessions.size();
+    });
+
+  stat_group(Gauge, "core", "cps_avg")
+    .setHelp("average calls per second over the last 5 seconds")
+    .addFunctionCounter([]() -> unsigned long long {
+      return AmSessionContainer::instance()->getAvgCPS();
+    });
+
+  stat_group(Gauge, "core", "cps_max")
+    .setHelp("maximum calls per second since the last reset")
+    .setReset([]() { AmSessionContainer::instance()->resetMaxCPS(); })
+    .addFunctionCounter([]() -> unsigned long long {
+      return AmSessionContainer::instance()->peekMaxCPS();
+    });
+
+  stat_group(Gauge, "core", "cps_limit_hard")
+    .setHelp("configured hard limit of calls per second")
+    .addFunctionCounter([]() -> unsigned long long {
+      return AmSessionContainer::instance()->getCPSLimit().first;
+    });
+
+  stat_group(Gauge, "core", "cps_limit_soft")
+    .setHelp("current soft limit of calls per second")
+    .addFunctionCounter([]() -> unsigned long long {
+      return AmSessionContainer::instance()->getCPSLimit().second;
+    });
+
+  session_limit_rejects = &stat_group(Counter, "core", "sessions_limit_rejects")
+    .setHelp("requests rejected by the calls-per-second or session limits")
+    .addAtomicCounter();
 }
 
 AmSessionContainer* AmSessionContainer::instance()
@@ -446,6 +493,18 @@ unsigned int AmSessionContainer::getMaxCPS()
   return res;
 }
 
+unsigned int AmSessionContainer::peekMaxCPS()
+{
+  lock_guard<AmMutex> lock(cps_mut);
+  return max_cps;
+}
+
+void AmSessionContainer::resetMaxCPS()
+{
+  lock_guard<AmMutex> lock(cps_mut);
+  max_cps = 0;
+}
+
 // we need the emergency_flag to mark emergency calls
 // and skip checking CPSLimit for them if the global policy is so
 // emergency_flag = True - do not run CPSLimit check for the call
@@ -506,6 +565,7 @@ AmSession* AmSessionContainer::createSession(const AmSipRequest& req,
 
   if (AmConfig::SessionLimit && AmConfig::SessionLimit <= AmSession::session_num) {
     DBG("session_limit %d reached. Not creating session.\n", AmConfig::SessionLimit);
+    session_limit_rejects->inc();
     AmSipDialog::reply_error(req,AmConfig::SessionLimitErrCode, AmConfig::SessionLimitErrReason);
     return NULL;
   }
