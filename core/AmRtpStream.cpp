@@ -561,6 +561,13 @@ int AmRtpStream::init(const AmSdp& local,
      * initialize remote_pt if not already there */
     if(pmt_it != pl_map.end() && (pmt_it->second.remote_pt < 0)){
       pmt_it->second.remote_pt = sdp_it->payload_type;
+
+      /* The codec is initialised from the local payload entry, so take the
+       * peer's format parameters into it, as calcAnswer() does on the
+       * incoming leg.  Without remote fmtp the local one is kept. */
+      if (!sdp_it->sdp_format_parameters.empty())
+        payloads[pmt_it->second.index].sdp_format_parameters =
+          sdp_it->sdp_format_parameters;
     }
   }
 
