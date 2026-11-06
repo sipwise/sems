@@ -577,6 +577,13 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
         } else if(reply.code < 300) { /* CANCEL rejected */
           ILOG_DLG(L_DBG, "CANCEL rejected/too late - bye()\n");
           setRemoteTag(reply.to_tag);
+          /* a dialog is established by a 2xx, or by a provisional carrying a
+           * To tag (RFC 3261 12.1), and BYE is sent in it right below, so the
+           * route set is taken from this response (12.1.2): the BYE and the
+           * ACK for the 2xx are routed along it.  A provisional without a tag
+           * establishes no dialog and changes nothing (13.2.2.1). */
+          if (reply.code >= 200 || !reply.to_tag.empty())
+            setRouteSet(reply.route);
           setStatus(Connected);
           bye();
           /* if for any reason BYE could not be sent,
@@ -590,6 +597,18 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
       case Connected:
 
         ILOG_DLG(L_DBG, "This is the Connected stage of the dialog.\n");
+
+        /* the DSM 183 with early-announce=force moved the dialog to Connected
+         * on a provisional; the 2xx that now confirms it is the response the
+         * dialog state comes from, route set included, empty as well (RFC 3261
+         * 13.2.2.4, 12.1.2).  The dialog is confirmed, so bye() must send BYE
+         * rather than the CANCEL the faked state calls for. */
+        if (getFaked183As200() && reply.code >= 200 && reply.code < 300) {
+          ILOG_DLG(L_DBG, "2xx confirming a dialog faked by an early-announce 183, "
+              "updating the route set.\n");
+          setRouteSet(reply.route);
+          setFaked183As200(false);
+        }
 
         /* treat 4XX class of responses for the faked connected state of the dlg
          * as those which finilize a DSM playback (check additionally P-DSM-App header)
