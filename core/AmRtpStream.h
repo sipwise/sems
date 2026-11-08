@@ -456,6 +456,13 @@ public:
   int getLastPayload() { return last_payload; }
   string getPayloadName(int payload_type);
 
+  /** The stream's payload entry for a payload type, the one its codec is
+   * initialised from, NULL when the stream does not know this payload
+   * type. Owned by the stream, valid until the next init() - copy it to
+   * keep. Carries the peer's format parameters where the peer supplied
+   * them. */
+  const Payload* getPayload(int payload_type);
+
   /**
    * send a DTMF as RTP payload (RFC4733)
    * @param event event ID (e.g. key press), see rfc
