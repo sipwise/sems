@@ -1071,6 +1071,17 @@ string AmRtpStream::getPayloadName(int payload_type)
   return string("");
 }
 
+const Payload* AmRtpStream::getPayload(int payload_type)
+{
+  for (PayloadCollection::const_iterator it = payloads.begin();
+       it != payloads.end(); ++it) {
+
+    if (it->pt == payload_type) return &(*it);
+  }
+
+  return NULL;
+}
+
 PacketMem::PacketMem()
   : cur_idx(0), n_used(0)
 {
