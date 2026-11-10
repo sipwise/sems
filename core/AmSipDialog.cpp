@@ -759,7 +759,10 @@ int AmSipDialog::bye(const string& hdrs, int flags)
     case Proceeding:
     case Early:
       if (getUACInvTransPending()) {
-        return cancel();
+        /* the hdrs belong on the request that performs the release,
+         * whichever method the state picks (Reason may travel on CANCEL
+         * too, RFC 3326 2) */
+        return cancel(hdrs);
       } else {
         for (TransMap::iterator it = uas_trans.begin();
              it != uas_trans.end();

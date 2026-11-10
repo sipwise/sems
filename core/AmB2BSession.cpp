@@ -472,6 +472,9 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
               dlg->getStatus() != AmBasicSipDialog::Connected) {
             ILOG_DLG(L_DBG, "not sip-relaying BYE in not connected dlg, b2b-relaying 200 OK\n");
             relayError(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
+            /* the caller may leave an early dialog with a BYE (RFC 3261 15);
+             * answer it above, then release this leg - CANCEL/BYE per its state */
+            terminateLeg();
             return;
           }
 
@@ -1071,6 +1074,21 @@ int AmB2BSession::relayEvent(AmEvent* ev)
   }
 
   return 0;
+}
+
+void AmB2BSession::onBye(const AmSipRequest& req)
+{
+  /* a BYE in an early dialog terminates the dialog's pending requests too:
+   * the UAS core MUST still answer the INVITE, 487 (Request Terminated)
+   * recommended (RFC 3261 15.1.2).  Nothing else closes it - on BYE receipt
+   * the dialog left the early states, where bye()/terminateEarly() are no-ops. */
+  if (AmSipRequest* inv = dlg->getUASPendingInv()) {
+    ILOG_DLG(L_DBG, "BYE in early dlg, terminating pending INVITE (CSeq %u) with 487\n",
+        inv->cseq);
+    dlg->reply(*inv, 487, "Request terminated");
+  }
+
+  AmSession::onBye(req);
 }
 
 void AmB2BSession::onOtherBye(const AmSipRequest& req)
