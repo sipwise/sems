@@ -483,7 +483,7 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             /* for now just answer with 200 OK, later on we must send CANCEL to the Early stage leg */
             sl_reply(req_ev->req.method, req_ev->req.cseq, true, 200, "OK");
           } else {
-            res = relaySip(req_ev->req); /* most requests get here */
+            res = relaySip(req_ev->req, req_ev->sip_flags); /* most requests get here */
           }
 
           if (res < 0) {
@@ -526,14 +526,14 @@ void AmB2BSession::onB2BEvent(B2BEvent* ev)
             AmSipReply n_reply(reply_ev->reply);
             n_reply.hdrs += SIP_HDR_COLSP(SIP_HDR_CONTACT) + reply_ev->reply.contact + CRLF;
 
-            if(relaySip(t_req->second,n_reply) < 0) {
+            if(relaySip(t_req->second,n_reply,reply_ev->sip_flags) < 0) {
               terminateOtherLeg();
               terminateLeg();
             }
 
           } else {
             /* relay response */
-            if (relaySip(t_req->second,reply_ev->reply) < 0) {
+            if (relaySip(t_req->second,reply_ev->reply,reply_ev->sip_flags) < 0) {
               terminateOtherLeg();
               terminateLeg();
             }
@@ -1282,7 +1282,7 @@ bool AmB2BSession::isOAMethod(const string& method) const {
     method == SIP_METH_PRACK;
 }
 
-int AmB2BSession::relaySip(const AmSipRequest& req)
+int AmB2BSession::relaySip(const AmSipRequest& req, int extra_flags)
 {
   AmMimeBody body(req.body);
 
@@ -1293,6 +1293,12 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
   {
     updateLocalBody(body);
   }
+
+  /* a relayed message is sent as-is (SDP-wise): only the endpoints' own SDP
+   * is rewritten here (updateLocalBody), nothing is generated for it unless a
+   * sender asked for it - see SIP_FLAGS_NO_SDP_GENERATION, which the sender
+   * passes in extra_flags (a message property, not guessed from the body). */
+  int relay_flags = SIP_FLAGS_VERBATIM | extra_flags;
 
   /* all methods apart ACK */
   if (req.method != "ACK") {
@@ -1328,7 +1334,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
 
     ILOG_DLG(L_DBG, "relaying SIP request %s %s\n", req.method.c_str(), req.r_uri.c_str());
 
-    int err = dlg->sendRequest(req.method, &body, *hdrs, SIP_FLAGS_VERBATIM);
+    int err = dlg->sendRequest(req.method, &body, *hdrs, relay_flags);
 
     if(err < 0){
       ILOG_DLG(L_ERR, "dlg->sendRequest() failed\n");
@@ -1361,7 +1367,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
 
     ILOG_DLG(L_DBG, "sending relayed 200 ACK\n");
 
-    int err = dlg->send_200_ack(t->first, &body, req.hdrs, SIP_FLAGS_VERBATIM);
+    int err = dlg->send_200_ack(t->first, &body, req.hdrs, relay_flags);
     if(err < 0) {
       ILOG_DLG(L_ERR, "dlg->send_200_ack() failed\n");
       return err;
@@ -1380,7 +1386,7 @@ int AmB2BSession::relaySip(const AmSipRequest& req)
   return 0;
 }
 
-int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply)
+int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply, int extra_flags)
 {
   const string* hdrs = &reply.hdrs;
   string m_hdrs;
@@ -1403,7 +1409,7 @@ int AmB2BSession::relaySip(const AmSipRequest& orig, const AmSipReply& reply)
 
   ILOG_DLG(L_DBG, "relaying SIP reply %u %s\n", reply.code, reply.reason.c_str());
 
-  int flags = SIP_FLAGS_VERBATIM;
+  int flags = SIP_FLAGS_VERBATIM | extra_flags;
   if(reply.to_tag.empty())
     flags |= SIP_FLAGS_NOTAG;
 

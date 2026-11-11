@@ -93,6 +93,13 @@ struct B2BSipRequestEvent: public B2BSipEvent
    *  before the other leg gets to see it. */
   bool skip_491;
 
+  /** AmBasicSipDialog send flags the sender asks the relayed request to be
+   *  sent with (eg. SIP_FLAGS_NO_SDP_GENERATION).  A message property, not a
+   *  session one: the application sets it per message, the relay carries it
+   *  across the legs to the dialog that finally sends the request.  0 keeps
+   *  the plain relay behaviour. */
+  int sip_flags = 0;
+
   B2BSipRequestEvent(const AmSipRequest& req, bool forward)
     : B2BSipEvent(B2BSipRequest,forward),
        req(req), skip_491(false)
@@ -105,6 +112,9 @@ struct B2BSipReplyEvent: public B2BSipEvent
   AmSipReply reply;
   string trans_method;
   string sender_ltag;
+
+  /** send flags for the relayed reply, see B2BSipRequestEvent::sip_flags. */
+  int sip_flags = 0;
 
  B2BSipReplyEvent(const AmSipReply& reply, bool forward,
 		  const string& trans_method, const string& sender_ltag)
@@ -239,11 +249,14 @@ private:
   /** reset relation with other leg */
   virtual void clear_other();
 
-  /** send a relayed SIP Request */
-  int relaySip(const AmSipRequest& req);
+  /** send a relayed SIP Request.
+   *  extra_flags - send flags the sender asks this message to carry, ORed
+   *  into the relay's own SIP_FLAGS_VERBATIM (see B2BSipRequestEvent::sip_flags).
+   *  0 (default) leaves the relay behaviour unchanged. */
+  int relaySip(const AmSipRequest& req, int extra_flags = 0);
 
-  /** send a relayed SIP Reply */
-  int relaySip(const AmSipRequest& orig, const AmSipReply& reply);
+  /** send a relayed SIP Reply, extra_flags as above. */
+  int relaySip(const AmSipRequest& orig, const AmSipReply& reply, int extra_flags = 0);
 
   /** generate fake body (c=0.0.0.0) reply */
   void createFakeReply(const AmMimeBody *sdp,   AmMimeBody& reply_body);
