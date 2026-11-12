@@ -458,8 +458,9 @@ int AmRtpStream::init(const AmSdp& local,
     }
   }
 
-  if (hook)
-    hook->initStream(local, remote, sdp_media_index);
+  Hook *h = hook;
+  if (h)
+    h->initStream(local, remote, sdp_media_index);
 
   const SdpMedia& local_media = local.media[sdp_media_index];
   const SdpMedia& remote_media = remote.media[remote_media_index];
@@ -694,7 +695,8 @@ void AmRtpStream::recvDtmfPacket(AmRtpPacket* p) {
 void AmRtpStream::bufferPacket(AmRtpPacket* p, sockaddr_storage& recv_addr)
 {
   // call hooks for received packet
-  if (hook) hook->receivedPacket(p);
+  Hook *h = hook;
+  if (h) h->receivedPacket(p);
 
   if (!receiving) {
 
@@ -900,7 +902,8 @@ void AmRtpStream::relay(AmRtpPacket* p)
   if (!relay_raw && !relay_transparent_ssrc)
     hdr->ssrc = htonl(l_ssrc);
 
-  if (hook) hook->relayedPacket(p);
+  Hook *h = hook;
+  if (h) h->relayedPacket(p);
 
   if(rtp_transport->sendRtp(p) == 0){
     if(session) session->onAfterRTPRelay(p, rtp_transport->getRemoteRtpSocket());
@@ -1201,7 +1204,5 @@ void AmRtpStream::onRtpTimeout()
 
 AmRtpStream::Hook *AmRtpStream::setHook(Hook *h)
 {
-  Hook *old = hook;
-  hook = h;
-  return old;
+  return hook.exchange(h);
 }
