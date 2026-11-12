@@ -7,7 +7,9 @@
 #include "AmMediaProcessor.h"
 #include "AmDtmfDetector.h"
 
+#include <deque>
 #include <map>
+#include <memory>
 
 class AmB2BSession;
 
@@ -113,11 +115,30 @@ class AudioStreamData: private AmRtpStream::Hook {
 
     void clearDtmfSink();
 
-    // RTP stream hooks
-    std::list<AmRtpStream::Hook*> hooks;
+    /** Subscribers of this stream's RTP and PCM events. Dispatch runs on
+     *  the RTP receiver threads (packet hooks, without the media mutex),
+     *  on the media processor thread (preEncode) or on the session thread
+     *  (initStream), the last two holding the media mutex. Every dispatch
+     *  walks a snapshot (getHooks) and never holds hooks_mut while a hook
+     *  runs; the snapshot's shared_ptr keeps a just-removed hook alive
+     *  until the callback using it returns - that is the promise
+     *  removeHook() makes. A preEncode or initStream callback must not
+     *  call AmB2BMedia::add/removeStreamHook: it would re-lock the
+     *  (non-recursive) media mutex already held by its own thread. */
+    typedef std::vector< std::shared_ptr<AmRtpStream::Hook> > HookList;
+    HookList hooks;
+    AmMutex hooks_mut;
+
+    /** Copy of the subscriber list for one dispatch (see hooks). */
+    HookList getHooks();
     virtual void receivedPacket(AmRtpPacket *p);
     virtual void relayedPacket(AmRtpPacket *p);
     virtual void initStream(const AmSdp& local, const AmSdp& remote, int media_idx);
+    // fan-out of the stream-level PCM tap to all subscribed hooks;
+    // refines 'from_input' (this stream's own input vs. the peer leg)
+    virtual void preEncode(unsigned char* buffer, unsigned int size,
+                           int sample_rate, bool from_input,
+                           unsigned long long ts, int payload_type);
 
   public:
     /** Creates data based on associated signaling leg data. */
@@ -208,7 +229,19 @@ class AudioStreamData: private AmRtpStream::Hook {
 
     void debug(std::ostream &out);
 
-    void addHook(AmRtpStream::Hook *h);
+    /** Subscribe to this stream's RTP and PCM events. The caller keeps
+     *  ownership of h, the list only holds a shared_ptr reference. The
+     *  subscription belongs to the media line, not to the session attached
+     *  to this leg: replacing the leg keeps the hooks on the new session's
+     *  media, until removeHook(). Returns false when h is already
+     *  installed. */
+    bool addHook(std::shared_ptr<AmRtpStream::Hook> h);
+
+    /** Uninstall a hook. Returns false when h is not installed here. Once
+     *  this returns true the caller may drop its reference: dispatches run
+     *  on snapshot copies holding their own references, so h stays alive
+     *  until the last callback using it returns. */
+    bool removeHook(std::shared_ptr<AmRtpStream::Hook> h);
 };
 
 /** \brief Class for control over media relaying and transcoding in a B2B session.
@@ -300,7 +333,7 @@ class AmB2BMedia: public AmMediaSession
       RelayStreamPair(AmB2BSession *_a, AmB2BSession *_b);
     };
 
-    typedef std::vector<AudioStreamPair>::iterator AudioStreamIterator;
+    typedef std::deque<AudioStreamPair>::iterator AudioStreamIterator;
     typedef std::vector<RelayStreamPair*>::iterator RelayStreamIterator;
     typedef std::vector<SdpMedia>::iterator SdpMediaIterator;
 
@@ -329,8 +362,12 @@ class AmB2BMedia: public AmMediaSession
      */
     PlayoutType playout_type;
 
-    /** audio relay/processing streams */
-    std::vector<AudioStreamPair>  audio;
+    /** audio relay/processing streams. A deque on purpose: AudioStreamData
+     *  registers itself as the hook of its AmRtpAudio and hands out pointers
+     *  to the sessions (onAudioStreamCreated), so growing the list on a
+     *  re-INVITE with more audio media must not move the pairs already in
+     *  it. */
+    std::deque<AudioStreamPair>  audio;
     /** raw relay streams */
     std::vector<RelayStreamPair*> relay_streams;
 
@@ -463,6 +500,16 @@ class AmB2BMedia: public AmMediaSession
     bool isMuted(bool a_leg) { if (a_leg) return a_leg_muted; else return b_leg_muted; }
 
     void setFirstStreamInput(bool a_leg, AmAudio *in);
+
+    /** Install/remove a hook on the audio stream of the given SDP media line.
+     *  media_idx is the 0-based index over all m= lines of the SDP, matching
+     *  AudioStreamPair::media_idx. The hook is kept as a shared_ptr, see
+     *  AudioStreamData::addHook/removeHook for the lifetime contract. add
+     *  returns false when no stream with that index exists or h is already
+     *  installed; remove returns false when no stream with that index exists
+     *  or h is not installed there. */
+    bool addStreamHook(bool a_leg, int media_idx, std::shared_ptr<AmRtpStream::Hook> h);
+    bool removeStreamHook(bool a_leg, int media_idx, std::shared_ptr<AmRtpStream::Hook> h);
     void createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con);
 
     /** enable or disable DTMF receiving on relay streams */
