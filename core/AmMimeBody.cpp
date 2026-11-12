@@ -634,7 +634,10 @@ void AmMimeBody::convertToMultipart()
   parts.push_back(n_part);
   ct = n_ct;
 
-  /* TODO: should we clear the original (root) payload when now having multi-part(s) stored? */
+  /* The payload has just become part 0: print() emits the root payload
+   * instead of the parts, so leaving it here hides every part - parse()
+   * keeps the same invariant, a multipart body carries content in parts. */
+  payload_s.clear();
 }
 
 void AmMimeBody::convertToSinglepart()
