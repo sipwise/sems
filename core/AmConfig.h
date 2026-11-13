@@ -40,6 +40,10 @@ using std::string;
 using std::map;
 using std::multimap;
 #include <utility>
+#include <atomic>
+using std::atomic;
+#include <memory>
+using std::shared_ptr;
 
 /**
  * \brief holds the current configuration.
@@ -226,8 +230,40 @@ struct AmConfig
   /** type of application selection (parsed from Application) */
   static ApplicationSelector AppSelect;
 
-  /* this is regex->application mapping is used if  App_MAPPING */
-  static RegexMappingVector AppMapping; 
+  /** the compiled rules of one app_mapping.conf read: the entries hold
+   * regex_t values, so they are released here with regfree(). Not copyable,
+   * a copy of a compiled regex would be released twice */
+  struct AppMappingRules {
+    RegexMappingVector rules;
+    AppMappingRules() = default;
+    AppMappingRules(const AppMappingRules&) = delete;
+    AppMappingRules& operator=(const AppMappingRules&) = delete;
+    ~AppMappingRules() { free_regex_mapping(rules); }
+  };
+
+  /** one read of the mapping file, see AmConfig::AppMapping */
+  typedef shared_ptr<const AppMappingRules> AppMappingRef;
+
+  /* this is regex->application mapping is used if  App_MAPPING. It is read
+   * through GetAppMapping() and swapped as a whole by ReloadAppMapping():
+   * the requests are matched against it while they are set up, so the
+   * contents of a snapshot never change and a snapshot is released once the
+   * last request matched against it is done */
+  static atomic<AppMappingRef> AppMapping;
+  /** two reloads reading the file in one order can swap it in the other,
+   * which leaves the rules of the earlier read in use: serialises them,
+   * matching a request does not take it */
+  static AmMutex app_mapping_mut;
+
+  /** the file the mapping is read from */
+  static string GetAppMappingFile();
+  /** the snapshot in use, empty as long as none was read */
+  static AppMappingRef GetAppMapping();
+  /** read the mapping file and swap it in, at startup and on demand.
+   * rules, if not NULL, receives the number of accepted rules. Returns false
+   * on a file which cannot be read or a rule which does not compile, the
+   * mapping in use is then left unchanged */
+  static bool ReloadAppMapping(size_t* rules = NULL);
 
 #ifdef WITH_ZRTP
   static bool enable_zrtp;
@@ -349,6 +385,9 @@ struct AmConfig
 
 /** Get the PF_INET address associated with the network interface */
 string fixIface2IP(const string& dev_name, bool v6_for_sip);
+
+/** register the 'app_mapping' DI interface, called at startup */
+void register_app_mapping_di();
 
 #endif
 
