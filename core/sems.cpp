@@ -629,6 +629,11 @@ int main(int argc, char* argv[])
   
   INFO("Loading plug-ins\n");
   AmPlugIn::instance()->init();
+
+  // before the modules are loaded: xmlrpc2di looks up the interfaces listed
+  // in direct_export while it is loaded itself
+  register_app_mapping_di();
+
   if(AmPlugIn::instance()->load(AmConfig::PlugInPath, AmConfig::LoadPlugins))
     goto error;
 

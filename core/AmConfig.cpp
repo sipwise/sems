@@ -41,6 +41,8 @@
 #include "AmConfigReader.h"
 #include "AmUtils.h"
 #include "AmSessionContainer.h"
+#include "AmApi.h"
+#include "AmPlugIn.h"
 #include "Am100rel.h"
 #include "sip/transport.h"
 #include "sip/resolver.h"
@@ -50,6 +52,8 @@
 
 #include <cctype>
 #include <algorithm>
+#include <mutex>
+#include <set>
 
 using std::make_pair;
 
@@ -101,7 +105,8 @@ unsigned int AmConfig::RtpKeepaliveFreq        = 0;
 bool         AmConfig::IgnoreRTPXHdrs          = false;
 string       AmConfig::Application             = "";
 AmConfig::ApplicationSelector AmConfig::AppSelect        = AmConfig::App_SPECIFIED;
-RegexMappingVector AmConfig::AppMapping;
+atomic<AmConfig::AppMappingRef> AmConfig::AppMapping;
+AmMutex      AmConfig::app_mapping_mut;
 bool         AmConfig::LogSessions             = false;
 bool         AmConfig::LogEvents               = false;
 int          AmConfig::UnhandledReplyLoglevel  = 0;
@@ -519,14 +524,9 @@ int AmConfig::readConfiguration()
   } else if (Application == "$(apphdr)") {
     AppSelect = App_APPHDR;
   } else if (Application == "$(mapping)") {
-    AppSelect = App_MAPPING;  
-    string appcfg_fname = ModConfigPath + "app_mapping.conf"; 
-    DBG("Loading application mapping...\n");
-    if (!read_regex_mapping(appcfg_fname, "=>", "application mapping",
-			    AppMapping)) {
-      ERROR("reading application mapping\n");
+    AppSelect = App_MAPPING;
+    if (!ReloadAppMapping())
       ret = -1;
-    }
   } else {
     AppSelect = App_SPECIFIED;
   }
@@ -1281,5 +1281,144 @@ void AmConfig::dump_Ifs()
 	 i,it_ref.name.c_str(),it_ref.LocalIP.c_str(),
 	 it_ref.RtpLowPort,it_ref.RtpHighPort,
 	 it_ref.PublicIP.c_str());
+  }
+}
+
+string AmConfig::GetAppMappingFile()
+{
+  return ModConfigPath + "app_mapping.conf";
+}
+
+AmConfig::AppMappingRef AmConfig::GetAppMapping()
+{
+  return AppMapping.load();
+}
+
+bool AmConfig::ReloadAppMapping(size_t* rules)
+{
+  lock_guard<AmMutex> lock(app_mapping_mut);
+
+  string fname = GetAppMappingFile();
+
+  /* the file is parsed into a snapshot of its own, what is in use is not
+     touched while it is read and stays in use if it does not parse */
+  shared_ptr<AppMappingRules> next = std::make_shared<AppMappingRules>();
+  if (!read_regex_mapping(fname, "=>", "application mapping", next->rules)) {
+    ERROR("reading application mapping from '%s'\n", fname.c_str());
+    return false;
+  }
+
+  size_t n = next->rules.size();
+
+  /* the swap is a single store: a request either matches the previous
+     snapshot or the new one, and the one it matched against lives until the
+     request is done with it */
+  AppMapping.store(AppMappingRef(std::move(next)));
+
+  if (rules)
+    *rules = n;
+
+  INFO("application mapping: %zu rule(s) read from '%s'\n", n, fname.c_str());
+  return true;
+}
+
+/** DI interface of the application mapping: the rules of app_mapping.conf
+ * take effect on a running node, no need to take it out of service. Served
+ * through the stats socket ("DI app_mapping reload"), xmlrpc2di and jsonrpc.
+ *
+ * replies are [code, message] plus, on success, the status struct:
+ * {"active": the mapping is what selects the applications, "path": the file
+ * the rules are read from, "rules": the number of rules in use} */
+class AppMappingDI : public AmDynInvoke, public AmDynInvokeFactory {
+public:
+  AppMappingDI() : AmDynInvoke(), AmDynInvokeFactory("app_mapping") {}
+  ~AppMappingDI() override {}
+
+  int onLoad() override { return 0; }
+  AmDynInvoke* getInstance() override { return this; }
+
+  void invoke(const string& method, const AmArg& args, AmArg& ret) override
+  {
+    if (method == "_list") {
+      ret.push(AmArg("reload"));
+      ret.push(AmArg("status"));
+      return;
+    }
+
+    if (method == "reload") {
+      if (AmConfig::AppSelect != AmConfig::App_MAPPING) {
+        ret.push(400);
+        ret.push(string("application selection is not $(mapping), "
+                        "the mapping is not in use"));
+        return;
+      }
+
+      size_t rules = 0;
+      /* the reason for a failed read is in the log, here only the outcome */
+      if (!AmConfig::ReloadAppMapping(&rules)) {
+        ret.push(500);
+        ret.push(string("could not read application mapping from '") +
+                 AmConfig::GetAppMappingFile() +
+                 "', the current rules are kept");
+        return;
+      }
+
+      AmArg p;
+      fill_status(p, rules);
+      warn_unknown_apps(AmConfig::GetAppMapping());
+
+      ret.push(200);
+      ret.push(string("OK"));
+      ret.push(p);
+      return;
+    }
+
+    if (method == "status") {
+      AmConfig::AppMappingRef mapping = AmConfig::GetAppMapping();
+
+      AmArg p;
+      fill_status(p, mapping ? mapping->rules.size() : 0);
+
+      ret.push(200);
+      ret.push(string("OK"));
+      ret.push(p);
+      return;
+    }
+
+    throw AmDynInvoke::NotImplemented(method);
+  }
+
+private:
+  static void fill_status(AmArg& p, size_t rules)
+  {
+    p["active"] = AmArg(AmConfig::AppSelect == AmConfig::App_MAPPING);
+    p["path"] = AmArg(AmConfig::GetAppMappingFile());
+    p["rules"] = AmArg(static_cast<long long>(rules));
+  }
+
+  /** a rule is matched before the application is looked up, so a rule naming
+   * an application nothing registers is noticed only once a call reaches it,
+   * which is then rejected. The applications are registered after the
+   * configuration is read, so this is reported on reload, not at startup */
+  static void warn_unknown_apps(const AmConfig::AppMappingRef& mapping)
+  {
+    if (!mapping)
+      return;
+
+    std::set<string> warned;
+    for (const auto& rule : mapping->rules)
+      if (!AmPlugIn::instance()->getFactory4App(rule.second) &&
+          warned.insert(rule.second).second)
+        WARN("application mapping: no application '%s' is registered\n",
+             rule.second.c_str());
+  }
+};
+
+void register_app_mapping_di()
+{
+  AppMappingDI* di = new AppMappingDI();
+  if (!AmPlugIn::instance()->registerDIInterface("app_mapping", di)) {
+    ERROR("registering 'app_mapping' DI interface\n");
+    delete di;
   }
 }

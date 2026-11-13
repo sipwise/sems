@@ -810,10 +810,16 @@ AmSessionFactory* AmPlugIn::findSessionFactory(const AmSipRequest& req, string& 
     case AmConfig::App_RURIPARAM: 
       m_app_name = get_header_param(req.r_uri, "app");
       break;
-    case AmConfig::App_MAPPING:
+    case AmConfig::App_MAPPING: {
+      /* the snapshot is held for the whole match: a reload swaps the
+         pointer, the rules being matched against stay valid until the match
+         returns */
+      AmConfig::AppMappingRef mapping = AmConfig::GetAppMapping();
       m_app_name = ""; // no match if not found
-      run_regex_mapping(AmConfig::AppMapping, req.r_uri.c_str(), m_app_name);
+      if (mapping)
+        run_regex_mapping(mapping->rules, req.r_uri.c_str(), m_app_name);
       break;
+    }
     case AmConfig::App_SPECIFIED: 
       m_app_name = AmConfig::Application; 
       break;
