@@ -669,6 +669,15 @@ int AmBasicSipDialog::reply(const AmSipRequest& req,
 }
 
 
+// only sip:/sips: URIs have a host part that can be rewritten
+// to the next-hop IP (patch_ruri_with_remote_ip)
+static bool patchable_ruri_scheme(const string& uri)
+{
+  sip_uri ruri;
+  return parse_uri(&ruri, uri.c_str(), (int)uri.length()) >= 0
+    && (ruri.scheme == sip_uri::SIP || ruri.scheme == sip_uri::SIPS);
+}
+
 /* static */
 int AmBasicSipDialog::reply_error(const AmSipRequest& req, unsigned int code,
 				  const string& reason, const string& hdrs,
@@ -751,7 +760,9 @@ int AmBasicSipDialog::sendRequest(const string& method,
   }
 
   int send_flags = 0;
-  if (patch_ruri_next_hop && remote_tag.empty()) {
+  if (patch_ruri_next_hop && remote_tag.empty()
+      && (!sip_uri::allow_tel_uri
+          || (patchable_ruri_scheme(remote_uri)))) {
     send_flags |= TR_FLAG_NEXT_HOP_RURI;
   }
 
