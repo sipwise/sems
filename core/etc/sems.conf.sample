@@ -475,9 +475,8 @@ use_default_signature=yes
 
 # optional parameter: codec_order=codec_name_1,codec_name2,...
 #
-# - Codec order used when sending INVITE requests.  Codecs in codec_order
-#   will be on the top of the list followed by other supported codecs
-#   (if any).
+# - Codecs to prefer, most preferred first. It applies to any SDP the
+#   core generates.
 #
 #   default=empty
 #
