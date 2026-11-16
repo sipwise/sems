@@ -1032,6 +1032,33 @@ void rejectMedia(const SdpMedia& offer, SdpMedia& answer) {
   answer.attributes.clear();
 }
 
+/** Keep the preferred codec and one telephone-event, what single_codec_in_ok
+ * asks for. An answer is also the stream's receive set (AmRtpStream::init
+ * builds its payload map from the local media), so what is dropped stops
+ * being accepted: RFC 3264 7 codec switching is given up by design. Of the
+ * event payloads only the first is coherent: SdpMedia::calcAnswer copies them
+ * over as offered, and getLocalTelephoneEventPT compares one number. The
+ * answer saved here is what the offer/answer machine repeats in the following
+ * replies of the dialog. */
+static void keepSingleCodec(SdpMedia& answer_media) {
+  bool codec_kept = false;
+  bool event_kept = false;
+
+  for (vector<SdpPayload>::iterator it = answer_media.payloads.begin();
+       it != answer_media.payloads.end(); ) {
+    bool event = (it->encoding_name == "telephone-event");
+    bool kept = event ? event_kept : codec_kept;
+
+    if (kept) {
+      it = answer_media.payloads.erase(it);
+    } else {
+      if (event) event_kept = true;
+      else codec_kept = true;
+      ++it;
+    }
+  }
+}
+
 /** Hook called when an SDP answer is required */
 bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
 {
@@ -1113,6 +1140,10 @@ bool AmSession::getSdpAnswer(const AmSdp& offer, AmSdp& answer)
 
       // sort payload type in the answer according to the priority given in the codec_order configuration key
       std::stable_sort(answer_media.payloads.begin(),answer_media.payloads.end(),codec_priority_cmp());
+
+      if (AmConfig::SingleCodecInOK)
+        keepSingleCodec(answer_media);
+
       // we have one accepted audio stream, reject the others
       audio_1st_stream = false;
     } else {
