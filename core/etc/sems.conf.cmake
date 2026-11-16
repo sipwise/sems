@@ -361,7 +361,10 @@ use_default_signature=yes
 
 # optional parameter: single_codec_in_ok={yes|no}
 #
-# - use single codec in 200 OK response
+# - answer an SDP offer with a single codec instead of the whole set of
+#   common ones, in every answer the core generates: 183, 200 OK and the
+#   answers to re-INVITE. The codec kept is the first one after codec_order;
+#   of the telephone-event payloads the one the peer offered first.
 #
 #   default=no
 #
