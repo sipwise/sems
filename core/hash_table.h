@@ -89,6 +89,14 @@ public:
 	return id;
     }
 
+    /**
+     * Number of values currently held in this bucket.
+     * Caution: the bucket MUST be locked when calling this method.
+     */
+    size_t size() const {
+	return elmts.size();
+    }
+
     // debug method
     void dump() const {
 

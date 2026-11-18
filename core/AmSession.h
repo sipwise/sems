@@ -461,6 +461,8 @@ public:
    * Gets the average of running sessions since last query
    */
   static unsigned int getAvgSessionNum();
+  /** average session number without resetting the averaging window */
+  static unsigned int peekAvgSessionNum();
 
   /* ----         DTMF                          ---- */
   /**

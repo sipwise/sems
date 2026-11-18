@@ -32,6 +32,7 @@
 #include "singleton.h"
 #include "hash_table.h"
 #include "atomic_types.h"
+#include "AmStatistics.h"
 #include "parse_dns.h"
 #include "parse_next_hop.h"
 #include "cstring.h"
@@ -298,6 +299,11 @@ protected:
 
 private:
     dns_cache cache;
+
+    AtomicCounter& requests_total;
+    AtomicCounter& requests_cached;
+    AtomicCounter& requests_failed;
+    AtomicCounter& queries_total;
 };
 
 #endif

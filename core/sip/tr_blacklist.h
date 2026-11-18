@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+#include <atomic>
+
 /**
  * Blacklist bucket: key type
  */
@@ -118,12 +120,19 @@ protected:
   tr_blacklist();
   ~tr_blacklist();
 
+  /** entry count, maintained on insert/remove; atomic so readers need no
+   *  bucket lock */
+  std::atomic_ullong cur_size;
+
 public:
   // public blacklist API:
   bool exist(const sockaddr_storage& addr);
   void insert(const sockaddr_storage& addr, unsigned int duration /* ms */,
 	      const char* reason);
   void remove(const sockaddr_storage& addr);
+
+  /** number of entries at the time of the call */
+  unsigned long long get_size() const;
 };
 
 #endif
