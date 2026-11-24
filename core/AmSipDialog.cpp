@@ -588,16 +588,20 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
           ILOG_DLG(L_DBG, "CANCEL accepted, status -> Disconnected\n");
           setStatus(Disconnected);
 
-        } else if(reply.code < 300) { /* CANCEL rejected */
+        } else if (reply.code < 200) {
+          /* a provisional racing our CANCEL does not reject it: the INVITE
+           * is still going to be answered, with 487 or with a 2xx that
+           * lost the race, so wait for that final response */
+          ILOG_DLG(L_DBG, "<%d> received while cancelling, waiting for the final response\n",
+              reply.code);
+
+        } else { /* CANCEL rejected */
           ILOG_DLG(L_DBG, "CANCEL rejected/too late - bye()\n");
           setRemoteTag(reply.to_tag);
-          /* a dialog is established by a 2xx, or by a provisional carrying a
-           * To tag (RFC 3261 12.1), and BYE is sent in it right below, so the
-           * route set is taken from this response (12.1.2): the BYE and the
-           * ACK for the 2xx are routed along it.  A provisional without a tag
-           * establishes no dialog and changes nothing (13.2.2.1). */
-          if (reply.code >= 200 || !reply.to_tag.empty())
-            setRouteSet(reply.route);
+          /* the 2xx establishes the dialog BYE is sent in right below, so the
+           * route set is taken from it,
+           * the BYE and ACK for the 2xx are routed along it */
+          setRouteSet(reply.route);
           setStatus(Connected);
           bye();
           /* if for any reason BYE could not be sent,
