@@ -408,16 +408,17 @@ int AmOfferAnswer::onTxSdp(unsigned int m_cseq,
   return 0;
 }
 
-int AmOfferAnswer::onRequestOut(AmSipRequest& req)
+int AmOfferAnswer::onRequestOut(AmSipRequest& req, bool no_sdp_generation)
 {
   AmMimeBody* sdp_body = req.body.hasContentType(SIP_APPLICATION_SDP);
   AmMimeBody* csta_body = req.body.hasContentType(SIP_APPLICATION_CSTA_XML);
 
-  bool generate_sdp = sdp_body && !sdp_body->getLen();
+  bool generate_sdp = !no_sdp_generation && sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
   bool has_csta = csta_body && csta_body->getLen();
 
-  if ((!sdp_body && !csta_body) &&
+  if (!no_sdp_generation &&
+      (!sdp_body && !csta_body) &&
       ((req.method == SIP_METH_PRACK) || (req.method == SIP_METH_ACK)) &&
       (state == OA_OfferRecved))
   {
@@ -464,7 +465,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
    * or 183 with no SDP body */
   bool force_no_sdp_update = false;
 
-  bool generate_sdp = sdp_body && !sdp_body->getLen();
+  bool generate_sdp = !no_sdp_generation && sdp_body && !sdp_body->getLen();
   bool has_sdp = sdp_body && sdp_body->getLen();
   bool has_csta = csta_body && csta_body->getLen();
 
@@ -494,8 +495,9 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
 
       /* TT#184101, a sequential 183, which has no SDP body, but the media session has
          already had the local SDP and saved that.
-         Re-use it, and do not beget the 183 without SDP body */
-      if (reply.code == 183 && !sdp_local.media.empty()) {
+         Re-use it, and do not beget the 183 without SDP body.
+         Not when SDP generation is suppressed for this reply (relayed messages). */
+      if (reply.code == 183 && !no_sdp_generation && !sdp_local.media.empty()) {
         ILOG_DLG(L_DBG, "The 183 with no SDP, but system already has local SDP for this session, re-using it..\n");
 
         string existing_sdp;
@@ -536,7 +538,7 @@ int AmOfferAnswer::onReplyOut(AmSipReply& reply, int &flags, AmMimeBody &ret_bod
 
       if ((reply.code >= 200) && (reply.code < 300)) {
         /* offer received: -> force SDP */
-        generate_sdp = (state == OA_OfferRecved);
+        generate_sdp = !no_sdp_generation && (state == OA_OfferRecved);
         ILOG_DLG(L_DBG, "Now generate_sdp has been reset to <%c>.\n", generate_sdp ? 't' : 'f');
       }
     }
