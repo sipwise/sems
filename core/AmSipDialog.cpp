@@ -90,7 +90,8 @@ AmSipDialog::AmSipDialog(AmSipDialogEventHandler* h)
     offeranswer_enabled(true),
     early_session_started(false),session_started(false),
     pending_invites(0), uas_2xx_ack_cseq(0),
-    sdp_local(), sdp_remote(), faked_183_as_200(false), force_early_announce(false)
+    sdp_local(), sdp_remote(), faked_183_as_200(false),
+    faked_183_cseq(0), force_early_announce(false)
 {
 }
 
@@ -475,6 +476,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
             setStatus(Connected);
             setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */
+            faked_183_cseq = reply.cseq;
 
             if (reply.to_tag.empty()) {
               ILOG_DLG(L_DBG, "received 2xx reply without to-tag (callid=%s): sending BYE\n",
@@ -544,6 +546,7 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
 
             setStatus(Connected);
             setFaked183As200(true); /* remember that this is a faked 200OK, indeed 183 */
+            faked_183_cseq = reply.cseq;
 
             if (reply.to_tag.empty()) {
               ILOG_DLG(L_DBG, "received 2xx reply without to-tag (callid=%s): sending BYE\n",
@@ -620,8 +623,16 @@ bool AmSipDialog::onRxReplyStatus(const AmSipReply& reply)
          * on a provisional; the 2xx that now confirms it is the response the
          * dialog state comes from, route set included, empty as well (RFC 3261
          * 13.2.2.4, 12.1.2).  The dialog is confirmed, so bye() must send BYE
-         * rather than the CANCEL the faked state calls for. */
-        if (getFaked183As200() && reply.code >= 200 && reply.code < 300) {
+         * rather than the CANCEL the faked state calls for.
+         *
+         * Only the 2xx to the INVITE the 183 answered confirms it:
+         * a 2xx to a re-INVITE sent in the faked state is a target refresh,
+         * which leaves the route set alone, and the initial INVITE is still unanswered. */
+        if (getFaked183As200() &&
+            reply.code >= 200 &&
+            reply.code < 300 &&
+            reply.cseq == faked_183_cseq)
+        {
           ILOG_DLG(L_DBG, "2xx confirming a dialog faked by an early-announce 183, "
               "updating the route set.\n");
           setRouteSet(reply.route);

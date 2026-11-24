@@ -82,6 +82,9 @@ protected:
    */
   bool force_early_announce;
   bool faked_183_as_200;
+  /* CSeq of the INVITE the faked 183 answered: only a 2xx to that INVITE
+   * confirms the dialog, not one to a request sent in the faked state */
+  unsigned int faked_183_cseq;
 
   int onTxReply(const AmSipRequest& req, AmSipReply& reply, int& flags);
   int onTxRequest(AmSipRequest& req, int& flags);
