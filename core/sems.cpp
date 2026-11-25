@@ -44,6 +44,7 @@
 #include "SipCtrlInterface.h"
 #include "sip/trans_table.h"
 #include "sip/async_file_writer.h"
+#include "AmStatistics.h"
 
 #include "log.h"
 
@@ -67,8 +68,12 @@
 #include <sys/prctl.h>
 #endif
 
+#include <atomic>
 #include <string>
+#include <fstream>
+#include <time.h>
 using std::string;
+using std::ifstream;
 
 #if defined(__linux__)
 #include <sys/prctl.h>
@@ -76,6 +81,7 @@ using std::string;
 
 const char* progname = NULL;    /**< Program name (actually argv[0])*/
 int main_pid = 0;               /**< Main process PID */
+time_t start_time = 0;          /**< Process start timestamp (uptime metric) */
 
 /** SIP stack (controller interface) */
 #define sip_ctrl (*SipCtrlInterface::instance())
@@ -339,6 +345,54 @@ int set_fd_limit()
   return 0;
 }
 
+/** exports process memory gauges (VmSize/VmRSS) read from /proc/self/statm,
+ *  registered under the name "core_memory"; the group values are atomic
+ *  because the DI reader and the prom exporter scrape concurrently */
+class GroupsContainerCoreMemory :
+  public StatsCountersGroupsContainerInterface {
+  struct Group : public StatCountersGroupsInterface {
+    std::atomic_ullong value;
+    map<string, string> labels;
+
+    Group() : StatCountersGroupsInterface(Gauge), value(0) {}
+
+    void iterateCounters(iterate_counters_callback_type callback) override
+    {
+      callback(value.load(std::memory_order_relaxed), labels);
+    }
+  };
+
+  Group vmsize_group;
+  Group vmrss_group;
+  long sys_page_size;
+
+public:
+  GroupsContainerCoreMemory() : sys_page_size(sysconf(_SC_PAGESIZE))
+  {
+    vmsize_group.setHelp("virtual memory size of the process, in bytes");
+    vmrss_group.setHelp("resident set size of the process, in bytes");
+  }
+
+  void iterateGroups(const string& name, iterate_groups_callback_type callback) override
+  {
+    // https://www.kernel.org/doc/html/latest/filesystems/proc.html
+    unsigned long long v;
+
+    ifstream ifs("/proc/self/statm", std::ios_base::in);
+    if (!ifs.is_open())
+      return;
+
+    ifs >> v; // VmSize in pages
+    vmsize_group.value.store(sys_page_size * v, std::memory_order_relaxed);
+
+    ifs >> v; // VmRSS in pages
+    vmrss_group.value.store(sys_page_size * v, std::memory_order_relaxed);
+
+    callback(name + "_vmsize", vmsize_group);
+    callback(name + "_vmrss", vmrss_group);
+  }
+};
+
 /*
  * Main
  */
@@ -351,6 +405,8 @@ int main(int argc, char* argv[])
   #endif
 
   SdNotifier sd;
+
+  start_time = time(nullptr);
 
   progname = strrchr(argv[0], '/');
   progname = (progname == NULL ? argv[0] : progname + 1);
@@ -629,12 +685,49 @@ int main(int argc, char* argv[])
   
   INFO("Loading plug-ins\n");
   AmPlugIn::instance()->init();
+
+  // before the modules are loaded, so that they can use the metrics
+  // registry and the statistics interface
+  register_statistics();
+
   if(AmPlugIn::instance()->load(AmConfig::PlugInPath, AmConfig::LoadPlugins))
     goto error;
 
   AmPlugIn::instance()->registerLoggingPlugins();
 
   AmSessionContainer::instance()->initMonitoring();
+
+  stat_group(Counter, "core", "localtime")
+    .setHelp("current time of the system clock")
+    .addFunctionCounter([]() -> unsigned long long { return time(nullptr); });
+
+  stat_group(Counter, "core", "uptime")
+    .setHelp("seconds since the process start")
+    .addFunctionCounter([]() -> unsigned long long { return time(nullptr) - start_time; });
+
+  stat_group(Counter, "core", "start_time")
+    .setHelp("time of the process start")
+    .addAtomicCounter().set(static_cast<unsigned long long>(start_time));
+
+  stat_group(Gauge, "core", "version")
+    .setHelp("constant one, the version is in the labels")
+    .addFunctionCounter([]() -> unsigned long long { return 1; },
+                        {{"version", SEMS_VERSION}});
+
+  stat_group(Gauge, "core", "shutdown_mode")
+    .setHelp("whether the shutdown mode is active")
+    .addFunctionCounter([]() -> unsigned long long { return AmConfig::ShutdownMode ? 1 : 0; });
+
+  if (AmConfig::SessionLimit) {
+    stat_group(Gauge, "core", "sessions_limit")
+      .setHelp("configured limit of simultaneous sessions")
+      .addFunctionCounter([]() -> unsigned long long { return AmConfig::SessionLimit; });
+  }
+
+  // static: the registry does not own containers, and the object must
+  // outlive AmStatistics::dispose(), which runs before main returns
+  static GroupsContainerCoreMemory core_memory;
+  AmStatistics::instance()->addGroupsContainer("core_memory", &core_memory);
 
   #ifndef DISABLE_DAEMON_MODE
   if(fd[1]) {
@@ -688,6 +781,8 @@ int main(int argc, char* argv[])
 
   INFO("Disposing plug-ins\n");
   AmPlugIn::dispose();
+
+  AmStatistics::dispose();
 
   async_file_writer::instance()->stop();
   async_file_writer::instance()->join();

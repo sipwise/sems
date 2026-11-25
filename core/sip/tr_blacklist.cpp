@@ -64,8 +64,14 @@ bool blacklist_bucket::remove(const bl_addr& addr)
 }
 
 tr_blacklist::tr_blacklist()
-  : blacklist_ht(BLACKLIST_HT_SIZE)
+  : blacklist_ht(BLACKLIST_HT_SIZE),
+    cur_size(0)
 {
+}
+
+unsigned long long tr_blacklist::get_size() const
+{
+  return cur_size.load(std::memory_order_relaxed);
 }
 
 tr_blacklist::~tr_blacklist()
@@ -96,7 +102,8 @@ void tr_blacklist::insert(const sockaddr_storage& addr, unsigned int duration,
   blacklist_bucket* bucket = get_bucket(bl_a.hash());
   bucket->lock();
   if(!bucket->exist(bl_a)) {
-    bucket->insert(bl_a,duration,reason);
+    if(bucket->insert(bl_a,duration,reason))
+      cur_size.fetch_add(1, std::memory_order_relaxed);
   }
   bucket->unlock();
 }
@@ -107,6 +114,7 @@ void tr_blacklist::remove(const sockaddr_storage& addr)
 
   blacklist_bucket* bucket = get_bucket(bl_a.hash());
   bucket->lock();
-  bucket->remove(bl_a);
+  if(bucket->remove(bl_a))
+    cur_size.fetch_sub(1, std::memory_order_relaxed);
   bucket->unlock();
 }

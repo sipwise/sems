@@ -6,6 +6,7 @@
 #include "AmRtpAudio.h"
 #include "AmMediaProcessor.h"
 #include "AmDtmfDetector.h"
+#include "AmStatistics.h"
 
 #include <map>
 
@@ -19,9 +20,14 @@ class B2BMediaStatistics
     AmMutex mutex;
 
   public:
+    B2BMediaStatistics();
+
     void reportCodecWriteUsage(string &dst);
     void reportCodecReadUsage(string &dst);
     void getReport(const AmArg &args, AmArg &ret);
+
+    /** metrics export: emits (count, {direction, codec}) per entry */
+    void iterateCodecUsage(StatCounterInterface::iterate_func_type callback);
 
     static B2BMediaStatistics *instance();
     void incCodecWriteUsage(const string &codec_name);
