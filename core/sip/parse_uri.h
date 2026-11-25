@@ -42,8 +42,12 @@ struct sip_uri
     enum uri_scheme {
 	UNKNOWN=0,
 	SIP,
-	SIPS
+	SIPS,
+	TEL
     };
+
+    // parse tel: URIs (RFC 3966), see sems.conf: allow_tel_uri
+    static bool allow_tel_uri;
 
     uri_scheme scheme;
     cstring    user;
