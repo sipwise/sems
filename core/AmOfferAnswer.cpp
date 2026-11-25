@@ -40,6 +40,7 @@ const char* __dlg_oa_status2str[AmOfferAnswer::__max_OA]  = {
     "None",
     "OfferRecved",
     "OfferSent",
+    "PreviewCompleted",
     "Completed"
 };
 
