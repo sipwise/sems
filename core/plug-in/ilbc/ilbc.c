@@ -224,9 +224,43 @@ int Pcm16_2_iLBC( unsigned char* out_buf, unsigned char* in_buf, unsigned int si
   return out_buf_offset;
 }
 
+/**
+ * The frames of a packet are 38 bytes long in 20ms mode
+ * and 50 bytes long the in 30ms mode, so the payload size tells which mode the
+ * peer actually sends.
+ *
+ * Follow it in the decoder, so that a peer sending
+ * another mode than the negotiated one still gets decoded, while the encoder
+ * keeps the negotiated mode.
+ *
+ * A size that fits both modes (a multiple of 950 bytes) or neither keeps the current one.
+ */
+static void iLBC_follow_peer_mode(iLBC_Codec_Inst_t* codec_inst, unsigned int size)
+{
+  int fits_20 = size && !(size % NO_OF_BYTES_20MS);
+  int fits_30 = size && !(size % NO_OF_BYTES_30MS);
+  int mode;
+
+  if (fits_20 == fits_30)
+    return;
+
+  mode = fits_20 ? 20 : 30;
+  if (mode == codec_inst->iLBC_Dec_Inst.mode)
+    return;
+
+  DBG("iLBC: peer sends %d ms frames, switching the decoder from %d ms "
+      "(encoder stays at %d ms)\n",
+      mode, codec_inst->iLBC_Dec_Inst.mode, codec_inst->mode);
+
+  initDecode(&codec_inst->iLBC_Dec_Inst, mode, 0 /* 1=use_enhancer */);
+}
+
 static int iLBC_2_Pcm16( unsigned char* out_buf, unsigned char* in_buf, unsigned int size,
 			 unsigned int channels, unsigned int rate, long h_codec )
 {
+  if (h_codec)
+    iLBC_follow_peer_mode((iLBC_Codec_Inst_t*)h_codec, size);
+
   return iLBC_2_Pcm16_Ext(out_buf,in_buf,size,channels,rate,h_codec,1/*Normal*/);
 }
 
