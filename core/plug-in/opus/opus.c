@@ -171,7 +171,7 @@ int opus_negotiate_fmt(int is_offer, const char* params_in, char* params_out, un
 */
 static char* read_param(char* input, const char *param, char** param_value)
 {
-  int param_size;
+  size_t param_size;
 
   /* Eat spaces and semi-colons */
   while (*input && (*input == ' ' || *input == ';' || *input == '"'))
@@ -189,26 +189,22 @@ static char* read_param(char* input, const char *param, char** param_value)
   /* move by the param_size + 1 */
   input += (param_size + 1);
 
-  /* Found and discarded a matching parameter */
-  *param_value = input;
-  while (*input && *input != ' ' && *input != ';' && *input != '"')
-    input++;
-
-  if (*input=='"')
-  {
-    *param_value = *param_value + 1; /* remove " */
-
-     /* string will end after next: " */
+  if (*input == '"') {
+    /* quoted value: runs up to the closing quote */
+    *param_value = ++input;
     while (*input && *input != '"' && *input != '\r' && *input != '\n')
-       input++;
-
-    if (*input == '"')
-      input--; /* remove " */
+      input++;
+  } else {
+    *param_value = input;
+    while (*input && *input != ' ' && *input != ';' && *input != '"')
+      input++;
   }
 
+  /* Terminate the value and step past the terminator, so that the next
+   * search starts at the following parameter rather than at the NUL. */
   if (*input)
-    *input = 0;
-    
+    *input++ = 0;
+
   return input;
 }
 
@@ -262,11 +258,11 @@ void decode_format_parameters(const char* format_parameters, unsigned int* maxba
       if (*buffer) {
         param_value = buffer;
 
-  while (*buffer && *buffer != ';')
-    buffer++;
-		
+	while (*buffer && *buffer != ';')
+	  buffer++;
+
 	if (*buffer)
-	  *buffer = 0;
+	  *buffer++ = 0;
 
 	DBG("OPUS: SDP parameter fmtp: %s ignored in creating encoder.\n", param_value);
       }
