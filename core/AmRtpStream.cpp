@@ -64,6 +64,24 @@
 
 using std::set;
 
+/**
+ * iLBC frame mode (20ms or 30 ms), an a=fmtp line asks for:
+ * 30ms unless the line says mode=20 */
+static int getIlbcMode(const string& fmtp)
+{
+  vector<string> params = explode(fmtp, ";");
+  for (vector<string>::const_iterator it = params.begin(); it != params.end(); ++it)
+  {
+    size_t eq = it->find('=');
+    if (eq == string::npos)
+      continue;
+    if (strcasecmp(trim(it->substr(0, eq), " \t").c_str(), "mode"))
+      continue;
+    return (trim(it->substr(eq + 1), " \t\"") == "20") ? 20 : 30;
+  }
+  return 30;
+}
+
 void PayloadMask::clear()
 {
   memset(bits, 0, sizeof(bits));
@@ -565,9 +583,20 @@ int AmRtpStream::init(const AmSdp& local,
       /* The codec is initialised from the local payload entry, so take the
        * peer's format parameters into it, as calcAnswer() does on the
        * incoming leg.  Without remote fmtp the local one is kept. */
-      if (!sdp_it->sdp_format_parameters.empty())
-        payloads[pmt_it->second.index].sdp_format_parameters =
-          sdp_it->sdp_format_parameters;
+      Payload& pl = payloads[pmt_it->second.index];
+
+      if (pl.codec_id == CODEC_ILBC) {
+        /* both sides use the lower bit rate mode of offer and
+         * answer, so 20ms only if both ask for it, but the missing mode is 30ms.
+         *
+         * Taking the peer's mode as is would encode 20 ms frames on an
+         * outgoing leg where our offer, without fmtp, asked for 30ms actually. */
+        bool mode20 = getIlbcMode(pl.sdp_format_parameters) == 20 &&
+                      getIlbcMode(sdp_it->sdp_format_parameters) == 20;
+        pl.sdp_format_parameters = mode20 ? "mode=20" : "mode=30";
+      } else if (!sdp_it->sdp_format_parameters.empty()) {
+        pl.sdp_format_parameters = sdp_it->sdp_format_parameters;
+      }
     }
   }
 
