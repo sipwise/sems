@@ -187,6 +187,9 @@ public:
   /**
    * Print the body including sub-parts suitable for sending
    * within the body of a SIP message.
+   *
+   * It writes the root payload whenever it is non-empty
+   * and only walks the parts when it is empty.
    */
   void print(string& buf) const;
 
