@@ -349,6 +349,8 @@ int pcm16_2_opus( unsigned char* out_buf, unsigned char* in_buf, unsigned int si
 {
   opus_state_t* codec_inst;
   int res;
+  unsigned int samples, frame;
+  opus_int16 padded[AUDIO_BUFFER_SIZE / sizeof(opus_int16)];
 
   if (!h_codec){
     ERROR("opus codec not initialized.\n");
@@ -356,7 +358,24 @@ int pcm16_2_opus( unsigned char* out_buf, unsigned char* in_buf, unsigned int si
   }
   codec_inst = (opus_state_t*)h_codec;
 
-  res = opus_encode(codec_inst->opus_enc, (opus_int16*)in_buf, size/2/channels, out_buf, AUDIO_BUFFER_SIZE);
+  /* opus_encode() takes 2.5, 5, 10, 20, 40 or 60 ms frames only, but the
+   * input can be a few samples short of that, e.g. the first frame out of
+   * the resampler. Pad it with silence up to the next valid frame size. */
+  samples = size / 2 / channels;
+
+  for (frame = _OPUS_RATE / 400; frame < samples && frame < _OPUS_RATE * 60 / 1000; )
+  {
+    frame = (frame < _OPUS_RATE / 50) ? frame * 2 : frame + _OPUS_RATE / 50;
+  }
+
+  if (samples < frame && frame * channels <= sizeof(padded) / sizeof(padded[0])) {
+    memcpy(padded, in_buf, samples * channels * 2);
+    memset(padded + samples * channels, 0, (frame - samples) * channels * 2);
+    in_buf = (unsigned char*)padded;
+    samples = frame;
+  }
+
+  res = opus_encode(codec_inst->opus_enc, (opus_int16*)in_buf, samples, out_buf, AUDIO_BUFFER_SIZE);
   /* returns bytes in encoded frame */
 
   /* DBG ("OPUS encode: size: %d, chan: %d, rate: %d, result %d.\n", size, channels, rate, res); */
