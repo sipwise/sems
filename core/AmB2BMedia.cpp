@@ -161,7 +161,7 @@ void AudioStreamData::initialize(AmB2BSession *session)
   enable_dtmf_transcoding = session->getEnableDtmfTranscoding();
   session->getLowFiPLs(lowfi_payloads);
 
-  if (!hooks.empty()) stream->setHook(this);
+  if (!getHooks().empty()) stream->setHook(this);
   //TODO: Will be set later in replaceConnectionAddress
   //stream->setLocalIP(session->localMediaIP());
 }
@@ -216,16 +216,19 @@ void AudioStreamData::clear()
     //delete in;
     in = NULL;
   }
+
+  // Detach from the stream we are about to drop, but keep the subscriber
+  // list: the hooks belong to the application that installed them, and
+  // deleting them here would leave that owner with a dangling pointer.
+  // clear() runs when a leg is detached, not on renegotiation (which reuses
+  // the streams), so a subscription follows the media line to the next
+  // session on this leg. initialize() re-attaches the stream hook; see
+  // addHook() for the contract.
+  if (!getHooks().empty() && stream) stream->setHook(NULL);
+
   stream.reset();
   clearDtmfSink();
   initialized = false;
-
-  // clear stream hooks (FIXME: do we really want this unless destroying the
-  // AudioStreamData?)
-  for (list<AmRtpStream::Hook*>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
-    if (*i) delete *i;
-  }
-  hooks.clear();
 }
 
 void AudioStreamData::stopStreamProcessing()
@@ -492,29 +495,76 @@ void AudioStreamData::setReceiving(bool r) {
 }
 
 
-void AudioStreamData::addHook(AmRtpStream::Hook *h)
+AudioStreamData::HookList AudioStreamData::getHooks()
 {
+  lock_guard<AmMutex> lock(hooks_mut);
+  return hooks;
+}
+
+bool AudioStreamData::addHook(std::shared_ptr<AmRtpStream::Hook> h)
+{
+  lock_guard<AmMutex> lock(hooks_mut);
+  for (HookList::iterator i = hooks.begin(); i != hooks.end(); ++i)
+    if (*i == h) return false;
+
   if (hooks.empty() && stream) stream->setHook(this);
   hooks.push_back(h);
+  return true;
+}
+
+bool AudioStreamData::removeHook(std::shared_ptr<AmRtpStream::Hook> h)
+{
+  lock_guard<AmMutex> lock(hooks_mut);
+  for (HookList::iterator i = hooks.begin(); i != hooks.end(); ++i) {
+    if (*i == h) {
+      hooks.erase(i);
+      if (hooks.empty() && stream) stream->setHook(NULL);
+      return true;
+    }
+  }
+  return false;
 }
 
 void AudioStreamData::receivedPacket(AmRtpPacket *p)
 {
-  for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
+  // RTP receiver thread (recvRtpPacket -> bufferPacket), no media mutex
+  HookList snapshot = getHooks();
+  for (HookList::iterator i = snapshot.begin(); i != snapshot.end(); ++i) {
     (*i)->receivedPacket(p);
   }
 }
 
 void AudioStreamData::relayedPacket(AmRtpPacket *p)
 {
-  for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
+  // RTP receiver thread of the receiving stream (bufferPacket -> relay()),
+  // no media mutex
+  HookList snapshot = getHooks();
+  for (HookList::iterator i = snapshot.begin(); i != snapshot.end(); ++i) {
     (*i)->relayedPacket(p);
+  }
+}
+
+void AudioStreamData::preEncode(unsigned char* buffer, unsigned int size,
+                                int sample_rate, bool from_input,
+                                unsigned long long ts, int payload_type)
+{
+  // the stream-level tap reports our own 'in' as the source: from_input
+  // passed by AmRtpAudio::put() is always true there (its caller is either
+  // the media processor pulling from this stream's input or from the peer),
+  // so refine it from the actual stream state
+  from_input = (in != NULL);
+  // media processor thread (writeStreams -> put()), holds the media mutex
+  HookList snapshot = getHooks();
+  for (HookList::iterator i = snapshot.begin(); i != snapshot.end(); ++i) {
+    (*i)->preEncode(buffer, size, sample_rate, from_input, ts, payload_type);
   }
 }
 
 void AudioStreamData::initStream(const AmSdp& local, const AmSdp& remote, int media_idx)
 {
-  for (list<AmRtpStream::Hook *>::iterator i = hooks.begin(); i != hooks.end(); ++i) {
+  // session thread (updateStreams -> stream->init()), holds the media mutex
+  HookList snapshot = getHooks();
+  for (HookList::iterator i = snapshot.begin(); i != snapshot.end(); ++i) {
     (*i)->initStream(local, remote, media_idx);
   }
 }
@@ -1341,6 +1391,28 @@ void AmB2BMedia::setFirstStreamInput(bool a_leg, AmAudio *in)
       ERROR("BUG: can't set %s leg's first stream input, no streams\n", a_leg ? "A": "B");
     }
   }
+}
+
+bool AmB2BMedia::addStreamHook(bool a_leg, int media_idx,
+                               std::shared_ptr<AmRtpStream::Hook> h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
+    if (i->media_idx != media_idx) continue;
+    return a_leg ? i->a.addHook(h) : i->b.addHook(h);
+  }
+  return false;
+}
+
+bool AmB2BMedia::removeStreamHook(bool a_leg, int media_idx,
+                                  std::shared_ptr<AmRtpStream::Hook> h)
+{
+  lock_guard<AmMutex> lock(mutex);
+  for (AudioStreamIterator i = audio.begin(); i != audio.end(); ++i) {
+    if (i->media_idx != media_idx) continue;
+    return a_leg ? i->a.removeHook(h) : i->b.removeHook(h);
+  }
+  return false;
 }
 
 void AmB2BMedia::createHoldAnswer(bool a_leg, const AmSdp &offer, AmSdp &answer, bool use_zero_con)
