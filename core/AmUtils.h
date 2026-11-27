@@ -330,7 +330,13 @@ size_t skip_to_end_of_brackets(const string& s, size_t start);
 
 typedef std::vector<std::pair<regex_t, string> > RegexMappingVector;
 
+/** release the compiled regexes of the entries from @param from on and drop
+    them; with the default @param from the mapping is emptied */
+void free_regex_mapping(RegexMappingVector& mapping, size_t from = 0);
+
 /** read a regex=>string mapping from file
+    on failure the entries added by the call are released again, the caller
+    keeps the rules it already had
     @return true on success
  */
 bool read_regex_mapping(const string& fname, const char* sep,

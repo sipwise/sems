@@ -395,6 +395,20 @@ Example:
 application=$(apphdr)
 ```
 
+With `application=$(mapping)` the file is read at startup. The rules can be
+re-applied on a running server through the `app_mapping` DI interface, which is
+served by the monitoring socket, xmlrpc2di and jsonrpc:
+
+```
+sems-stats -s 127.0.0.1 -p 5040 -c "DI app_mapping reload"
+```
+
+`reload` answers with the number of rules taken. A file which does not parse is
+rejected and the rules in use are kept. `status` reports the file, whether the
+mapping is in use and the number of rules currently applied. The rules take
+effect on requests which select an application, calls already in a dialog keep
+the application they were started with.
+
 ### SIP timers related sems.conf parameters
 
 Parameter: `sip_timer_B=<milliseconds>`

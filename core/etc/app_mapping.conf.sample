@@ -9,6 +9,10 @@
 # format:
 #  regexp=>application
 #  lines starting with '#' and empty lines are ignored
+#
+# the rules are read at startup and can be re-read on a running server with
+# the DI command "app_mapping reload", "app_mapping status" shows the rules
+# in use. A file which does not parse is rejected, the rules in use are kept.
 
 # standard applications
 ^sip:100=>echo
