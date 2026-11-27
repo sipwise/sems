@@ -302,6 +302,10 @@ private:
   void onRequestSent(const AmSipRequest& req);
   void onReplySent(const AmSipRequest& req, const AmSipReply& reply);
 
+  /** BYE in an early dialog also terminates the pending INVITE: answer
+   *  it with 487, see RFC 3261 15.1.2. */
+  void onBye(const AmSipRequest& req);
+
   void onInvite2xx(const AmSipReply& reply);
 
   int onSdpCompleted(const AmSdp& local_sdp, const AmSdp& remote_sdp);
